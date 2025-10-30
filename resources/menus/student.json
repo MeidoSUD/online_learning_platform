@@ -1,0 +1,46 @@
+{
+  "menu": [
+    {
+      "url": "student/profile",
+      "name": "Profile",
+      "icon": "user",
+      "slug": "student-profile"
+    },
+    {
+      "url": "student/lessons",
+      "name": "Lessons",
+      "icon": "book",
+      "slug": "student-lessons"
+    },
+    {
+      "url": "student/courses",
+      "name": "Courses",
+      "icon": "grid",
+      "slug": "student-courses"
+    },
+    {
+      "url": "student/payment-methods",
+      "name": "Payment Methods",
+      "icon": "credit-card",
+      "slug": "student-payment-methods"
+    },
+    {
+      "url": "student/transaction-history",
+      "name": "Transaction History",
+      "icon": "history",
+      "slug": "student-transaction-history"
+    },
+    {
+      "url": "student/reviews",
+      "name": "Reviews",
+      "icon": "star",
+      "slug": "student-reviews"
+    },
+    {
+      "url": "student/settings",
+      "name": "Settings",
+      "icon": "settings",
+      "slug": "student-settings"
+    }
+  ]
+}

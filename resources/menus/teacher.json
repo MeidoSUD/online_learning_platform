@@ -1,0 +1,46 @@
+{
+  "menu": [
+    {
+      "name": "Dashboard",
+      "url": "teacher/dashboard",
+      "icon": "home",
+      "slug": "teacher-dashboard"
+    },
+    {
+      "name": "Profile",
+      "url": "teacher/profile",
+      "icon": "user",
+      "slug": "teacher-profile"
+    },
+    {
+      "name": "Courses",
+      "url": "teacher/courses",
+      "icon": "book",
+      "slug": "teacher-courses"
+    },
+    {
+      "name": "Lessons",
+      "url": "teacher/lessons",
+      "icon": "clipboard",
+      "slug": "teacher-lessons"
+    },
+    {
+      "name": "Payouts",
+      "url": "teacher/payouts",
+      "icon": "dollar-sign",
+      "slug": "teacher-payouts"
+    },
+    {
+      "name": "Reviews",
+      "url": "teacher/reviews",
+      "icon": "star",
+      "slug": "teacher-reviews"
+    },
+    {
+      "name": "Settings",
+      "url": "teacher/settings",
+      "icon": "settings",
+      "slug": "teacher-settings"
+    }
+  ]
+}

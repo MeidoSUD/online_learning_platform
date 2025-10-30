@@ -1,0 +1,97 @@
+{
+  "menu": [
+    {
+      "name": "Dashboard",
+      "url": "/admin/dashboard",
+      "icon": "home",
+      "slug": "admin-dashboard"
+    },
+    {
+      "name": "Services Management",
+      "icon": "home",
+      "slug": "admin-services",
+      "submenu": [
+        {
+          "name": "All Services",
+          "url": "/admin/services",
+          "icon": "grid",
+          "slug": "admin-services-all"
+        },
+        {
+          "name": "Add Service",
+          "url": "/admin/services/create",
+          "icon": "plus",
+          "slug": "admin-services-add"
+        }
+      ]
+    },
+    {
+      "name": "User Management",
+      "icon": "users",
+      "slug": "admin-users",
+      "submenu": [
+        {
+          "name": "All Users",
+          "url": "/admin/users",
+          "icon": "user",
+          "slug": "admin-users-all"
+        },
+        {
+          "name": "Add User",
+          "url": "/admin/users/create",
+          "icon": "user-plus",
+          "slug": "admin-users-add"
+        }
+      ]
+    },
+    {
+      "name": "Booking Management",
+      "url": "/admin/bookings",
+      "icon": "calendar",
+      "slug": "admin-bookings"
+    },
+    {
+      "name": "Courses Management",
+      "icon": "book",
+      "slug": "admin-courses",
+      "submenu": [
+        {
+          "name": "All Courses",
+          "url": "/admin/courses",
+          "icon": "book-open",
+          "slug": "admin-courses-all"
+        },
+        {
+          "name": "Add Course",
+          "url": "/admin/courses/create",
+          "icon": "plus-square",
+          "slug": "admin-courses-add"
+        }
+      ]
+    },
+    {
+      "name": "Payments Management",
+      "url": "/admin/payments",
+      "icon": "credit-card",
+      "slug": "admin-payments"
+    },
+    {
+      "name": "Dispute Management",
+      "url": "/admin/disputes",
+      "icon": "shield",
+      "slug": "admin-disputes"
+    },
+    {
+      "name": "Reports",
+      "url": "/admin/reports",
+      "icon": "bar-chart",
+      "slug": "admin-reports"
+    },
+    {
+      "name": "Settings",
+      "url": "/admin/settings",
+      "icon": "settings",
+      "slug": "admin-settings"
+    }
+  ]
+}
