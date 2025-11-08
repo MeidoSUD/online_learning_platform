@@ -9,6 +9,7 @@ use App\Http\Controllers\Student\StudentOrderController;
 use App\Http\Controllers\Student\StudentPaymentController;
 use App\Http\Controllers\Student\StudentReviewController;
 use App\Http\Controllers\Student\StudentDisputeController;
+use App\Http\Controllers\Student\StudentProfileController;
 use App\Http\Controllers\Teacher\TeacherController;
 use App\Http\Controllers\Teacher\TeacherCourseController;
 use App\Http\Controllers\Teacher\TeacherLessonController;
@@ -17,6 +18,7 @@ use App\Http\Controllers\Teacher\TeacherOrderController;
 use App\Http\Controllers\Teacher\TeacherWalletController;
 use App\Http\Controllers\Teacher\TeacherReviewController;
 use App\Http\Controllers\Teacher\TeacherDisputeController;
+use App\Http\Controllers\Teacher\TeacherSubjectController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\Admin\AdminController;
@@ -30,7 +32,7 @@ use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\ReportsController;
 use App\Http\Controllers\Api\TeacherApplicationController;
-use App\Http\Controllers\Teacher\TeacherInfoController;
+use App\Http\Controllers\Teacher\TeacherProfileController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Web\UserPaymentMethodWebController;
 use App\Models\User;
@@ -125,20 +127,28 @@ Route::middleware('LocaleMiddleware')->group(function () {
             Route::get('reports/users', [ReportsController::class, 'users'])->name('admin.reports.users');
         });
     });
-    // Profile Routes (Shared between Student & Teacher)
-    Route::middleware(['auth'])->prefix('profile')->name('profile.')->group(function () {
-        Route::get('/', [UserController::class, 'show'])->name('show');
-        Route::get('/edit', [UserController::class, 'edit'])->name('edit');
-        Route::put('/update', [UserController::class, 'update'])->name('update');
-        Route::get('/change-password', [UserController::class, 'showChangePassword'])->name('password');
-        Route::post('/change-password', [UserController::class, 'changePassword'])->name('password.update');
-    });
+
     // ==========================================
     // Student Routes
     // ==========================================
     Route::middleware(['auth', 'role:student'])->prefix('student')->name('student.')->group(function () {
         // Dashboard
         Route::get('/dashboard', [StudentController::class, 'dashboard'])->name('dashboard');
+        Route::get('/books', function () {
+            return view('student.mybooks');
+        })->name('books');
+        // profile 
+        Route::prefix('profile')->name('profile.')->group(function () {
+            Route::get('/', [StudentProfileController::class, 'show'])->name('show');
+
+            Route::get('/edit', [StudentProfileController::class, 'edit'])->name('edit');
+            Route::put('/update', [StudentProfileController::class, 'update'])->name('update');
+            Route::get('/verify-phone', [StudentProfileController::class, 'showPhoneVerification'])->name('verify-phone');
+            Route::post('/verify-phone', [StudentProfileController::class, 'verifyPhone'])->name('verify-phone.submit');
+            Route::post('/resend-phone-code', [StudentProfileController::class, 'resendPhoneCode'])->name('resend-phone-code');
+            Route::get('/verify-email/{token}', [StudentProfileController::class, 'verifyEmail'])->name('verify-email');
+            Route::post('/resend-email-verification', [StudentProfileController::class, 'resendEmailVerification'])->name('resend-email');
+        });
         // Teachers
         Route::prefix('teachers')->name('teachers.')->group(function () {
             Route::get('/', [StudentController::class, 'teachers'])->name('index');
@@ -194,7 +204,6 @@ Route::middleware('LocaleMiddleware')->group(function () {
 
         Route::get('/favorites', [StudentController::class, 'favorites'])->name('favorites.index');
         Route::get('/language-study', [StudentController::class, 'languageStudy'])->name('language.study');
-        Route::get('/books', [StudentController::class, 'books'])->name('books.index');
         Route::get('/calendar', [StudentController::class, 'calendar'])->name('calendar');
 
         // Profile extra routes
@@ -273,6 +282,13 @@ Route::middleware('LocaleMiddleware')->group(function () {
             Route::put('/{id}', [TeacherAvailabilityController::class, 'update'])->name('update');
             Route::delete('/{id}', [TeacherAvailabilityController::class, 'destroy'])->name('destroy');
         });
+        // Teacher Languages
+        Route::get('/languages', [TeacherProfileController::class, 'indexLanguages'])->name('languages.index');
+        Route::get('/languages/create', [TeacherProfileController::class, 'createLanguage'])->name('languages.create');
+        Route::post('/languages', [TeacherProfileController::class, 'storeLanguage'])->name('languages.store');
+        Route::get('/languages/{id}/edit', [TeacherProfileController::class, 'editLanguage'])->name('languages.edit');
+        Route::put('/languages/{id}', [TeacherProfileController::class, 'updateLanguage'])->name('languages.update');
+        Route::delete('/languages/{id}', [TeacherProfileController::class, 'destroyLanguage'])->name('languages.destroy');
 
         // Orders (Browse & Apply)
         Route::prefix('orders')->name('orders.')->group(function () {
@@ -304,31 +320,32 @@ Route::middleware('LocaleMiddleware')->group(function () {
         });
         // Wallet
         Route::prefix('wallet')->name('wallet.')->group(function () {
-            Route::get('/', [TeacherWalletController::class, 'index'])->name('index');
-            Route::get('/transactions', [TeacherWalletController::class, 'transactions'])->name('transactions');
-            Route::get('/withdraw', [TeacherWalletController::class, 'showWithdrawForm'])->name('withdraw');
-            Route::post('/withdraw', [TeacherWalletController::class, 'processWithdraw'])->name('withdraw.process');
+            Route::get('/wallet', [TeacherWalletController::class, 'index'])->name('index');
+            Route::get('/wallet/request-payout', [TeacherWalletController::class, 'create'])->name('create');
+            Route::post('/wallet/request-payout', [TeacherWalletController::class, 'store'])->name('store');
+            // Bank Account Routes (new)
+            Route::get('/wallet/bank-accounts', [TeacherWalletController::class, 'bankAccounts'])->name('bank-accounts');
+            Route::get('/wallet/bank-accounts/create', [TeacherWalletController::class, 'createBankAccount'])->name('bank-accounts.create');
+            Route::post('/wallet/bank-accounts', [TeacherWalletController::class, 'storeBankAccount'])->name('bank-accounts.store');
+            Route::get('/wallet/bank-accounts/{id}/edit', [TeacherWalletController::class, 'editBankAccount'])->name('bank-accounts.edit');
+            Route::put('/wallet/bank-accounts/{id}', [TeacherWalletController::class, 'updateBankAccount'])->name('bank-accounts.update');
+            Route::delete('/wallet/bank-accounts/{id}', [TeacherWalletController::class, 'destroyBankAccount'])->name('bank-accounts.destroy');
+            Route::patch('/wallet/bank-accounts/{id}/set-default', [TeacherWalletController::class, 'setDefaultBankAccount'])->name('bank-accounts.set-default');
         });
         // Subjects
-        Route::get('/subjects', [TeacherInfoController::class, 'indexSubjects'])->name('subjects.index');
-        Route::get('/subjects/create', [TeacherInfoController::class, 'createSubject'])->name('subjects.create');
-        Route::post('/subjects', [TeacherInfoController::class, 'storeSubject'])->name('subjects.store');
-        Route::get('/subjects/{id}/edit', [TeacherInfoController::class, 'editSubject'])->name('subjects.edit');
-        Route::put('/subjects/{id}', [TeacherInfoController::class, 'updateSubject'])->name('subjects.update');
-        Route::delete('/subjects/{id}', [TeacherInfoController::class, 'destroySubject'])->name('subjects.destroy');
-
-        // Classes
-        Route::get('/classes', [TeacherInfoController::class, 'indexClasses'])->name('classes.index');
-        Route::get('/classes/create', [TeacherInfoController::class, 'createClass'])->name('classes.create');
-        Route::post('/classes', [TeacherInfoController::class, 'storeClass'])->name('classes.store');
-        Route::get('/classes/{id}/edit', [TeacherInfoController::class, 'editClass'])->name('classes.edit');
-        Route::put('/classes/{id}', [TeacherInfoController::class, 'updateClass'])->name('classes.update');
-        Route::delete('/classes/{id}', [TeacherInfoController::class, 'destroyClass'])->name('classes.destroy');
+        Route::get('/subjects', [TeacherSubjectController::class, 'index'])->name('subjects.index');
+        Route::get('/subjects/create', [TeacherSubjectController::class, 'create'])->name('subjects.create');
+        Route::post('/subjects', [TeacherSubjectController::class, 'store'])->name('subjects.store');
+        Route::get('/subjects/{id}/edit', [TeacherSubjectController::class, 'edit'])->name('subjects.edit');
+        Route::put('/subjects/{id}', [TeacherSubjectController::class, 'update'])->name('subjects.update');
+        Route::delete('/subjects/{id}', [TeacherSubjectController::class, 'destroy'])->name('subjects.destroy');
+        Route::get('/subjects/get-classes', [TeacherSubjectController::class, 'getClasses'])->name('subjects.get-classes');
+        Route::get('/subjects/get-subjects', [TeacherSubjectController::class, 'getSubjects'])->name('subjects.get-subjects');
 
         // Teacher Info
-        Route::get('/profile', [TeacherInfoController::class, 'showInfo'])->name('info.show');
-        Route::get('/profile/edit', [TeacherInfoController::class, 'editInfo'])->name('info.edit');
-        Route::put('/profile', [TeacherInfoController::class, 'updateInfo'])->name('info.update');
+        Route::get('/profile', [TeacherProfileController::class, 'showProfile'])->name('profile.show');
+        Route::get('/profile/edit', [TeacherProfileController::class, 'editProfile'])->name('profile.edit');
+        Route::put('/profile', [TeacherProfileController::class, 'updateProfile'])->name('profile.update');
     });
 });
 // Add this near top (outside auth middleware group) so HyperPay can call it publicly:

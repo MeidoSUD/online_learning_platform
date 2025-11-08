@@ -6,12 +6,21 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\TeacherTeachClasses;
 use App\Models\TeacherSubject;
-use App\Models\TeacherInfo;
 use App\Models\Subject;
 use App\Models\ClassModel;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use App\Models\Services;
+use App\Models\TeacherInfo;
+use App\Models\User;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use App\Services\NotificationService;
+use App\Models\Attachment;
+use Illuminate\Validation\Rule;
 
-class TeacherInfoController extends Controller
+class TeacherProfileController extends Controller
 {
     // ============== SUBJECTS MANAGEMENT ==============
     
@@ -241,74 +250,182 @@ class TeacherInfoController extends Controller
             ->with('success', 'Class removed successfully!');
     }
 
-    // ============== TEACHER INFO MANAGEMENT ==============
+    // ============== TEACHER Profile MANAGEMENT ==============
 
     /**
-     * Show teacher profile/info
+     * Show teacher profile/Profile
      */
-    public function showInfo()
+    public function showProfile()
     {
         $teacherId = Auth::id();
-        $teacherInfo = TeacherInfo::where('teacher_id', $teacherId)->first();
+        $teacherProfile = User::with('teacherInfo', 'attachments')->find($teacherId);
 
-        return view('teacher.info.show', compact('teacherInfo'));
+        // load services offered by teacher
+        $services = DB::table('teacher_services')
+            ->where('teacher_id', $teacherId)
+            ->join('services', 'services.id', '=', 'teacher_services.service_id')
+            ->select('services.*')
+            ->get();
+
+        return view('teacher.profile.show', compact('teacherProfile', 'services'));
     }
 
     /**
-     * Show the form for editing teacher info
+     * Show the form for editing teacher Profile
      */
-    public function editInfo()
+    public function editProfile()
     {
         $teacherId = Auth::id();
-        $teacherInfo = TeacherInfo::firstOrCreate(
-            ['teacher_id' => $teacherId],
-            [
-                'bio' => '',
-                'teach_individual' => false,
-                'teach_group' => false,
-            ]
-        );
+        $teacherProfile =  User::with('teacherInfo','attachments')->find($teacherId);
 
-        return view('teacher.info.edit', compact('teacherInfo'));
+        // available services (active)
+        $allServices = Services::where('status', true)->get();
+
+        // currently assigned service ids
+        $assignedServiceIds = DB::table('teacher_services')
+            ->where('teacher_id', $teacherId)
+            ->pluck('service_id')
+            ->toArray();
+
+        return view('teacher.profile.edit', compact('teacherProfile', 'allServices', 'assignedServiceIds'));
     }
 
     /**
-     * Update teacher info
+     * Update teacher Profile
      */
-    public function updateInfo(Request $request)
+    public function updateProfile(Request $request)
     {
         $teacherId = Auth::id();
 
-        $request->validate([
+        $validated = $request->validate([
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'email' => ['required','email','max:255', Rule::unique('users','email')->ignore($teacherId)],
+            'phone' => ['nullable','string','max:20', Rule::unique('users','phone_number')->ignore($teacherId)],
             'bio' => 'nullable|string|max:1000',
-            'teach_individual' => 'boolean',
+            'teach_individual' => 'nullable',
             'individual_hour_price' => 'nullable|numeric|min:0|required_if:teach_individual,1',
-            'teach_group' => 'boolean',
+            'teach_group' => 'nullable',
             'group_hour_price' => 'nullable|numeric|min:0|required_if:teach_group,1',
             'max_group_size' => 'nullable|integer|min:1|required_if:teach_group,1',
             'min_group_size' => 'nullable|integer|min:1|required_if:teach_group,1|lte:max_group_size',
-        ], [
-            'individual_hour_price.required_if' => 'Individual hour price is required when teaching individual sessions.',
-            'group_hour_price.required_if' => 'Group hour price is required when teaching group sessions.',
-            'max_group_size.required_if' => 'Maximum group size is required when teaching group sessions.',
-            'min_group_size.required_if' => 'Minimum group size is required when teaching group sessions.',
-            'min_group_size.lte' => 'Minimum group size must be less than or equal to maximum group size.',
+            'services' => 'nullable|array',
+            'services.*' => 'exists:services,id',
+            'profile_picture' => 'nullable|image|mimes:jpeg,jpg,png,gif|max:5120',
         ]);
 
+        // load user
+        $user = User::findOrFail($teacherId);
+        $emailChanged = isset($validated['email']) && $validated['email'] !== $user->email;
+        $phoneChanged = isset($validated['phone']) && $validated['phone'] !== ($user->phone_number ?? null);
+
+        // Update user basic info
+        $user->first_name = $validated['first_name'];
+        $user->last_name = $validated['last_name'];
+        $user->email = $validated['email'];
+        $user->phone_number = $validated['phone'] ?? null;
+        if ($emailChanged) {
+            $user->email_verified_at = null;
+        }
+        if ($phoneChanged) {
+            $user->phone_verified_at = null;
+        }
+        $user->save();
+
+        // handle profile picture upload (store and create attachment with full URL)
+        if ($request->hasFile('profile_picture') && $request->file('profile_picture')->isValid()) {
+            try {
+                $file = $request->file('profile_picture');
+                $fileName = time() . '_' . preg_replace('/[^A-Za-z0-9\-_\.]/', '_', $file->getClientOriginalName());
+                // store on the "public" disk under images/profile_photos
+                $path = $file->storeAs('images/profile_photos', $fileName, 'public');
+                if (!Storage::disk('public')->exists($path)) {
+                    Log::error('File not saved', ['path' => $path]);
+                }
+                // Build proper full URL without duplication
+                $fullUrl = config('app.url') . '/storage/' . $path;
+
+                // Delete previous profile picture attachment if exists
+                Attachment::where('user_id', $user->id)
+                    ->where('attached_to_type', 'profile_picture')
+                    ->delete();
+
+                // Create new attachment with correct URL
+                Attachment::create([
+                    'user_id' => $user->id,
+                    'attached_to_type' => 'profile_picture',
+                    'file_name' => $fileName,
+                    'file_path' => $fullUrl,
+                    'file_type' => $file->getClientMimeType(),
+                    'file_size' => $file->getSize(),
+                ]);
+
+                Log::info('Profile picture uploaded successfully', [
+                    'user_id' => $user->id,
+                    'file_name' => $fileName,
+                    'full_url' => $fullUrl
+                ]);
+
+            } catch (\Exception $e) {
+                Log::error('Failed to save profile picture: ' . $e->getMessage(), [
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
+
+        // trigger email verification if changed
+        if ($emailChanged && method_exists($user, 'sendEmailVerificationNotification')) {
+            try {
+                $user->sendEmailVerificationNotification();
+            } catch (\Exception $e) {
+                Log::error('Failed to send email verification: '.$e->getMessage(), ['user_id' => $user->id]);
+            }
+        }
+
+        // handle phone verification: generate code, cache it and notify user
+        if ($phoneChanged) {
+            $code = random_int(100000, 999999);
+            Cache::put("phone_verification_{$user->id}", $code, now()->addMinutes(10));
+            try {
+                $ns = new NotificationService();
+                $ns->send($user, 'phone_verification', app()->getLocale() == 'ar' ? 'رمز التحقق' : 'Verification code', "Your verification code is: {$code}", []);
+            } catch (\Exception $e) {
+                Log::error('Failed to send phone verification: '.$e->getMessage(), ['user_id' => $user->id]);
+            }
+        }
+
+        // update or create TeacherInfo
         $teacherInfo = TeacherInfo::updateOrCreate(
             ['teacher_id' => $teacherId],
             [
-                'bio' => $request->bio,
-                'teach_individual' => $request->has('teach_individual'),
-                'individual_hour_price' => $request->teach_individual ? $request->individual_hour_price : null,
-                'teach_group' => $request->has('teach_group'),
-                'group_hour_price' => $request->teach_group ? $request->group_hour_price : null,
-                'max_group_size' => $request->teach_group ? $request->max_group_size : null,
-                'min_group_size' => $request->teach_group ? $request->min_group_size : null,
+                'bio' => $validated['bio'] ?? null,
+                'teach_individual' => (bool) ($request->has('teach_individual') || $request->input('teach_individual')),
+                'individual_hour_price' => $request->has('teach_individual') ? $request->input('individual_hour_price') : null,
+                'teach_group' => (bool) ($request->has('teach_group') || $request->input('teach_group')),
+                'group_hour_price' => $request->has('teach_group') ? $request->input('group_hour_price') : null,
+                'max_group_size' => $request->has('teach_group') ? $request->input('max_group_size') : null,
+                'min_group_size' => $request->has('teach_group') ? $request->input('min_group_size') : null,
             ]
         );
 
-        return redirect()->route('teacher.info.show')
-            ->with('success', 'Teacher information updated successfully!');
+        // sync services
+        $selectedServices = $request->input('services', []);
+        DB::transaction(function () use ($teacherId, $selectedServices) {
+            DB::table('teacher_services')->where('teacher_id', $teacherId)->delete();
+            if (!empty($selectedServices)) {
+                $insert = [];
+                foreach ($selectedServices as $sid) {
+                    $insert[] = [
+                        'teacher_id' => $teacherId,
+                        'service_id' => $sid,
+                    ];
+                }
+                DB::table('teacher_services')->insert($insert);
+            }
+        });
+
+        return redirect()->route('teacher.profile.show')
+            ->with('success', app()->getLocale() == 'ar' ? 'تم تحديث الملف الشخصي' : 'Profile updated successfully!');
     }
 }

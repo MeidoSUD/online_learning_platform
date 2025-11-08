@@ -88,38 +88,57 @@ class AuthController extends Controller
         return response()->json(['message' => 'Password updated successfully']);
     }
     
-    // Login
     public function login(Request $request)
-    {
-        $request->validate([
-            'email'    => 'required|email',
-            'password' => 'required',
+{
+    $request->validate([
+        'email'    => 'required|email',
+        'password' => 'required',
+    ]);
+
+    $user = User::where('email', $request->email)->first();
+
+    if (! $user || ! Hash::check($request->password, $user->password)) {
+        throw ValidationException::withMessages([
+            'email' => ['The provided credentials are incorrect.'],
         ]);
-        $user = User::where('email', $request->email)->first();
-        $userprofile = $user->profile;
-        $role = Role::where('id', $user->role_id)->first();
-        if ($role->name_key == 'visitor') {
-            throw ValidationException::withMessages([
-                'email' => ['Please complete your profile first.'],
-            ]);
-        }
-        if (! $user || ! Hash::check($request->password, $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
-            ]);
-        }
+    }
+
+    $role = Role::find($user->role_id);
+
+    if ($role->name_key == 'visitor') {
+        throw ValidationException::withMessages([
+            'email' => ['Please complete your profile first.'],
+        ]);
+    }
+
+    
+    if ($user->role_id == 3) {
+        $userController = new UserController();
+        $fullTeacherData = $userController->getFullTeacherData($user);
+
+        $userData = [
+            "role" => $role->name_key,
+            "data" => $fullTeacherData,
+        ];
+    } else {
+        //  For non-teacher roles
+        $userProfile = $user->profile;
         $userData = [
             "role" => $role->name_key,
             "data" => $user,
-            "profile" => $userprofile
+            "profile" => $userProfile,
         ];
-        $token = $user->createToken('mobile-app-token')->plainTextToken;
-
-        return response()->json([
-            'user'  => $userData,
-            'token' => $token,
-        ]);
     }
+
+    
+    $token = $user->createToken('mobile-app-token')->plainTextToken;
+
+    return response()->json([
+        'user' => $userData,
+        'token' => $token,
+    ]);
+}
+
 
     // Profile
     public function profile(Request $request)

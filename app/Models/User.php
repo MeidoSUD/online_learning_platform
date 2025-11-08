@@ -55,6 +55,7 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasOne(UserType::class, 'id', 'user_type_id');
     }
 
+
     public function teacherServices()
     {
         return $this->hasMany(TeacherServices::class, 'teacher_id');
@@ -74,7 +75,16 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->hasOne(UserProfile::class, 'user_id');
     }
-    
+
+    public function getProfilePictureAttribute()
+    {
+        $attachment = $this->attachments()
+            ->where('attached_to_type', 1)
+            ->latest()
+            ->first();
+
+        return $attachment ? $attachment->file_path : null;
+    }
     public function attachments()
     {
         return $this->hasMany(Attachment::class, 'user_id');
@@ -108,4 +118,19 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(UserPaymentMethod::class, 'user_id');
     }
 
+    /**
+     * Teacher bank account stored in user_payment_methods table.
+     * We consider a bank account entry when bank_name is present.
+     */
+    public function teacherBankAccount()
+    {
+        return $this->hasOne(\App\Models\UserPaymentMethod::class, 'user_id')
+            ->whereNotNull('bank_name');
+    }
+
+
+    public function defaultPaymentMethod()
+    {
+        return $this->hasOne(UserPaymentMethod::class, 'user_id')->where('is_default', true);
+    }
 }

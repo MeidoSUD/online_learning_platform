@@ -16,6 +16,7 @@ class UserPaymentMethod extends Model
         'account_number',
         'account_holder_name',
         'iban',
+        'swift_code',
         'card_brand',
         'card_number',
         'card_holder_name',

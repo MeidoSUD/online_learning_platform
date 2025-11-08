@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class EducationLevel extends Model
 {
     use HasFactory;
-    protected $fillable = ['name', 'description'];
+    protected $fillable = ['name_ar', 'name_en', 'description'];
 
     public function students()
     {

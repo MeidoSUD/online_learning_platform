@@ -615,58 +615,74 @@ class UserController extends Controller
 
     public function getFullTeacherData(User $teacher)
     {
-        $profileImage = $teacher->attachments()->where('user_id', $teacher->id)->get('file_path')->first();
-        $teacherResumes = $teacher->attachments()->where('user_id', $teacher->id)->get('file_path')->first();
-        $teacherCertificates = $teacher->attachments()->where('user_id', $teacher->id)->get('file_path')->first();
+        // Get latest attachments
+        $profilePhoto = $teacher->attachments()
+            ->where('attached_to_type', 'profile_picture')
+            ->latest()
+            ->value('file_path');
+            
+        $resume = $teacher->attachments()
+            ->where('attached_to_type', 'resume')
+            ->latest()
+            ->value('file_path');
+            
+        $certificate = $teacher->attachments()
+            ->where('attached_to_type', 'certificate')
+            ->latest()
+            ->value('file_path');
 
-        $availableTimes = collect($teacher->availableSlots)
-            ->groupBy('day_number')
-            ->map(function ($slots, $day_number) {
-                return [
-                    'day_number' => $day_number,
-                    'times' => $slots->map(function ($slot) {
-                        return [
-                            'id' => $slot->id,
-                            'time' => \Carbon\Carbon::parse($slot->start_time)->format('g:i A'),
-                        ];
-                    })->values(),
-                ];
-            })->values();
+        // Get earnings data
+        $earnings = DB::table('bookings')
+            ->where('teacher_id', $teacher->id)
+            ->where('status', 'completed')
+            ->select(
+                DB::raw('COUNT(*) as total_lessons'),
+                DB::raw('SUM(total_amount) as total_earnings'),
+                DB::raw('SUM(CASE WHEN DATE(created_at) = CURDATE() THEN total_amount ELSE 0 END) as today_earnings'),
+                DB::raw('SUM(CASE WHEN MONTH(created_at) = MONTH(CURDATE()) THEN total_amount ELSE 0 END) as month_earnings')
+            )
+            ->first();
 
-        $classIds = ($teacher->teacherClasses ?? collect())->pluck('class_id')->unique()->toArray();
-        $classes = DB::table('classes')->whereIn('id', $classIds)->get();
-        $levelIds = $classes->pluck('education_level_id')->unique()->toArray();
-        $levels = DB::table('education_levels')->whereIn('id', $levelIds)->get();
-        $subjectIds = ($teacher->teacherSubjects ?? collect())->pluck('subject_id')->unique()->toArray();
-        $subjects = DB::table('subjects')->whereIn('id', $subjectIds)->get();
+        // Current lessons count
+        $currentLessons = DB::table('bookings')
+            ->where('teacher_id', $teacher->id)
+            ->where('status', 'active')
+            ->count();
 
-        $teacherLevels = $levels->map(function ($level) use ($teacher) {
-            return [
-                'id' => $level->id,
-                'teacher_id' => $teacher->id,
-                'title' => $level->name_ar ?? $level->name_en,
-            ];
-        });
+        // Build profile data array
+        $profileData = [
+            'id' => optional($teacher->profile)->id,
+            'user_id' => $teacher->id,
+            'profile_photo' => $profilePhoto ?? null,
+            'resume' => $resume ?? null,
+            'certificate' => $certificate ?? null,
+            'reviews' => $teacher->reviews ?? [],
+            'rating' => round($teacher->reviews->avg('rating') ?? 0, 1),
+            'bio' => optional($teacher->profile)->bio,
+            'total_students' => optional($teacher->teacherInfo)->total_students ?? 0,
+            'verified' => (bool) optional($teacher->profile)->verified,
+            'is_active' => (bool) $teacher->is_active,
+            'service' => optional($teacher->teacherInfo)->service ?? null,
+            'teach_individual' => (bool) optional($teacher->teacherInfo)->teach_individual,
+            'individual_hour_price' => (float) optional($teacher->teacherInfo)->individual_hour_price ?? 0,
+            'teach_group' => (bool) optional($teacher->teacherInfo)->teach_group,
+            'group_hour_price' => (float) optional($teacher->teacherInfo)->group_hour_price ?? 0,
+            'max_group_size' => (int) optional($teacher->teacherInfo)->max_group_size ?? 0,
+            'min_group_size' => (int) optional($teacher->teacherInfo)->min_group_size ?? 0,
+            
+            // Add earnings data
+            'total_lessons' => (int) ($earnings->total_lessons ?? 0),
+            'current_lessons' => (int) $currentLessons,
+            'current_balance' => (float) optional($teacher->wallet)->balance ?? 0,
+            'todayEarnings' => (float) ($earnings->today_earnings ?? 0),
+            'monthEarnings' => (float) ($earnings->month_earnings ?? 0),
+            'totalEarnings' => (float) ($earnings->total_earnings ?? 0),
+            
+            // Add teacher services
+            'teacher_services' => $teacher->teacherServices
+        ];
 
-        $teacherClasses = ($teacher->teacherClasses ?? collect())->map(function ($tc) use ($classes) {
-            $class = $classes->where('id', $tc->class_id)->first();
-            return [
-                'id' => $tc->id,
-                'teacher_id' => $tc->teacher_id,
-                'title' => $class ? ($class->name_ar ?? $class->name_en) : null,
-                'level_id' => $class ? $class->education_level_id : null,
-            ];
-        });
-
-        $teacherSubjects = ($teacher->teacherSubjects ?? collect())->map(function ($ts) use ($subjects) {
-            $subject = $subjects->where('id', $ts->subject_id)->first();
-            return [
-                'id' => $ts->id,
-                'teacher_id' => $ts->teacher_id,
-                'title' => $subject ? ($subject->name_ar ?? $subject->name_en) : null,
-            ];
-        });
-
+        // Return final structure
         return [
             'id' => $teacher->id,
             'first_name' => $teacher->first_name,
@@ -680,27 +696,7 @@ class UserController extends Controller
             'verification_code' => $teacher->verification_code,
             'social_provider' => $teacher->social_provider,
             'social_provider_id' => $teacher->social_provider_id,
-            'is_active' => $teacher->is_active,
-            'profile_photo' => $profileImage,
-            'resume' => $teacherResumes,
-            'certificate' => $teacherCertificates,
-            'reviews' => $teacher->reviews,
-            'rating' => round($teacher->reviews->avg('rating'), 1) ?? 0,
-            'bio' => optional($teacher->profile)->bio,
-            'total_students' => optional($teacher->teacherInfo)->total_students ?? 0,
-            'verified' => (bool) $teacher->verified ?? false,
-            'service' => optional($teacher->teacherInfo)->service ?? 'دروس خصوصية',
-            'available_times' => $availableTimes,
-            'teach_individual' => optional($teacher->teacherInfo)->teach_individual ?? 0,
-            'individual_hour_price' => optional($teacher->teacherInfo)->individual_hour_price ?? 0.00,
-            'teach_group' => optional($teacher->teacherInfo)->teach_group ?? 0,
-            'group_hour_price' => optional($teacher->teacherInfo)->group_hour_price ?? 0.00,
-            'max_group_size' => optional($teacher->teacherInfo)->max_group_size ?? 0,
-            'min_group_size' => optional($teacher->teacherInfo)->min_group_size ?? 0,
-            'teacher_levels' => $teacherLevels,
-            'teacher_classes' => $teacherClasses,
-            'teacher_subjects' => $teacherSubjects,
-            'teacher_services' => $teacher->teacherServices,
+            'profile' => $profileData
         ];
     }
 

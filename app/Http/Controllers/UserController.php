@@ -8,7 +8,7 @@ use App\Http\Requests\UserUpdateRequest;
 use App\Models\User;
 use App\Models\UserType;
 use App\Models\Topic;
-use Auth;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
@@ -50,12 +50,13 @@ class UserController extends Controller
     }
 
 
-    public function edit($id)
+    public function edit()
     {
+        $id = Auth::user()->id;
         $user = User::find($id);
         $user_types = UserType::all();
 
-        return view('users.edit')
+        return view('profile.edit')
         ->with('user',$user)
         ->with('user_types',$user_types)
         ;

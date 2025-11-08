@@ -75,7 +75,7 @@
 
             <!-- My Books -->
             <li class="nav-item {{ request()->is('student/books*') ? 'active' : '' }}">
-                <a href="{{ route('student.books.index') }}" class="nav-link">
+                <a href="{{ route('student.books') }}" class="nav-link">
                     <i class="feather icon-book-open"></i>
                     <span>{{ app()->getLocale() == 'ar' ? 'كتبي' : 'My Books' }}</span>
                 </a>
@@ -119,7 +119,7 @@
                 </a>
                 <ul class="nav sub-menu" style="display: {{ request()->is('student/profile*') ? 'block' : 'none' }}">
                     <li class="nav-item {{ request()->is('student/profile/edit') ? 'active' : '' }}">
-                        <a href="{{ route('profile.edit') }}" class="nav-link">
+                        <a href="{{ route('student.profile.edit') }}" class="nav-link">
                             <span>{{ app()->getLocale() == 'ar' ? 'تعديل الملف' : 'Edit Profile' }}</span>
                         </a>
                     </li>

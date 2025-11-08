@@ -68,17 +68,6 @@
                             </div>
 
                             <div class="col-md-6">
-                                <label for="subject_id" class="form-label">{{ __('courses.subject') }}</label>
-                                <select name="subject_id" id="subject_id" class="form-select @error('subject_id') is-invalid @enderror">
-                                    <option value="">{{ __('courses.select_subject') }}</option>
-                                    @foreach($subjects as $subject)
-                                    <option value="{{ $subject->id }}" {{ old('subject_id') == $subject->id ? 'selected' : '' }}>{{ app()->getLocale() == 'ar' ? $subject->name_ar : $subject->name_en }}</option>
-                                    @endforeach
-                                </select>
-                                @error('subject_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                            </div>
-
-                            <div class="col-md-6">
                                 <label for="education_level_id" class="form-label">{{ app()->getLocale() == 'ar' ? 'المستوى التعليمي' : 'Education Level' }}</label>
                                 <select name="education_level_id" id="education_level_id" class="form-select @error('education_level_id') is-invalid @enderror">
                                     <option value="">{{ app()->getLocale() == 'ar' ? 'اختر المستوى التعليمي' : 'Select Education Level' }}</option>
@@ -90,39 +79,7 @@
                             </div>
 
                             <div class="col-md-6">
-                                <label for="class_id" class="form-label">{{ app()->getLocale() == 'ar' ? 'المستوى الدراسي' : 'Class Level' }}</label>
-                                <select name="class_id" id="class_id" class="form-select @error('class_id') is-invalid @enderror">
-                                    <option value="">{{ app()->getLocale() == 'ar' ? 'اختر المستوى الدراسي' : 'Select Class Level' }}</option>
-                                    @foreach($classLevels as $class)
-                                    <option value="{{ $class->id }}" {{ old('class_id') == $class->id ? 'selected' : '' }}>{{ app()->getLocale() == 'ar' ? $class->name_ar : $class->name_en }}</option>
-                                    @endforeach
-                                </select>
-                                @error('class_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="service_id" class="form-label">{{ app()->getLocale() == 'ar' ? 'الخدمة' : 'Service' }}</label>
-                                <select name="service_id" id="service_id" class="form-select @error('service_id') is-invalid @enderror">
-                                    <option value="">{{ app()->getLocale() == 'ar' ? 'اختر الخدمة' : 'Select Service' }}</option>
-                                    @foreach($services as $service)
-                                    <option value="{{ $service->id }}" {{ old('service_id') == $service->id ? 'selected' : '' }}>{{ app()->getLocale() == 'ar' ? $service->name_ar : $service->name_en }}</option>
-                                    @endforeach
-                                </select>
-                                @error('service_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="course_type" class="form-label">{{ app()->getLocale() == 'ar' ? 'نوع الدورة' : 'Course Type' }} <span class="text-danger">*</span></label>
-                                <select name="course_type" id="course_type" class="form-select @error('course_type') is-invalid @enderror" required>
-                                    <option value="">{{ app()->getLocale() == 'ar' ? 'اختر النوع' : 'Select Type' }}</option>
-                                    <option value="individual" {{ old('course_type') == 'individual' ? 'selected' : '' }}>{{ app()->getLocale() == 'ar' ? 'فردي' : 'Individual' }}</option>
-                                    <option value="group" {{ old('course_type') == 'group' ? 'selected' : '' }}>{{ app()->getLocale() == 'ar' ? 'مجموعة' : 'Group' }}</option>
-                                </select>
-                                @error('course_type')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="price" class="form-label">{{ app()->getLocale() == 'ar' ? 'السعر' : 'Price' }} <span class="text-danger">*</span></label>
+                                <label for="price" class="form-label">{{ app()->getLocale() == 'ar' ? 'سعر الدورة التدريبية' : 'Course Price' }} <span class="text-danger">*</span></label>
                                 <input type="number" step="0.01" name="price" id="price" class="form-control @error('price') is-invalid @enderror" value="{{ old('price') }}" required>
                                 @error('price')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>

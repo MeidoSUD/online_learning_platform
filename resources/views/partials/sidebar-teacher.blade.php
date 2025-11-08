@@ -1,4 +1,10 @@
-@section('sidebar')
+@php
+    $teacherServices = auth()->user()->teacherServices()
+        ->join('services', 'services.id', '=', 'teacher_services.service_id')
+        ->pluck('services.slug')
+        ->toArray();
+@endphp
+
 <aside class="sidebar">
     <div class="sidebar-header">
         <div class="user-info">
@@ -28,7 +34,8 @@
                 </a>
             </li>
 
-            <!-- Courses -->
+            <!-- Courses - only if teacher offers courses service -->
+            @if(in_array('courses', $teacherServices))
             <li class="nav-item has-sub {{ request()->is('teacher/courses*') ? 'active' : '' }}">
                 <a href="javascript:void(0)" class="nav-link" onclick="toggleSubmenu(this)">
                     <i class="feather icon-layers"></i>
@@ -48,12 +55,14 @@
                     </li>
                 </ul>
             </li>
+            @endif
 
-            <!-- Subjects -->
+            <!-- Subjects & Classes - only if teacher offers private lessons -->
+            @if(in_array('private_lessons', $teacherServices))
             <li class="nav-item has-sub {{ request()->is('teacher/subjects*') ? 'active' : '' }}">
                 <a href="javascript:void(0)" class="nav-link" onclick="toggleSubmenu(this)">
                     <i class="feather icon-book-open"></i>
-                    <span>{{ app()->getLocale() == 'ar' ? 'المواد الدراسية' : 'Subjects' }}</span>
+                    <span>{{ app()->getLocale() == 'ar' ? 'المواد والفصول الدراسية' : 'Subjects & Classes' }}</span>
                     <i class="feather icon-chevron-down submenu-icon"></i>
                 </a>
                 <ul class="nav sub-menu" style="display: {{ request()->is('teacher/subjects*') ? 'block' : 'none' }}">
@@ -69,27 +78,25 @@
                     </li>
                 </ul>
             </li>
+            @endif
 
-            <!-- Classes -->
-            <li class="nav-item has-sub {{ request()->is('teacher/classes*') ? 'active' : '' }}">
+            <!-- Languages - only if teacher offers language courses -->
+            @if(in_array('languages', $teacherServices))
+            <li class="nav-item has-sub {{ request()->is('teacher/languages*') ? 'active' : '' }}">
                 <a href="javascript:void(0)" class="nav-link" onclick="toggleSubmenu(this)">
-                    <i class="feather icon-users"></i>
-                    <span>{{ app()->getLocale() == 'ar' ? 'الفصول الدراسية' : 'Classes' }}</span>
+                    <i class="feather icon-globe"></i>
+                    <span>{{ app()->getLocale() == 'ar' ? 'اللغات' : 'Languages' }}</span>
                     <i class="feather icon-chevron-down submenu-icon"></i>
                 </a>
-                <ul class="nav sub-menu" style="display: {{ request()->is('teacher/classes*') ? 'block' : 'none' }}">
-                    <li class="nav-item {{ request()->is('teacher/classes') && !request()->is('teacher/classes/create') ? 'active' : '' }}">
-                        <a href="{{ route('teacher.classes.index') }}" class="nav-link">
-                            <span>{{ app()->getLocale() == 'ar' ? 'قائمة الفصول' : 'My Classes' }}</span>
-                        </a>
-                    </li>
-                    <li class="nav-item {{ request()->is('teacher/classes/create') ? 'active' : '' }}">
-                        <a href="{{ route('teacher.classes.create') }}" class="nav-link">
-                            <span>{{ app()->getLocale() == 'ar' ? 'إضافة فصل' : 'Add Class' }}</span>
+                <ul class="nav sub-menu" style="display: {{ request()->is('teacher/languages*') ? 'block' : 'none' }}">
+                    <li class="nav-item">
+                        <a href="{{ route('teacher.languages.index') }}" class="nav-link">
+                            <span>{{ app()->getLocale() == 'ar' ? 'دروس اللغات' : 'Language Lessons' }}</span>
                         </a>
                     </li>
                 </ul>
             </li>
+            @endif
 
             <!-- Bookings -->
             <li class="nav-item {{ request()->is('teacher/bookings*') ? 'active' : '' }}">
@@ -119,13 +126,18 @@
                 </a>
                 <ul class="nav sub-menu" style="display: {{ request()->is('teacher/profile*') || request()->is('teacher/info*') ? 'block' : 'none' }}">
                     <li class="nav-item {{ request()->is('teacher/profile') ? 'active' : '' }}">
-                        <a href="{{ route('teacher.info.show') }}" class="nav-link">
+                        <a href="{{ route('teacher.profile.show') }}" class="nav-link">
                             <span>{{ app()->getLocale() == 'ar' ? 'عرض الملف' : 'View Profile' }}</span>
                         </a>
                     </li>
                     <li class="nav-item {{ request()->is('teacher/profile/edit') || request()->is('teacher/info/edit') ? 'active' : '' }}">
-                        <a href="{{ route('teacher.info.edit') }}" class="nav-link">
+                        <a href="{{ route('teacher.profile.edit') }}" class="nav-link">
                             <span>{{ app()->getLocale() == 'ar' ? 'تعديل الملف' : 'Edit Profile' }}</span>
+                        </a>
+                    </li>
+                    <li class="nav-item {{ request()->is('teacher/info') ? 'active' : '' }}">
+                        <a href="{{ route('teacher.wallet.bank-accounts') }}" class="nav-link">
+                            <span>{{ app()->getLocale() == 'ar' ? 'معلومات الحساب البنكي' : 'Bank Account Info' }}</span>
                         </a>
                     </li>
                 </ul>

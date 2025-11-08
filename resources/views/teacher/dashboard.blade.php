@@ -1,7 +1,7 @@
 <!-- View: teacher/dashboard -->
 @extends('layouts/app')
 
-@section('title', '{{ app()->getLocale() == "ar" ? "لوحة التحكم" : "Dashboard Teacher" }}')
+@section('title', app()->getLocale() == 'ar' ? 'لوحة المعلم' : 'Teacher Dashboard')
 
 @section('vendor-style')
   {{-- vendor css files --}}
