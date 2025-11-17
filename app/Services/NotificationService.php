@@ -211,4 +211,5 @@ class NotificationService
             Log::error('Email sending error: ' . $e->getMessage());
         }
     }
+    
 }

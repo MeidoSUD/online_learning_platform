@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\AuthController;
+use App\Http\Controllers\API\AvailabilityController;
 use App\Http\Controllers\API\CourseController;
 use App\Http\Controllers\API\LessonController;
 use App\Http\Controllers\API\BookingController;
@@ -11,7 +12,6 @@ use App\Http\Controllers\API\WalletController;
 use App\Http\Controllers\API\ReviewController;
 use App\Http\Controllers\API\ServicesController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
-use App\Http\Controllers\API\AvailabilityController;
 use App\Http\Controllers\API\EducationLevelController;
 use App\Http\Controllers\API\UserController;
 use App\Http\Controllers\API\OrdersController;
@@ -20,9 +20,11 @@ use App\Http\Controllers\API\DisputeController;
 use App\Http\Controllers\API\TeacherController;
 use App\Http\Controllers\API\PaymentMethodController;
 use App\Http\Controllers\API\UserPaymentMethodController;
-use App\Models\User;
+use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\FCMTokenController;
 use App\Models\Payment;
-use App\Models\TeacherSubject;
+
+
 
 /*
 |--------------------------------------------------------------------------
@@ -34,7 +36,18 @@ use App\Models\TeacherSubject;
 | is assigned the "api" middleware group. Enjoy building your API!
 |
 */
+Route::post('/save-fcm-token', function (Request $request) {
+    $request->validate(['token' => 'required|string']);
 
+    $user = $request->user();
+    $user->update([
+        'fcm_token' => $request->token,
+    ]);
+
+    return response()->json(['message' => 'Token saved successfully']);
+});
+// Notification route
+Route::post('/notifications/send', [NotificationController::class, 'sendToToken']);
 // main screen APIs
 Route::get('/services', [ServicesController::class, 'listServices']);
 Route::get('/services/search', [ServicesController::class, 'searchServices']);
@@ -50,6 +63,7 @@ Route::get('subjectsClasses/{class_id}', [EducationLevelController::class, 'getS
 Route::post('payments/direct', [PaymentController::class, 'directPayment']);
 Route::get('payments/result', [PaymentController::class, 'paymentResult']);
 Route::get('payment-methods', [PaymentMethodController::class, 'index']);
+Route::get('banks', [PaymentMethodController::class, 'banks']);
 // ======================
 // Authentication & User Management
 // ======================
@@ -86,6 +100,8 @@ Route::prefix('profile')->middleware('auth:sanctum')->group(function () {
 
 // Student routes with 'student' role middleware
 Route::prefix('student')->middleware(['auth:sanctum', 'role:student'])->group(function () {
+    // fcm token
+    Route::post('/save-fcm-token', [FCMTokenController::class, 'save']);
     // services
     Route::get('/services', [ServicesController::class, 'studentIndex']);
     Route::get('/services/{serviceId}/subjects', [ServicesController::class, 'getSubjectsByService']);
@@ -143,6 +159,8 @@ Route::prefix('student')->middleware(['auth:sanctum', 'role:student'])->group(fu
 });
 
 Route::prefix('teacher')->middleware(['auth:sanctum', 'role:teacher'])->group(function () {
+    // fcm token
+    Route::post('/save-fcm-token', [FCMTokenController::class, 'save']);
     // Teacher Information
     Route::post('/info', [UserController::class, 'createOrUpdateTeacherInfo']);
     // services
@@ -186,6 +204,7 @@ Route::prefix('teacher')->middleware(['auth:sanctum', 'role:teacher'])->group(fu
     Route::get('payment-methods', [UserPaymentMethodController::class, 'index']);
     Route::post('payment-methods', [UserPaymentMethodController::class, 'store']);
     Route::put('payment-methods/{id}', [UserPaymentMethodController::class, 'update']);
+    Route::put('payment-methods/set-default/{id}', [UserPaymentMethodController::class, 'setDefault']);
     Route::delete('payment-methods/{id}', [UserPaymentMethodController::class, 'destroy']);
     // reviews
     Route::get('/courses/{course_id}/reviews', [ReviewController::class, 'index']);

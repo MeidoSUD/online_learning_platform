@@ -12,7 +12,7 @@ class UserPaymentMethod extends Model
     protected $fillable = [
         'user_id',
         'payment_method_id',
-        'bank_name',
+        'bank_id',
         'account_number',
         'account_holder_name',
         'iban',
@@ -34,5 +34,9 @@ class UserPaymentMethod extends Model
     public function paymentMethod()
     {
         return $this->belongsTo(PaymentMethod::class , 'payment_method_id');
+    }
+    public function banks()
+    {
+        return $this->belongsTo(Banks::class , 'bank_id');
     }
 }

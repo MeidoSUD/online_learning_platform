@@ -446,3 +446,16 @@ Route::get('/payment-test', function () {
         Route::get('/change-password', [UserController::class, 'showChangePassword'])->name('password');
         Route::post('/change-password', [UserController::class, 'changePassword'])->name('password.update');
     });
+
+
+
+    
+
+    Attempt to read property "id" on null ,C:\xampp\htdocs\full-version\app\Http\Controllers\Student\StudentCourseController
+.php
+ 
+: 87 am try to use this function to get all teachers that have a language study service and am try to use same courses blade files to display those teachers but without 
+
+
+
+app id

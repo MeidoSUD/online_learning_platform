@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\TeacherTeachClasses;
 use App\Models\TeacherSubject;
 use App\Models\Subject;
+use Illuminate\Support\Facades\Log;
 
 class TeacherController extends Controller
 {
@@ -21,8 +22,17 @@ class TeacherController extends Controller
         $subjects = TeacherSubject::where('teacher_id', $teacherId)
             ->with('subject') // You can define a relation in TeacherSubject for subject if needed
             ->get();
+        $subjectsData = $subjects->map(function ($item) {
+            return [
+                'id' => $item->subject->id,
+                'name_en' => $item->subject->name_en,
+                'name_ar' => $item->subject->name_ar,
+                'class_id' => $item->subject->class_id,
+                'education_level_id' => $item->subject->education_level_id,
+            ];
+        });
 
-        return response()->json(['data' => $subjects]);
+        return response()->json([$subjectsData]);
     }
 
     // classes
@@ -35,9 +45,10 @@ class TeacherController extends Controller
 
         return response()->json(['data' => $classes]);
     }
-    
+
     public function storeSubject(Request $request)
     {
+        Log::info('Storing subjects for teacher', ['request' => $request->all()]);
         $request->validate([
             'subjects_id' => 'required|array',
             'subjects_id.*' => 'exists:subjects,id',
@@ -52,7 +63,7 @@ class TeacherController extends Controller
             ]);
         }
 
-        return response()->json([ 'message' => 'success']);
+        return response()->json(['message' => 'success']);
     }
 
     // classes

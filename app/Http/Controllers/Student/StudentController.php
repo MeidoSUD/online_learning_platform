@@ -7,8 +7,11 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Course;
 use App\Models\Services;
+use App\Models\Sessions;
 use App\Models\Subject;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class StudentController extends Controller
 {
@@ -386,4 +389,93 @@ class StudentController extends Controller
             'teacher_services' => $teacher->teacherServices,
         ];
     }
+
+    /**
+     * Display student calendar with all sessions
+     */
+    public function calendar(Request $request)
+    {
+        $student = Auth::user();
+        
+        // Get month and year from request or use current
+        $month = $request->input('month', now()->month);
+        $year = $request->input('year', now()->year);
+        
+        // Create Carbon instance for the selected month
+        $date = Carbon::createFromDate($year, $month, 1);
+        
+        // Get all sessions for this student
+        $sessions = Sessions::where('student_id', $student->id)
+            ->whereYear('session_date', $year)
+            ->whereMonth('session_date', $month)
+            ->with(['teacher', 'booking'])
+            ->orderBy('session_date')
+            ->orderBy('start_time')
+            ->get();
+        
+        // Group sessions by date for calendar view
+        $sessionsByDate = $sessions->groupBy(function($session) {
+            return Carbon::parse($session->session_date)->format('Y-m-d');
+        });
+        
+        // Get upcoming sessions (next 5)
+        $upcomingSessions = Sessions::where('student_id', $student->id)
+            ->where('session_date', '>=', now()->toDateString())
+            ->where('status', '!=', 'completed')
+            ->with(['teacher', 'booking'])
+            ->orderBy('session_date')
+            ->orderBy('start_time')
+            ->limit(5)
+            ->get();
+        
+        // Get past sessions (last 5)
+        $pastSessions = Sessions::where('student_id', $student->id)
+            ->where(function($query) {
+                $query->where('session_date', '<', now()->toDateString())
+                      ->orWhere('status', 'completed');
+            })
+            ->with(['teacher', 'booking'])
+            ->orderBy('session_date', 'desc')
+            ->orderBy('start_time', 'desc')
+            ->limit(5)
+            ->get();
+        
+        // Calendar statistics
+        $stats = [
+            'total_sessions' => Sessions::where('student_id', $student->id)->count(),
+            'completed_sessions' => Sessions::where('student_id', $student->id)->where('status', 'completed')->count(),
+            'upcoming_sessions' => Sessions::where('student_id', $student->id)
+                ->where('session_date', '>=', now()->toDateString())
+                ->where('status', '!=', 'completed')
+                ->count(),
+            'cancelled_sessions' => Sessions::where('student_id', $student->id)->where('status', 'cancelled')->count(),
+        ];
+        
+        return view('student.calendar', compact(
+            'sessions',
+            'sessionsByDate',
+            'upcomingSessions',
+            'pastSessions',
+            'date',
+            'month',
+            'year',
+            'stats'
+        ));
+    }
+    
+    /**
+     * Show session details
+     */
+    public function sessionDetails($id)
+    {
+        $student = Auth::user();
+        
+        $session = Sessions::where('student_id', $student->id)
+            ->where('id', $id)
+            ->with(['teacher', 'booking', 'student'])
+            ->firstOrFail();
+        
+        return view('student.session-details', compact('session'));
+    }
 }
+

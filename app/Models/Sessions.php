@@ -19,6 +19,8 @@ class Sessions extends Model
         'booking_id',
         'student_id',
         'teacher_id',
+        'availability_slot_id',
+        'session_title',
         'session_number',
         'session_date',
         'start_time',

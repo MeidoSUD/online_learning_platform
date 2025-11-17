@@ -93,6 +93,8 @@ class GenerateZoomMeetingJob implements ShouldQueue
                 'meeting_id' => $meeting['id'],
                 'join_url' => $meeting['join_url'] ?? ($meeting['joinUrl'] ?? null),
                 'host_url' => $meeting['start_url'] ?? ($meeting['startUrl'] ?? null),
+                'zoom_creation_attempted_at' => now(),
+                'zoom_generation_failed' => false
             ]);
 
             Log::info("GenerateZoomMeetingJob: Meeting saved for session {$session->id}", ['meeting_id' => $meeting['id']]);

@@ -13,10 +13,14 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
+        $schedule->command('sessions:process-upcoming')
+        ->everyTenMinutes()
+        ->withoutOverlapping() // Prevent concurrent runs
+        ->runInBackground();
         // $schedule->command('inspire')->hourly();
-        $schedule->call(function () {
-            Log::info('Dispatching session reminders...'); // logs to storage/logs/laravel.log
-        })->everyMinute();
+        // $schedule->call(function () {
+        //     Log::info('Dispatching session reminders...'); // logs to storage/logs/laravel.log
+        // })->everyMinute();
     }
 
     /**

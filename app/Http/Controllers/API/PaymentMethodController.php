@@ -10,6 +10,7 @@ use App\Models\PaymentMethod;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\DB;
 
 class PaymentMethodController extends Controller
 {
@@ -20,6 +21,15 @@ class PaymentMethodController extends Controller
         return response()->json([
             'success' => true,
             'data' => $paymentMethods
+        ]);
+    }
+
+    public function banks()
+    {
+        $banks = DB::select('select * from banks'); // Replace with actual API endpoint
+        return response()->json([
+            'success' => true,
+            'data' => $banks
         ]);
     }
 

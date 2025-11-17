@@ -19,13 +19,13 @@ class AuthController extends Controller
             'first_name'    => 'required|string|max:255',
             'last_name'     => 'required|string|max:255',
             'email'         => 'required|string|email|unique:users',
-            'phone_number'  => 'required|string|max:15|unique:users',
+            'phone_number'  => 'required|string|max:15',
             'gender'        => 'required|in:male,female',
             'nationality'   => 'required|string|max:255',
             'role_id'       => 'required',
         ]);
         $password = 'password'; // Default password
-        $verification_code = rand(100000, 999999);
+        $verification_code = 999999;//rand(100000, 999999);
 
         $user = User::create([
             'first_name'    => $request->first_name,
@@ -53,7 +53,7 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Verification code sent. Please verify your phone number.',
-            'user_id' => $user_response,
+            'user' => $user_response,
             'sms_response' => $smsResponse // For debugging, remove in production
         ]);
     }
@@ -311,6 +311,7 @@ class AuthController extends Controller
                 'first_name' => $user->first_name,
                 'last_name' => $user->last_name,
                 'email' => $user->email,
+                'nationality' => $user->nationality,
                 'phone_number' => $user->phone_number,
                 'role_id' => $user->role_id,
                 'profile' => $userProfile

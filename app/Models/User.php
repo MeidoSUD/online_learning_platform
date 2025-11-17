@@ -25,6 +25,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'phone_number',
         'gender',
         'password',
+        'fcm_token',
         'verified',
         'verification_code',
         // Add other fields as needed (e.g. role_id, is_active)

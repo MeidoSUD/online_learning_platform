@@ -1,64 +1,38 @@
 <?php
 
-namespace App\Http\Controllers\API;
+namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Services\FirebaseService;
 
 class NotificationController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function index()
+    protected $firebaseService;
+
+    public function __construct(FirebaseService $firebaseService)
     {
-        //
+        $this->firebaseService = $firebaseService;
     }
 
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
-    public function store(Request $request)
+    public function sendToToken(Request $request)
     {
-        //
-    }
+        $validated = $request->validate([
+            'token' => 'required|string',
+            'title' => 'required|string',
+            'body'  => 'required|string',
+        ]);
 
-    /**
-     * Display the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function show($id)
-    {
-        //
-    }
+        $sent = $this->firebaseService->sendToToken(
+            $validated['token'],
+            $validated['title'],
+            $validated['body'],
+            $request->input('data', [])
+        );
 
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function update(Request $request, $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function destroy($id)
-    {
-        //
+        return response()->json([
+            'success' => $sent,
+            'message' => $sent ? 'Notification sent successfully' : 'Failed to send notification',
+        ]);
     }
 }

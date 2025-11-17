@@ -99,4 +99,27 @@
         </div>
     </div>
 </section>
+@push('scripts')
+<script>
+// After successful login, trigger FCM token registration
+document.addEventListener('DOMContentLoaded', function() {
+    const loginForm = document.getElementById('login-form');
+    
+    if (loginForm) {
+        loginForm.addEventListener('submit', function(e) {
+            // Let the form submit normally
+            // The token registration will happen on the next page load
+            localStorage.setItem('needsFCMToken', 'true');
+        });
+    }
+    
+    // Check if we need to register token after login redirect
+    if (localStorage.getItem('needsFCMToken') === 'true') {
+        localStorage.removeItem('needsFCMToken');
+        console.log('🔔 Triggering FCM token registration after login...');
+        // The main app.blade.php script will handle this automatically
+    }
+});
+</script>
+@endpush
 @include('auth.footer')

@@ -104,7 +104,7 @@ class UserController extends Controller
         $request->validate([
             'role_id'      => 'required|in:3,4', // Must be teacher or student
             'profile_photo' => 'nullable|image|max:2048', // Optional profile photo
-            'ceretificate'   => 'nullable|mimes:pdf,doc,docx|max:5120', // Optional certificate
+            'certificate'   => 'nullable|mimes:pdf,doc,docx|max:5120', // Optional certificate
             'resume'        => 'nullable|mimes:pdf,doc,docx|max:5120', // Optional resume
             'language_pref' => 'nullable|string|max:255', // Optional language preference
             'terms_accepted' => 'required|boolean|in:1', // Must accept terms
@@ -116,23 +116,35 @@ class UserController extends Controller
             'phone_number'   => 'required|string|max:15|unique:users,phone_number,' . $request->user()->id,
         ]);
 
-        // Role-specific validation and file handling
-        if ($user->role->name_key === 'teacher') {
+        // Role-specific validation
+        $rules = [];
+        if ($user->role && $user->role->name_key === 'teacher') {
             $rules['profile_photo'] = 'nullable|image|max:2048';
             $rules['certificate']   = 'nullable|mimes:pdf,doc,docx|max:5120';
             $rules['resume'] = 'nullable|mimes:pdf,doc,docx|max:5120';
-        } elseif ($user->role->name_key === 'student') {
+        } elseif ($user->role && $user->role->name_key === 'student') {
             $rules['profile_photo'] = 'nullable|image|max:2048';
-            // No certificate or resume for students
         }
 
         $validated = $request->validate($rules);
 
-        // Handle file uploads
+        // Prepare profile data (exclude file uploads from direct user update)
+        $profileData = $request->only(['bio', 'language_pref', 'terms_accepted']);
+        $profileData['verified'] = $user->role_id == 3 ? 0 : 1; // Teachers start unverified
+
+        // Create or update user profile
+        $profile = UserProfile::updateOrCreate(
+            ['user_id' => $user->id],
+            $profileData
+        );
+
+        // Update user basic info
+        $user->update($request->only(['email', 'phone_number']));
+
+        // Handle file uploads and save to attachments table
         try {
             if ($request->hasFile('profile_photo')) {
-                $path = $request->file('profile_photo')->store('profile_photos', 'public');
-                $validated['profile_photo'] = $this->getFileUrl($path);
+                $this->saveAttachmentFile($request, 'profile_photo', 'profile_photos', $user, 'profile_picture');
             }
         } catch (\Exception $e) {
             return response()->json([
@@ -141,13 +153,14 @@ class UserController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
-        if ($user->role->name_key === 'teacher') {
+
+        if ($user->role && $user->role->name_key === 'teacher') {
             try {
                 if ($request->hasFile('certificate')) {
-                    $validated['certificate'] = $request->file('certificate')->store('certificates', 'public');
+                    $this->saveAttachmentFile($request, 'certificate', 'certificates', $user, 'certificate');
                 }
                 if ($request->hasFile('resume')) {
-                    $validated['resume'] = $request->file('resume')->store('resumes', 'public');
+                    $this->saveAttachmentFile($request, 'resume', 'resumes', $user, 'resume');
                 }
             } catch (\Exception $e) {
                 return response()->json([
@@ -158,38 +171,42 @@ class UserController extends Controller
             }
         }
 
-        // Update user profile
-        $user->update($validated);
+        $user->refresh();
 
         if ($user->role_id == 3) {
             // Teacher: return full teacher data
             $user->load([
-                'profile.profilePhoto:id,file_path',
+                'profile',
                 'teacherInfo',
                 'teacherClasses',
                 'teacherSubjects',
                 'availableSlots',
                 'reviews',
+                'attachments',
             ]);
             return response()->json([
                 'success' => true,
-                'message' => 'Profile updated successfully',
+                'message' => 'Profile created successfully',
                 'data' => $this->getFullTeacherData($user)
             ]);
         } else {
             // Student: return basic profile data
+            $profile->load('profilePhoto');
             return response()->json([
                 'success' => true,
-                'message' => 'Profile updated successfully',
+                'message' => 'Profile created successfully',
                 'data' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'phone_number' => $user->phone_number,
-                    'profile_photo' => optional($user->profile)->profilePhoto,
-                    'language_pref' => optional($user->profile)->language_pref,
-                    'terms_accepted' => optional($user->profile)->terms_accepted,
-                    'verified' => optional($user->profile)->verified,
+                    'id' => $profile->id,
+                    'bio' => $profile->bio,
+                    'language_pref' => $profile->language_pref,
+                    'terms_accepted' => $profile->terms_accepted,
+                    'verified' => $profile->verified,
+                    'user' => [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'phone_number' => $user->phone_number,
+                    ]
                 ]
             ]);
         }
@@ -200,7 +217,12 @@ class UserController extends Controller
     {
         Log::info('Update Profile Request: ', $request->all());
         $user = $request->user();
-
+        // update role id if frist time
+        if ($user->role_id != $request->input('role_id')) {
+            $user->role_id = $request->input('role_id');
+            $user->save();
+        }
+        Log::info('User role updated to: ' . $user->role_id);
         $profileData = $request->only(['bio', 'description', 'profile_photo_id', 'language_pref', 'terms_accepted']);
         $profileData['verified'] = $user->role_id == 4 ? 1 : ($request->input('verified', 0));
 
@@ -229,9 +251,11 @@ class UserController extends Controller
                 $this->updateTeacherServices($request);
             }
         }
-        // Handle file uploads
+        // Handle file uploads and save to attachments table
         try {
-            $validated['profile_photo'] = $this->handleFileUpload($request, 'profile_photo', 'profile_photos', $user);
+            if ($request->hasFile('profile_photo')) {
+                $this->saveAttachmentFile($request, 'profile_photo', 'profile_photos', $user, 'profile_picture');
+            }
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -239,10 +263,15 @@ class UserController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
-        if ($user->role->name_key === 'teacher') {
+        
+        if ($user->role && $user->role->name_key === 'teacher') {
             try {
-                $validated['certificate'] = $this->handleFileUpload($request, 'certificate', 'certificates', $user);
-                $validated['resume'] = $this->handleFileUpload($request, 'resume', 'resumes', $user);
+                if ($request->hasFile('certificate')) {
+                    $this->saveAttachmentFile($request, 'certificate', 'certificates', $user, 'certificate');
+                }
+                if ($request->hasFile('resume')) {
+                    $this->saveAttachmentFile($request, 'resume', 'resumes', $user, 'resume');
+                }
             } catch (\Exception $e) {
                 return response()->json([
                     'success' => false,
@@ -409,7 +438,7 @@ class UserController extends Controller
                 'teacher_levels' => $teacherLevels,
                 'teacher_classes' => $teacherClasses,
                 'teacher_subjects' => $teacherSubjects,
-                'teacher_services' => $teacher->teacherServices,
+                'teacher_services' => ($teacher->teacherServices ?? collect())->pluck('service_id')->values()->all(),
             ];
         });
 
@@ -678,8 +707,8 @@ class UserController extends Controller
             'monthEarnings' => (float) ($earnings->month_earnings ?? 0),
             'totalEarnings' => (float) ($earnings->total_earnings ?? 0),
             
-            // Add teacher services
-            'teacher_services' => $teacher->teacherServices
+            // Add teacher services (array of service IDs)
+            'teacher_services' => optional($teacher->teacherServices)->pluck('service_id')->toArray() ?? [],
         ];
 
         // Return final structure
@@ -718,5 +747,45 @@ class UserController extends Controller
         ]);
 
         return $attachment->file_path;
+    }
+
+   
+    private function saveAttachmentFile(Request $request, string $key, string $folder, User $user, string $attachedToType): ?string
+    {
+        if (!$request->hasFile($key)) {
+            return null;
+        }
+
+        try {
+            $file = $request->file($key);
+            $path = $file->store($folder, 'public'); // Saves to storage/app/public/$folder
+            $fileUrl = asset('storage/' . $path);
+
+            // Create attachment record in database
+            $attachment = Attachment::create([
+                'user_id'           => $user->id,
+                'file_path'         => $fileUrl,
+                'file_name'         => $file->getClientOriginalName(),
+                'file_type'         => $file->getClientMimeType(),
+                'file_size'         => $file->getSize(),
+                'attached_to_type'      => $attachedToType, // Store as profile-related attachment
+            ]);
+
+            Log::info('File uploaded and attachment created', [
+                'user_id' => $user->id,
+                'file_name' => $file->getClientOriginalName(),
+                'attachment_id' => $attachment->id,
+                'file_path' => $fileUrl
+            ]);
+
+            return $fileUrl;
+        } catch (\Exception $e) {
+            Log::error('Failed to save attachment file', [
+                'user_id' => $user->id,
+                'key' => $key,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
+        }
     }
 }

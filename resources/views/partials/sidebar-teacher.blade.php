@@ -108,7 +108,12 @@
                     @endif
                 </a>
             </li>
-
+            <li class="nav-item {{ request()->is('teacher/calendar*') ? 'active' : '' }}">
+                <a href="{{ route('teacher.calendar') }}" class="nav-link">
+                    <i class="feather icon-calendar"></i>
+                    <span>{{ app()->getLocale() == 'ar' ? 'تقويمي' : 'My Calendar' }}</span>
+                </a>
+            </li>
             <!-- Wallet -->
             <li class="nav-item {{ request()->is('teacher/wallet*') ? 'active' : '' }}">
                 <a href="{{ route('teacher.wallet.index') }}" class="nav-link">
