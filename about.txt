@@ -792,3 +792,6 @@ Notes & assumptions
 
 Usage
 - Paste these request/response examples into AI Studio as training examples / prompt seeds. Adjust field names or types if you customized validations.
+
+
+i want to start work on my APIs controller to handle error to void corush my app , in profissisional way update all functions return data for example code 

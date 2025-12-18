@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use App\Models\User;
 use App\Http\Controllers\API\UserController;
+use App\Services\FirebaseNotificationService;
+use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
 {
@@ -100,55 +102,78 @@ class AuthController extends Controller
     }
     
     public function login(Request $request)
-{
-    $request->validate([
-        'email'    => 'required|email',
-        'password' => 'required',
-    ]);
+    {
+        $request->validate([
+            'email'    => 'required|email',
+            'password' => 'required',
+            // optional device token sent with login to register immediately
+            'fcm_token' => 'nullable|string'
+        ]);
 
-    $user = User::where('email', $request->email)->first();
+        $user = User::where('email', $request->email)->first();
 
-    if (! $user || ! Hash::check($request->password, $user->password)) {
-        throw ValidationException::withMessages([
-            'email' => ['The provided credentials are incorrect.'],
+        if (! $user || ! Hash::check($request->password, $user->password)) {
+            throw ValidationException::withMessages([
+                'email' => ['The provided credentials are incorrect.'],
+            ]);
+        }
+
+        $role = Role::find($user->role_id);
+
+        if ($role->name_key == 'visitor') {
+            throw ValidationException::withMessages([
+                'email' => ['Please complete your profile first.'],
+            ]);
+        }
+
+        if ($user->role_id == 3) {
+            $userController = new UserController();
+            $fullTeacherData = $userController->getFullTeacherData($user);
+
+            $userData = [
+                "role" => $role->name_key,
+                "data" => $fullTeacherData,
+            ];
+        } else {
+            //  For non-teacher roles
+            $userProfile = $user->profile;
+            $userData = [
+                "role" => $role->name_key,
+                "data" => $user,
+                "profile" => $userProfile,
+            ];
+        }
+
+        // if client provided a device token at login, save it
+        if ($request->filled('fcm_token')) {
+            try {
+                $user->fcm_token = $request->input('fcm_token');
+                $user->save();
+            } catch (\Throwable $e) {
+                // non-fatal; log but continue
+                Log::warning('Failed to save fcm_token on login: ' . $e->getMessage());
+            }
+        }
+
+        $token = $user->createToken('mobile-app-token')->plainTextToken;
+
+        // Send a welcome notification (best-effort)
+        $notificationSent = false;
+        try {
+            $firebase = new FirebaseNotificationService();
+            $title = app()->getLocale() === 'ar' ? 'مرحبًا بك' : 'Welcome';
+            $body = app()->getLocale() === 'ar' ? 'مرحبًا بك في منصتنا' : 'Welcome to our platform!';
+            $notificationSent = $firebase->sendToUser($user, $title, $body, ['type' => 'welcome']);
+        } catch (\Throwable $e) {
+            Log::error('Failed to send welcome notification: ' . $e->getMessage());
+        }
+
+        return response()->json([
+            'user' => $userData,
+            'token' => $token,
+            'notification_sent' => $notificationSent,
         ]);
     }
-
-    $role = Role::find($user->role_id);
-
-    if ($role->name_key == 'visitor') {
-        throw ValidationException::withMessages([
-            'email' => ['Please complete your profile first.'],
-        ]);
-    }
-
-    
-    if ($user->role_id == 3) {
-        $userController = new UserController();
-        $fullTeacherData = $userController->getFullTeacherData($user);
-
-        $userData = [
-            "role" => $role->name_key,
-            "data" => $fullTeacherData,
-        ];
-    } else {
-        //  For non-teacher roles
-        $userProfile = $user->profile;
-        $userData = [
-            "role" => $role->name_key,
-            "data" => $user,
-            "profile" => $userProfile,
-        ];
-    }
-
-    
-    $token = $user->createToken('mobile-app-token')->plainTextToken;
-
-    return response()->json([
-        'user' => $userData,
-        'token' => $token,
-    ]);
-}
 
 
     // Profile

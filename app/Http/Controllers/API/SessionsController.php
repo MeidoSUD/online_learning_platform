@@ -4,9 +4,10 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\Session;
 use App\Models\Sessions;
 use Illuminate\Http\JsonResponse;   
+use App\Services\AgoraService;
+use Illuminate\Support\Facades\Log;
 
 
 class SessionsController extends Controller
@@ -287,6 +288,139 @@ class SessionsController extends Controller
         return response()->json([
             'success' => true,
             'data' => $this->transformSession($session, $user)
+        ]);
+    }
+
+    /**
+     * Teacher starts a session and receives host token/urls
+     * POST /api/teacher/sessions/{id}/start
+     */
+    public function start(Request $request, $sessionId): JsonResponse
+    {
+        $user = $request->user();
+
+        if ($user->role_id != 3) { // teacher
+            return response()->json(['success' => false, 'message' => 'Only teachers can start sessions'], 403);
+        }
+
+        $session = Sessions::with(['teacher', 'student', 'booking'])->where('id', $sessionId)->where('teacher_id', $user->id)->first();
+
+        if (! $session) {
+            return response()->json(['success' => false, 'message' => 'Session not found or you are not the teacher'], 404);
+        }
+
+        // Optional: enforce time window
+        if (! $session->can_start) {
+            // Allow override for testing, but inform the client
+            Log::info('Teacher tried to start session outside allowed window', ['session_id' => $session->id]);
+            // return response()->json(['success'=>false,'message'=>'Session cannot be started yet'], 422);
+        }
+
+        $agora = new AgoraService();
+
+        // Build stable channel and account strings
+        $channel = 'session_' . $session->id;
+        $teacherAccount = 'teacher_' . $session->teacher_id;
+
+        // Generate host token ONLY when teacher starts
+        $host = $agora->generateTokenForAccount($channel, $teacherAccount, \App\Agora\RtcTokenBuilder::RolePublisher);
+
+        if (! $host || empty($host['token'])) {
+            return response()->json(['success' => false, 'message' => 'Failed to generate Agora host token. Check Agora credentials.'], 500);
+        }
+
+        // persist meeting/channel id for reference (no URLs)
+        try {
+            $session->meeting_id = $channel;
+            $session->status = Sessions::STATUS_LIVE;
+            $session->save();
+        } catch (\Throwable $e) {
+            Log::warning('Failed to persist meeting id to session: ' . $e->getMessage());
+        }
+
+        // mark session as started (this sets status -> in_progress and started_at)
+        $started = $session->start();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Session started',
+            'data' => [
+                'agora' => [
+                    'channel' => $host['channel'],
+                    'token' => $host['token'],
+                    'uid' => $host['uid'],
+                    'role' => 'host',
+                    'expires_in' => $host['expires_in'],
+                ],
+                'session_status' => 'live'
+            ],
+            'errors' => null,
+            'meta' => null
+        ]);
+    }
+
+    /**
+     * Student (or participant) joins a session and receives join token/urls
+     * POST /api/student/sessions/{id}/join
+     */
+    public function join(Request $request, $sessionId): JsonResponse
+    {
+        $user = $request->user();
+
+        // allow both student and teacher to call join — role determines token
+        $session = Sessions::with(['teacher', 'student', 'booking'])->where('id', $sessionId)->where(function ($q) use ($user) {
+            $q->where('student_id', $user->id)->orWhere('teacher_id', $user->id);
+        })->first();
+
+        if (! $session) {
+            return response()->json(['success' => false, 'message' => 'Session not found or you are not a participant'], 404);
+        }
+
+        // Students may only receive a token when the session is live (in_progress)
+        if ($session->status !== Sessions::STATUS_LIVE) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Waiting for teacher to start the session',
+                'data' => [ 'session_status' => 'waiting_for_teacher' ],
+                'errors' => null,
+                'meta' => null
+            ], 423);
+        }
+
+        // Now generate a participant token for the caller (student or teacher)
+        $agora = new AgoraService();
+        $channel = 'session_' . $session->id;
+
+        $isTeacher = $user->id == $session->teacher_id;
+        if ($isTeacher) {
+            $account = 'teacher_' . $user->id;
+            $roleConst = \App\Agora\RtcTokenBuilder::RolePublisher;
+            $roleName = 'host';
+        } else {
+            $account = 'student_' . $user->id;
+            $roleConst = \App\Agora\RtcTokenBuilder::RoleSubscriber;
+            $roleName = 'participant';
+        }
+
+        $tokenInfo = $agora->generateTokenForAccount($channel, $account, $roleConst);
+        if (! $tokenInfo || empty($tokenInfo['token'])) {
+            return response()->json(['success' => false, 'message' => 'Failed to generate Agora token for participant. Check Agora credentials.'], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'You can now join the session',
+            'data' => [
+                'agora' => [
+                    'channel' => $tokenInfo['channel'],
+                    'token' => $tokenInfo['token'],
+                    'uid' => $tokenInfo['uid'],
+                    'role' => $roleName,
+                    'expires_in' => $tokenInfo['expires_in'],
+                ]
+            ],
+            'errors' => null,
+            'meta' => null
         ]);
     }
 }   

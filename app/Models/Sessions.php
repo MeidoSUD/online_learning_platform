@@ -55,10 +55,10 @@ class Sessions extends Model
 
     // Status constants
     const STATUS_SCHEDULED = 'scheduled';
-    const STATUS_IN_PROGRESS = 'in_progress';
-    const STATUS_COMPLETED = 'completed';
+    const STATUS_LIVE = 'live';
+    const STATUS_ENDED = 'ended';
     const STATUS_CANCELLED = 'cancelled';
-    const STATUS_NO_SHOW = 'no_show';
+    const STATUS_WAIT_TEACHER = 'wait_for_teacher';
 
     public function booking(): BelongsTo
     {
@@ -83,12 +83,12 @@ class Sessions extends Model
 
     public function scopeInProgress($query)
     {
-        return $query->where('status', self::STATUS_IN_PROGRESS);
+        return $query->where('status', self::STATUS_LIVE);
     }
 
     public function scopeCompleted($query)
     {
-        return $query->where('status', self::STATUS_COMPLETED);
+        return $query->where('status', self::STATUS_ENDED);
     }
 
     public function scopeCancelled($query)
@@ -143,10 +143,10 @@ class Sessions extends Model
     {
         return match($this->status) {
             self::STATUS_SCHEDULED => 'Scheduled',
-            self::STATUS_IN_PROGRESS => 'In Progress',
-            self::STATUS_COMPLETED => 'Completed',
+            self::STATUS_LIVE => 'Live',
+            self::STATUS_ENDED => 'Ended',
             self::STATUS_CANCELLED => 'Cancelled',
-            self::STATUS_NO_SHOW => 'No Show',
+            self::STATUS_WAIT_TEACHER => 'Waiting for Teacher',
             default => ucfirst($this->status)
         };
     }
@@ -158,8 +158,8 @@ class Sessions extends Model
         }
 
         $now = now();
-        $sessionStart = Carbon::parse($this->session_date . ' ' . $this->start_time);
-        $sessionEnd = Carbon::parse($this->session_date . ' ' . $this->end_time);
+        $sessionStart = $this->combineDateAndTime($this->session_date, $this->start_time);
+        $sessionEnd = $this->combineDateAndTime($this->session_date, $this->end_time);
 
         // Allow joining 15 minutes before session starts until session ends
         return $now->between($sessionStart->subMinutes(15), $sessionEnd);
@@ -172,7 +172,7 @@ class Sessions extends Model
         }
 
         $now = now();
-        $sessionStart = Carbon::parse($this->session_date . ' ' . $this->start_time);
+        $sessionStart = $this->combineDateAndTime($this->session_date, $this->start_time);
 
         // Allow starting 15 minutes before scheduled time
         return $now >= $sessionStart->subMinutes(15);
@@ -180,26 +180,26 @@ class Sessions extends Model
 
     public function getCanEndAttribute(): bool
     {
-        return $this->status === self::STATUS_IN_PROGRESS;
+        return $this->status === self::STATUS_LIVE;
     }
 
     public function getCanCancelAttribute(): bool
     {
-        if (in_array($this->status, [self::STATUS_COMPLETED, self::STATUS_CANCELLED, self::STATUS_NO_SHOW])) {
+        if (in_array($this->status, [self::STATUS_ENDED, self::STATUS_CANCELLED, self::STATUS_WAIT_TEACHER])) {
             return false;
         }
 
-        $sessionStart = Carbon::parse($this->session_date . ' ' . $this->start_time);
+        $sessionStart = $this->combineDateAndTime($this->session_date, $this->start_time);
         return $sessionStart->subHours(4)->isFuture();
     }
 
     public function getCanRescheduleAttribute(): bool
     {
-        if (in_array($this->status, [self::STATUS_COMPLETED, self::STATUS_CANCELLED, self::STATUS_NO_SHOW])) {
+        if (in_array($this->status, [self::STATUS_ENDED, self::STATUS_CANCELLED, self::STATUS_WAIT_TEACHER])) {
             return false;
         }
 
-        $sessionStart = Carbon::parse($this->session_date . ' ' . $this->start_time);
+        $sessionStart = $this->combineDateAndTime($this->session_date, $this->start_time);
         return $sessionStart->subHours(24)->isFuture();
     }
 
@@ -228,8 +228,43 @@ class Sessions extends Model
             return false;
         }
 
-        $sessionEnd = Carbon::parse($this->session_date . ' ' . $this->end_time);
+        $sessionEnd = $this->combineDateAndTime($this->session_date, $this->end_time);
         return now() > $sessionEnd;
+    }
+
+    /**
+     * Combine a date and time value which may be strings or Carbon instances
+     * into a single Carbon instance safely (avoids double-date concatenation).
+     *
+     * @param \Carbon\Carbon|string|null $date
+     * @param \Carbon\Carbon|string|null $time
+     * @return \Carbon\Carbon
+     */
+    private function combineDateAndTime($date, $time): Carbon
+    {
+        // Normalize date to Y-m-d
+        if ($date instanceof Carbon) {
+            $dateStr = $date->format('Y-m-d');
+        } else {
+            $dateStr = trim((string) $date);
+            // If date-time string given, extract date part
+            if (preg_match('/^(\d{4}-\d{2}-\d{2})/',$dateStr, $m)) {
+                $dateStr = $m[1];
+            }
+        }
+
+        // Normalize time to H:i:s
+        if ($time instanceof Carbon) {
+            $timeStr = $time->format('H:i:s');
+        } else {
+            $timeStr = trim((string) $time);
+            // If provided as full datetime, extract time part
+            if (preg_match('/(\d{2}:\d{2}:?\d{0,2})$/', $timeStr, $m)) {
+                $timeStr = $m[1];
+            }
+        }
+
+        return Carbon::parse($dateStr . ' ' . $timeStr);
     }
 
     // Methods
@@ -240,7 +275,7 @@ class Sessions extends Model
         }
 
         return $this->update([
-            'status' => self::STATUS_IN_PROGRESS,
+            'status' => self::STATUS_LIVE,
             'started_at' => now(),
         ]);
     }
@@ -252,7 +287,7 @@ class Sessions extends Model
         }
 
         $success = $this->update([
-            'status' => self::STATUS_COMPLETED,
+            'status' => self::STATUS_ENDED,
             'ended_at' => now(),
         ]);
 
@@ -283,7 +318,7 @@ class Sessions extends Model
         }
 
         return $this->update([
-            'status' => self::STATUS_NO_SHOW,
+            'status' => self::STATUS_WAIT_TEACHER,
         ]);
     }
 
@@ -436,10 +471,10 @@ public static function createForBooking(Booking $booking): void
     {
         return [
             self::STATUS_SCHEDULED => 'Scheduled',
-            self::STATUS_IN_PROGRESS => 'In Progress',
-            self::STATUS_COMPLETED => 'Completed',
+            self::STATUS_LIVE => 'Live',
+            self::STATUS_ENDED => 'Ended',
             self::STATUS_CANCELLED => 'Cancelled',
-            self::STATUS_NO_SHOW => 'No Show',
+            self::STATUS_WAIT_TEACHER => 'Waiting for Teacher',
         ];
     }
 
@@ -458,7 +493,7 @@ public static function createForBooking(Booking $booking): void
         static::updated(function ($session) {
             // Auto-mark as no-show if session is overdue and still scheduled
             if ($session->status === self::STATUS_SCHEDULED && $session->is_overdue) {
-                $session->update(['status' => self::STATUS_NO_SHOW]);
+                $session->update(['status' => self::STATUS_WAIT_TEACHER]);
             }
         });
     }

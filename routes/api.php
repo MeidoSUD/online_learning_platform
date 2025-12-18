@@ -180,7 +180,11 @@ Route::prefix('student')->middleware(['auth:sanctum', 'role:student'])->group(fu
     Route::get('/booking', [BookingController::class, 'getStudentBookings']);   // list my bookings
     Route::get('/booking/{bookingId}', [BookingController::class, 'getBookingDetails']); // view specific booking
     Route::put('/booking/{bookingId}/cancel', [BookingController::class, 'cancelBooking']); // cancel booking
-    Route::post('/booking/pay', [BookingController::class, 'payBooking']); // pay for booking (card payment)
+    Route::post('/booking/pay', [BookingController::class, 'payBooking3DS']); // pay for booking (card payment)
+    
+    // Status check endpoint - Mobile app can poll this to check payment status
+    Route::get('/payments/{paymentId}/status', [BookingController::class, 'checkPaymentStatus']);
+    Route::get('/payments/callback', [BookingController::class, 'handlePaymentCallback'])->name('api.payment.callback');
     // payments history
     Route::post('/payments', [PaymentController::class, 'store']); // pay for booking/course
     Route::get('/payments/history', [PaymentController::class, 'history']); // payment history

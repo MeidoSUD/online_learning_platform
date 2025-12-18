@@ -87,4 +87,36 @@ class AgoraService
             'expires_in' => $expireSeconds,
         ];
     }
+
+    /**
+     * Generate a single RTC token for a given channel and account with specified role.
+     * This does NOT return any join/host URLs and is suitable for mobile/web clients
+     * which only need {channel, token, uid, expires_in}.
+     *
+     * @param int|string $sessionIdOrChannel If integer, will be converted to channel 'session_{id}', otherwise treated as channel string
+     * @param string $account user account string (e.g. 'teacher_12' or 'student_34')
+     * @param int $role RtcTokenBuilder::RolePublisher|RoleSubscriber
+     * @param int|null $expireSeconds
+     * @return array|null [ 'channel' => string, 'token' => string, 'uid' => string, 'expires_in' => int ]|null
+     */
+    public function generateTokenForAccount($sessionIdOrChannel, string $account, $role = \App\Agora\RtcTokenBuilder::RoleSubscriber, $expireSeconds = null): ?array
+    {
+        $appId = env('AGORA_APP_ID');
+        $appCertificate = env('AGORA_APP_CERTIFICATE');
+        if (! $appId || ! $appCertificate) {
+            return null;
+        }
+
+        $channel = is_int($sessionIdOrChannel) ? ('session_' . $sessionIdOrChannel) : (string) $sessionIdOrChannel;
+        $expireSeconds = $expireSeconds ?? (int) env('AGORA_TOKEN_TTL', 3600);
+
+        $token = $this->generateRtcToken($channel, $account, $role, $expireSeconds);
+
+        return [
+            'channel' => $channel,
+            'token' => $token,
+            'uid' => $account,
+            'expires_in' => $expireSeconds,
+        ];
+    }
 }
