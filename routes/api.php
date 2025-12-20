@@ -109,6 +109,10 @@ Route::get('/classes/{education_level_id}', [EducationLevelController::class, 'c
 Route::get('subjectsClasses/{class_id}', [EducationLevelController::class, 'getSubjectsByClass']);
 Route::post('payments/direct', [PaymentController::class, 'directPayment']);
 Route::get('payments/result', [PaymentController::class, 'paymentResult'])->name('api.payment.result');
+
+// Public callback endpoint for payment gateways (HyperPay will redirect here after OTP/3DS)
+// This must be public (no auth middleware) because the gateway won't include an auth token.
+Route::get('payments/callback', [BookingController::class, 'paymentCallback'])->name('api.payment.callback');
 Route::get('payment-methods', [PaymentMethodController::class, 'index']);
 Route::get('banks', [PaymentMethodController::class, 'banks']);
 // ======================
@@ -180,7 +184,7 @@ Route::prefix('student')->middleware(['auth:sanctum', 'role:student'])->group(fu
     Route::get('/booking', [BookingController::class, 'getStudentBookings']);   // list my bookings
     Route::get('/booking/{bookingId}', [BookingController::class, 'getBookingDetails']); // view specific booking
     Route::put('/booking/{bookingId}/cancel', [BookingController::class, 'cancelBooking']); // cancel booking
-    Route::post('/booking/pay', [BookingController::class, 'payBooking3DS']); // pay for booking (card payment)
+    Route::post('/booking/pay', [BookingController::class, 'payBooking']); // pay for booking (card payment)
     
     // Status check endpoint - Mobile app can poll this to check payment status
     Route::get('/payments/{paymentId}/status', [BookingController::class, 'checkPaymentStatus']);

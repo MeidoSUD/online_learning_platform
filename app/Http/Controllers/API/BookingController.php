@@ -1276,16 +1276,10 @@ class BookingController extends Controller
         ]);
 
         // Call HyperPay API
-        $hyperpayResponse = $hyperpayService->prepareCheckout($payload);
+        $hyperpayResponse = $hyperpayService->directPayment($payload);
         $responseData = $hyperpayResponse->json();
 
-        Log::info('HyperPay response received', [
-            'payment_id' => $payment->id,
-            'status_code' => $hyperpayResponse->status(),
-            'response_id' => $responseData['id'] ?? 'unknown',
-            'response_code' => $responseData['result']['code'] ?? 'unknown',
-            'response_description' => $responseData['result']['description'] ?? 'unknown',
-        ]);
+        Log::info('HyperPay response received', $responseData);
 
         // Update payment with gateway response
         $payment->update([
@@ -1297,7 +1291,7 @@ class BookingController extends Controller
         $resultCode = $responseData['result']['code'] ?? '';
         $resultDescription = $responseData['result']['description'] ?? 'Unknown error';
         $checkoutId = $responseData['id'] ?? null;
-
+        
         // IMPORTANT: HyperPay codes meaning:
         // 000.000.xxx or 000.100.xxx = Transaction successfully processed (FINAL SUCCESS)
         // 000.200.xxx = Transaction pending (checkout created, needs 3DS/OTP)
@@ -1379,7 +1373,7 @@ class BookingController extends Controller
                     'currency' => $booking->currency,
                     // Mobile app should use this checkout_id with HyperPay mobile SDK
                     // or redirect user to HyperPay's payment form
-                    'payment_widget_url' => $responseData['redirectUrl'] ?? null,
+                    'redirect_url' => $responseData['redirect'] ?? null,
                 ]
             ], 200);
         } 
@@ -2016,93 +2010,148 @@ class BookingController extends Controller
         $userController = new UserController();
         return $userController->getFullTeacherData($teacher);
     }
-
+// 9D02BF634C31F60C56E1B4CDE112D0E4.uat01-vm-tx04
     public function handlePaymentCallback(Request $request): JsonResponse
-{
-    $checkoutId = $request->query('id'); // HyperPay sends checkout ID
-    
-    if (!$checkoutId) {
-        return response()->json(['success' => false, 'message' => 'Missing checkout ID'], 400);
-    }
+    {
+        // HyperPay can call back with either `id` (checkout id) or `resourcePath`.
+        // Accept both and derive a checkout id when needed.
+        $checkoutId = $request->query('id');
+        $resourcePath = $request->query('resourcePath');
 
-    Log::info('Payment callback received', ['checkout_id' => $checkoutId]);
-
-    // Get payment status from HyperPay
-    $hyperpayService = app(\App\Services\HyperpayService::class);
-    $statusResponse = $hyperpayService->getPaymentStatus($checkoutId);
-    $statusData = $statusResponse->json();
-    
-    $resultCode = $statusData['result']['code'] ?? '';
-    
-    // Find payment by checkout ID
-    $payment = Payment::where('gateway_reference', $checkoutId)->first();
-    
-    if (!$payment) {
-        Log::error('Payment not found for callback', ['checkout_id' => $checkoutId]);
-        return response()->json(['success' => false, 'message' => 'Payment not found'], 404);
-    }
-
-    // Check if payment is successful
-    if (preg_match('/^(000\.000\.|000\.100\.1|000\.[36])/', $resultCode)) {
-        // SUCCESS
-        $payment->update([
-            'status' => 'paid',
-            'paid_at' => now(),
-            'gateway_response' => json_encode($statusData),
-        ]);
-
-        $booking = $payment->booking;
-        $booking->update(['status' => Booking::STATUS_CONFIRMED]);
-        Sessions::createForBooking($booking);
-        $this->scheduleSessionMeetingJobs($booking);
-
-        Log::info('Payment confirmed via callback', ['payment_id' => $payment->id]);
-
-        // Send notification
-        try {
-            $ns = new \App\Services\NotificationService();
-            $title = app()->getLocale() == 'ar' ? 'تم الدفع بنجاح' : 'Payment successful';
-            $msg = app()->getLocale() == 'ar'
-                ? "تم استلام دفعتك للحجز ({$booking->booking_reference}). شكراً."
-                : "Your payment for booking ({$booking->booking_reference}) was successful.";
-
-            $ns->send($booking->student, 'payment_success', $title, $msg, [
-                'booking_id' => $booking->id,
-                'payment_id' => $payment->id,
-                'amount' => $booking->total_amount,
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Notification failed', ['error' => $e->getMessage()]);
+        if (!$checkoutId && $resourcePath) {
+            // resourcePath looks like: /v1/checkouts/{checkoutId}
+            $parts = explode('/', trim($resourcePath, '/'));
+            $checkoutId = end($parts);
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Payment successful',
-            'data' => [
+        if (!$checkoutId) {
+            return response()->json(['success' => false, 'message' => 'Missing checkout ID or resourcePath'], 400);
+        }
+
+        Log::info('Payment callback received', ['checkout_id' => $checkoutId, 'resourcePath' => $resourcePath]);
+
+        // Get payment status from HyperPay (using checkout id)
+        $hyperpayService = app(\App\Services\HyperpayService::class);
+        try {
+            $statusResponse = $hyperpayService->getPaymentStatus($checkoutId);
+            $statusData = $statusResponse->json();
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch payment status from HyperPay', ['checkout_id' => $checkoutId, 'error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Failed to fetch status from gateway'], 500);
+        }
+
+        // Log full status for debugging - helpful when HyperPay returns nested fields
+        Log::debug('HyperPay callback status data', ['checkout_id' => $checkoutId, 'status' => $statusData]);
+
+        // Try several places where transaction reference might exist
+        $merchantTxnId = $statusData['merchantTransactionId'] ?? null;
+        // some HyperPay responses may nest things differently - try common fallbacks
+        if (!$merchantTxnId) {
+            if (isset($statusData['transaction']) && is_array($statusData['transaction'])) {
+                $merchantTxnId = $statusData['transaction']['merchantTransactionId'] ?? null;
+            }
+            if (!$merchantTxnId && isset($statusData['result']['merchantTransactionId'])) {
+                $merchantTxnId = $statusData['result']['merchantTransactionId'];
+            }
+        }
+
+        // Attempt to locate the Payment record using multiple strategies
+        $payment = null;
+
+        // 1) If HyperPay returns merchantTransactionId (merchant provided id), match transaction_reference
+        if ($merchantTxnId) {
+            $payment = Payment::where('transaction_reference', $merchantTxnId)->first();
+        }
+
+        // 2) If status payload includes an 'id' (checkout id) match gateway_reference
+        if (!$payment && isset($statusData['id'])) {
+            $payment = Payment::where('gateway_reference', $statusData['id'])->first();
+        }
+
+        // 3) fallback: match gateway_reference with the derived checkoutId
+        if (!$payment) {
+            $payment = Payment::where('gateway_reference', $checkoutId)->first();
+        }
+
+        // 4) last resort: maybe the checkout id was stored in transaction_reference (unlikely but safe)
+        if (!$payment) {
+            $payment = Payment::where('transaction_reference', $checkoutId)->first();
+        }
+
+        if (!$payment) {
+            Log::error('Payment not found for callback', ['checkout_id' => $checkoutId, 'statusData' => $statusData]);
+            return response()->json(['success' => false, 'message' => 'Cannot find transaction reference in response'], 404);
+        }
+
+        // Determine result code (try multiple common locations)
+        $resultCode = $statusData['result']['code'] ?? $statusData['paymentResult']['code'] ?? '';
+
+        // Successful result codes (pattern used elsewhere in controller)
+        if (preg_match('/^(000\.000\.|000\.100\.1|000\.[36])/', $resultCode)) {
+            // SUCCESS
+            $payment->update([
+                'status' => 'paid',
+                'paid_at' => now(),
+                'gateway_response' => json_encode($statusData),
+            ]);
+
+            $booking = $payment->booking;
+            if ($booking) {
+                $booking->update(['status' => Booking::STATUS_CONFIRMED]);
+                Sessions::createForBooking($booking);
+                $this->scheduleSessionMeetingJobs($booking);
+            }
+
+            Log::info('Payment confirmed via callback', ['payment_id' => $payment->id]);
+
+            // Send notification
+            try {
+                $ns = new \App\Services\NotificationService();
+                $title = app()->getLocale() == 'ar' ? 'تم الدفع بنجاح' : 'Payment successful';
+                $msg = app()->getLocale() == 'ar'
+                    ? "تم استلام دفعتك للحجز ({$booking->booking_reference}). شكراً."
+                    : "Your payment for booking ({$booking->booking_reference}) was successful.";
+
+                if ($booking && $booking->student) {
+                    $ns->send($booking->student, 'payment_success', $title, $msg, [
+                        'booking_id' => $booking->id,
+                        'payment_id' => $payment->id,
+                        'amount' => $booking->total_amount,
+                    ]);
+                }
+            } catch (\Exception $e) {
+                Log::error('Notification failed', ['error' => $e->getMessage()]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment successful',
+                'data' => [
+                    'payment_id' => $payment->id,
+                    'booking_id' => $booking?->id,
+                    'status' => 'confirmed',
+                ]
+            ]);
+        } else {
+            // FAILED
+            $payment->update([
+                'status' => 'failed',
+                'gateway_response' => json_encode($statusData),
+            ]);
+
+            Log::warning('Payment failed via callback', [
                 'payment_id' => $payment->id,
-                'booking_id' => $booking->id,
-                'status' => 'confirmed',
-            ]
-        ]);
-    } else {
-        // FAILED
-        $payment->update([
-            'status' => 'failed',
-            'gateway_response' => json_encode($statusData),
-        ]);
+                'result_code' => $resultCode,
+                'statusData' => $statusData,
+            ]);
 
-        Log::warning('Payment failed via callback', [
-            'payment_id' => $payment->id,
-            'result_code' => $resultCode,
-        ]);
-
-        return response()->json([
-            'success' => false,
-            'message' => 'Payment failed',
-            'error_code' => $resultCode,
-        ], 400);
+            return response()->json([
+                'success' => false,
+                'message' => 'Payment failed',
+                'error_code' => $resultCode,
+            ], 400);
+        }
     }
-}
 
 /**
  * Check payment status

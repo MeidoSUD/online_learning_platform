@@ -137,7 +137,7 @@ class HyperpayService
 
         $payload['entityId'] = $entityId;
 
-        Log::info('Hyperpay direct payment payload', ['payload' => array_merge($payload, ['card.number' => isset($payload['card.number']) ? '***REDACTED***' : null])]);
+        //Log::info('Hyperpay direct payment payload', ['payload' => array_merge($payload, ['card.number' => isset($payload['card.number']) ? '***REDACTED***' : null])]);
 
         $url = $this->base . '/v1/payments';
         $response = Http::withHeaders($this->headers())
@@ -145,7 +145,7 @@ class HyperpayService
                         ->asForm()
                         ->post($url, $payload);
 
-        Log::info('Hyperpay direct response', ['status' => $response->status(), 'body' => $response->body()]);
+        //Log::info('Hyperpay direct response', ['status' => $response->status(), 'body' => $response->body()]);
 
         return $response;
     }

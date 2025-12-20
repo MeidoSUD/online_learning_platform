@@ -850,14 +850,10 @@ class UserController extends Controller
         }
 
         // Get earnings data
-        $earnings = DB::table('bookings')
-            ->where('teacher_id', $teacher->id)
-            ->where('status', 'completed')
+        $earnings = DB::table('wallets')
+            ->where('user_id', $teacher->id)
             ->select(
-                DB::raw('COUNT(*) as total_lessons'),
-                DB::raw('SUM(total_amount) as total_earnings'),
-                DB::raw('SUM(CASE WHEN DATE(created_at) = CURDATE() THEN total_amount ELSE 0 END) as today_earnings'),
-                DB::raw('SUM(CASE WHEN MONTH(created_at) = MONTH(CURDATE()) THEN total_amount ELSE 0 END) as month_earnings')
+                DB::raw('balance as total_earnings'),
             )
             ->first();
 
@@ -908,13 +904,13 @@ class UserController extends Controller
 
         // Map day numbers to Arabic day names
         $dayNames = [
-            0 => 'الاحد',      // Sunday
-            1 => 'الاتنين',     // Monday
-            2 => 'الثلاثاء',    // Tuesday
-            3 => 'الاربعاء',    // Wednesday
-            4 => 'الخميس',      // Thursday
-            5 => 'الجمعة',      // Friday
-            6 => 'السبت',       // Saturday
+            1 => 'الاحد',      // Sunday
+            2 => 'الاتنين',     // Monday
+            3 => 'الثلاثاء',    // Tuesday
+            4 => 'الاربعاء',    // Wednesday
+            5 => 'الخميس',      // Thursday
+            6 => 'الجمعة',      // Friday
+            7 => 'السبت',       // Saturday
         ];
 
         $availableTimes = [];

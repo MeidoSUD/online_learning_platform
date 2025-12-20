@@ -423,4 +423,32 @@ class SessionsController extends Controller
             'meta' => null
         ]);
     }
+
+    public function end(Request $request, $sessionId): JsonResponse
+    {
+        $user = $request->user();
+
+        if ($user->role_id != 3) { // teacher
+            return response()->json(['success' => false, 'message' => 'Only teachers can end sessions'], 403);
+        }
+
+        $session = Sessions::where('id', $sessionId)->where('teacher_id', $user->id)->first();
+
+        if (! $session) {
+            return response()->json(['success' => false, 'message' => 'Session not found or you are not the teacher'], 404);
+        }
+
+        // mark session as ended (this sets status -> completed and ended_at)
+        $ended = $session->end();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Session ended',
+            'data' => [
+                'session_status' => 'completed'
+            ],
+            'errors' => null,
+            'meta' => null
+        ]);
+    }
 }   

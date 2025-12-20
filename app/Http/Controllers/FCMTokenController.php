@@ -8,7 +8,7 @@ class FCMTokenController extends Controller
 {
     public function save(Request $request)
     {
-        $request->validate(['token' => 'required|string']);
+        $request->validate(['fcm_token' => 'required|string']);
 
         $user = $request->user();
         $user->update(['fcm_token' => $request->token]);
