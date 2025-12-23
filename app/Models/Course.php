@@ -131,4 +131,9 @@ class Course extends Model
     {
         return $this->hasMany(Enrollment::class, 'course_id');
     }
+
+    public function Bookings()
+    {
+        return $this->hasMany(Booking::class, 'course_id');
+    }
 }

@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use App\Models\Booking;
 use App\Models\Services;
+use App\Models\Sessions;
 
 class CourseController extends Controller
 {
@@ -36,29 +37,23 @@ class CourseController extends Controller
     public function index(Request $request): JsonResponse
     {
         $service_id = 4;
-        // Get all courses for this service
-        $courses = Course::with(['teacher', 'category', 'coverImage'])
-            ->where('service_id', $service_id)
-            ->where('status', 'published')
-            ->get();
+        $perPage = (int) $request->get('per_page', 10);
+        $page = (int) $request->get('page', 1);
 
-        // Get all unique teacher IDs for these courses
-        $teacherIds = $courses->pluck('teacher_id')->unique();
+        // Paginate published courses for this service (use repository if available)
+        $repo = app(\App\Repositories\EloquentCourseRepository::class);
+        $courses = $repo->paginate(['service_id' => $service_id], $perPage);
 
-        // Get teacher profiles
+        // Collect teacher IDs from the current page items
+        $teacherIds = $courses->getCollection()->pluck('teacher_id')->unique()->filter()->values();
+
+        // Get teacher profiles, basic info and reviews in bulk
         $profiles = \App\Models\UserProfile::whereIn('user_id', $teacherIds)->get()->keyBy('user_id');
-
-        // Get teacher basic info
-        $teachers = \App\Models\User::whereIn('id', $teacherIds)->with('profile')
-            ->select('id', 'first_name', 'last_name', 'gender', 'nationality')
-            ->get()
-            ->keyBy('id');
-        
-        // Get reviews for these teachers
+        $teachers = \App\Models\User::whereIn('id', $teacherIds)->select('id', 'first_name', 'last_name', 'gender', 'nationality')->get()->keyBy('id');
         $reviews = \App\Models\Review::whereIn('reviewed_id', $teacherIds)->get()->groupBy('reviewed_id');
 
-        // Attach profile, basic info, and reviews to each course's teacher
-        $courses->transform(function ($course) use ($profiles, $teachers, $reviews) {
+        // Enrich each course in the paginated collection
+        $transformed = $courses->getCollection()->transform(function ($course) use ($profiles, $teachers, $reviews) {
             $teacher_id = $course->teacher_id;
             $course['teacher_profile'] = $profiles[$teacher_id] ?? null;
             $course['teacher_basic'] = $teachers[$teacher_id] ?? null;
@@ -66,9 +61,18 @@ class CourseController extends Controller
             return $course;
         });
 
+        // Replace the paginator's collection with our enriched collection
+        $courses->setCollection($transformed);
+
         return response()->json([
             'success' => true,
-            'data' => $courses
+            'data' => $courses->items(),
+            'pagination' => [
+                'current_page' => $courses->currentPage(),
+                'per_page' => $courses->perPage(),
+                'last_page' => $courses->lastPage(),
+                'total' => $courses->total(),
+            ]
         ]);
     }
 
@@ -86,7 +90,7 @@ class CourseController extends Controller
      */
     public function show(Request $request, int $id): JsonResponse
     {
-        $course = Course::with(['teacher', 'category','availabilitySlots', 'coverImage', 'courselessons'])
+        $course = Course::with(['teacher', 'category','availabilitySlots', 'coverImage', 'Bookings'])
             ->where('status', 'published')
             ->findOrFail($id);
 
@@ -121,45 +125,162 @@ class CourseController extends Controller
         
         $course = Course::where('status', 'published')->findOrFail($id);
 
-        // Check if already enrolled
-        $alreadyEnrolled = DB::table('course_student')
-            ->where('course_id', $id)
-            ->where('user_id', $user->id)
-            ->exists();
+        // Different flows for group vs private courses
+        $type = strtolower($course->course_type ?? 'group');
 
-        if ($alreadyEnrolled) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Already enrolled in this course'
-            ], 400);
-        }
+        if ($type === 'group' || $type === 'group_course' || $type === 'group-course') {
+            // Group course: simple enrollment with capacity check
+            $existing = \App\Models\Enrollment::where('course_id', $id)
+                ->where('student_id', $user->id)
+                ->first();
+            if ($existing) {
+                return response()->json(['success' => false, 'message' => 'Already enrolled in this course'], 400);
+            }
 
-        // Enroll student with pending status (if the pivot supports status column)
-        $insert = [
-            'course_id' => $id,
-            'user_id' => $user->id,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ];
+            // Capacity check if course defines max_students
+            $max = $course->max_students ?? null;
+            if ($max) {
+                $count = \App\Models\Enrollment::where('course_id', $id)->where('status', 'active')->count();
+                if ($count >= $max) {
+                    return response()->json(['success' => false, 'message' => 'Course capacity reached'], 400);
+                }
+            }
 
-        if (Schema::hasColumn('course_student', 'status')) {
-            $insert['status'] = 'pending';
-        }
-
-        DB::table('course_student')->insert($insert);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Successfully enrolled in course',
-            'data' => [
+            $enrollment = \App\Models\Enrollment::create([
+                'student_id' => $user->id,
                 'course_id' => $id,
-                'enrolled_at' => now()
-            ]
-        ]);
+                'enrollment_date' => now(),
+                'status' => 'active',
+            ]);
+
+            return response()->json(['success' => true, 'message' => 'Enrolled in group course', 'data' => ['enrollment_id' => $enrollment->id, 'course_id' => $id]]);
+        }
+
+        // Private course enrollment - requires a selected time or availability slot
+        if ($type === 'private' || $type === 'one_to_one' || $type === 'private_course') {
+            // expected input: selected_datetime (Y-m-d H:i) OR availability_slot_id
+            $selected = $request->input('selected_datetime');
+            $slotId = $request->input('availability_slot_id');
+
+            if (!$selected && !$slotId) {
+                return response()->json(['success' => false, 'message' => 'For private courses you must provide selected_datetime or availability_slot_id'], 422);
+            }
+
+            // Create enrollment record (status pending/payment)
+            $enrollment = \App\Models\Enrollment::create([
+                'student_id' => $user->id,
+                'course_id' => $id,
+                'enrollment_date' => now(),
+                'status' => 'pending',
+            ]);
+
+            // Create session for this student
+            if ($slotId) {
+                $slot = \App\Models\AvailabilitySlot::find($slotId);
+                if (!$slot || $slot->teacher_id != $course->teacher_id) {
+                    return response()->json(['success' => false, 'message' => 'Invalid availability slot'], 422);
+                }
+
+                $sessionDate = $slot->date ?? now()->format('Y-m-d');
+                $start = $slot->start_time;
+                $end = $slot->end_time;
+            } else {
+                // parse selected datetime
+                try {
+                    $dt = \Carbon\Carbon::parse($selected);
+                } catch (\Exception $e) {
+                    return response()->json(['success' => false, 'message' => 'Invalid selected_datetime format'], 422);
+                }
+                $sessionDate = $dt->format('Y-m-d');
+                $start = $dt->format('H:i');
+                $durationMinutes = ($course->duration_hours ? $course->duration_hours * 60 : 60);
+                $end = \Carbon\Carbon::parse($dt)->addMinutes($durationMinutes)->format('H:i');
+            }
+
+            $session = new Sessions();
+            // attach course_id only if DB supports it
+            $session->course_id = $course->id ?? null;
+            $session->teacher_id = $course->teacher_id;
+            $session->student_id = $user->id;
+            $session->session_number = 1;
+            $session->session_date = $sessionDate;
+            $session->start_time = $start;
+            $session->end_time = $end;
+            $session->duration = isset($durationMinutes) ? $durationMinutes : ($course->duration_hours ? $course->duration_hours * 60 : 60);
+            $session->status = Sessions::STATUS_SCHEDULED;
+            $session->save();
+
+            // attach session to enrollment if schema supports enrollment_id on sessions
+            if (Schema::hasColumn('sessions', 'enrollment_id')) {
+                $session->enrollment_id = $enrollment->id;
+                $session->save();
+            }
+
+            return response()->json(['success' => true, 'message' => 'Private session requested', 'data' => ['enrollment_id' => $enrollment->id, 'session_id' => $session->id]]);
+        }
+
+        // Fallback
+        return response()->json(['success' => false, 'message' => 'Unsupported course type for enrollment'], 400);
     }
+    
+        /*
+        Example JSON for enrolling (POST /api/courses/{id}/enroll)
+        Headers:
+            Authorization: Bearer {token}
+            Content-Type: application/json
+
+        Body:
+        {
+            "note": "Optional note when enrolling"
+        }
+
+        Response (success):
+        {
+            "success": true,
+            "message": "Successfully enrolled in course",
+            "data": {
+                "course_id": 12,
+                "enrolled_at": "2025-12-20T10:00:00Z"
+            }
+        }
+        */
 /////////////////////////////////////////////////////////////////////////////////////////////
 
     // Teacher: Create new course
+    /**
+     * Example request to create a course (multipart/form-data)
+     *
+     * POST /api/teacher/courses
+     * Headers:
+     *   Authorization: Bearer {token}
+     *   Content-Type: multipart/form-data
+     *
+     * Body fields:
+     * - name: string
+     * - description: string
+     * - course_type: single|package|subscription
+     * - price: 100.00
+     * - duration_hours: 2
+     * - status: draft|published
+     * - category_id: integer (optional)
+     * - available_slots: JSON string or form field (see example below)
+     * - cover_image: file (image)
+     *
+     * Example available_slots value (stringified JSON):
+     * [
+     *   {"day":1, "times": ["09:00", "14:00"]},
+     *   {"day":3, "times": ["10:00"]}
+     * ]
+     *
+         * Example response (success):
+         * {
+         *   "success": true,
+         *   "message": "Course created successfully",
+         *   "data": {
+         *       "course": { "id": 123, "name": "Example Course" }
+         *   }
+         * }
+     */
     public function  store(Request $request): JsonResponse
     {
         // New store behavior:
