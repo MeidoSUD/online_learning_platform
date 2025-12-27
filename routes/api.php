@@ -40,30 +40,6 @@ use App\Models\User;
 use App\Services\AgoraService;
 use Illuminate\Support\Facades\Lang;
 
-// Route::get('/agora/token', function (\Illuminate\Http\Request $request) {
-
-//     $request->validate([
-//         'session_id' => 'required',
-//         'uid' => 'required',
-//         'type' => 'required|in:host,join'
-//     ]);
-
-//     $sessionId = $request->session_id;
-//     $uid = $request->uid;
-//     $isHost = $request->type === 'host';
-
-//     $agora = new AgoraService();
-//     $channel = "session_" . $sessionId;
-//     $token = $agora->generateToken($channel, $uid, $isHost);
-
-//     return [
-//         "appId" => env('AGORA_APP_ID'),
-//         "token" => $token,
-//         "channel" => $channel,
-//         "uid" => $uid
-//     ];
-// });
-
 
 /*
 |--------------------------------------------------------------------------
@@ -76,20 +52,17 @@ use Illuminate\Support\Facades\Lang;
 |
 */
 
-Route::post('/agora-token', [App\Http\Controllers\AgoraController::class, 'generateRtcToken']);
 
-Route::post('/save-fcm-token', function (Request $request) {
-    $request->validate(['token' => 'required|string']);
-
-    $user = $request->user();
-    $user->update([
-        'fcm_token' => $request->token,
-    ]);
-
-    return response()->json(['message' => 'Token saved successfully']);
-});
 // Notification route
-Route::post('/notifications/send', [NotificationController::class, 'sendToToken']);
+Route::post('/send-notification', [FCMTokenController::class, 'sendToToken']);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/save-fcm-token', [FCMTokenController::class, 'save']);
+    Route::get('/notifications', [FCMTokenController::class, 'getNotifications']);
+    Route::post('/notifications/{id}/mark-as-read', [FCMTokenController::class, 'markAsRead']);
+    Route::post('/notifications/mark-all-as-read', [FCMTokenController::class, 'markAllAsRead']);
+    Route::delete('/notifications/{id}/delete', [FCMTokenController::class, 'deleteNotification']);
+    Route::post('/notifications/send', [NotificationController::class, 'sendToToken']);
+});
 // main screen APIs
 Route::get('/services', [ServicesController::class, 'listServices']);
 Route::get('/services/search', [ServicesController::class, 'searchServices']);
@@ -179,7 +152,6 @@ Route::prefix('student')->middleware(['auth:sanctum', 'role:student'])->group(fu
     Route::get('/orders/{order_id}/applications', [OrdersController::class, 'getApplications']);
     Route::post('/orders/{order_id}/applications/{application_id}/accept', [OrdersController::class, 'acceptApplication']);
     // bookings
-    // Booking endpoints
     Route::post('/booking', [BookingController::class, 'createBooking']); // create booking
     Route::get('/booking', [BookingController::class, 'getStudentBookings']);   // list my bookings
     Route::get('/booking/{bookingId}', [BookingController::class, 'getBookingDetails']); // view specific booking
@@ -290,9 +262,10 @@ Route::prefix('teacher')->middleware(['auth:sanctum', 'role:teacher'])->group(fu
     Route::delete('/disputes/{id}', [DisputeController::class, 'destroy']); // Delete specific dispute
     
     // Language study routes for teachers
-    Route::post('/language-study/teacher/languages', [LanguageStudyController::class, 'addTeacherLanguages']);
-    Route::put('/language-study/teacher/languages', [LanguageStudyController::class, 'updateTeacherLanguages']);
-    Route::delete('/language-study/teacher/languages/{languageId}', [LanguageStudyController::class, 'deleteTeacherLanguage']);
+    Route::get('language-study/{teacherId}', [LanguageStudyController::class, 'getTeacherLanguages']); // Get specific teacher languages
+    Route::post('/language-study/languages', [LanguageStudyController::class, 'addTeacherLanguages']);
+    Route::put('/language-study/languages', [LanguageStudyController::class, 'updateTeacherLanguages']);
+    Route::delete('/language-study/{languageId}', [LanguageStudyController::class, 'deleteTeacherLanguage']);
 
 });
 
@@ -305,26 +278,6 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     Route::delete('/languages/{id}', [LanguageController::class, 'destroy']); // Soft delete language
     Route::delete('/languages/{id}/force', [LanguageController::class, 'forceDestroy']); // Hard delete language
     Route::post('/languages/{id}/restore', [LanguageController::class, 'restore']); // Restore soft-deleted language
-});
-
-// routes/api.php (temporary for testing)
-Route::put('admin/payments/{payment}/complete', function(Payment $payment) {
-    $payment->markAsCompleted('test_payment_' . time(), ['status' => 'success']);
-        $payment->booking->createMeetingsForSessions();
-
-    return response()->json([
-        'success' => true,
-        'message' => 'Payment completed',
-        'booking_status' => $payment->booking->status,
-        'sessions_with_zoom' => $payment->booking->sessions->map(function($session) {
-            return [
-                'id' => $session->id,
-                'meeting_id' => $session->meeting_id,
-                'join_url' => $session->join_url,
-                'host_url' => $session->host_url
-            ];
-        })
-    ]);
 });
 
 // ======================

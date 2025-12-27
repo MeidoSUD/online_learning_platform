@@ -29,6 +29,10 @@ class TeacherController extends Controller
                 'name_ar' => $item->subject->name_ar,
                 'class_id' => $item->subject->class_id,
                 'education_level_id' => $item->subject->education_level_id,
+                'class_name_en' => $item->class ? $item->class->name_en : null,
+                'class_name_ar' => $item->class ? $item->class->name_ar : null,
+                'education_level_name_en' => $item->subject->educationLevel ? $item->subject->educationLevel->name_en : null,
+                'education_level_name_ar' => $item->subject->educationLevel ? $item->subject->educationLevel->name_ar : null,
             ];
         });
 
