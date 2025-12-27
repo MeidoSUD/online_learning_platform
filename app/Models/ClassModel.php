@@ -12,7 +12,12 @@ class ClassModel extends Model
 
     public function subjects()
 {
-    return $this->hasMany(EducationLevel::class, 'education_level_id');
-}
-
+    return $this->hasMany(Subject::class, 'class_id');
+}    
+    public function educationLevel()
+    {
+        return $this->belongsTo(EducationLevel::class, 'education_level_id');   
+        
+    }
+    
 }

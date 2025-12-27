@@ -140,6 +140,7 @@ class AvailabilityController extends Controller
             foreach ($dayEntry['times'] as $time) {
                 $timeStr = trim($time);
                 $parsed = null;
+                $timeStr = str_replace(['ص', 'م'], ['AM', 'PM'], $timeStr);
                 foreach ($timeFormats as $fmt) {
                     try {
                         $parsed = \Carbon\Carbon::createFromFormat($fmt, $timeStr);

@@ -20,7 +20,7 @@ class TeacherController extends Controller
     {
         $teacherId = $request->user()->id;
         $subjects = TeacherSubject::where('teacher_id', $teacherId)
-            ->with('subject','class') // You can define a relation in TeacherSubject for subject if needed
+            ->with('subject', 'class') // You can define a relation in TeacherSubject for subject if needed
             ->get();
         $subjectsData = $subjects->map(function ($item) {
             return [
@@ -53,21 +53,33 @@ class TeacherController extends Controller
     public function storeSubject(Request $request)
     {
         Log::info('Storing subjects for teacher', ['request' => $request->all()]);
+
         $request->validate([
             'subjects_id' => 'required|array',
             'subjects_id.*' => 'exists:subjects,id',
         ]);
+
         $teacherId = $request->user()->id;
 
-        $created = [];
+        //  Delete old subjects
+        TeacherSubject::where('teacher_id', $teacherId)->delete();
+
+        //  Insert new subjects
+        $data = [];
         foreach ($request->subjects_id as $subjectId) {
-            $created[] = TeacherSubject::firstOrCreate([
+            $data[] = [
                 'teacher_id' => $teacherId,
                 'subject_id' => $subjectId,
-            ]);
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
         }
 
-        return response()->json(['message' => 'success']);
+        TeacherSubject::insert($data);
+
+        return response()->json([
+            'message' => 'Subjects updated successfully',
+        ]);
     }
 
     // classes
