@@ -358,20 +358,90 @@ class UserController extends Controller
         }
     }
 
-    // List all teachers
-    public function listTeachers()
+    // List all teachers with optional filters
+    public function listTeachers(Request $request)
     {
-        $teachers = User::where('role_id', 3)
-            ->orderByDesc('id')
-            ->get();
+        $query = User::where('role_id', 3)->where('is_active', 1);
 
-        $teachersData = $teachers->map(function ($teacher) {
+        // Filter by service (private_lessons, language, course) via teacher_services.service_id or key
+        $service = $request->query('service');
+        if ($service) {
+            $serviceKey = strtolower($service);
+            // Allow passing numeric service_id or key name
+            if (is_numeric($service)) {
+                $query->join('teacher_services', 'users.id', '=', 'teacher_services.teacher_id')
+                      ->where('teacher_services.service_id', (int)$service);
+            } else {
+                // lookup service id by key_name
+                $sid = DB::table('services')->where('key_name', $serviceKey)->value('id');
+                if ($sid) {
+                    $query->join('teacher_services', 'users.id', '=', 'teacher_services.teacher_id')
+                          ->where('teacher_services.service_id', $sid);
+                }
+            }
+        }
+
+        // Price filter (min/max) - check teacher_info table fields
+        $minPrice = $request->query('min_price');
+        $maxPrice = $request->query('max_price');
+        if ($minPrice !== null || $maxPrice !== null) {
+            $query->leftJoin('teacher_infos', 'users.id', '=', 'teacher_infos.user_id');
+            if ($minPrice !== null) $query->where(function($q) use ($minPrice) {
+                $q->where('teacher_infos.individual_hour_price', '>=', $minPrice)
+                  ->orWhere('teacher_infos.group_hour_price', '>=', $minPrice);
+            });
+            if ($maxPrice !== null) $query->where(function($q) use ($maxPrice) {
+                $q->where('teacher_infos.individual_hour_price', '<=', $maxPrice)
+                  ->orWhere('teacher_infos.group_hour_price', '<=', $maxPrice);
+            });
+        }
+
+        // Subjects / class / education_level filters via teacher_subjects -> subjects
+        $subjectId = $request->query('subject_id');
+        $classId = $request->query('class_id');
+        $educationLevelId = $request->query('education_level_id');
+        if ($subjectId || $classId || $educationLevelId) {
+            $query->join('teacher_subjects', 'users.id', '=', 'teacher_subjects.teacher_id')
+                  ->join('subjects', 'teacher_subjects.subject_id', '=', 'subjects.id');
+            if ($subjectId) $query->where('subjects.id', $subjectId);
+            if ($classId) $query->where('subjects.class_id', $classId);
+            if ($educationLevelId) $query->where('subjects.education_level_id', $educationLevelId);
+        }
+
+        // Rating filter (min_rate)
+        $minRate = $request->query('min_rate');
+        if ($minRate) {
+            $teacherIds = Review::select('reviewed_id', DB::raw('avg(rating) as avg_rating'))
+                ->groupBy('reviewed_id')
+                ->havingRaw('avg(rating) >= ?', [(float)$minRate])
+                ->pluck('reviewed_id')
+                ->toArray();
+
+            if (empty($teacherIds)) {
+                return response()->json(['success' => true, 'data' => []]);
+            }
+
+            $query->whereIn('users.id', $teacherIds);
+        }
+
+        // Pagination
+        $perPage = (int) $request->get('per_page', 10);
+
+        $teachers = $query->select('users.*')->distinct()->orderByDesc('users.id')->paginate($perPage);
+
+        $teachersData = $teachers->getCollection()->map(function ($teacher) {
             return $this->getFullTeacherData($teacher);
         })->values();
 
         return response()->json([
             'success' => true,
             'data' => $teachersData,
+            'pagination' => [
+                'current_page' => $teachers->currentPage(),
+                'last_page' => $teachers->lastPage(),
+                'per_page' => $teachers->perPage(),
+                'total' => $teachers->total(),
+            ]
         ]);
     }
 
@@ -863,6 +933,11 @@ class UserController extends Controller
             ->where('status', 'active')
             ->count();
 
+        // Total bookings (all statuses)
+        $totalBookings = DB::table('bookings')
+            ->where('teacher_id', $teacher->id)
+            ->count();
+
         // Get reviews
         $reviews = Review::where('reviewed_id', $teacher->id)->get();
         $rating = round($reviews->avg('rating') ?? 0, 1);
@@ -963,6 +1038,11 @@ class UserController extends Controller
                 'certificate_attachment' => $certificateAttachment,
                 'earnings' => $earnings,
                 'currentLessons' => $currentLessons,
+                // Counts requested by client
+                'bookings_count' => (int) $totalBookings,
+                'subjects_count' => (int) count($teacherSubjects),
+                'languages_count' => (int) count($languages),
+                'courses_count' => (int) count($courses),
                 'teach_individual' => (bool) optional($teacher->teacherInfo)->teach_individual,
                 'individual_hour_price' => (float) (optional($teacher->teacherInfo)->individual_hour_price ?? 0),
                 'teach_group' => (bool) optional($teacher->teacherInfo)->teach_group,

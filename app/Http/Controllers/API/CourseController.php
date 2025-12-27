@@ -40,9 +40,18 @@ class CourseController extends Controller
         $perPage = (int) $request->get('per_page', 10);
         $page = (int) $request->get('page', 1);
 
-        // Paginate published courses for this service (use repository if available)
+        // Collect filters from query params
+        $filters = [
+            'service_id' => $service_id,
+            'min_price' => $request->query('min_price'),
+            'max_price' => $request->query('max_price'),
+            'min_rate' => $request->query('min_rate'),
+            'category_id' => $request->query('category_id'),
+        ];
+
+        // Paginate published courses for this service (use repository)
         $repo = app(\App\Repositories\EloquentCourseRepository::class);
-        $courses = $repo->paginate(['service_id' => $service_id], $perPage);
+        $courses = $repo->paginate(array_filter($filters, function ($v) { return $v !== null && $v !== ''; }), $perPage);
 
         // Collect teacher IDs from the current page items
         $teacherIds = $courses->getCollection()->pluck('teacher_id')->unique()->filter()->values();

@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\TeacherServices;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Models\Review;
 
 class LanguageStudyController extends Controller
 {
@@ -155,7 +156,7 @@ class LanguageStudyController extends Controller
             DB::commit();
 
             // Get the updated languages
-            $languages = $user->teacherLanguages()->with('language')->get()->map(function ($tl) {
+            $languages = User::teacherLanguages()->with('language')->where('teacher_id' , $user->id)->get()->map(function ($tl) {
                 return [
                     'id' => $tl->language->id,
                     'name_en' => $tl->language->name_en,
@@ -220,7 +221,7 @@ class LanguageStudyController extends Controller
 
             DB::commit();
 
-            $languages = $user->teacherLanguages()->with('language')->get()->map(function ($tl) {
+            $languages = User::teacherLanguages()->with('language')->where('teacher_id' , $user->id)->get()->map(function ($tl) {
                 return [
                     'id' => $tl->language->id,
                     'name_en' => $tl->language->name_en,
@@ -359,11 +360,64 @@ class LanguageStudyController extends Controller
     }
 
     /**
-     * Original endpoint - all languages with their teachers
-     * GET /api/language-study
+     * Original endpoint - all languages with their teachers or teachers offering language study
+     * GET /api/language-study?mode=languages|teachers
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
+        $mode = $request->query('mode', 'languages');
+
+        if ($mode === 'teachers') {
+            // Return paginated teachers who offer language study with optional filters
+            $query = User::where('role_id', 3)->where('is_active', 1)
+                ->join('teacher_services', 'users.id', '=', 'teacher_services.teacher_id')
+                ->join('services', 'teacher_services.service_id', '=', 'services.id')
+                ->where('services.key_name', 'language_study');
+
+            // price filter
+            $minPrice = $request->query('min_price');
+            $maxPrice = $request->query('max_price');
+            if ($minPrice !== null || $maxPrice !== null) {
+                $query->leftJoin('teacher_infos', 'users.id', '=', 'teacher_infos.user_id');
+                if ($minPrice !== null) $query->where('teacher_infos.individual_hour_price', '>=', $minPrice);
+                if ($maxPrice !== null) $query->where('teacher_infos.individual_hour_price', '<=', $maxPrice);
+            }
+
+            // rating filter
+            $minRate = $request->query('min_rate');
+            if ($minRate) {
+                $teacherIds = Review::select('reviewed_id', DB::raw('avg(rating) as avg_rating'))
+                    ->groupBy('reviewed_id')
+                    ->havingRaw('avg(rating) >= ?', [(float)$minRate])
+                    ->pluck('reviewed_id')
+                    ->toArray();
+
+                if (empty($teacherIds)) {
+                    return response()->json(['success' => true, 'data' => []]);
+                }
+
+                $query->whereIn('users.id', $teacherIds);
+            }
+
+            $perPage = (int) $request->get('per_page', 10);
+            $teachers = $query->select('users.*')->distinct()->orderByDesc('users.id')->paginate($perPage);
+
+            $data = $teachers->getCollection()->map(function ($teacher) {
+                return (new UserController())->getFullTeacherData($teacher);
+            })->values();
+
+            return response()->json([
+                'success' => true,
+                'data' => $data,
+                'pagination' => [
+                    'current_page' => $teachers->currentPage(),
+                    'last_page' => $teachers->lastPage(),
+                    'per_page' => $teachers->perPage(),
+                    'total' => $teachers->total(),
+                ]
+            ]);
+        }
+
         $languages = Languages::where('status', 1)->get(['id', 'name_en', 'name_ar']);
 
         $data = [];
