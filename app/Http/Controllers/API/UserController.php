@@ -360,90 +360,96 @@ class UserController extends Controller
 
     // List all teachers with optional filters
     public function listTeachers(Request $request)
-    {
-        $query = User::where('role_id', 3)->where('is_active', 1);
+{
+    $query = User::where('role_id', 3)
+        ->where('is_active', 1)
+        ->with(['teacherInfo', 'services', 'subjects']);
 
-        // Filter by service (private_lessons, language, course) via teacher_services.service_id or key
-        $service = $request->query('service');
-        if ($service) {
-            $serviceKey = strtolower($service);
-            // Allow passing numeric service_id or key name
+    /* =======================
+     | Service Filter
+     ======================= */
+    if ($request->filled('service')) {
+        $service = $request->service;
+
+        $query->whereHas('services', function ($q) use ($service) {
             if (is_numeric($service)) {
-                $query->join('teacher_services', 'users.id', '=', 'teacher_services.teacher_id')
-                      ->where('teacher_services.service_id', (int)$service);
+                $q->where('services.id', $service);
             } else {
-                // lookup service id by key_name
-                $sid = DB::table('services')->where('key_name', $serviceKey)->value('id');
-                if ($sid) {
-                    $query->join('teacher_services', 'users.id', '=', 'teacher_services.teacher_id')
-                          ->where('teacher_services.service_id', $sid);
-                }
+                $q->where('services.key_name', strtolower($service));
             }
-        }
-
-        // Price filter (min/max) - check teacher_info table fields
-        $minPrice = $request->query('min_price');
-        $maxPrice = $request->query('max_price');
-        if ($minPrice !== null || $maxPrice !== null) {
-            $query->leftJoin('teacher_infos', 'users.id', '=', 'teacher_infos.user_id');
-            if ($minPrice !== null) $query->where(function($q) use ($minPrice) {
-                $q->where('teacher_infos.individual_hour_price', '>=', $minPrice)
-                  ->orWhere('teacher_infos.group_hour_price', '>=', $minPrice);
-            });
-            if ($maxPrice !== null) $query->where(function($q) use ($maxPrice) {
-                $q->where('teacher_infos.individual_hour_price', '<=', $maxPrice)
-                  ->orWhere('teacher_infos.group_hour_price', '<=', $maxPrice);
-            });
-        }
-
-        // Subjects / class / education_level filters via teacher_subjects -> subjects
-        $subjectId = $request->query('subject_id');
-        $classId = $request->query('class_id');
-        $educationLevelId = $request->query('education_level_id');
-        if ($subjectId || $classId || $educationLevelId) {
-            $query->join('teacher_subjects', 'users.id', '=', 'teacher_subjects.teacher_id')
-                  ->join('subjects', 'teacher_subjects.subject_id', '=', 'subjects.id');
-            if ($subjectId) $query->where('subjects.id', $subjectId);
-            if ($classId) $query->where('subjects.class_id', $classId);
-            if ($educationLevelId) $query->where('subjects.education_level_id', $educationLevelId);
-        }
-
-        // Rating filter (min_rate)
-        $minRate = $request->query('min_rate');
-        if ($minRate) {
-            $teacherIds = Review::select('reviewed_id', DB::raw('avg(rating) as avg_rating'))
-                ->groupBy('reviewed_id')
-                ->havingRaw('avg(rating) >= ?', [(float)$minRate])
-                ->pluck('reviewed_id')
-                ->toArray();
-
-            if (empty($teacherIds)) {
-                return response()->json(['success' => true, 'data' => []]);
-            }
-
-            $query->whereIn('users.id', $teacherIds);
-        }
-
-        // Pagination
-        $perPage = (int) $request->get('per_page', 10);
-
-        $teachers = $query->select('users.*')->distinct()->orderByDesc('users.id')->paginate($perPage);
-
-        $teachersData = $teachers->getCollection()->map(function ($teacher) {
-            return $this->getFullTeacherData($teacher);
-        })->values();
-
-        return response()->json([
-            'success' => true,
-            'data' => $teachersData,
-            'pagination' => [
-                'current_page' => $teachers->currentPage(),
-                'last_page' => $teachers->lastPage(),
-                'per_page' => $teachers->perPage(),
-                'total' => $teachers->total(),
-            ]
-        ]);
+        });
     }
+
+    /* =======================
+     | Price Filter
+     ======================= */
+    if ($request->filled('min_price') || $request->filled('max_price')) {
+        $query->whereHas('teacherInfo', function ($q) use ($request) {
+            if ($request->filled('min_price')) {
+                $q->where(function ($x) use ($request) {
+                    $x->where('individual_hour_price', '>=', $request->min_price)
+                      ->orWhere('group_hour_price', '>=', $request->min_price);
+                });
+            }
+
+            if ($request->filled('max_price')) {
+                $q->where(function ($x) use ($request) {
+                    $x->where('individual_hour_price', '<=', $request->max_price)
+                      ->orWhere('group_hour_price', '<=', $request->max_price);
+                });
+            }
+        });
+    }
+
+    /* =======================
+     | Subject / Class / Level
+     ======================= */
+    if ($request->filled(['subject_id', 'class_id', 'education_level_id'])) {
+        $query->whereHas('subjects', function ($q) use ($request) {
+            if ($request->filled('subject_id')) {
+                $q->where('subjects.id', $request->subject_id);
+            }
+            if ($request->filled('class_id')) {
+                $q->where('subjects.class_id', $request->class_id);
+            }
+            if ($request->filled('education_level_id')) {
+                $q->where('subjects.education_level_id', $request->education_level_id);
+            }
+        });
+    }
+
+    /* =======================
+     | Rating Filter
+     ======================= */
+    if ($request->filled('min_rate')) {
+        $query->whereHas('reviews', function ($q) use ($request) {
+            $q->groupBy('reviewed_id')
+              ->havingRaw('AVG(rating) >= ?', [$request->min_rate]);
+        });
+    }
+
+    /* =======================
+     | Pagination
+     ======================= */
+    $teachers = $query->orderByDesc('id')
+        ->paginate($request->get('per_page', 10));
+
+    $teachers->getCollection()->transform(function ($teacher) {
+        return $this->getFullTeacherData($teacher);
+    });
+
+    return response()->json([
+        'success' => true,
+        'data' => $teachers->items(),
+        'pagination' => [
+            'current_page' => $teachers->currentPage(),
+            'last_page' => $teachers->lastPage(),
+            'per_page' => $teachers->perPage(),
+            'total' => $teachers->total(),
+        ],
+    ]);
+}
+
 
 
 

@@ -122,6 +122,7 @@ class AvailabilityController extends Controller
 
         $teacherId = $request->user()->id;
         $createdSlots = [];
+        $failedDuplicates = [];
 
         // Accept times in formats like "9:00 AM", "09:00", etc.
         $timeFormats = ['g:i A', 'h:i A', 'H:i', 'G:i'];
@@ -157,6 +158,40 @@ class AvailabilityController extends Controller
                 $startTime = $parsed->format('H:i');
                 $endTime = $parsed->copy()->addHour()->format('H:i');
 
+                // Check for duplicate: same teacher + day + start_time
+                // If course_id or order_id is provided, also check those
+                $duplicateQuery = AvailabilitySlot::where('teacher_id', $teacherId)
+                    ->where('day_number', (int)$day)
+                    ->where('start_time', $startTime);
+
+                // If course_id is provided, check for duplicate within same course
+                if ($request->filled('course_id')) {
+                    $duplicateQuery->where('course_id', $request->course_id);
+                }
+
+                // If order_id is provided, check for duplicate within same order
+                if ($request->filled('order_id')) {
+                    $duplicateQuery->where('order_id', $request->order_id);
+                }
+
+                // If neither course_id nor order_id is provided, check across all personal slots
+                // (slots with no specific course or order)
+                if (!$request->filled('course_id') && !$request->filled('order_id')) {
+                    $duplicateQuery->whereNull('course_id')
+                                   ->whereNull('order_id');
+                }
+
+                $exists = $duplicateQuery->exists();
+
+                if ($exists) {
+                    $failedDuplicates[] = [
+                        'day' => (int)$day,
+                        'time' => $startTime,
+                        'reason' => 'Time slot already exists for this day'
+                    ];
+                    continue; // Skip this time
+                }
+
                 $slot = AvailabilitySlot::create([
                     'teacher_id' => $teacherId,
                     'course_id' => $request->course_id,
@@ -172,11 +207,21 @@ class AvailabilityController extends Controller
             }
         }
 
-        return response()->json([
+        // Return response with created slots and any duplicates that were skipped
+        $response = [
             'success' => true,
-            'message' => 'success',
-            'data' => $createdSlots
-        ]);
+            'message' => count($createdSlots) > 0 ? 'Time slots created successfully' : 'No new time slots created',
+            'data' => $createdSlots,
+        ];
+
+        if (!empty($failedDuplicates)) {
+            $response['skipped'] = $failedDuplicates;
+            $response['message'] = count($createdSlots) > 0 
+                ? 'Some duplicate time slots were skipped' 
+                : 'All time slots were duplicates and were skipped';
+        }
+
+        return response()->json($response);
     }
 
     /**
@@ -225,6 +270,8 @@ class AvailabilityController extends Controller
 
             return DB::transaction(function () use ($request, $teacherId, $timeFormats) {
                 $created = [];
+                $failedDuplicates = [];
+                
                 foreach ($request->available_times as $entry) {
                     $day = $entry['day'] ?? $entry['day_number'] ?? null;
                     if (!$day) continue;
@@ -248,8 +295,37 @@ class AvailabilityController extends Controller
                             }
                         }
                         if (!$parsed) continue;
+                        
                         $startTime = $parsed->format('H:i');
                         $endTime = $parsed->copy()->addHour()->format('H:i');
+
+                        // Check for duplicate within the same scope (same teacher, day, start_time)
+                        // considering course_id and order_id
+                        $duplicateQuery = AvailabilitySlot::where('teacher_id', $teacherId)
+                            ->where('day_number', (int)$day)
+                            ->where('start_time', $startTime);
+
+                        if ($request->filled('course_id')) {
+                            $duplicateQuery->where('course_id', $request->course_id);
+                        }
+
+                        if ($request->filled('order_id')) {
+                            $duplicateQuery->where('order_id', $request->order_id);
+                        }
+
+                        if (!$request->filled('course_id') && !$request->filled('order_id')) {
+                            $duplicateQuery->whereNull('course_id')
+                                           ->whereNull('order_id');
+                        }
+
+                        if ($duplicateQuery->exists()) {
+                            $failedDuplicates[] = [
+                                'day' => (int)$day,
+                                'time' => $startTime,
+                                'reason' => 'Time slot already exists for this day'
+                            ];
+                            continue;
+                        }
 
                         $slot = AvailabilitySlot::create([
                             'teacher_id' => $teacherId,
@@ -266,7 +342,17 @@ class AvailabilityController extends Controller
                     }
                 }
 
-                return response()->json(['success' => true, 'message' => 'Availability synced', 'data' => $created]);
+                $response = [
+                    'success' => true,
+                    'message' => 'Availability synced',
+                    'data' => $created
+                ];
+
+                if (!empty($failedDuplicates)) {
+                    $response['skipped'] = $failedDuplicates;
+                }
+
+                return response()->json($response);
             });
         }
 
@@ -299,6 +385,38 @@ class AvailabilityController extends Controller
                 $data['end_time'] = $parsed->copy()->addHour()->format('H:i');
             } else {
                 return response()->json(['success' => false, 'message' => 'Invalid start_time format'], 422);
+            }
+        }
+
+        // Check for duplicate only if changing day_number or start_time
+        if (isset($data['day_number']) || isset($data['start_time'])) {
+            $checkDay = $data['day_number'] ?? $slot->day_number;
+            $checkTime = $data['start_time'] ?? $slot->start_time;
+
+            $duplicateQuery = AvailabilitySlot::where('teacher_id', $teacherId)
+                ->where('day_number', (int)$checkDay)
+                ->where('start_time', $checkTime)
+                ->where('id', '!=', $id); // Exclude current slot
+
+            // Check within same course if applicable
+            if (isset($data['course_id'])) {
+                $duplicateQuery->where('course_id', $data['course_id']);
+            } elseif ($slot->course_id) {
+                $duplicateQuery->where('course_id', $slot->course_id);
+            }
+
+            // Check within same order if applicable
+            if (isset($data['order_id'])) {
+                $duplicateQuery->where('order_id', $data['order_id']);
+            } elseif ($slot->order_id) {
+                $duplicateQuery->where('order_id', $slot->order_id);
+            }
+
+            if ($duplicateQuery->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'A time slot already exists for this teacher on day ' . $checkDay . ' at ' . $checkTime
+                ], 422);
             }
         }
 
