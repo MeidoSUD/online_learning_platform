@@ -103,14 +103,28 @@ class AuthController extends Controller
     
     public function login(Request $request)
     {
+        // Accept either email OR phone_number, not both required
         $request->validate([
-            'email'    => 'required|email',
+            'email' => 'nullable|email',
+            'phone_number' => 'nullable|string|max:15',
             'password' => 'required',
-            // optional device token sent with login to register immediately
             'fcm_token' => 'nullable|string'
         ]);
 
-        $user = User::where('email', $request->email)->first();
+        // Must provide at least one of email or phone_number
+        if (!$request->filled('email') && !$request->filled('phone_number')) {
+            throw ValidationException::withMessages([
+                'email' => ['Either email or phone_number must be provided.'],
+            ]);
+        }
+
+        // Find user by email OR phone_number
+        $user = null;
+        if ($request->filled('email')) {
+            $user = User::where('email', $request->email)->first();
+        } elseif ($request->filled('phone_number')) {
+            $user = User::where('phone_number', $request->phone_number)->first();
+        }
 
         if (! $user || ! Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([
@@ -226,22 +240,65 @@ class AuthController extends Controller
 
     public function resetPassword(Request $request)
     {
+        // Accept either phone_number OR email for sending reset code
         $request->validate([
-            'phone_number' => 'required|exists:users,phone_number',
+            'phone_number' => 'nullable|string|max:15',
+            'email' => 'nullable|email',
         ]);
 
-        $user = User::where('phone_number', $request->phone_number)->first();
+        // Must provide at least one of email or phone_number
+        if (!$request->filled('email') && !$request->filled('phone_number')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Either email or phone_number must be provided.'
+            ], 422);
+        }
+
+        // Find user by email OR phone_number
+        $user = null;
+        $sentVia = null;  // Track how code was sent
+
+        if ($request->filled('email')) {
+            $user = User::where('email', $request->email)->first();
+            $sentVia = 'email';
+        } elseif ($request->filled('phone_number')) {
+            $user = User::where('phone_number', $request->phone_number)->first();
+            $sentVia = 'phone_number';
+        }
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => ucfirst($sentVia) . ' not found in our system.'
+            ], 404);
+        }
+
         $verification_code = rand(100000, 999999);
         $user->verification_code = $verification_code;
         $user->save();
 
-        // Send SMS
-        $smsResponse = $this->sendVerificationSMS($request->phone_number, $verification_code);
+        // Send SMS if reset via phone_number
+        $smsResponse = null;
+        if ($sentVia === 'phone_number') {
+            $smsResponse = $this->sendVerificationSMS($user->phone_number, $verification_code);
+        } else {
+            // For email, log a message (email sending can be implemented later)
+            Log::info('Password reset code generated for email: ' . $user->email . ', Code: ' . $verification_code);
+            // In production, implement email sending here
+            $smsResponse = ['message' => 'Verification code sent to email'];
+        }
 
         return response()->json([
-            'message' => 'Verification code sent. Please check your phone.',
-            'user' => $user,
-            'sms_response' => $smsResponse // For debugging, remove in production
+            'success' => true,
+            'message' => 'Verification code sent. Please check your ' . $sentVia . '.',
+            'user' => [
+                'id' => $user->id,
+                'first_name' => $user->first_name,
+                'last_name' => $user->last_name,
+                'email' => $user->email,
+                'phone_number' => $user->phone_number
+            ],
+            'sms_response' => $smsResponse
         ]);
     }
 

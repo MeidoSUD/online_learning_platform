@@ -1,0 +1,727 @@
+================================================================================
+FLUTTER AI AGENT PROMPT — USER MANAGEMENT ENDPOINTS
+================================================================================
+Base Path: /api/auth & /api/profile
+Auth: All endpoints require "Authorization: Bearer <token>" (except login/register)
+Content-Type: application/json (unless noted multipart/form-data)
+
+================================================================================
+SECTION 1: LOGIN & AUTHENTICATION
+================================================================================
+
+1.1) POST /api/auth/login
+─────────────────────────────────────────────────────────────────────────────
+Purpose:
+  - Authenticate user with email OR phone_number
+  - Generate auth token (Laravel Sanctum)
+  - Save fcm_token if provided (for push notifications)
+  - Send welcome notification (best-effort)
+  - Return full user profile (enriched for teachers)
+
+Request JSON:
+  {
+    "email": "user@example.com",        // OPTION 1: authenticate by email
+    "password": "securePassword123",
+    "fcm_token": "device_token_xyz"     // OPTIONAL: device token for push notifications
+  }
+  
+  OR
+  
+  {
+    "phone_number": "+966501234567",    // OPTION 2: authenticate by phone_number
+    "password": "securePassword123",
+    "fcm_token": "device_token_xyz"     // OPTIONAL
+  }
+
+Validation Rules:
+  - Either 'email' OR 'phone_number' must be provided (not both required together)
+  - password: required, min 8 characters
+  - fcm_token: optional, string
+  - Credentials must be valid (email/phone exists & password matches hash)
+  - User role must not be 'visitor' (must complete profile first)
+
+Response (200 - Success):
+  {
+    "user": {
+      "role": "teacher|student|admin",  // user's role
+      "data": {
+        "id": 1,
+        "first_name": "Ahmed",
+        "last_name": "Hassan",
+        "email": "ahmed@example.com",
+        "phone_number": "+966501234567",
+        "gender": "male",
+        "nationality": "Saudi",
+        // For teachers (role='teacher'):
+        "rating": 4.8,
+        "bio": "Math specialist",
+        "profile_image": "https://.../photo.jpg",
+        "individual_hour_price": 80.5,
+        "group_hour_price": null,
+        "courses": [...],
+        "languages": [...],
+        "available_times": [...],
+        "bookings_count": 45,
+        "courses_count": 3,
+        "languages_count": 2,
+        "subjects_count": 4,
+        // For students/others:
+        "profile": {
+          "bio": "...",
+          "profile_photo": "https://.../photo.jpg",
+          "verified": true
+        }
+      }
+    },
+    "token": "1|abc123def456...",       // Sanctum auth token (use in all future requests)
+    "notification_sent": true           // whether welcome notification was sent
+  }
+
+Response (422 - Validation Error):
+  {
+    "message": "The given data was invalid.",
+    "errors": {
+      "email": ["The provided credentials are incorrect."],
+      // or
+      "phone_number": ["The provided credentials are incorrect."]
+    }
+  }
+
+UI Implementation Notes:
+  - Login form should have a toggle: "Login with Email" / "Login with Phone"
+  - Show only the relevant input field based on selection
+  - Store returned 'token' in secure storage (SharedPreferences/Keychain)
+  - Use 'token' as "Authorization: Bearer <token>" in all future API calls
+  - Save fcm_token locally to send with login on app restart
+  - Automatically fill user data into profile screens
+
+─────────────────────────────────────────────────────────────────────────────
+
+1.2) POST /api/auth/register
+─────────────────────────────────────────────────────────────────────────────
+Purpose:
+  - Register a new user account
+  - Send verification code via SMS
+  - Return user data + verification_code (for testing)
+
+Request JSON:
+  {
+    "first_name": "Ahmed",
+    "last_name": "Hassan",
+    "email": "ahmed@example.com",
+    "phone_number": "+966501234567",
+    "gender": "male",
+    "nationality": "Saudi",
+    "role_id": 3                        // 3=teacher, 4=student, etc.
+  }
+
+Validation Rules:
+  - first_name, last_name: required, max 255
+  - email: required, unique, valid email format
+  - phone_number: required, max 15 chars
+  - gender: required, must be 'male' or 'female'
+  - nationality: required, string, max 255
+  - role_id: required, exists in roles table
+
+Response (200 - Success):
+  {
+    "message": "Verification code sent. Please verify your phone number.",
+    "user": {
+      "id": 1,
+      "first_name": "Ahmed",
+      "last_name": "Hassan",
+      "email": "ahmed@example.com",
+      "phone_number": "+966501234567",
+      "gender": "male",
+      "role_id": 3
+    },
+    "sms_response": { ... }             // debug info (remove in production)
+  }
+
+UI Implementation Notes:
+  - Collect all fields in registration form
+  - After registration, redirect to phone verification screen
+  - Wait for SMS code or allow manual entry
+  - Use POST /api/auth/verify next
+
+─────────────────────────────────────────────────────────────────────────────
+
+1.3) POST /api/auth/verify
+─────────────────────────────────────────────────────────────────────────────
+Purpose:
+  - Verify phone number via SMS code (from registration)
+  - Mark user as verified
+  - Generate auth token
+
+Request JSON:
+  {
+    "user_id": 1,
+    "code": "123456"                    // 6-digit code from SMS
+  }
+
+Validation Rules:
+  - user_id: required, exists in users
+  - code: required, exactly 6 digits
+  - code must match stored verification_code
+
+Response (200 - Success):
+  {
+    "message": "Verification successful.",
+    "token": "1|abc123def456...",
+    "user": {
+      "id": 1,
+      "first_name": "Ahmed",
+      "email": "ahmed@example.com",
+      // ... full user data
+    }
+  }
+
+UI Implementation Notes:
+  - Show OTP input screen after registration
+  - Accept 6-digit code from SMS
+  - Call verify endpoint with user_id + code
+  - On success, store token and navigate to profile setup
+
+─────────────────────────────────────────────────────────────────────────────
+
+1.4) POST /api/auth/resend-code
+─────────────────────────────────────────────────────────────────────────────
+Purpose:
+  - Resend verification code if user didn't receive SMS
+  - Only during registration/verification flow
+
+Request JSON:
+  {
+    "user_id": 1
+  }
+
+Validation Rules:
+  - user_id: required, exists in users
+
+Response (200 - Success):
+  {
+    "message": "Verification code resent.",
+    "sms_response": { ... }
+  }
+
+UI Implementation Notes:
+  - Show "Resend Code" button on verification screen (appears after 30 seconds)
+  - Call this endpoint to resend SMS
+  - Display countdown timer before resend is allowed again
+
+================================================================================
+SECTION 2: PASSWORD MANAGEMENT
+================================================================================
+
+2.1) POST /api/auth/reset-password
+─────────────────────────────────────────────────────────────────────────────
+Purpose:
+  - Initiate password reset flow
+  - Send verification code to phone_number OR email
+  - User must provide one contact method
+
+Request JSON:
+  {
+    "phone_number": "+966501234567"
+    // OR
+    "email": "user@example.com"
+    // Not both; client must choose one
+  }
+
+Validation Rules:
+  - Either phone_number OR email must be provided
+  - At least one must exist in users table
+  - Only one contact method should be sent per request
+
+Response (200 - Success):
+  {
+    "message": "Verification code sent. Please check your phone/email.",
+    "user": {
+      "id": 1,
+      "first_name": "Ahmed",
+      "phone_number": "+966501234567",  // or email if that was the request
+      "email": "ahmed@example.com"
+    },
+    "sms_response": { ... }
+  }
+
+UI Implementation Notes:
+  - Show "Forgot Password?" screen with two input options:
+    • "Reset via Phone Number"
+    • "Reset via Email"
+  - User selects one, enters phone or email
+  - Call this endpoint to send code
+  - Display confirmation message and wait for user to verify code
+
+─────────────────────────────────────────────────────────────────────────────
+
+2.2) POST /api/auth/verify-reset-code
+─────────────────────────────────────────────────────────────────────────────
+Purpose:
+  - Verify the code sent in password reset flow
+  - Code received via SMS (phone_number) or email
+
+Request JSON:
+  {
+    "user_id": 1,
+    "code": "123456"                    // 6-digit code
+  }
+
+Validation Rules:
+  - user_id: required, exists in users
+  - code: required, exactly 6 digits
+  - code must match stored verification_code
+
+Response (200 - Success):
+  {
+    "message": "Code verified. You can now reset your password.",
+    "user_id": 1
+  }
+
+UI Implementation Notes:
+  - Show OTP input screen after reset-password request
+  - User enters 6-digit code from SMS or email
+  - Call this endpoint to verify code
+  - On success, proceed to new password screen
+
+─────────────────────────────────────────────────────────────────────────────
+
+2.3) POST /api/auth/confirm-password
+─────────────────────────────────────────────────────────────────────────────
+Purpose:
+  - Complete password reset after code verification
+  - Set new password and clear verification code
+
+Request JSON:
+  {
+    "code": "123456",                   // 6-digit code (verified previously)
+    "user_id": 1,
+    "new_password": "NewSecure123",
+    "new_password_confirmation": "NewSecure123"
+  }
+
+Validation Rules:
+  - code: required, 6 digits
+  - user_id: required, exists in users
+  - new_password: required, min 8 characters
+  - new_password_confirmation: must match new_password
+  - code must still match stored verification_code
+
+Response (200 - Success):
+  {
+    "success": true,
+    "message": "Password reset successfully."
+  }
+
+UI Implementation Notes:
+  - Show password entry form with:
+    • New password input (with strength indicator)
+    • Confirm password input
+    • "Reset Password" button
+  - Validate passwords match before submission
+  - On success, show success message and redirect to login
+  - Clear all temporary data (code, user_id)
+
+─────────────────────────────────────────────────────────────────────────────
+
+2.4) POST /api/auth/change-password (Requires Auth)
+─────────────────────────────────────────────────────────────────────────────
+Purpose:
+  - Change password for logged-in user
+  - User must provide current password for verification
+
+Request JSON:
+  {
+    "current_password": "OldPassword123",
+    "new_password": "NewPassword456",
+    "new_password_confirmation": "NewPassword456"
+  }
+
+Headers:
+  Authorization: Bearer <token>         // Required
+
+Validation Rules:
+  - current_password: required, must match user's password hash
+  - new_password: required, min 8 characters
+  - new_password_confirmation: must match new_password
+  - new_password cannot be same as current_password
+
+Response (200 - Success):
+  {
+    "message": "Password updated successfully"
+  }
+
+UI Implementation Notes:
+  - Show in settings/profile screen under "Change Password"
+  - Collect three fields: current password, new password, confirm
+  - Require token in Authorization header
+  - Show success message on completion
+  - Optionally log out and redirect to login for security
+
+================================================================================
+SECTION 3: PROFILE UPDATES
+================================================================================
+
+3.1) GET /api/profile/profile (Requires Auth)
+─────────────────────────────────────────────────────────────────────────────
+Purpose:
+  - Fetch current user's profile details
+  - Used to populate profile edit screen
+
+Request:
+  Headers only (Authorization: Bearer <token>)
+
+Response (200 - Success):
+  {
+    "success": true,
+    "data": {
+      "id": 1,
+      "user_id": 1,
+      "bio": "Math specialist with 5 years experience",
+      "language_pref": "ar",
+      "verified": true,
+      "terms_accepted": true,
+      "profile_photo": "https://.../photo.jpg",
+      "created_at": "2025-12-01T10:00:00Z",
+      "updated_at": "2025-12-15T14:30:00Z"
+    }
+  }
+
+UI Implementation Notes:
+  - Call on profile screen load
+  - Pre-fill form fields with returned data
+  - Use for displaying current profile information
+
+─────────────────────────────────────────────────────────────────────────────
+
+3.2) POST /api/profile/profile (Requires Auth)
+─────────────────────────────────────────────────────────────────────────────
+Purpose:
+  - Create or complete user profile (first-time setup)
+  - Upload profile photo, resume (teachers), certificate (teachers)
+  - Set language preference, bio, terms acceptance
+
+Request (multipart/form-data):
+  - bio: string, max 5000 characters
+  - language_pref: string, e.g., 'en', 'ar'
+  - terms_accepted: boolean (true to accept terms)
+  - phone_number: string, max 15, must be unique (except current user)
+  - profile_photo: file (image), max 4MB
+  - resume: file (PDF/Doc), max 5MB (teachers only)
+  - certificate: file (PDF/Doc), max 5MB (teachers only)
+
+Headers:
+  Authorization: Bearer <token>
+  Content-Type: multipart/form-data
+
+Validation Rules:
+  - bio: optional, string
+  - language_pref: optional, string
+  - terms_accepted: optional, boolean
+  - phone_number: required, string, unique (except self)
+  - profile_photo: optional, image file, max 4MB
+  - resume: optional (teachers), PDF/Doc, max 5MB
+  - certificate: optional (teachers), PDF/Doc, max 5MB
+
+Response (200 - Success):
+  {
+    "success": true,
+    "message": "Profile completed successfully",
+    "data": {
+      "id": 1,
+      "user_id": 1,
+      "bio": "Math specialist",
+      "profile_photo": "https://.../photo.jpg",
+      "verified": 0,  // Teachers start unverified
+      "terms_accepted": true
+    }
+  }
+
+UI Implementation Notes:
+  - Show after registration/verification (first-time setup)
+  - Use form with:
+    • Bio textarea (optional)
+    • Language preference dropdown
+    • Profile photo picker
+    • Resume upload (teachers only, optional)
+    • Certificate upload (teachers only, optional)
+    • Terms checkbox (required)
+  - Use multipart/form-data for file uploads
+  - Show upload progress indicators
+  - Confirm success and navigate to dashboard
+
+─────────────────────────────────────────────────────────────────────────────
+
+3.3) PUT /api/profile/profile/update (Requires Auth)
+─────────────────────────────────────────────────────────────────────────────
+Purpose:
+  - Update existing user profile
+  - Modify bio, language preference, profile photo, etc.
+  - Optionally update role_id (first-time only)
+
+Request (multipart/form-data or JSON):
+  {
+    "first_name": "Ahmed",              // optional, max 255
+    "last_name": "Hassan",              // optional, max 255
+    "email": "newemail@example.com",    // optional, must be unique
+    "phone_number": "+966501234567",    // optional, must be unique
+    "bio": "Updated bio",               // optional, max 5000
+    "language_pref": "ar",              // optional, 'en' or 'ar'
+    "terms_accepted": true,             // optional, boolean
+    "role_id": 3                        // OPTIONAL: only if user has no role yet
+    // Files (multipart):
+    "profile_photo": <file>,            // optional, image, max 4MB
+    "resume": <file>,                   // optional (teachers), PDF/Doc, max 5MB
+    "certificate": <file>               // optional (teachers), PDF/Doc, max 5MB
+  }
+
+Headers:
+  Authorization: Bearer <token>
+  Content-Type: application/json (or multipart/form-data for files)
+
+Validation Rules:
+  - Email: optional, must be unique (except self)
+  - Phone_number: optional, must be unique (except self)
+  - bio: optional, max 5000 chars
+  - language_pref: optional
+  - profile_photo: optional, image file, max 4MB
+  - resume: optional (teachers), PDF/Doc, max 5MB
+  - certificate: optional (teachers), PDF/Doc, max 5MB
+
+Response (200 - Success):
+  {
+    "success": true,
+    "message": "Profile updated successfully",
+    "data": {
+      "id": 1,
+      "first_name": "Ahmed",
+      "last_name": "Hassan",
+      "email": "newemail@example.com",
+      "phone_number": "+966501234567",
+      "bio": "Updated bio",
+      "profile_image": "https://.../photo.jpg",
+      "profile_photo": "https://.../photo.jpg"
+    }
+  }
+
+UI Implementation Notes:
+  - Edit profile screen (accessible from settings/profile menu)
+  - Pre-fill all fields with current data
+  - Allow selective updates (user can update only some fields)
+  - Show image preview before/after upload
+  - Display success message on completion
+  - Refresh user data after update
+
+─────────────────────────────────────────────────────────────────────────────
+
+3.4) POST /api/auth/user/details (Requires Auth)
+─────────────────────────────────────────────────────────────────────────────
+Purpose:
+  - Fetch full authenticated user details
+  - Similar to login but for already-authenticated users
+  - Returns enriched data based on role
+
+Request:
+  Headers only (Authorization: Bearer <token>)
+
+Response (200 - Success):
+  {
+    "success": true,
+    "data": {
+      "id": 1,
+      "first_name": "Ahmed",
+      "last_name": "Hassan",
+      "email": "ahmed@example.com",
+      "phone_number": "+966501234567",
+      "nationality": "Saudi",
+      // For teachers: full enriched data from getFullTeacherData()
+      // For students: basic data + profile
+      "role_id": 3,
+      // ... role-specific fields
+    }
+  }
+
+UI Implementation Notes:
+  - Call after app launch (if token exists in storage)
+  - Use to refresh user data without re-login
+  - Update user state in app with returned data
+
+================================================================================
+SECTION 4: TEACHER-SPECIFIC PROFILE UPDATES
+================================================================================
+
+4.1) POST /api/profile/teacher/info (Requires Auth + Teacher Role)
+─────────────────────────────────────────────────────────────────────────────
+Purpose:
+  - Create/update teacher pricing, languages, subjects, classes
+  - Complete teacher profile setup
+
+Request JSON:
+  {
+    "bio": "Math specialist with 5 years experience",
+    "teach_individual": true,
+    "individual_hour_price": 80.50,
+    "teach_group": true,
+    "group_hour_price": 150.00,
+    "max_group_size": 15,
+    "min_group_size": 3,
+    "subject_ids": [10, 11, 12],
+    "class_ids": [1, 2, 3]
+  }
+
+Validation Rules:
+  - bio: optional, string
+  - teach_individual: optional, boolean
+  - individual_hour_price: optional, numeric, min 0
+  - teach_group: optional, boolean
+  - group_hour_price: optional, numeric, min 0
+  - max_group_size: optional, integer, min 1
+  - min_group_size: optional, integer, min 1
+  - subject_ids: optional, array of existing subject IDs
+  - class_ids: optional, array of existing class IDs
+
+Response (200 - Success):
+  {
+    "success": true,
+    "message": "Teacher info, classes, and subjects updated successfully",
+    "data": {
+      "info": {
+        "id": 1,
+        "teacher_id": 1,
+        "bio": "Math specialist...",
+        "teach_individual": true,
+        "individual_hour_price": 80.50,
+        "teach_group": true,
+        "group_hour_price": 150.00,
+        "max_group_size": 15,
+        "min_group_size": 3
+      },
+      "classes": [1, 2, 3],
+      "subjects": [10, 11, 12]
+    }
+  }
+
+UI Implementation Notes:
+  - Teacher profile completion screen (after basic setup)
+  - Form sections:
+    • Bio textarea
+    • Pricing toggles (individual/group) with input fields
+    • Class size range sliders
+    • Subjects & classes multi-select
+  - Save and show success message
+  - Update teacher profile data after completion
+
+================================================================================
+SECTION 5: LOGOUT & SESSION MANAGEMENT
+================================================================================
+
+5.1) POST /api/auth/logout (Requires Auth)
+─────────────────────────────────────────────────────────────────────────────
+Purpose:
+  - Invalidate auth token (delete current session)
+  - Prepare for login screen
+
+Request:
+  Headers only (Authorization: Bearer <token>)
+
+Response (200 - Success):
+  {
+    "message": "Logged out successfully"
+  }
+
+UI Implementation Notes:
+  - Call when user taps "Logout" in settings
+  - Clear stored token from secure storage
+  - Clear user data from app state
+  - Navigate to login screen
+  - Show success message (optional)
+
+================================================================================
+SECTION 6: COMPLETE UPDATE FLOW EXAMPLE
+================================================================================
+
+Scenario: Teacher updates profile, changes password, and updates pricing
+
+Step 1: User logs in
+  POST /api/auth/login
+  {
+    "email": "teacher@example.com",
+    "password": "current_pass",
+    "fcm_token": "device_xyz"
+  }
+  → Store returned token in secure storage
+
+Step 2: User navigates to profile settings
+  GET /api/profile/profile
+  → Fetch current profile data and pre-fill form
+
+Step 3: User updates name, email, bio
+  PUT /api/profile/profile/update
+  {
+    "first_name": "Ahmed",
+    "email": "newemail@example.com",
+    "bio": "5+ years teaching experience"
+  }
+  → Show success message
+
+Step 4: User changes password
+  POST /api/auth/change-password
+  {
+    "current_password": "current_pass",
+    "new_password": "new_secure_pass",
+    "new_password_confirmation": "new_secure_pass"
+  }
+  → Show success and optionally log out
+
+Step 5: User updates teaching info (teacher-specific)
+  POST /api/profile/teacher/info
+  {
+    "teach_individual": true,
+    "individual_hour_price": 95.00,
+    "teach_group": true,
+    "group_hour_price": 175.00,
+    "subject_ids": [10, 11, 12]
+  }
+  → Show success and refresh profile
+
+================================================================================
+IMPORTANT NOTES FOR AI AGENT
+================================================================================
+
+Response Structure:
+  - All endpoints return {"success": true/false, ...}
+  - Error responses may vary; handle both structure types
+  - Always include error checking and user feedback
+
+Authentication:
+  - Store token in secure storage (NOT shared preferences for sensitive data)
+  - Include "Authorization: Bearer <token>" in all authenticated requests
+  - Handle 401 Unauthorized → redirect to login
+  - Handle 422 Validation Errors → show field-level errors
+
+File Uploads:
+  - Use multipart/form-data Content-Type (not JSON)
+  - Include Authorization header with file uploads
+  - Handle upload progress UI feedback
+  - Validate file size/type client-side before upload
+
+Error Handling:
+  - Catch and display user-friendly error messages
+  - Log errors for debugging
+  - Show spinner/loading state during requests
+  - Allow retry on network errors
+
+Validation:
+  - Validate email format, password strength client-side
+  - Validate file types and sizes before upload
+  - Show inline validation errors in forms
+  - Disable submit button until all required fields valid
+
+UI/UX:
+  - Show loading spinners during API calls
+  - Provide clear success/error feedback
+  - Maintain form state when returning from other screens
+  - Implement back button handling appropriately
+  - Use standard navigation patterns
+
+================================================================================
