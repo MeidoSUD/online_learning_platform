@@ -363,12 +363,12 @@ class UserController extends Controller
 {
     $query = User::where('role_id', 3)
         ->where('is_active', 1)
-        ->with(['teacherInfo', 'services', 'subjects']);
+        ->with(['teacherInfo', 'teacherServices', 'subjects']);
 
     /* =======================
      | Service Filter
      ======================= */
-    if ($request->filled('service')) {
+    if ($request->filled('teacherServices')) {
         $service = $request->service;
 
         $query->whereHas('services', function ($q) use ($service) {

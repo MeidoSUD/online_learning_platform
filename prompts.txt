@@ -637,52 +637,312 @@ UI Implementation Notes:
   - Show success message (optional)
 
 ================================================================================
-SECTION 6: COMPLETE UPDATE FLOW EXAMPLE
+SECTION 6: TEACHER COURSE MANAGEMENT
 ================================================================================
 
-Scenario: Teacher updates profile, changes password, and updates pricing
+6.1) POST /api/teacher/courses (Create Course)
+─────────────────────────────────────────────────────────────────────────────
+Purpose:
+  - Teacher creates a new course
+  - Upload course cover image
+  - Define available time slots for the course
+  - Validate no conflicts with personal availability
 
-Step 1: User logs in
-  POST /api/auth/login
+Request (multipart/form-data):
+  - name: string, required, max 255
+  - description: string, optional, max 5000
+  - course_type: string, required, one of: 'single', 'package', 'subscription'
+  - price: number, optional, min 0, max 999999.99
+  - duration_hours: integer, optional, min 1, max 1000
+  - status: string, required, one of: 'draft', 'published'
+  - category_id: integer, optional, exists in course_categories
+  - cover_image: file, optional, image type, max 4MB
+  - available_slots: array of objects, required
+    • Each object: { "day": 1..7, "times": ["09:00", "14:00", "15:30"] }
+    • day: integer, 1=Sunday to 7=Saturday
+    • times: array of time strings (formats: "H:i", "g:i A", "h:i A")
+
+Headers:
+  Authorization: Bearer <token>
+  Content-Type: multipart/form-data
+
+Response (201 - Success):
   {
-    "email": "teacher@example.com",
-    "password": "current_pass",
-    "fcm_token": "device_xyz"
+    "success": true,
+    "message": "Course created successfully",
+    "data": {
+      "id": 123,
+      "teacher_id": 1,
+      "name": "Algebra Basics",
+      "course_type": "single",
+      "price": 250.00,
+      "status": "published",
+      "availabilitySlots": [ ... ]
+    }
   }
-  → Store returned token in secure storage
 
-Step 2: User navigates to profile settings
-  GET /api/profile/profile
-  → Fetch current profile data and pre-fill form
-
-Step 3: User updates name, email, bio
-  PUT /api/profile/profile/update
+Response (422 - Validation Error):
   {
-    "first_name": "Ahmed",
-    "email": "newemail@example.com",
-    "bio": "5+ years teaching experience"
+    "message": "The given data was invalid.",
+    "errors": {
+      "name": ["The name field is required."],
+      "available_slots": ["Each available_slots entry must include a valid day (1..7)."]
+    }
   }
-  → Show success message
 
-Step 4: User changes password
-  POST /api/auth/change-password
-  {
-    "current_password": "current_pass",
-    "new_password": "new_secure_pass",
-    "new_password_confirmation": "new_secure_pass"
-  }
-  → Show success and optionally log out
+UI Implementation Notes:
+  - Show course creation form with all fields
+  - "Add Time Slot" button to add more times
+  - Image picker for cover photo
+  - Status toggle: Draft / Published
+  - Show loading while uploading image
 
-Step 5: User updates teaching info (teacher-specific)
-  POST /api/profile/teacher/info
+─────────────────────────────────────────────────────────────────────────────
+
+6.2) PUT /api/teacher/courses/{id} (Update Course)
+─────────────────────────────────────────────────────────────────────────────
+Purpose:
+  - Teacher updates existing course details
+  - Change name, description, pricing, status
+  - Update available time slots
+
+Request JSON:
   {
-    "teach_individual": true,
-    "individual_hour_price": 95.00,
-    "teach_group": true,
-    "group_hour_price": 175.00,
-    "subject_ids": [10, 11, 12]
+    "name": "Advanced Algebra",
+    "price": 300.00,
+    "status": "published",
+    "service_id": 4,
+    "available_slots": [
+      { "day": 1, "times": ["09:00", "14:00", "16:00"] },
+      { "day": 3, "times": ["10:00", "15:00"] }
+    ]
   }
-  → Show success and refresh profile
+
+Headers:
+  Authorization: Bearer <token>
+  Content-Type: application/json
+
+Response (200 - Success):
+  {
+    "success": true,
+    "message": "Course updated successfully",
+    "data": {
+      "id": 123,
+      "name": "Advanced Algebra",
+      "price": 300.00,
+      "status": "published"
+    }
+  }
+
+UI Implementation Notes:
+  - Pre-fill form with current course data
+  - Allow editing time slots
+  - Show success message after update
+
+─────────────────────────────────────────────────────────────────────────────
+
+6.3) DELETE /api/teacher/courses/{id} (Delete Course)
+─────────────────────────────────────────────────────────────────────────────
+Purpose:
+  - Teacher deletes their own course
+  - Prevents deletion if students have confirmed bookings
+
+Request:
+  Headers only (Authorization: Bearer <token>)
+
+Response (200 - Success):
+  {
+    "success": true,
+    "message": "Course deleted successfully"
+  }
+
+Response (403 - Forbidden):
+  {
+    "success": false,
+    "message": "Cannot delete course: students have already booked and confirmed."
+  }
+
+UI Implementation Notes:
+  - Show delete confirmation dialog
+  - Remove course from list after successful deletion
+
+─────────────────────────────────────────────────────────────────────────────
+
+6.4) GET /api/teacher/courses (Get My Courses)
+─────────────────────────────────────────────────────────────────────────────
+Purpose:
+  - Fetch all courses created by logged-in teacher
+
+Request:
+  Headers only (Authorization: Bearer <token>)
+
+Response (200 - Success):
+  {
+    "success": true,
+    "data": [
+      {
+        "id": 123,
+        "name": "Algebra Basics",
+        "price": 250.00,
+        "status": "published",
+        "students_count": 15,
+        "category": { "id": 5, "name_en": "Mathematics" }
+      }
+    ]
+  }
+
+UI Implementation Notes:
+  - Display courses in list or grid view
+  - Show course cover image, name, price, student count
+  - Add action buttons: Edit, Delete
+
+================================================================================
+SECTION 7: TEACHER WALLET & PAYOUT MANAGEMENT
+================================================================================
+
+7.1) GET /api/teacher/wallet (Get Wallet Balance & History)
+─────────────────────────────────────────────────────────────────────────────
+Purpose:
+  - Fetch teacher's current wallet balance
+  - Get withdrawal request history (paginated)
+
+Request:
+  Headers only (Authorization: Bearer <token>)
+
+Response (200 - Success):
+  {
+    "success": true,
+    "data": {
+      "balance": 1250.50,
+      "withdrawals": {
+        "current_page": 1,
+        "data": [
+          {
+            "id": 10,
+            "amount": 500.00,
+            "status": "completed",
+            "requested_at": "2025-12-20T10:00:00Z"
+          }
+        ],
+        "per_page": 15,
+        "total": 25,
+        "last_page": 2
+      }
+    }
+  }
+
+UI Implementation Notes:
+  - Display wallet balance prominently at top
+  - Show withdrawal history in table/list
+  - Color code status: pending=yellow, completed=green
+
+─────────────────────────────────────────────────────────────────────────────
+
+7.2) POST /api/teacher/wallet/withdraw (Request Withdrawal)
+─────────────────────────────────────────────────────────────────────────────
+Purpose:
+  - Teacher requests withdrawal from wallet balance
+  - Send earnings to specified bank account
+
+Request JSON:
+  {
+    "amount": 500.00,
+    "payment_method_id": 3
+  }
+
+Headers:
+  Authorization: Bearer <token>
+  Content-Type: application/json
+
+Response (201 - Success):
+  {
+    "success": true,
+    "message": "Withdrawal request submitted successfully",
+    "data": {
+      "id": 11,
+      "amount": 500.00,
+      "status": "pending",
+      "remaining_balance": 750.50
+    }
+  }
+
+Response (422 - Validation Error):
+  {
+    "success": false,
+    "message": "Insufficient wallet balance"
+  }
+
+UI Implementation Notes:
+  - Show "Withdraw Funds" form
+  - Amount input field with currency symbol
+  - Dropdown to select payment method
+  - Display available balance prominently
+  - "Max" button to auto-fill with available balance
+
+─────────────────────────────────────────────────────────────────────────────
+
+7.3) GET /api/teacher/wallet/withdrawals (List Withdrawals)
+─────────────────────────────────────────────────────────────────────────────
+Purpose:
+  - Fetch all withdrawal requests (paginated)
+  - Optional filter by status
+
+Request:
+  GET /api/teacher/wallet/withdrawals?status=pending&page=1
+  Headers:
+    Authorization: Bearer <token>
+
+Response (200 - Success):
+  {
+    "success": true,
+    "data": {
+      "current_page": 1,
+      "data": [
+        {
+          "id": 10,
+          "amount": 500.00,
+          "status": "completed",
+          "requested_at": "2025-12-20T10:00:00Z"
+        }
+      ],
+      "per_page": 15
+    }
+  }
+
+UI Implementation Notes:
+  - Display status filter tabs/buttons
+  - Sort by date (newest first)
+
+─────────────────────────────────────────────────────────────────────────────
+
+7.4) DELETE /api/teacher/wallet/withdrawals/{id} (Cancel Withdrawal)
+─────────────────────────────────────────────────────────────────────────────
+Purpose:
+  - Cancel pending withdrawal request
+  - Only pending requests can be cancelled
+
+Request:
+  Headers only (Authorization: Bearer <token>)
+
+Response (200 - Success):
+  {
+    "success": true,
+    "message": "Withdrawal request cancelled successfully",
+    "data": {
+      "id": 10,
+      "status": "cancelled"
+    }
+  }
+
+Response (422 - Cannot Cancel):
+  {
+    "success": false,
+    "message": "Cannot cancel completed withdrawal request"
+  }
+
+UI Implementation Notes:
+  - Show "Cancel" button only if status is "pending"
+  - Display confirmation dialog before canceling
 
 ================================================================================
 IMPORTANT NOTES FOR AI AGENT
@@ -694,7 +954,7 @@ Response Structure:
   - Always include error checking and user feedback
 
 Authentication:
-  - Store token in secure storage (NOT shared preferences for sensitive data)
+  - Store token in secure storage (NOT shared preferences)
   - Include "Authorization: Bearer <token>" in all authenticated requests
   - Handle 401 Unauthorized → redirect to login
   - Handle 422 Validation Errors → show field-level errors

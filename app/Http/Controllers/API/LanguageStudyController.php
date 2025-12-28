@@ -125,6 +125,7 @@ class LanguageStudyController extends Controller
      */
     public function addTeacherLanguages(Request $request): JsonResponse
     {
+        /** @var User $user */
         $user = auth()->user();
         
         // Verify user is a teacher
@@ -156,7 +157,7 @@ class LanguageStudyController extends Controller
             DB::commit();
 
             // Get the updated languages
-            $languages = User::teacherLanguages()->with('language')->where('teacher_id' , $user->id)->get()->map(function ($tl) {
+            $languages = $user->teacherLanguages()->with('language')->get()->map(function ($tl) {
                 return [
                     'id' => $tl->language->id,
                     'name_en' => $tl->language->name_en,
@@ -192,6 +193,7 @@ class LanguageStudyController extends Controller
      */
     public function updateTeacherLanguages(Request $request): JsonResponse
     {
+        /** @var User $user */
         $user = auth()->user();
         
         if ($user->role_id != 3) {
@@ -221,7 +223,7 @@ class LanguageStudyController extends Controller
 
             DB::commit();
 
-            $languages = User::teacherLanguages()->with('language')->where('teacher_id' , $user->id)->get()->map(function ($tl) {
+            $languages = $user->teacherLanguages()->with('language')->get()->map(function ($tl) {
                 return [
                     'id' => $tl->language->id,
                     'name_en' => $tl->language->name_en,
@@ -256,6 +258,7 @@ class LanguageStudyController extends Controller
      */
     public function deleteTeacherLanguage($languageId): JsonResponse
     {
+        /** @var User $user */
         $user = auth()->user();
         
         if ($user->role_id != 3) {
