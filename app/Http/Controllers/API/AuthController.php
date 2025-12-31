@@ -10,7 +10,10 @@ use Illuminate\Validation\ValidationException;
 use App\Models\User;
 use App\Http\Controllers\API\UserController;
 use App\Services\FirebaseNotificationService;
+use App\Helpers\PhoneHelper;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\VerificationCodeMail;
 
 class AuthController extends Controller
 {
@@ -34,17 +37,36 @@ class AuthController extends Controller
             'email'         => 'required|string|email|unique:users',
             'phone_number'  => 'required|string|max:15',
             'gender'        => 'required|in:male,female',
-            'nationality'   => 'required|string|max:255',
+            'nationality'   => 'nullable|string|max:255',
             'role_id'       => 'required',
         ]);
+
+        // Normalize phone number
+        $normalizedPhone = PhoneHelper::normalize($request->phone_number);
+        if (!$normalizedPhone) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid phone number format. Must be a valid KSA phone number.'
+            ], 422);
+        }
+
+        // Check if phone already exists
+        $existingUser = User::where('phone_number', $normalizedPhone)->first();
+        if ($existingUser) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Phone number already registered.'
+            ], 422);
+        }
+
         $password = 'password'; // Default password
-        $verification_code = 999999;//rand(100000, 999999);
+        $verification_code = rand(100000, 999999);
 
         $user = User::create([
             'first_name'    => $request->first_name,
             'last_name'     => $request->last_name,
             'email'         => $request->email,
-            'phone_number'  => $request->phone_number,
+            'phone_number'  => $normalizedPhone,
             'gender'        => $request->gender,
             'nationality'   => $request->nationality,
             'password'      => Hash::make($password),
@@ -52,6 +74,7 @@ class AuthController extends Controller
             'verified'      => false,
             'verification_code' => $verification_code,
         ]);
+
         $user_response = [
             "id" => $user->id,
             "first_name" => $user->first_name,
@@ -61,11 +84,20 @@ class AuthController extends Controller
             "gender" => $user->gender,
             "role_id" => $user->role_id,
         ];
-        // Send SMS
-        $smsResponse = $this->sendVerificationSMS($request->phone_number, $verification_code);
+
+        // Send verification code via SMS (normalize for SMS format without +)
+        $smsPhone = PhoneHelper::normalizeForSMS($normalizedPhone);
+        $smsResponse = $this->sendVerificationSMS($smsPhone, $verification_code);
+
+        // Also send email notification
+        try {
+            Mail::to($user->email)->send(new VerificationCodeMail($user, $verification_code, 'register'));
+        } catch (\Exception $e) {
+            Log::warning('Failed to send verification email: ' . $e->getMessage());
+        }
 
         return response()->json([
-            'message' => 'Verification code sent. Please verify your phone number.',
+            'message' => 'Verification code sent. Please verify via SMS or email.',
             'user' => $user_response,
             'sms_response' => $smsResponse // For debugging, remove in production
         ]);
@@ -73,16 +105,20 @@ class AuthController extends Controller
 
     /**
      * Send SMS using dreams.sa API
+     * Accepts phone in any format and normalizes for SMS (966XXXXXXXXX format)
      */
     protected function sendVerificationSMS($to, $code)
     {
+        // Ensure we have the SMS format (without +)
+        $smsPhone = str_starts_with($to, '+') ? substr($to, 1) : $to;
+        
         $client = new \GuzzleHttp\Client();
         $response = $client->post('https://www.dreams.sa/index.php/api/sendsms/', [
             'form_params' => [
                 'user'       => config('services.sms.user'),
                 'secret_key' => config('services.sms.secret_key'),
                 'sender'     => config('services.sms.sender'),
-                'to'         => $to,
+                'to'         => $smsPhone,
                 'message'   => "Welcome to the Geniuses Family! Your verification code is: $code\n مرحبًا بك في عائلة العباقرة! رمز التحقق الخاص بك هو: $code\n"
             ]
         ]);
@@ -123,7 +159,9 @@ class AuthController extends Controller
         if ($request->filled('email')) {
             $user = User::where('email', $request->email)->first();
         } elseif ($request->filled('phone_number')) {
-            $user = User::where('phone_number', $request->phone_number)->first();
+            // Normalize phone number before querying
+            $normalizedPhone = PhoneHelper::normalize($request->phone_number);
+            $user = User::where('phone_number', $normalizedPhone)->first();
         }
 
         if (! $user || ! Hash::check($request->password, $user->password)) {
@@ -262,7 +300,9 @@ class AuthController extends Controller
             $user = User::where('email', $request->email)->first();
             $sentVia = 'email';
         } elseif ($request->filled('phone_number')) {
-            $user = User::where('phone_number', $request->phone_number)->first();
+            // Normalize phone number before querying
+            $normalizedPhone = PhoneHelper::normalize($request->phone_number);
+            $user = User::where('phone_number', $normalizedPhone)->first();
             $sentVia = 'phone_number';
         }
 
@@ -280,12 +320,18 @@ class AuthController extends Controller
         // Send SMS if reset via phone_number
         $smsResponse = null;
         if ($sentVia === 'phone_number') {
-            $smsResponse = $this->sendVerificationSMS($user->phone_number, $verification_code);
+            // Use normalized phone for SMS
+            $smsPhone = PhoneHelper::normalizeForSMS($user->phone_number);
+            $smsResponse = $this->sendVerificationSMS($smsPhone, $verification_code);
         } else {
-            // For email, log a message (email sending can be implemented later)
-            Log::info('Password reset code generated for email: ' . $user->email . ', Code: ' . $verification_code);
-            // In production, implement email sending here
-            $smsResponse = ['message' => 'Verification code sent to email'];
+            // Send email verification code
+            try {
+                Mail::to($user->email)->send(new VerificationCodeMail($user, $verification_code, 'reset'));
+                $smsResponse = ['message' => 'Verification code sent to email'];
+            } catch (\Exception $e) {
+                Log::warning('Failed to send password reset email: ' . $e->getMessage());
+                $smsResponse = ['message' => 'Email sending failed, please try again.'];
+            }
         }
 
         return response()->json([

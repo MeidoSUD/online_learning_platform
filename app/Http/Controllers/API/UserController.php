@@ -17,6 +17,7 @@ use App\Models\TeacherServices;
 use App\Models\AvailabilitySlot;
 use App\Models\TeacherLanguage;
 use Illuminate\Support\Facades\Log;
+use App\Helpers\PhoneHelper;
 
 class UserController extends Controller
 {
@@ -263,7 +264,33 @@ class UserController extends Controller
         // If user, teacher, update teacher info, classes, subjects if provided
         if ($user->role_id == 4 || $user->role_id == 3) {
             if ($request->hasAny(['first_name', 'last_name', 'email', 'phone_number'])) {
-                $user->update($request->only(['first_name', 'last_name', 'email', 'phone_number']));
+                $updateData = $request->only(['first_name', 'last_name', 'email', 'phone_number']);
+                
+                // Normalize phone number if provided
+                if (isset($updateData['phone_number'])) {
+                    $normalizedPhone = PhoneHelper::normalize($updateData['phone_number']);
+                    if (!$normalizedPhone) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Invalid phone number format. Must be a valid KSA phone number.'
+                        ], 422);
+                    }
+                    
+                    // Check if phone already exists (and it's not the same user)
+                    $existingPhone = User::where('phone_number', $normalizedPhone)
+                        ->where('id', '!=', $user->id)
+                        ->first();
+                    if ($existingPhone) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Phone number already in use by another account.'
+                        ], 422);
+                    }
+                    
+                    $updateData['phone_number'] = $normalizedPhone;
+                }
+                
+                $user->update($updateData);
             }
         }
         if ($user->role_id == 3) {
