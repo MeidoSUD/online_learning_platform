@@ -40,8 +40,8 @@ use App\Models\User;
 use App\Services\AgoraService;
 use Illuminate\Support\Facades\Lang;
 
-
-/*
+use App\Http\Controllers\API\BookingCourseController;
+/*  
 |--------------------------------------------------------------------------
 | API Routes
 |--------------------------------------------------------------------------
@@ -190,6 +190,9 @@ Route::prefix('student')->middleware(['auth:sanctum', 'role:student'])->group(fu
 
     // certificates
     Route::get('/certificates', [UserController::class, 'listCertificates']);
+    // by ab
+      Route::post('/booking/course', [BookingCourseController::class, 'createBooking']); // create booking
+  
 });
 
 Route::prefix('teacher')->middleware(['auth:sanctum', 'role:teacher'])->group(function () {
