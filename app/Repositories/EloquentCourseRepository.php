@@ -11,23 +11,35 @@ class EloquentCourseRepository implements CourseRepository
     public function paginate(array $filters = [], int $perPage = 10): LengthAwarePaginator
     {
         $query = Course::with(['teacher', 'category', 'coverImage'])
-            ->where('status', 'published');
+            ->where('courses.status', 'published');
 
         if (!empty($filters['service_id'])) {
-            $query->where('service_id', $filters['service_id']);
+            $query->where('courses.service_id', $filters['service_id']);
         }
 
         // Price range
         if (isset($filters['min_price'])) {
-            $query->where('price', '>=', $filters['min_price']);
+            $query->where('courses.price', '>=', $filters['min_price']);
         }
         if (isset($filters['max_price'])) {
-            $query->where('price', '<=', $filters['max_price']);
+            $query->where('courses.price', '<=', $filters['max_price']);
         }
 
         // Category filter
         if (!empty($filters['category_id'])) {
-            $query->where('category_id', $filters['category_id']);
+            $query->where('courses.category_id', $filters['category_id']);
+        }
+
+        // Education Level filter
+        if (!empty($filters['level'])) {
+            $query->whereHas('teacher', function($q) use ($filters) {
+                // if we don't have direct level on course, we check subjects related to the course
+            });
+            
+            // Correction: Join with subjects to get the level
+            $query->join('subjects', 'courses.subject_id', '=', 'subjects.id')
+                  ->where('subjects.education_level_id', $filters['level'])
+                  ->select('courses.*');
         }
 
         // Rating filter (teacher average rating)
@@ -41,14 +53,14 @@ class EloquentCourseRepository implements CourseRepository
                 ->toArray();
 
             if (!empty($teacherIds)) {
-                $query->whereIn('teacher_id', $teacherIds);
+                $query->whereIn('courses.teacher_id', $teacherIds);
             } else {
                 // no teacher meets rating -> return empty paginator
                 return $query->whereRaw('0 = 1')->paginate($perPage);
             }
         }
 
-        return $query->orderByDesc('created_at')->paginate($perPage);
+        return $query->orderByDesc('courses.created_at')->paginate($perPage);
     }
 
     public function find(int $id)
