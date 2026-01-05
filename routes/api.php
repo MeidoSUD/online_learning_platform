@@ -34,6 +34,10 @@ use App\Http\Controllers\API\Admin\GalleryController;
 use App\Http\Controllers\API\Admin\DisputeAdminController;
 use App\Http\Controllers\API\Admin\BookingAdminController;
 use App\Http\Controllers\API\Admin\PaymentAdminController;
+use App\Http\Controllers\API\Admin\ClassesAdminController;
+use App\Http\Controllers\API\Admin\SubjectAdminController;
+use App\Http\Controllers\API\Admin\EducationLevelAdminController;
+use App\Http\Controllers\API\Admin\CourseAdminController;
 use App\Models\Payment;
 use App\Models\User;
 // Agora token route for sessions
@@ -280,10 +284,45 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     Route::post('/languages/{id}/restore', [LanguageController::class, 'restore']); // Restore soft-deleted language
 });
 
-// ======================
-// Admin routes
-// ======================
+// Admin education management routes
 Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(function () {
+    // Education Levels
+    Route::get('/education-levels', [EducationLevelAdminController::class, 'index']); // List all education levels
+    Route::post('/education-levels', [EducationLevelAdminController::class, 'store']); // Create education level
+    Route::get('/education-levels/{id}', [EducationLevelAdminController::class, 'show']); // Get education level details
+    Route::put('/education-levels/{id}', [EducationLevelAdminController::class, 'update']); // Update education level
+    Route::delete('/education-levels/{id}', [EducationLevelAdminController::class, 'destroy']); // Soft delete education level
+    Route::delete('/education-levels/{id}/force', [EducationLevelAdminController::class, 'forceDestroy']); // Hard delete education level
+    Route::post('/education-levels/{id}/restore', [EducationLevelAdminController::class, 'restore']); // Restore soft-deleted education level
+
+    // Classes
+    Route::get('/classes', [ClassesAdminController::class, 'index']); // List all classes
+    Route::post('/classes', [ClassesAdminController::class, 'store']); // Create class
+    Route::get('/classes/{id}', [ClassesAdminController::class, 'show']); // Get class details
+    Route::put('/classes/{id}', [ClassesAdminController::class, 'update']); // Update class
+    Route::delete('/classes/{id}', [ClassesAdminController::class, 'destroy']); // Soft delete class
+    Route::delete('/classes/{id}/force', [ClassesAdminController::class, 'forceDestroy']); // Hard delete class
+    Route::post('/classes/{id}/restore', [ClassesAdminController::class, 'restore']); // Restore soft-deleted class
+
+    // Subjects
+    Route::get('/subjects', [SubjectAdminController::class, 'index']); // List all subjects
+    Route::post('/subjects', [SubjectAdminController::class, 'store']); // Create subject
+    Route::get('/subjects/{id}', [SubjectAdminController::class, 'show']); // Get subject details
+    Route::put('/subjects/{id}', [SubjectAdminController::class, 'update']); // Update subject
+    Route::delete('/subjects/{id}', [SubjectAdminController::class, 'destroy']); // Soft delete subject
+    Route::delete('/subjects/{id}/force', [SubjectAdminController::class, 'forceDestroy']); // Hard delete subject
+    Route::post('/subjects/{id}/restore', [SubjectAdminController::class, 'restore']); // Restore soft-deleted subject
+
+    // Courses
+    Route::get('/courses', [CourseController::class, 'index']); // List all courses
+    Route::get('/courses/{id}', [CourseController::class, 'show']); // Get course details
+    Route::put('/courses/{id}/approve', [CourseController::class, 'approve']); // Approve course
+    Route::put('/courses/{id}/reject', [CourseController::class, 'reject']); // Reject course
+    Route::put('/courses/{id}/status', [CourseController::class, 'updateStatus']); // Update course status
+    Route::put('/courses/{id}/feature', [CourseController::class, 'feature']); // Mark course as featured
+    Route::delete('/courses/{id}', [CourseController::class, 'destroy']); // Delete course
+    Route::get('/courses/pending-approval', [CourseController::class, 'pendingApproval']); // Get pending approval courses
+
     // Dashboard / system
     Route::get('/stats', [DashboardController::class, 'stats']);
     Route::get('/health', [DashboardController::class, 'health']);
