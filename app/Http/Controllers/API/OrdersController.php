@@ -101,7 +101,7 @@ class OrdersController extends Controller
                     $conflict = Sessions::where('teacher_id', $teacher->id)
                         ->where('session_date', $ordSlot->date)
                         ->where('start_time', $ordSlot->start_time)
-                        ->whereIn('status', [Sessions::STATUS_SCHEDULED, Sessions::STATUS_IN_PROGRESS])
+                        ->whereIn('status', [Sessions::STATUS_SCHEDULED, Sessions::STATUS_LIVE])
                         ->exists();
 
                     if ($conflict) {
