@@ -163,5 +163,21 @@ class User extends Authenticatable implements MustVerifyEmail
         return $attachment ? $attachment->file_path : null;
     }
 
+    /**
+     * Get all support tickets created by this user
+     */
+    public function supportTickets()
+    {
+        return $this->hasMany(SupportTicket::class, 'user_id');
+    }
+
+    /**
+     * Get all support ticket replies made by this user
+     */
+    public function supportTicketReplies()
+    {
+        return $this->hasMany(SupportTicketReply::class, 'user_id');
+    }
+
     
 }

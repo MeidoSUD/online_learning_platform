@@ -38,6 +38,7 @@ use App\Http\Controllers\API\Admin\ClassesAdminController;
 use App\Http\Controllers\API\Admin\SubjectAdminController;
 use App\Http\Controllers\API\Admin\EducationLevelAdminController;
 use App\Http\Controllers\API\Admin\CourseAdminController;
+use App\Http\Controllers\API\Admin\SupportTicketController;
 use App\Models\Payment;
 use App\Models\User;
 // Agora token route for sessions
@@ -106,6 +107,7 @@ Route::prefix('auth')->group(function () {
     Route::post('confirm-password', [AuthController::class, 'confirmPassword'])->middleware('auth:sanctum');
     Route::post('change-password', [AuthController::class, 'updatePassword'])->middleware('auth:sanctum');
     Route::post('logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
+    Route::post('delete-account', [AuthController::class, 'deleteAccount'])->middleware('auth:sanctum');
     Route::get('profile', [AuthController::class, 'profile'])->middleware('auth:sanctum');
     
 });
@@ -356,6 +358,16 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     Route::get('/disputes', [DisputeAdminController::class, 'index']);
     Route::get('/disputes/{id}', [DisputeAdminController::class, 'show']);
     Route::post('/disputes/{id}/resolve', [DisputeAdminController::class, 'resolve']);
+
+    // Support Tickets
+    Route::get('/support-tickets', [SupportTicketController::class, 'index']);
+    Route::get('/support-tickets/stats', [SupportTicketController::class, 'getStats']);
+    Route::get('/support-tickets/{id}', [SupportTicketController::class, 'show']);
+    Route::post('/support-tickets/{id}/reply', [SupportTicketController::class, 'addReply']);
+    Route::post('/support-tickets/{id}/resolve', [SupportTicketController::class, 'resolve']);
+    Route::put('/support-tickets/{id}/status', [SupportTicketController::class, 'updateStatus']);
+    Route::post('/support-tickets/{id}/close', [SupportTicketController::class, 'close']);
+    Route::delete('/support-tickets/{id}', [SupportTicketController::class, 'destroy']);
 
     // Payouts / transfer to teachers
     Route::get('/payouts', [PayoutAdminController::class, 'index']);

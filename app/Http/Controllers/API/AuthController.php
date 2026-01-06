@@ -14,6 +14,11 @@ use App\Helpers\PhoneHelper;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\VerificationCodeMail;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use App\Models\Attachment;
+use App\Models\SupportTicket;
+use App\Models\SupportTicketReply;
 
 class AuthController extends Controller
 {
@@ -464,5 +469,112 @@ class AuthController extends Controller
             'success' => true,
             'data' => $user
         ]);
+    }
+
+    /**
+     * Delete user account and all associated data
+     * 
+     * Deletes:
+     * - User profile
+     * - User attachments
+     * - User account
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function deleteAccount(Request $request)
+    {
+        try {
+            $request->validate([
+                'password' => 'required|string',
+                'confirmation' => 'required|accepted', // User must explicitly accept deletion
+            ]);
+
+            $user = $request->user();
+
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not authenticated'
+                ], 401);
+            }
+
+            // Verify password
+            if (!Hash::check($request->password, $user->password)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid password. Account deletion cancelled.'
+                ], 422);
+            }
+
+            // Start database transaction
+            DB::beginTransaction();
+
+            $userId = $user->id;
+            $userEmail = $user->email;
+
+            // Log deletion request
+            Log::warning("User account deletion initiated - User ID: {$userId}, Email: {$userEmail}");
+
+            // Delete all attachments associated with the user
+            $attachments = Attachment::where('user_id', $userId)->get();
+            foreach ($attachments as $attachment) {
+                try {
+                    // Delete file from storage if it exists
+                    if (Storage::exists($attachment->file_path)) {
+                        Storage::delete($attachment->file_path);
+                    }
+                } catch (\Exception $e) {
+                    Log::warning("Failed to delete attachment file: {$attachment->file_path}");
+                }
+                $attachment->delete();
+            }
+
+            // Delete user profile
+            if ($user->profile) {
+                $user->profile()->delete();
+            }
+
+            // Delete all support tickets and replies
+            $tickets = SupportTicket::where('user_id', $userId)->get();
+            foreach ($tickets as $ticket) {
+                SupportTicketReply::where('support_ticket_id', $ticket->id)->delete();
+                $ticket->delete();
+            }
+
+            // Delete all support ticket replies made by this user
+            SupportTicketReply::where('user_id', $userId)->delete();
+
+            // Revoke all API tokens
+            $user->tokens()->delete();
+
+            // Delete user account
+            $user->delete();
+
+            DB::commit();
+
+            Log::error("User account successfully deleted - User ID: {$userId}, Email: {$userEmail}");
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Your account has been permanently deleted. All associated data has been removed from our system.',
+                'deleted_user_id' => $userId,
+            ], 200);
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Account deletion failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete account. Please try again later.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }
