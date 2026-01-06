@@ -45,8 +45,8 @@ use App\Models\User;
 use App\Services\AgoraService;
 use Illuminate\Support\Facades\Lang;
 
-
-/*
+use App\Http\Controllers\API\BookingCourseController;
+/*  
 |--------------------------------------------------------------------------
 | API Routes
 |--------------------------------------------------------------------------
@@ -68,6 +68,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/notifications/{id}/delete', [FCMTokenController::class, 'deleteNotification']);
     Route::post('/notifications/send', [NotificationController::class, 'sendToToken']);
 });
+Route::get('/common-subjects', [ServicesController::class, 'getAllSubjects']);
 // main screen APIs
 Route::get('/services', [ServicesController::class, 'listServices']);
 Route::get('/services/search', [ServicesController::class, 'searchServices']);
@@ -123,6 +124,7 @@ Route::prefix('profile')->middleware('auth:sanctum')->group(function () {
     Route::get('/profile', [UserController::class, 'showProfile']);
     Route::get('/education-levels', [UserController::class, 'educationLevels']);
     Route::get('/classes/{education_level_id}', [UserController::class, 'classes']);
+    Route::delete('/delete', [UserController::class, 'deleteAccount']);
 });
 // ======================
 // Student & Teacher
@@ -196,6 +198,10 @@ Route::prefix('student')->middleware(['auth:sanctum', 'role:student'])->group(fu
 
     // certificates
     Route::get('/certificates', [UserController::class, 'listCertificates']);
+    // by ab
+      Route::post('/booking/course', [BookingCourseController::class, 'createBooking']); // create booking
+  
+      
 });
 
 Route::prefix('teacher')->middleware(['auth:sanctum', 'role:teacher'])->group(function () {

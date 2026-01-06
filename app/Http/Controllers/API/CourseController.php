@@ -47,6 +47,7 @@ class CourseController extends Controller
             'max_price' => $request->query('max_price'),
             'min_rate' => $request->query('min_rate'),
             'category_id' => $request->query('category_id'),
+            'level' => $request->query('level'),
         ];
 
         // Paginate published courses for this service (use repository)

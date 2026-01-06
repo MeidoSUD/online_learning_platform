@@ -9,6 +9,7 @@ use App\Models\Payment;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class PaymentController extends Controller
 {
@@ -126,37 +127,108 @@ class PaymentController extends Controller
     public function paymentResult(Request $request)
     {
         $resourcePath = $request->get('resourcePath');
-        $baseUrl = "https://eu-test.oppwa.com"; // Change to production endpoint later
+        $id = $request->get('id');
+
+        if (!$resourcePath) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Missing resourcePath'
+            ], 400);
+        }
+
+        $baseUrl = config('hyperpay.base_url');
         $url = $baseUrl . $resourcePath;
 
+        $queryParams = [];
+        if (str_contains($resourcePath, '/v1/payments/')) {
+            $entityId = env('HYPERPAY_ENTITY_ID_VISA');
+            if ($entityId) {
+                $queryParams['entityId'] = $entityId;
+            }
+        }
+
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer YOUR_ACCESS_TOKEN'
-        ])->get($url);
+            'Authorization' => config('hyperpay.authorization'),
+            'Accept' => 'application/json',
+        ])->get($url, $queryParams);
 
         $result = $response->json();
 
-        // Extract important info
+        Log::info('Payment result response', [
+            'url' => $url,
+            'status' => $response->status(),
+            'result' => $result
+        ]);
+
+        if (!isset($result['result'])) {
+            Log::error('Invalid HyperPay response', ['result' => $result]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid response from payment gateway',
+                'error' => $result['result']['description'] ?? 'Unknown error'
+            ], 400);
+        }
+
         $code = $result['result']['code'];
         $description = $result['result']['description'];
 
-        // Successful payment codes usually start with "000."
-        if (str_starts_with($code, '000.')) {
-            // Update your DB
-            Payment::where('transaction_reference', $result['id'])->update([
+        $payment = null;
+
+        if ($id) {
+            $payment = Payment::where('transaction_reference', $id)->first();
+        }
+
+        if (!$payment) {
+            $merchantTransactionId = $result['merchantTransactionId'] ?? null;
+            if ($merchantTransactionId) {
+                $payment = Payment::where('transaction_reference', $merchantTransactionId)->first();
+            }
+        }
+
+        if (!$payment && isset($result['id'])) {
+            $payment = Payment::where('gateway_reference', $result['id'])->first();
+        }
+
+        if (!$payment) {
+            Log::error('Payment not found', [
+                'id' => $id,
+                'merchantTransactionId' => $result['merchantTransactionId'] ?? null,
+                'result_id' => $result['id'] ?? null
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Payment record not found'
+            ], 404);
+        }
+
+        if (preg_match('/^(000\.000\.|000\.100\.1|000\.[36])/', $code)) {
+            $payment->update([
                 'status' => 'paid',
                 'gateway_response' => json_encode($result),
                 'paid_at' => now(),
             ]);
 
-            return redirect()->route('payment.success');
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment successful',
+                'payment_id' => $payment->id,
+                'booking_id' => $payment->booking_id,
+                'status' => 'paid'
+            ]);
         } else {
-            // Mark as failed
-            Payment::where('transaction_reference', $result['id'])->update([
+            $payment->update([
                 'status' => 'failed',
                 'gateway_response' => json_encode($result),
             ]);
 
-            return redirect()->route('payment.failed');
+            return response()->json([
+                'success' => false,
+                'message' => 'Payment failed: ' . $description,
+                'payment_id' => $payment->id,
+                'booking_id' => $payment->booking_id,
+                'status' => 'failed',
+                'error_code' => $code
+            ], 400);
         }
     }
 }
