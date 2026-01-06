@@ -74,7 +74,7 @@ class AuthController extends Controller
             'verified'      => false,
             'verification_code' => $verification_code,
         ]);
-
+        
         $user_response = [
             "id" => $user->id,
             "first_name" => $user->first_name,

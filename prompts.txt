@@ -985,3 +985,295 @@ UI/UX:
   - Use standard navigation patterns
 
 ================================================================================
+
+SECTION 8: COMPREHENSIVE API ERROR HANDLING & EXCEPTION GUIDE
+================================================================================
+
+This section provides Flutter developers with complete error handling patterns
+for all authentication and API endpoints, including verification error cases,
+validation exceptions, and exception scenarios.
+
+─────────────────────────────────────────────────────────────────────────────
+8.1) HTTP STATUS CODES & MEANINGS
+─────────────────────────────────────────────────────────────────────────────
+
+200 - OK / Success
+  Meaning: Request successful, data returned as expected
+  Action: Process response normally, show success UI
+
+201 - Created
+  Meaning: Resource created successfully (POST requests)
+
+401 - Unauthorized
+  Meaning: Token missing, expired, or invalid
+  Action: Clear stored token, redirect to login screen
+  Code: if (statusCode == 401) { clearToken(); goToLogin(); }
+
+403 - Forbidden
+  Meaning: User authenticated but not allowed
+
+404 - Not Found
+  Meaning: Resource doesn't exist
+
+422 - Unprocessable Entity (Validation Error)
+  Meaning: Invalid data sent in request
+  Contains: "errors" field with per-field validation messages
+
+500 - Internal Server Error
+  Meaning: Unexpected server exception
+
+503 - Service Unavailable
+  Meaning: Server temporarily down
+
+─────────────────────────────────────────────────────────────────────────────
+8.2) PHONE NUMBER VERIFICATION ERRORS (422 RESPONSES)
+─────────────────────────────────────────────────────────────────────────────
+
+Invalid Phone Format:
+  Message: "Invalid phone number format. Must be a valid KSA phone number."
+  UI Action: Show "Invalid format. Use: 501234567 or +966501234567"
+  
+Phone Already Registered:
+  Message: "Phone number already registered."
+  UI Action: Show "Phone already registered. Login or recover account."
+
+Wrong Verification Code:
+  Message: "Invalid verification code."
+  UI Action: Show "Wrong code. Try again or request new code."
+
+Duplicate Phone in Update:
+  Message: "Phone number already in use by another account."
+  UI Action: Show "Phone in use. Try different number."
+
+─────────────────────────────────────────────────────────────────────────────
+8.3) REGISTRATION & LOGIN VALIDATION ERRORS (422 RESPONSES)
+─────────────────────────────────────────────────────────────────────────────
+
+Missing Fields:
+  Errors Field: Multiple fields with "is required" messages
+  UI Action: Red border on missing fields, disable submit
+
+Invalid Email:
+  Message: "Must be a valid email address."
+  UI Action: Show "Valid email required (e.g., user@example.com)"
+
+Duplicate Email:
+  Message: "The email has already been taken."
+  UI Action: Show "Email already registered"
+
+Wrong Credentials:
+  Message: "The provided credentials are incorrect."
+  UI Action: Show "Email or password incorrect" (generic, don't reveal which)
+
+Missing Email/Phone:
+  Message: "Either email or phone_number must be provided."
+  UI Action: Show toggle: "Login with Email" / "Login with Phone"
+
+─────────────────────────────────────────────────────────────────────────────
+8.4) PASSWORD RESET ERRORS
+─────────────────────────────────────────────────────────────────────────────
+
+Email/Phone Not Found (404):
+  Message: "Email not found in our system."
+  UI Action: Show "No account with this email"
+
+Neither Email nor Phone (422):
+  Message: "Either email or phone_number must be provided."
+  UI Action: Show "Enter email or phone number"
+
+Invalid Reset Code (422):
+  Message: "Invalid verification code."
+  UI Action: Show "Code incorrect or expired"
+
+Password Mismatch (422):
+  Message: "Does not match."
+  UI Action: Show "Passwords don't match"
+
+Password Too Weak (422):
+  Message: "Must be at least 8 characters."
+  UI Action: Show "Min 8 chars. Use letters, numbers, symbols"
+
+─────────────────────────────────────────────────────────────────────────────
+8.5) PROFILE UPDATE ERRORS (401 / 422)
+─────────────────────────────────────────────────────────────────────────────
+
+Missing Auth Token (401):
+  Message: "Unauthenticated."
+  UI Action: Redirect to login. Show "Session expired"
+
+Expired Token (401):
+  Message: "Token has expired or is invalid."
+  UI Action: Force logout. Clear token. Go to login.
+
+Invalid Phone (422):
+  Message: "Invalid phone number format."
+  UI Action: Show error below field. Allow retry.
+
+File Too Large (422):
+  Message: "Must not exceed 4MB."
+  UI Action: Show "Image too large (max 4MB)"
+
+Invalid File Type (422):
+  Message: "Must be an image."
+  UI Action: Show "Only images allowed (JPG, PNG)"
+
+─────────────────────────────────────────────────────────────────────────────
+8.6) NETWORK & EXCEPTION HANDLING
+─────────────────────────────────────────────────────────────────────────────
+
+SocketException (No Internet):
+  Cause: No connection, offline mode
+  UI Action: Show "No internet. Check connection and retry."
+
+TimeoutException (Slow Connection):
+  Cause: Server not responding, very slow network
+  UI Action: Show "Connection timeout. Try again."
+
+Server Error (500, 503):
+  Cause: Unexpected server error or maintenance
+  UI Action: Show "Server error. Try again later."
+
+JSON Parse Error:
+  Cause: Invalid JSON response (usually 500)
+  UI Action: Show "Server error. Try again."
+
+─────────────────────────────────────────────────────────────────────────────
+8.7) COMPLETE DART IMPLEMENTATION EXAMPLE
+─────────────────────────────────────────────────────────────────────────────
+
+```dart
+class ApiErrorHandler {
+  static void handleResponse(http.Response response, BuildContext context) {
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return; // Success
+    }
+
+    try {
+      var data = json.decode(response.body);
+      
+      switch (response.statusCode) {
+        case 401:
+          SecureStorage.deleteToken();
+          Navigator.pushReplacementNamed(context, '/login');
+          showSnackBar(context, 'Session expired');
+          break;
+        case 422:
+          if (data['errors'] != null) {
+            (data['errors'] as Map).forEach((field, msgs) {
+              showFieldError(field, msgs[0]);
+            });
+          }
+          break;
+        case >= 500:
+          showSnackBar(context, 'Server error. Try later.');
+          break;
+      }
+    } catch (e) {
+      showSnackBar(context, 'An error occurred');
+    }
+  }
+}
+
+// In LoginScreen:
+void login() async {
+  try {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/auth/login'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({
+        'email': emailController.text,
+        'password': passwordController.text,
+      }),
+    ).timeout(Duration(seconds: 30));
+
+    if (response.statusCode == 200) {
+      var token = json.decode(response.body)['token'];
+      await SecureStorage.saveToken(token);
+      Navigator.pushReplacementNamed(context, '/home');
+    } else {
+      ApiErrorHandler.handleResponse(response, context);
+    }
+  } on SocketException {
+    showSnackBar(context, 'No internet connection');
+  } on TimeoutException {
+    showSnackBar(context, 'Request timed out');
+  }
+}
+```
+
+─────────────────────────────────────────────────────────────────────────────
+8.8) ERROR MESSAGE TRANSLATIONS (Backend → User-Friendly)
+─────────────────────────────────────────────────────────────────────────────
+
+"The provided credentials are incorrect."
+  → "Email or password incorrect"
+
+"The email has already been taken."
+  → "Email already registered"
+
+"Invalid phone number format. Must be a valid KSA phone number."
+  → "Invalid phone format"
+
+"Phone number already registered."
+  → "Phone already registered"
+
+"Phone number already in use by another account."
+  → "Phone in use"
+
+"The new password confirmation does not match."
+  → "Passwords don't match"
+
+"Unauthenticated."
+  → "Please log in"
+
+"Token has expired or is invalid."
+  → "Session expired"
+
+"Invalid verification code."
+  → "Code incorrect or expired"
+
+"The profile photo must not be greater than 4MB."
+  → "Image too large"
+
+================================================================================
+FINAL FLUTTER AGENT IMPLEMENTATION CHECKLIST
+================================================================================
+
+Phone Numbers:
+  ✓ Accept: 501234567, 0501234567, 966501234567, +966501234567
+  ✓ Validate: exactly 9 digits
+  ✓ Show format examples in UI
+  ✓ Store normalized version (+966XXXXXXXXX)
+
+Authentication:
+  ✓ Token in secure storage (Keychain, NOT SharedPrefs)
+  ✓ Authorization: Bearer <token> in all requests
+  ✓ 401 → Clear token and force login
+  ✓ 422 → Show per-field errors
+  ✓ 30 second timeout on requests
+
+Verification Codes:
+  ✓ Handle 6-digit SMS/email codes
+  ✓ Countdown timer for resend (30 seconds)
+  ✓ Clear inputs on wrong code
+  ✓ Show "code expired" message
+
+Password Reset:
+  ✓ Email and phone options separate
+  ✓ Verify code before new password
+  ✓ Validate: min 8 chars
+  ✓ Require confirmation match
+
+File Uploads:
+  ✓ multipart/form-data (NOT JSON)
+  ✓ Validate: 4MB max, image only
+  ✓ Progress indicator during upload
+  ✓ Refresh UI after success
+
+Error Display:
+  ✓ Validation → Red border + text
+  ✓ Network → Retry button
+  ✓ Server → Generic message
+  ✓ 401 → Force login immediately
+
+================================================================================
