@@ -117,6 +117,7 @@ Route::prefix('profile')->middleware('auth:sanctum')->group(function () {
     Route::get('/profile', [UserController::class, 'showProfile']);
     Route::get('/education-levels', [UserController::class, 'educationLevels']);
     Route::get('/classes/{education_level_id}', [UserController::class, 'classes']);
+    Route::delete('/delete', [UserController::class, 'deleteAccount']);
 });
 // ======================
 // Student & Teacher
@@ -193,6 +194,7 @@ Route::prefix('student')->middleware(['auth:sanctum', 'role:student'])->group(fu
     // by ab
       Route::post('/booking/course', [BookingCourseController::class, 'createBooking']); // create booking
   
+      
 });
 
 Route::prefix('teacher')->middleware(['auth:sanctum', 'role:teacher'])->group(function () {

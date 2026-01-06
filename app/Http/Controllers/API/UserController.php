@@ -672,6 +672,32 @@ class UserController extends Controller
         ]);
     }
 
+
+    // Delete account
+    public function deleteAccount(Request $request)
+    {
+        $user = $request->user();
+        
+        try {
+            // Revoke all tokens
+            $user->tokens()->delete();
+            
+            // Delete the user
+            $user->delete();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Account deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete account',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     // public function getFullTeacherData(User $teacher)
     // {
     //     // Get latest attachments
