@@ -1277,3 +1277,812 @@ Error Display:
   ✓ 401 → Force login immediately
 
 ================================================================================
+
+================================================================================
+SECTION 10: ACCOUNT DELETION & DATA PRIVACY
+================================================================================
+
+⚠️ CRITICAL: This section is MANDATORY for App Store compliance!
+- Users MUST have ability to delete their accounts from within the app
+- Account deletion removes ALL user data permanently
+- Deletion requires password confirmation for security
+
+10.1) POST /api/auth/delete-account
+─────────────────────────────────────────────────────────────────────────────
+Purpose:
+  - Permanently delete user account
+  - Remove all personal data (profile, attachments, tickets)
+  - Revoke all API tokens
+  - Requires password confirmation for security
+
+Auth:
+  - Required: Authorization: Bearer <token>
+  - User must be logged in
+
+Request JSON:
+  {
+    "password": "user's_current_password",
+    "confirmation": true  // User must explicitly confirm deletion (accept checkbox)
+  }
+
+Request Headers:
+  Content-Type: application/json
+  Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGc...
+
+Validation Rules:
+  - password: required, must match user's current password
+  - confirmation: required, must be true (user accepts deletion warning)
+  - Request must come from authenticated user
+
+What Gets Deleted:
+  ✓ User profile and all profile data
+  ✓ All attachments and profile photos
+  ✓ All support tickets and replies
+  ✓ All API tokens and sessions
+  ✓ User record from database
+
+What NOT Deleted (Legal Requirements):
+  ✓ Transaction history (for financial records)
+  ✓ Booking history (for dispute resolution)
+  ✓ Payment records (for tax/compliance)
+  ✓ Anonymous statistics
+
+Response (200 - Success):
+  {
+    "success": true,
+    "message": "Your account has been permanently deleted. All associated data has been removed from our system.",
+    "deleted_user_id": 123
+  }
+
+Response (422 - Validation Error):
+  {
+    "success": false,
+    "message": "Validation failed",
+    "errors": {
+      "password": ["Invalid password. Account deletion cancelled."],
+      "confirmation": ["You must accept the terms to delete your account."]
+    }
+  }
+
+Response (401 - Not Authenticated):
+  {
+    "success": false,
+    "message": "User not authenticated"
+  }
+
+Response (500 - Server Error):
+  {
+    "success": false,
+    "message": "Failed to delete account. Please try again later.",
+    "error": "Database error details..."
+  }
+
+UI Implementation:
+  1. Settings screen → "Delete Account" button
+  2. Show confirmation dialog with warnings:
+     ⚠️ "This action CANNOT be undone"
+     ⚠️ "All your data will be permanently removed"
+     ⚠️ "You will not be able to recover this account"
+  3. Require user to enter password
+  4. Require checkbox acceptance: "I understand this is permanent"
+  5. Show loading indicator during deletion
+  6. On success:
+     - Clear all local storage (token, user data, etc.)
+     - Clear cache
+     - Navigate to login screen
+     - Show success message: "Your account has been deleted"
+  7. On error:
+     - Display error message
+     - Allow user to retry
+
+Flutter Implementation Example:
+  ```dart
+  Future<void> deleteAccount() async {
+    final password = passwordController.text;
+    
+    if (password.isEmpty) {
+      showError('Please enter your password');
+      return;
+    }
+    
+    if (!confirmationCheckbox) {
+      showError('Please confirm account deletion');
+      return;
+    }
+    
+    try {
+      final response = await http.post(
+        Uri.parse('$BASE_URL/api/auth/delete-account'),
+        headers: {
+          'Authorization': 'Bearer $authToken',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'password': password,
+          'confirmation': true,
+        }),
+      );
+      
+      if (response.statusCode == 200) {
+        // Clear all stored data
+        await storage.clearAll();
+        
+        // Navigate to login
+        Navigator.pushReplacementNamed(context, '/login');
+        
+        showSuccess('Account deleted successfully');
+      } else if (response.statusCode == 422) {
+        final error = jsonDecode(response.body);
+        showError(error['errors']['password'][0]);
+      } else {
+        showError('Failed to delete account');
+      }
+    } catch (e) {
+      showError('Network error: $e');
+    }
+  }
+  ```
+
+Security Notes:
+  ✓ Password verification required (prevents accidental deletion)
+  ✓ Confirmation checkbox required (prevents accidental deletion)
+  ✓ All tokens revoked (logout everywhere)
+  ✓ Cannot be undone
+  ✓ Email sent to user (optional: notify about deletion)
+  ✓ Log deletion for audit trail
+
+─────────────────────────────────────────────────────────────────────────────
+
+================================================================================
+SECTION 11: SUPPORT TICKETS & HELP CENTER
+================================================================================
+
+IMPORTANT: Support ticket system allows users to contact admin for help.
+Admin can view all tickets, add replies, and update status.
+
+User Flow:
+  1. User encounters problem → Creates support ticket
+  2. Admin receives notification → Reviews ticket
+  3. Admin replies with solution
+  4. User receives notification → Views reply
+  5. User provides feedback / Admin marks resolved
+
+Admin Flow:
+  1. Admin views all tickets (dashboard)
+  2. Admin filters by status (open, in_progress, resolved, closed)
+  3. Admin replies to ticket
+  4. Admin marks as resolved or closed
+  5. Admin can delete ticket if needed
+
+11.1) Admin: GET /api/admin/support-tickets
+─────────────────────────────────────────────────────────────────────────────
+Purpose:
+  - List all support tickets with pagination
+  - Filter by status
+  - Sort by date, status, etc.
+  - Admin only
+
+Auth:
+  - Required: Authorization: Bearer <admin_token>
+  - User role must be admin (role_id = 1)
+
+Query Parameters:
+  {
+    "status": "open|in_progress|resolved|closed",  // OPTIONAL: filter by status
+    "per_page": 15,          // OPTIONAL: items per page (default: 15, max: 100)
+    "sort_by": "created_at|updated_at|user_id",   // OPTIONAL: sort field
+    "order": "asc|desc"      // OPTIONAL: sort order (default: desc)
+  }
+
+Example Request:
+  GET /api/admin/support-tickets?status=open&per_page=10&sort_by=created_at&order=desc
+
+Response (200 - Success):
+  {
+    "success": true,
+    "message": "Support tickets retrieved successfully",
+    "data": {
+      "current_page": 1,
+      "data": [
+        {
+          "id": 123,
+          "user_id": 45,
+          "subject": "Cannot login with phone number",
+          "body": "I tried logging in with my phone number but it says invalid credentials...",
+          "status": "open",  // open, in_progress, resolved, closed
+          "internal_note": "Check phone normalization",
+          "created_at": "2025-01-06T10:30:00Z",
+          "updated_at": "2025-01-06T10:30:00Z",
+          "user": {
+            "id": 45,
+            "first_name": "Ahmed",
+            "last_name": "Hassan",
+            "email": "ahmed@example.com",
+            "phone_number": "+966501234567"
+          },
+          "replies": [
+            {
+              "id": 234,
+              "support_ticket_id": 123,
+              "user_id": 1,  // admin user id
+              "message": "We have identified the issue...",
+              "is_admin_reply": true,
+              "created_at": "2025-01-06T11:45:00Z",
+              "user": {
+                "id": 1,
+                "first_name": "Admin",
+                "last_name": "User"
+              }
+            }
+          ]
+        },
+        // ... more tickets
+      ],
+      "first_page_url": "http://localhost:8000/api/admin/support-tickets?page=1",
+      "from": 1,
+      "last_page": 5,
+      "per_page": 10,
+      "to": 10,
+      "total": 45
+    }
+  }
+
+Response (403 - Unauthorized):
+  {
+    "success": false,
+    "message": "Unauthorized"
+  }
+
+Response (401 - Not Authenticated):
+  {
+    "message": "Unauthenticated."
+  }
+
+UI Implementation (Admin Dashboard):
+  1. Show list of all tickets
+  2. Display status badge (red=open, yellow=in_progress, green=resolved, gray=closed)
+  3. Show user avatar + name
+  4. Show created date
+  5. Allow filtering by status (dropdown/chips)
+  6. Allow sorting (dropdown)
+  7. Show pagination controls
+  8. Click ticket to view details
+
+─────────────────────────────────────────────────────────────────────────────
+
+11.2) Admin: GET /api/admin/support-tickets/{ticketId}
+─────────────────────────────────────────────────────────────────────────────
+Purpose:
+  - Get detailed view of single support ticket
+  - Show all replies in conversation thread
+  - Ready to reply
+
+Auth:
+  - Required: Authorization: Bearer <admin_token>
+
+URL Parameters:
+  - ticketId: integer (required)
+
+Example Request:
+  GET /api/admin/support-tickets/123
+
+Response (200 - Success):
+  {
+    "success": true,
+    "message": "Support ticket retrieved successfully",
+    "data": {
+      "id": 123,
+      "user_id": 45,
+      "subject": "Cannot login with phone number",
+      "body": "I tried logging in with my phone number but it says invalid credentials. The error message says 'Invalid phone number format'...",
+      "status": "open",
+      "internal_note": "User email: ahmed@example.com, Phone: +966501234567",
+      "created_at": "2025-01-06T10:30:00Z",
+      "updated_at": "2025-01-06T10:30:00Z",
+      "user": {
+        "id": 45,
+        "first_name": "Ahmed",
+        "last_name": "Hassan",
+        "email": "ahmed@example.com",
+        "phone_number": "+966501234567",
+        "role_id": 4,
+        "verified": true
+      },
+      "replies": [
+        {
+          "id": 234,
+          "support_ticket_id": 123,
+          "user_id": 45,
+          "message": "I just tried again and still getting the error. Can you help?",
+          "is_admin_reply": false,
+          "created_at": "2025-01-06T10:45:00Z",
+          "user": {
+            "id": 45,
+            "first_name": "Ahmed",
+            "last_name": "Hassan"
+          }
+        },
+        {
+          "id": 235,
+          "support_ticket_id": 123,
+          "user_id": 1,
+          "message": "Hi Ahmed! Thank you for reaching out. I've checked your account and everything looks correct. Try the following:\n1. Clear your app cache\n2. Restart the app\n3. Try logging in again\n\nLet me know if this helps!",
+          "is_admin_reply": true,
+          "created_at": "2025-01-06T11:15:00Z",
+          "user": {
+            "id": 1,
+            "first_name": "Support",
+            "last_name": "Admin"
+          }
+        }
+      ]
+    }
+  }
+
+Response (404 - Not Found):
+  {
+    "success": false,
+    "message": "Support ticket not found"
+  }
+
+UI Implementation (Ticket Detail):
+  1. Show ticket header: subject + status badge
+  2. Show user info (avatar, name, email, phone)
+  3. Show original message in a card
+  4. Show conversation thread of all replies
+  5. Different styling for admin vs user replies
+  6. Timestamps for each reply
+  7. Text input at bottom to add new reply
+
+─────────────────────────────────────────────────────────────────────────────
+
+11.3) Admin: POST /api/admin/support-tickets/{ticketId}/reply
+─────────────────────────────────────────────────────────────────────────────
+Purpose:
+  - Add reply to support ticket
+  - Admin response to user's issue
+  - Automatically marks ticket as 'in_progress' if it was 'open'
+
+Auth:
+  - Required: Authorization: Bearer <admin_token>
+  - User role must be admin (role_id = 1)
+
+URL Parameters:
+  - ticketId: integer (required)
+
+Request JSON:
+  {
+    "message": "Here's the solution to your problem... [detailed explanation]"
+  }
+
+Validation Rules:
+  - message: required, string, min 10 chars, max 5000 chars
+  - ticketId must exist
+  - User must be admin
+
+Example Request:
+  POST /api/admin/support-tickets/123/reply
+  {
+    "message": "Hello Ahmed!\n\nWe've identified the issue with your phone login. Here's what you need to do:\n\n1. First, make sure you're using the correct phone format\n2. Clear your app cache\n3. Try logging in again\n\nIf this doesn't work, please let us know and we'll investigate further.\n\nBest regards,\nSupport Team"
+  }
+
+Response (201 - Created):
+  {
+    "success": true,
+    "message": "Reply added successfully",
+    "data": {
+      "id": 236,
+      "support_ticket_id": 123,
+      "user_id": 1,  // admin user id
+      "message": "Hello Ahmed!...",
+      "is_admin_reply": true,
+      "created_at": "2025-01-06T14:30:00Z",
+      "updated_at": "2025-01-06T14:30:00Z",
+      "user": {
+        "id": 1,
+        "first_name": "Support",
+        "last_name": "Admin"
+      }
+    }
+  }
+
+Response (422 - Validation Error):
+  {
+    "success": false,
+    "message": "The given data was invalid.",
+    "errors": {
+      "message": ["The message field is required."],
+      // or
+      "message": ["The message must be at least 10 characters."]
+    }
+  }
+
+Response (404 - Ticket Not Found):
+  {
+    "success": false,
+    "message": "Support ticket not found"
+  }
+
+Response (403 - Not Admin):
+  {
+    "success": false,
+    "message": "Unauthorized: Admin access required"
+  }
+
+UI Implementation:
+  1. Text area at bottom of ticket detail page
+  2. Character counter (current / 5000)
+  3. "Send Reply" button (disabled if empty/too short)
+  4. Loading indicator while sending
+  5. On success:
+     - Add reply to thread immediately
+     - Clear text input
+     - Scroll to bottom
+     - Show success toast
+  6. On error:
+     - Show error message below textarea
+     - Allow retry
+
+─────────────────────────────────────────────────────────────────────────────
+
+11.4) Admin: POST /api/admin/support-tickets/{ticketId}/resolve
+─────────────────────────────────────────────────────────────────────────────
+Purpose:
+  - Resolve support ticket (mark as resolved)
+  - Add final solution message
+  - Only admin can resolve
+
+Auth:
+  - Required: Authorization: Bearer <admin_token>
+
+URL Parameters:
+  - ticketId: integer (required)
+
+Request JSON:
+  {
+    "resolution_message": "The issue has been resolved. Your phone login now works correctly. Thank you for your patience!"
+  }
+
+Validation Rules:
+  - resolution_message: required, string, min 10 chars, max 5000 chars
+
+Response (200 - Success):
+  {
+    "success": true,
+    "message": "Support ticket resolved successfully",
+    "data": {
+      "id": 123,
+      "status": "resolved",
+      "updated_at": "2025-01-06T15:00:00Z",
+      ...
+    }
+  }
+
+Response (404 - Not Found):
+  {
+    "success": false,
+    "message": "Support ticket not found"
+  }
+
+UI Implementation:
+  1. "Resolve Ticket" button on ticket detail
+  2. Show modal/dialog with resolution message input
+  3. Text area with character limit
+  4. On success:
+     - Close dialog
+     - Update ticket status to "resolved"
+     - Show success message
+     - Refresh ticket view
+
+─────────────────────────────────────────────────────────────────────────────
+
+11.5) Admin: PUT /api/admin/support-tickets/{ticketId}/status
+─────────────────────────────────────────────────────────────────────────────
+Purpose:
+  - Update ticket status
+  - Add internal notes (not visible to user)
+  - Change from open → in_progress → resolved → closed
+
+Auth:
+  - Required: Authorization: Bearer <admin_token>
+
+URL Parameters:
+  - ticketId: integer (required)
+
+Request JSON:
+  {
+    "status": "open|in_progress|resolved|closed",
+    "internal_note": "User needs follow-up email - check next week"  // OPTIONAL
+  }
+
+Validation Rules:
+  - status: required, must be one of: open, in_progress, resolved, closed
+  - internal_note: optional, string, max 1000 chars
+  - internal_note is only visible to admins (NOT sent to user)
+
+Response (200 - Success):
+  {
+    "success": true,
+    "message": "Support ticket status updated successfully",
+    "data": {
+      "id": 123,
+      "status": "in_progress",
+      "internal_note": "User needs follow-up email...",
+      "updated_at": "2025-01-06T15:30:00Z"
+    }
+  }
+
+Response (422 - Validation Error):
+  {
+    "success": false,
+    "message": "The given data was invalid.",
+    "errors": {
+      "status": ["The selected status is invalid."]
+    }
+  }
+
+UI Implementation:
+  1. Status dropdown showing: open → in_progress → resolved → closed
+  2. Optional "Internal Note" field (admin only, not sent to user)
+  3. Update status with API call
+  4. Show loading indicator
+  5. On success, update UI immediately
+
+─────────────────────────────────────────────────────────────────────────────
+
+11.6) Admin: POST /api/admin/support-tickets/{ticketId}/close
+─────────────────────────────────────────────────────────────────────────────
+Purpose:
+  - Close support ticket (archive it)
+  - User cannot add new replies to closed tickets
+  - Admin can still view but not reply
+
+Auth:
+  - Required: Authorization: Bearer <admin_token>
+
+URL Parameters:
+  - ticketId: integer (required)
+
+Request Method:
+  POST (no body required)
+
+Response (200 - Success):
+  {
+    "success": true,
+    "message": "Support ticket closed successfully",
+    "data": {
+      "id": 123,
+      "status": "closed",
+      "updated_at": "2025-01-06T16:00:00Z"
+    }
+  }
+
+Response (404 - Not Found):
+  {
+    "success": false,
+    "message": "Support ticket not found"
+  }
+
+─────────────────────────────────────────────────────────────────────────────
+
+11.7) Admin: DELETE /api/admin/support-tickets/{ticketId}
+─────────────────────────────────────────────────────────────────────────────
+Purpose:
+  - Permanently delete support ticket and all replies
+  - Use sparingly (usually just close tickets)
+  - Admin only
+
+Auth:
+  - Required: Authorization: Bearer <admin_token>
+
+URL Parameters:
+  - ticketId: integer (required)
+
+Response (200 - Success):
+  {
+    "success": true,
+    "message": "Support ticket deleted successfully"
+  }
+
+Response (404 - Not Found):
+  {
+    "success": false,
+    "message": "Support ticket not found"
+  }
+
+UI Implementation:
+  1. "Delete Ticket" option (in menu/more options)
+  2. Show confirmation dialog: "Are you sure? This cannot be undone."
+  3. Make DELETE request
+  4. On success, navigate back to ticket list
+
+─────────────────────────────────────────────────────────────────────────────
+
+11.8) Admin: GET /api/admin/support-tickets/stats
+─────────────────────────────────────────────────────────────────────────────
+Purpose:
+  - Get support ticket statistics
+  - Show dashboard overview
+  - Track metrics
+
+Auth:
+  - Required: Authorization: Bearer <admin_token>
+
+Example Request:
+  GET /api/admin/support-tickets/stats
+
+Response (200 - Success):
+  {
+    "success": true,
+    "message": "Support ticket statistics retrieved successfully",
+    "data": {
+      "total": 124,           // all tickets
+      "open": 8,              // waiting for first response
+      "in_progress": 5,       // being worked on
+      "resolved": 95,         // solved and closed
+      "closed": 16,           // archived
+      "today": 3,             // created today
+      "this_week": 12,        // created this week
+      "this_month": 45        // created this month
+    }
+  }
+
+UI Implementation (Dashboard):
+  1. Show stats cards: Total | Open | In Progress | Resolved | Closed
+  2. Show trend info: Today (3), This Week (12), This Month (45)
+  3. Color code by status (red=open, yellow=progress, green=resolved)
+  4. Click card to filter ticket list by status
+
+─────────────────────────────────────────────────────────────────────────────
+
+================================================================================
+ERROR HANDLING & EXCEPTIONS
+================================================================================
+
+ALL endpoints can return these errors. Implement proper handling:
+
+1. HTTP 400 - Bad Request
+   Cause: Malformed JSON, missing required fields
+   Response: 
+   {
+     "message": "Invalid request format"
+   }
+   UI: Show "Invalid request. Please try again."
+
+2. HTTP 401 - Unauthorized
+   Cause: Missing token or invalid token
+   Response:
+   {
+     "message": "Unauthenticated."
+   }
+   UI: Force user back to login screen
+
+3. HTTP 403 - Forbidden
+   Cause: User doesn't have permission for this action
+   Response:
+   {
+     "success": false,
+     "message": "Unauthorized"
+   }
+   UI: Show "You don't have permission to do this"
+
+4. HTTP 404 - Not Found
+   Cause: Resource doesn't exist (ticket, user, etc.)
+   Response:
+   {
+     "success": false,
+     "message": "Support ticket not found"
+   }
+   UI: Show "Not found" + go back option
+
+5. HTTP 422 - Unprocessable Entity (Validation)
+   Cause: Validation failed (bad email, phone format, etc.)
+   Response:
+   {
+     "message": "The given data was invalid.",
+     "errors": {
+       "field_name": ["Error message"],
+       "other_field": ["Another error"]
+     }
+   }
+   UI: Show red border around field + error message
+
+6. HTTP 429 - Too Many Requests
+   Cause: Rate limiting (too many requests in short time)
+   Response:
+   {
+     "message": "Too many requests. Please try again later."
+   }
+   UI: Show "Too many requests. Wait a moment and try again."
+
+7. HTTP 500 - Internal Server Error
+   Cause: Server error (database, etc.)
+   Response:
+   {
+     "success": false,
+     "message": "Failed to delete account. Please try again later.",
+     "error": "Exception details..."
+   }
+   UI: Show "Server error. Please try again later." + retry button
+
+8. HTTP 503 - Service Unavailable
+   Cause: Server down for maintenance
+   UI: Show "Service temporarily unavailable. Try again later."
+
+Network Errors (No Response):
+  Cause: Network connection lost, timeout
+  UI: Show "Network error. Check your connection and retry."
+
+Handling Strategy:
+
+```dart
+Future<T> handleApiResponse<T>(http.Response response, T Function(Map) parser) {
+  try {
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      // Success
+      return parser(jsonDecode(response.body));
+    } else if (response.statusCode == 401) {
+      // Unauthorized - force login
+      clearAllStorage();
+      navigateTo('/login');
+      throw ApiException('Session expired. Please login again.');
+    } else if (response.statusCode == 403) {
+      throw ApiException('You don\'t have permission to do this.');
+    } else if (response.statusCode == 404) {
+      throw ApiException('Resource not found.');
+    } else if (response.statusCode == 422) {
+      // Validation error
+      final errors = jsonDecode(response.body)['errors'];
+      throw ValidationException(errors);
+    } else if (response.statusCode == 429) {
+      throw ApiException('Too many requests. Try again later.');
+    } else if (response.statusCode >= 500) {
+      throw ApiException('Server error. Please try again later.');
+    } else {
+      throw ApiException('Unexpected error occurred.');
+    }
+  } on SocketException {
+    throw ApiException('Network error. Check your connection.');
+  } on TimeoutException {
+    throw ApiException('Request timeout. Try again.');
+  } catch (e) {
+    throw ApiException('Error: $e');
+  }
+}
+```
+
+User Feedback Best Practices:
+
+Success Messages:
+  ✓ "Account created successfully"
+  ✓ "Password updated"
+  ✓ "Profile saved"
+  ✓ "Reply added"
+  ✓ "Ticket resolved"
+
+Error Messages (User-Friendly):
+  ✗ DON'T: "Invalid email format validation failed"
+  ✗ DON'T: Show technical error messages
+  ✓ DO: "Please enter a valid email address"
+  ✓ DO: "Password must be at least 8 characters"
+  ✓ DO: "This email is already registered"
+
+Error Display:
+  ✓ Toast for quick notifications (3-4 seconds)
+  ✓ Dialog for critical errors (must dismiss)
+  ✓ Inline errors for form validation (red text)
+  ✓ Snackbar for undo actions
+
+Loading States:
+  ✓ Show loading spinner while request in progress
+  ✓ Disable button while loading (prevent double-submit)
+  ✓ Show "Loading..." text if spinner not enough
+  ✓ Allow cancel (back button) to stop request
+
+Retry Logic:
+  ✓ Network errors → Auto-retry 3 times with exponential backoff
+  ✓ Server errors (500+) → Show "Retry" button
+  ✓ Validation errors → Don't retry, fix and resubmit
+  ✓ 401 errors → Don't retry, force login
+
+================================================================================
