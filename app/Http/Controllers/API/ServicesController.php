@@ -67,4 +67,13 @@ public function studentIndex()
         }
         return response()->json($subject);
     }
+
+    public function getAllSubjects()
+    {
+        $subjects = Subject::where('status', 1)
+            ->get(['id', 'name_en', 'name_ar', 'class_id', 'education_level_id']);
+
+        // Wrap in array to match repository expectation (List<List<Subject>>)
+        return response()->json([$subjects]);
+    }
 }

@@ -63,6 +63,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/notifications/{id}/delete', [FCMTokenController::class, 'deleteNotification']);
     Route::post('/notifications/send', [NotificationController::class, 'sendToToken']);
 });
+Route::get('/common-subjects', [ServicesController::class, 'getAllSubjects']);
 // main screen APIs
 Route::get('/services', [ServicesController::class, 'listServices']);
 Route::get('/services/search', [ServicesController::class, 'searchServices']);
