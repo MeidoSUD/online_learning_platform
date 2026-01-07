@@ -44,6 +44,7 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\Http\Request;
 use App\Http\Controllers\FCMTokenController;
 use Illuminate\Support\Facades\Artisan;
+use App\Http\Controllers\SupportController;
 
 // Agora Meeting
 Route::get('/meet', function () {
@@ -102,6 +103,13 @@ Route::get('/test-firebase-path', function () {
 | contains the "web" middleware group. Now create something great!
 |
 */
+
+// Public Support Routes
+Route::prefix('support')->group(function () {
+    Route::get('/contact', [SupportController::class, 'contact'])->name('support.contact');
+    Route::post('/contact', [SupportController::class, 'submitContact'])->name('support.submit');
+});
+
 Route::get('/test-notification', function () {
     $user = auth()->user();
 
