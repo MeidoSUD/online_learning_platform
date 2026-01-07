@@ -15,10 +15,11 @@ class CreateSupportTicketsTable extends Migration
     {
         Schema::create('support_tickets', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->unsignedBigInteger('user_id');
+            $table->unsignedBigInteger('user_id')->nullable();
             $table->string('subject');
             $table->text('body');
             $table->enum('status', ['open','in_progress','closed']);
+            $table->text('internal_note')->nullable();
             $table->timestamps();
 
             $table->foreign('user_id')->references('id')->on('users');

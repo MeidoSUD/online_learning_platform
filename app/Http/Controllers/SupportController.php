@@ -21,6 +21,7 @@ class SupportController extends Controller
 
     /**
      * Submit contact form (public endpoint)
+     * Saves ticket to database and optionally sends email
      * 
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
@@ -35,19 +36,31 @@ class SupportController extends Controller
                 'message' => 'required|string|min:10|max:5000',
             ]);
 
-            Log::info('New support contact submission', [
+            // Create support ticket in database
+            $ticket = SupportTicket::create([
+                'user_id' => null, // Public submission, no user account
+                'subject' => $validated['subject'],
+                'body' => $validated['message'],
+                'status' => 'open', // New tickets start as open
+                'internal_note' => "Public contact from: {$validated['name']} ({$validated['email']})",
+            ]);
+
+            Log::info('New support ticket created', [
+                'ticket_id' => $ticket->id,
                 'name' => $validated['name'],
                 'email' => $validated['email'],
                 'subject' => $validated['subject'],
             ]);
 
-            // Send email to support team
+            // Send email notification to support team (optional, doesn't fail if fails)
             try {
                 Mail::raw(
                     "New Support Request from: {$validated['name']}\n" .
-                    "Email: {$validated['email']}\n\n" .
+                    "Email: {$validated['email']}\n" .
+                    "Ticket ID: {$ticket->id}\n\n" .
                     "Subject: {$validated['subject']}\n\n" .
-                    "Message:\n{$validated['message']}",
+                    "Message:\n{$validated['message']}\n\n" .
+                    "View in admin panel: /api/admin/support-tickets/{$ticket->id}",
                     function ($message) use ($validated) {
                         $message->to('contact@ewan-geniuses.com')
                                 ->from($validated['email'])
@@ -56,16 +69,23 @@ class SupportController extends Controller
                     }
                 );
 
-                Log::info('Support email sent successfully to contact@ewan-geniuses.com');
+                Log::info('Support email sent successfully', [
+                    'ticket_id' => $ticket->id,
+                    'email' => 'contact@ewan-geniuses.com'
+                ]);
             } catch (\Exception $e) {
-                Log::warning('Failed to send support email: ' . $e->getMessage());
-                // Don't fail the response, just log it
+                Log::warning('Failed to send support email', [
+                    'ticket_id' => $ticket->id,
+                    'error' => $e->getMessage()
+                ]);
+                // Don't fail the response - ticket is saved in database
             }
 
             return response()->json([
                 'success' => true,
-                'message' => 'Thank you! Your message has been sent successfully. We will get back to you soon.'
-            ], 200);
+                'message' => 'Thank you! Your message has been saved. We will get back to you soon.',
+                'ticket_id' => $ticket->id
+            ], 201);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             Log::warning('Support form validation failed', ['errors' => $e->errors()]);
