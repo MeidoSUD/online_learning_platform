@@ -36,14 +36,15 @@ class AuthController extends Controller
     // Register
     public function register(Request $request)
     {
+        // Minimal validation - only required fields
         $request->validate([
             'first_name'    => 'required|string|max:255',
             'last_name'     => 'required|string|max:255',
             'email'         => 'required|string|email|unique:users',
             'phone_number'  => 'required|string|max:15',
-            'gender'        => 'required|in:male,female',
+            'role_id'       => 'required|in:3,4', // 3=teacher, 4=student
+            'gender'        => 'nullable|in:male,female,other',
             'nationality'   => 'nullable|string|max:255',
-            'role_id'       => 'required',
         ]);
 
         // Normalize phone number
@@ -67,19 +68,42 @@ class AuthController extends Controller
         $password = 'password'; // Default password
         $verification_code = rand(100000, 999999);
 
-        $user = User::create([
-            'first_name'    => $request->first_name,
-            'last_name'     => $request->last_name,
-            'email'         => $request->email,
-            'phone_number'  => $normalizedPhone,
-            'gender'        => $request->gender,
-            'nationality'   => $request->nationality,
-            'password'      => Hash::make($password),
-            'role_id'       => $request->role_id,
-            'verified'      => false,
-            'verification_code' => $verification_code,
-        ]);
+        try {
+            DB::beginTransaction();
+
+            // Create user - minimal data only
+            $user = User::create([
+                'first_name'    => $request->first_name,
+                'last_name'     => $request->last_name,
+                'email'         => $request->email,
+                'phone_number'  => $normalizedPhone,
+                'gender'        => $request->gender,
+                'nationality'   => $request->nationality,
+                'password'      => Hash::make($password),
+                'role_id'       => $request->role_id,
+                'verified'      => false,
+                'verification_code' => $verification_code,
+            ]);
+
+            DB::commit();
+
+            Log::info('New user registration', [
+                'user_id' => $user->id,
+                'role_id' => $request->role_id,
+                'email' => $request->email,
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Registration error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Registration failed. Please try again.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
         
+        // Keep the same response structure (backward compatible)
         $user_response = [
             "id" => $user->id,
             "first_name" => $user->first_name,

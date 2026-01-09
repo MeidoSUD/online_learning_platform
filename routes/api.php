@@ -39,6 +39,7 @@ use App\Http\Controllers\API\Admin\SubjectAdminController;
 use App\Http\Controllers\API\Admin\EducationLevelAdminController;
 use App\Http\Controllers\API\Admin\CourseAdminController;
 use App\Http\Controllers\API\Admin\SupportTicketController;
+use App\Http\Controllers\API\Admin\InstituteController;
 use App\Models\Payment;
 use App\Models\User;
 // Agora token route for sessions
@@ -374,6 +375,15 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     Route::put('/support-tickets/{id}/status', [SupportTicketController::class, 'updateStatus']);
     Route::post('/support-tickets/{id}/close', [SupportTicketController::class, 'close']);
     Route::delete('/support-tickets/{id}', [SupportTicketController::class, 'destroy']);
+
+    // Institute Registration Management
+    Route::get('/institutes', [InstituteController::class, 'index']);
+    Route::get('/institutes/stats', [InstituteController::class, 'getStats']);
+    Route::get('/institutes/{id}', [InstituteController::class, 'show']);
+    Route::post('/institutes/{id}/approve', [InstituteController::class, 'approve']);
+    Route::post('/institutes/{id}/reject', [InstituteController::class, 'reject']);
+    Route::put('/institutes/{id}', [InstituteController::class, 'update']);
+    Route::delete('/institutes/{id}', [InstituteController::class, 'destroy']);
 
     // Payouts / transfer to teachers
     Route::get('/payouts', [PayoutAdminController::class, 'index']);

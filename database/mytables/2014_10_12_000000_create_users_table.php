@@ -22,6 +22,7 @@ class CreateUsersTable extends Migration
             $table->string('password')->nullable();
             $table->unsignedBigInteger('role_id');
             $table->enum('gender', ['male', 'female', 'other'])->nullable();
+            $table->string('teacher_type')->nullable(); // e.g. 'individual', 'institute'
             $table->date('date_of_birth')->nullable();
             $table->string('timezone')->nullable();
             $table->timestamp('email_verified_at')->nullable();

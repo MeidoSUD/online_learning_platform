@@ -18,6 +18,8 @@ use App\Models\AvailabilitySlot;
 use App\Models\TeacherLanguage;
 use Illuminate\Support\Facades\Log;
 use App\Helpers\PhoneHelper;
+use App\Models\TeacherInstitute;
+use Illuminate\Support\Facades\Storage;
 
 class UserController extends Controller
 {
@@ -220,13 +222,18 @@ class UserController extends Controller
     }
 
     // update profile
+    /**
+     * Update user profile
+     * Routes to separate handlers based on role:
+     * - role_id = 3 (teacher): updateTeacherProfile
+     * - role_id = 4 (student): updateStudentProfile
+     */
     public function updateProfile(Request $request)
     {
         Log::info('Update Profile Request: ', $request->all());
         $user = $request->user();
 
-        // Validate role_id if provided (must be 3 for teacher or 4 for student)
-        // Only allow changing role_id if it hasn't been set before (first-time setup)
+        // Validate and set role_id if needed
         if ($request->has('role_id')) {
             $request->validate([
                 'role_id' => 'required|in:3,4',
@@ -253,37 +260,77 @@ class UserController extends Controller
                 'errors' => ['role_id' => ['The role_id field is required.']]
             ], 422);
         }
-        $profileData = $request->only(['bio', 'description', 'profile_photo_id', 'language_pref', 'terms_accepted']);
-        $profileData['verified'] = $user->role_id == 4 ? 1 : ($request->input('verified', 0));
 
-        $profile = UserProfile::updateOrCreate(
-            ['user_id' => $user->id],
-            $profileData
-        );
+        // Route to appropriate handler based on role
+        try {
+            if ($user->role_id == 3) {
+                // Teacher profile update
+                return $this->updateTeacherProfile($request, $user);
+            } else if ($user->role_id == 4) {
+                // Student profile update
+                return $this->updateStudentProfile($request, $user);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid user role'
+                ], 422);
+            }
+        } catch (\Exception $e) {
+            Log::error('Profile update error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update profile',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 
-        // If user, teacher, update teacher info, classes, subjects if provided
-        if ($user->role_id == 4 || $user->role_id == 3) {
+    /**
+     * Update student profile
+     * 
+     * Handles:
+     * - Basic profile info
+     * - Profile photo upload
+     * - User info updates
+     */
+    private function updateStudentProfile(Request $request, User $user)
+    {
+        try {
+            DB::beginTransaction();
+
+            // Update basic profile
+            $profileData = $request->only(['bio', 'description', 'profile_photo_id', 'language_pref', 'terms_accepted']);
+            $profileData['verified'] = $request->input('verified', 0);
+
+            $profile = UserProfile::updateOrCreate(
+                ['user_id' => $user->id],
+                $profileData
+            );
+
+            // Update user basic info if provided
             if ($request->hasAny(['first_name', 'last_name', 'email', 'phone_number'])) {
                 $updateData = $request->only(['first_name', 'last_name', 'email', 'phone_number']);
                 
-                // Normalize phone number if provided
+                // Normalize phone if provided
                 if (isset($updateData['phone_number'])) {
                     $normalizedPhone = PhoneHelper::normalize($updateData['phone_number']);
                     if (!$normalizedPhone) {
+                        DB::rollBack();
                         return response()->json([
                             'success' => false,
-                            'message' => 'Invalid phone number format. Must be a valid KSA phone number.'
+                            'message' => 'Invalid phone number format.'
                         ], 422);
                     }
                     
-                    // Check if phone already exists (and it's not the same user)
+                    // Check if phone already exists
                     $existingPhone = User::where('phone_number', $normalizedPhone)
                         ->where('id', '!=', $user->id)
                         ->first();
                     if ($existingPhone) {
+                        DB::rollBack();
                         return response()->json([
                             'success' => false,
-                            'message' => 'Phone number already in use by another account.'
+                            'message' => 'Phone number already in use.'
                         ], 422);
                     }
                     
@@ -292,71 +339,16 @@ class UserController extends Controller
                 
                 $user->update($updateData);
             }
-        }
-        if ($user->role_id == 3) {
-            if ($request->hasAny(['bio', 'teach_individual', 'individual_hour_price', 'teach_group', 'group_hour_price', 'max_group_size', 'min_group_size'])) {
-                $this->updateTeacherInfo($request);
-            }
-            if ($request->has('class_ids')) {
-                $this->updateTeacherClasses($request);
-            }
-            if ($request->has('subject_ids')) {
-                $this->updateTeacherSubjects($request);
-            }
-            if ($request->has('services_id')) {
-                $this->updateTeacherServices($request);
-            }
-        }
-        // Handle file uploads and save to attachments table
-        try {
+
+            // Handle profile photo upload
             if ($request->hasFile('profile_photo')) {
                 $this->saveAttachmentFile($request, 'profile_photo', 'profile_photos', $user, 'profile_picture');
             }
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to upload profile photo',
-                'error' => $e->getMessage()
-            ], 500);
-        }
 
-        if ($user->role && $user->role->name_key === 'teacher') {
-            try {
-                if ($request->hasFile('certificate')) {
-                    $this->saveAttachmentFile($request, 'certificate', 'certificates', $user, 'certificate');
-                }
-                if ($request->hasFile('resume')) {
-                    $this->saveAttachmentFile($request, 'resume', 'resumes', $user, 'resume');
-                }
-            } catch (\Exception $e) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to upload teacher files',
-                    'error' => $e->getMessage()
-                ], 500);
-            }
-        }
+            DB::commit();
 
-        $user->refresh();
-        $profile->load('profilePhoto');
-
-        if ($user->role_id == 3) {
-            // Teacher: return full teacher data
-            $user->load([
-                'profile.profilePhoto:id,file_path',
-                'teacherInfo',
-                'teacherClasses',
-                'teacherSubjects',
-                'availableSlots',
-                'reviews',
-            ]);
-            return response()->json([
-                'success' => true,
-                'message' => 'Profile updated successfully',
-                'data' => $this->getFullTeacherData($user)
-            ]);
-        } else {
-            // Student: return basic profile data with profile photo from attachments
+            // Prepare response
+            $user->refresh();
             $profilePhoto = $user->attachments()
                 ->where('attached_to_type', 'profile_picture')
                 ->latest()
@@ -382,6 +374,268 @@ class UserController extends Controller
                     ],
                 ]
             ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Student profile update error: ' . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
+     * Update teacher profile
+     * 
+     * Handles:
+     * - Teacher basic info (services, pricing, classes, subjects)
+     * - Individual teacher profile
+     * - Institute teacher profile (if teacher_type = institute)
+     */
+    private function updateTeacherProfile(Request $request, User $user)
+    {
+        try {
+            DB::beginTransaction();
+
+            // Update basic profile
+            $profileData = $request->only(['bio', 'description', 'profile_photo_id', 'language_pref', 'terms_accepted']);
+            $profileData['verified'] = $request->input('verified', 0);
+
+            $profile = UserProfile::updateOrCreate(
+                ['user_id' => $user->id],
+                $profileData
+            );
+
+            // Update user basic info
+            if ($request->hasAny(['first_name', 'last_name', 'email', 'phone_number'])) {
+                $updateData = $request->only(['first_name', 'last_name', 'email', 'phone_number']);
+                
+                if (isset($updateData['phone_number'])) {
+                    $normalizedPhone = PhoneHelper::normalize($updateData['phone_number']);
+                    if (!$normalizedPhone) {
+                        DB::rollBack();
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Invalid phone number format.'
+                        ], 422);
+                    }
+                    
+                    $existingPhone = User::where('phone_number', $normalizedPhone)
+                        ->where('id', '!=', $user->id)
+                        ->first();
+                    if ($existingPhone) {
+                        DB::rollBack();
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Phone number already in use.'
+                        ], 422);
+                    }
+                    
+                    $updateData['phone_number'] = $normalizedPhone;
+                }
+                
+                $user->update($updateData);
+            }
+
+            // Check if this is institute registration
+            if ($request->input('teacher_type') === 'institute') {
+                $this->updateInstituteProfile($request, $user);
+            } else {
+                // Individual teacher profile update
+                $this->updateIndividualTeacherProfile($request, $user);
+            }
+
+            // Handle common teacher file uploads
+            if ($request->hasFile('profile_photo')) {
+                $this->saveAttachmentFile($request, 'profile_photo', 'profile_photos', $user, 'profile_picture');
+            }
+            if ($request->hasFile('certificate')) {
+                $this->saveAttachmentFile($request, 'certificate', 'certificates', $user, 'certificate');
+            }
+            if ($request->hasFile('resume')) {
+                $this->saveAttachmentFile($request, 'resume', 'resumes', $user, 'resume');
+            }
+
+            DB::commit();
+
+            // Return full teacher data
+            $user->refresh();
+            $user->load([
+                'profile.profilePhoto:id,file_path',
+                'teacherInfo',
+                'teacherClasses',
+                'teacherSubjects',
+                'availableSlots',
+                'reviews',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Profile updated successfully',
+                'data' => $this->getFullTeacherData($user)
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Teacher profile update error: ' . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
+     * Update individual teacher profile
+     * 
+     * Handles:
+     * - Teaching info (prices, group size, services)
+     * - Classes and subjects
+     * - Availability slots
+     */
+    private function updateIndividualTeacherProfile(Request $request, User $user)
+    {
+        // Update teacher info if provided
+        if ($request->hasAny(['bio', 'teach_individual', 'individual_hour_price', 'teach_group', 'group_hour_price', 'max_group_size', 'min_group_size'])) {
+            $this->updateTeacherInfo($request);
+        }
+
+        // Update classes
+        if ($request->has('class_ids')) {
+            $this->updateTeacherClasses($request);
+        }
+
+        // Update subjects
+        if ($request->has('subject_ids')) {
+            $this->updateTeacherSubjects($request);
+        }
+
+        // Update services
+        if ($request->has('services_id')) {
+            $this->updateTeacherServices($request);
+        }
+
+        Log::info('Individual teacher profile updated', ['user_id' => $user->id]);
+    }
+
+    /**
+     * Update institute teacher profile
+     * 
+     * Handles:
+     * - Institute information
+     * - Cover image and intro video uploads
+     * - Status management
+     * - Certificate uploads
+     */
+    private function updateInstituteProfile(Request $request, User $user)
+    {
+        // Validate institute fields
+        $request->validate([
+            'institute_name'        => 'nullable|string|max:255',
+            'commercial_register'   => 'nullable|string|max:255',
+            'license_number'        => 'nullable|string|max:255',
+            'description'           => 'nullable|string|max:5000',
+            'website'               => 'nullable|url|max:255',
+        ]);
+
+        // Find or create institute record
+        $institute = TeacherInstitute::firstOrCreate(
+            ['user_id' => $user->id],
+            ['status' => 'pending']
+        );
+
+        // Update institute fields
+        $updateData = $request->only([
+            'institute_name',
+            'commercial_register',
+            'license_number',
+            'description',
+            'website'
+        ]);
+
+        if (!empty($updateData)) {
+            $institute->update(array_filter($updateData)); // Only update non-null values
+        }
+
+        // Handle institute-specific file uploads
+        if ($request->hasFile('cover_image')) {
+            $this->saveInstituteAttachment($request, 'cover_image', 'institutes/covers', $institute, 'cover_image');
+        }
+
+        if ($request->hasFile('intro_video')) {
+            $this->saveInstituteAttachment($request, 'intro_video', 'institutes/videos', $institute, 'intro_video');
+        }
+
+        // Certificates can be uploaded multiple times
+        if ($request->hasFile('certificates')) {
+            $certificates = $request->file('certificates');
+            if (!is_array($certificates)) {
+                $certificates = [$certificates];
+            }
+            foreach ($certificates as $cert) {
+                $path = $cert->store('institutes/certificates', 'public');
+                Attachment::create([
+                    'user_id' => $user->id,
+                    'file_path' => $path,
+                    'attached_to_type' => 'institute_certificate',
+                    'attached_to_id' => $institute->id,
+                ]);
+            }
+        }
+
+        Log::info('Institute profile updated', [
+            'user_id' => $user->id,
+            'institute_id' => $institute->id,
+            'status' => $institute->status
+        ]);
+    }
+
+    /**
+     * Save institute-specific attachments
+     */
+    private function saveInstituteAttachment(Request $request, $fieldName, $path, TeacherInstitute $institute, $attachmentType)
+    {
+        if (!$request->hasFile($fieldName)) {
+            return;
+        }
+
+        try {
+            // Delete old attachment if exists
+            $oldAttachment = Attachment::where('user_id', $institute->user_id)
+                ->where('attached_to_type', $attachmentType)
+                ->where('attached_to_id', $institute->id)
+                ->first();
+
+            if ($oldAttachment && Storage::exists($oldAttachment->file_path)) {
+                Storage::delete($oldAttachment->file_path);
+            }
+
+            // Upload new file
+            $file = $request->file($fieldName);
+            $filePath = $file->store($path, 'public');
+
+            // Update or create attachment
+            Attachment::updateOrCreate(
+                [
+                    'user_id' => $institute->user_id,
+                    'attached_to_type' => $attachmentType,
+                    'attached_to_id' => $institute->id,
+                ],
+                [
+                    'file_path' => $filePath,
+                ]
+            );
+
+            // Update institute table if applicable
+            if ($attachmentType === 'cover_image') {
+                $institute->update(['cover_image' => $filePath]);
+            } elseif ($attachmentType === 'intro_video') {
+                $institute->update(['intro_video' => $filePath]);
+            }
+
+            Log::info("Institute $attachmentType uploaded", [
+                'user_id' => $institute->user_id,
+                'path' => $filePath
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("Failed to upload institute $attachmentType: " . $e->getMessage());
+            throw $e;
         }
     }
 
@@ -698,167 +952,7 @@ class UserController extends Controller
         }
     }
 
-    // public function getFullTeacherData(User $teacher)
-    // {
-    //     // Get latest attachments
-    //     $profilePhoto = $teacher->attachments()
-    //         ->where('attached_to_type', 'profile_picture')
-    //         ->latest()
-    //         ->value('file_path');
-
-    //     // Get earnings data
-    //     $earnings = DB::table('bookings')
-    //         ->where('teacher_id', $teacher->id)
-    //         ->where('status', 'completed')
-    //         ->select(
-    //             DB::raw('COUNT(*) as total_lessons'),
-    //             DB::raw('SUM(total_amount) as total_earnings'),
-    //             DB::raw('SUM(CASE WHEN DATE(created_at) = CURDATE() THEN total_amount ELSE 0 END) as today_earnings'),
-    //             DB::raw('SUM(CASE WHEN MONTH(created_at) = MONTH(CURDATE()) THEN total_amount ELSE 0 END) as month_earnings')
-    //         )
-    //         ->first();
-
-    //     // Current lessons count
-    //     $currentLessons = DB::table('bookings')
-    //         ->where('teacher_id', $teacher->id)
-    //         ->where('status', 'active')
-    //         ->count();
-
-    //     // Get reviews
-    //     $reviews = Review::where('reviewed_id', $teacher->id)->get();
-    //     $rating = round($reviews->avg('rating') ?? 0, 1);
-
-    //     // Get teacher subjects with detailed info
-    //     $teacherSubjects = TeacherSubject::where('teacher_id', $teacher->id)
-    //         ->with([
-    //             'subject' => function($q) {
-    //                 $q->select('id', 'name_en', 'name_ar', 'class_id', 'education_level_id');
-    //             },
-    //             'subject.class' => function($q) {
-    //                 $q->select('id', 'name_en', 'name_ar', 'education_level_id');
-    //             },
-    //             'subject.educationLevel' => function($q) {
-    //                 $q->select('id', 'name_en', 'name_ar');
-    //             }
-    //         ])
-    //         ->get()
-    //         ->map(function($teacherSubject) {
-    //             return [
-    //                 'id' => $teacherSubject->id,
-    //                 'teacher_id' => $teacherSubject->teacher_id,
-    //                 'subject_id' => optional($teacherSubject->subject)->id ?? $teacherSubject->subject_id,
-    //                 'title' => $teacherSubject->subject->name_ar ?? $teacherSubject->subject->name_en,
-    //                 'class_id' => $teacherSubject->subject->class_id,
-    //                 'class_level_id' => $teacherSubject->subject->education_level_id,
-    //                 'class_level_title' => optional($teacherSubject->subject->educationLevel)->name_ar,
-    //                 'class_title' => optional($teacherSubject->subject->class)->name_ar,
-    //                 'category_id' => $teacherSubject->subject->category_id,
-    //                 'hourly_rate' => null,
-    //                 'proficiency' => null,
-    //             ];
-    //         })
-    //         ->values()
-    //         ->toArray();
-    //     // get teacher services
-
-    //     $teacherServices = TeacherServices::where('teacher_id', $teacher->id)
-    //         ->with('service:id,name_en,name_ar,description_en,description_ar')
-    //         ->get()
-    //         ->map(function($teacherService) {
-    //             return [
-    //                 'id' => $teacherService->id,
-    //                 'teacher_id' => $teacherService->teacher_id,
-    //                 'service_id' => optional($teacherService->service)->id ?? $teacherService->service_id,
-    //                 'name' => $teacherService->service->name_ar ?? $teacherService->service->name_en,
-    //                 'description' => $teacherService->service->description_ar ?? $teacherService->service->description_en,
-    //             ];
-    //         })
-    //         ->values()
-    //         ->toArray();
-
-    //     // get teacher languages
-    //     $teacherLanguages = TeacherLanguage::where('teacher_id', $teacher->id)
-    //     ->with('languages.id,name_en,name_ar')
-    //     ->get()
-    //     ->map(function($teacherLanguages)
-    //     {
-    //         return [
-    //             'id' => $teacherLanguages->id,
-    //             'teacher_id' => $teacherLanguages->teacher_id,
-    //             'language_id' => optional($teacherLanguages->languages)->id ?? $teacherLanguages->language_id,
-    //             'name_en' => $teacherLanguages->languages->name_ar,
-    //             'name_ar' => $teacherLanguages->languages->name_en,
-    //         ];
-    //     })->values()
-    //     ->toArray();
-
-    //     // Get availability slots grouped by day
-    //     $availabilitySlots = AvailabilitySlot::where('teacher_id', $teacher->id)
-    //         ->where('is_available', true)
-    //         ->get()
-    //         ->groupBy('day_number');
-
-    //     // Map day numbers to Arabic day names
-    //     $dayNames = [
-    //         0 => 'الاحد',      // Sunday
-    //         1 => 'الاتنين',     // Monday
-    //         2 => 'الثلاثاء',    // Tuesday
-    //         3 => 'الاربعاء',    // Wednesday
-    //         4 => 'الخميس',      // Thursday
-    //         5 => 'الجمعة',      // Friday
-    //         6 => 'السبت',       // Saturday
-    //     ];
-
-    //     $availableTimes = [];
-    //     foreach ($availabilitySlots as $dayNumber => $slots) {
-    //         $dayName = $dayNames[$dayNumber] ?? 'unknown';
-    //         $times = $slots->map(function($slot) {
-    //             return [
-    //                 'id' => $slot->id,
-    //                 'time' => $slot->start_time->format('h:i A') // Format time as "5:00 PM"
-    //             ];
-    //         })->values()->toArray();
-
-    //         $availableTimes[] = [
-    //             'id' => $dayNumber,
-    //             'day' => $dayName,
-    //             'times' => $times
-    //         ];
-    //     }
-
-    //     // Return complete teacher data structure
-    //     return [
-    //         'id' => $teacher->id,
-    //         'first_name' => $teacher->first_name,
-    //         'last_name' => $teacher->last_name,
-    //         'email' => $teacher->email,
-    //         'phone_number' => $teacher->phone_number,
-    //         'email_verified_at' => $teacher->email_verified_at,
-    //         'role_id' => $teacher->role_id,
-    //         'gender' => $teacher->gender,
-    //         'nationality' => $teacher->nationality,
-    //         'verification_code' => $teacher->verification_code,
-    //         'social_provider' => $teacher->social_provider,
-    //         'social_provider_id' => $teacher->social_provider_id,
-    //         'is_active' => (int) $teacher->is_active,
-    //         'profile_image' => $profilePhoto,
-    //         'reviews' => $reviews,
-    //         'rating' => $rating,
-    //         'bio' => optional($teacher->profile)->bio,
-    //         'total_students' => (int) (optional($teacher->teacherInfo)->total_students ?? 0),
-    //         'verified' => (bool) optional($teacher->profile)->verified,
-    //         'service' => $teacherServices,
-    //         'languages' => $teacherLanguages,
-    //         'available_times' => $availableTimes,
-    //         'teach_individual' => (bool) optional($teacher->teacherInfo)->teach_individual,
-    //         'individual_hour_price' => (float) (optional($teacher->teacherInfo)->individual_hour_price ?? 0),
-    //         'teach_group' => (bool) optional($teacher->teacherInfo)->teach_group,
-    //         'group_hour_price' => (float) (optional($teacher->teacherInfo)->group_hour_price ?? 0),
-    //         'max_group_size' => (int) (optional($teacher->teacherInfo)->max_group_size ?? 0),
-    //         'min_group_size' => (int) (optional($teacher->teacherInfo)->min_group_size ?? 0),
-    //         'teacher_subjects' => $teacherSubjects,
-    //     ];
-    // }
+    // Helper to get full teacher data
     public function getFullTeacherData(User $teacher)
     {
         // Get latest attachments

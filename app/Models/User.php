@@ -26,6 +26,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'nationality',
         'phone_number',
         'gender',
+        'teacher_type',
         'password',
         'fcm_token',
         'verified',
@@ -177,6 +178,14 @@ class User extends Authenticatable implements MustVerifyEmail
     public function supportTicketReplies()
     {
         return $this->hasMany(SupportTicketReply::class, 'user_id');
+    }
+
+    /**
+     * Get institute information if user is an institute teacher
+     */
+    public function institute()
+    {
+        return $this->hasOne(TeacherInstitute::class, 'user_id');
     }
 
     
