@@ -19,9 +19,12 @@ use Illuminate\Support\Facades\Storage;
 use App\Models\Attachment;
 use App\Models\SupportTicket;
 use App\Models\SupportTicketReply;
+use App\Traits\ApiResponse;
 
 class AuthController extends Controller
 {
+    use ApiResponse;
+
     /**
      * @OA\Get(
      *     path="/api/",
@@ -33,54 +36,52 @@ class AuthController extends Controller
      *     )
      * )
      */
-    // Register
+    // Register - Comprehensive error handling
     public function register(Request $request)
     {
-        // Minimal validation - only required fields
-        $request->validate([
-            'first_name'    => 'required|string|max:255',
-            'last_name'     => 'required|string|max:255',
-            'email'         => 'required|string|email|unique:users',
-            'phone_number'  => 'required|string|max:15',
-            'role_id'       => 'required|in:3,4', // 3=teacher, 4=student
-            'gender'        => 'nullable|in:male,female,other',
-            'nationality'   => 'nullable|string|max:255',
-        ]);
-
-        // Normalize phone number
-        $normalizedPhone = PhoneHelper::normalize($request->phone_number);
-        if (!$normalizedPhone) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid phone number format. Must be a valid KSA phone number.'
-            ], 422);
-        }
-
-        // Check if phone already exists
-        $existingUser = User::where('phone_number', $normalizedPhone)->first();
-        if ($existingUser) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Phone number already registered.'
-            ], 422);
-        }
-
-        $password = 'password'; // Default password
-        $verification_code = rand(100000, 999999);
-
         try {
-            DB::beginTransaction();
+            // Validate input with comprehensive rules
+            $validated = $request->validate([
+                'first_name'    => 'required|string|max:255',
+                'last_name'     => 'required|string|max:255',
+                'email'         => 'required|string|email|unique:users',
+                'phone_number'  => 'required|string|max:15',
+                'role_id'       => 'required|in:3,4', // 3=teacher, 4=student
+                'gender'        => 'nullable|in:male,female,other',
+                'nationality'   => 'nullable|string|max:255',
+                'password'      => 'required|string|min:8',
+            ]);
 
+            // Normalize phone number
+            $normalizedPhone = PhoneHelper::normalize($request->phone_number);
+            if (!$normalizedPhone) {
+                return $this->validationErrorArray(
+                    ['phone_number' => ['Invalid phone number format. Must be a valid KSA phone number.']],
+                    'Invalid phone number'
+                );
+            }
+
+            // Check if phone already exists
+            $existingUser = User::where('phone_number', $normalizedPhone)->first();
+            if ($existingUser) {
+                return $this->conflictError(
+                    'Phone number already registered',
+                    'phone_number'
+                );
+            }
+
+            DB::beginTransaction();
+            $verification_code = rand(100000, 999999);
             // Create user - minimal data only
             $user = User::create([
-                'first_name'    => $request->first_name,
-                'last_name'     => $request->last_name,
-                'email'         => $request->email,
+                'first_name'    => $validated['first_name'],
+                'last_name'     => $validated['last_name'],
+                'email'         => $validated['email'],
                 'phone_number'  => $normalizedPhone,
-                'gender'        => $request->gender,
-                'nationality'   => $request->nationality,
-                'password'      => Hash::make($password),
-                'role_id'       => $request->role_id,
+                'gender'        => $validated['gender'] ?? null,
+                'nationality'   => $validated['nationality'] ?? null,
+                'password'      => Hash::make($validated['password']),
+                'role_id'       => $validated['role_id'],
                 'verified'      => false,
                 'verification_code' => $verification_code,
             ]);
@@ -89,47 +90,66 @@ class AuthController extends Controller
 
             Log::info('New user registration', [
                 'user_id' => $user->id,
-                'role_id' => $request->role_id,
-                'email' => $request->email,
+                'role_id' => $validated['role_id'],
+                'email' => $validated['email'],
             ]);
 
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Registration error: ' . $e->getMessage());
+            // Send verification code via SMS
+            $smsPhone = PhoneHelper::normalizeForSMS($normalizedPhone);
+            $smsResponse = $this->sendVerificationSMS($smsPhone, $verification_code);
+
+            // Send email notification
+            try {
+                Mail::to($user->email)->send(new VerificationCodeMail($user, $verification_code, 'register'));
+            } catch (\Exception $e) {
+                Log::warning('Failed to send verification email: ' . $e->getMessage());
+            }
+
+            // Keep the same response structure (backward compatible)
+            $user_response = [
+                "id" => $user->id,
+                "first_name" => $user->first_name,
+                "last_name" => $user->last_name,
+                "email" => $user->email,
+                "phone_number" => $user->phone_number,
+                "gender" => $user->gender,
+                "role_id" => $user->role_id,
+            ];
+
             return response()->json([
-                'success' => false,
-                'message' => 'Registration failed. Please try again.',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-        
-        // Keep the same response structure (backward compatible)
-        $user_response = [
-            "id" => $user->id,
-            "first_name" => $user->first_name,
-            "last_name" => $user->last_name,
-            "email" => $user->email,
-            "phone_number" => $user->phone_number,
-            "gender" => $user->gender,
-            "role_id" => $user->role_id,
-        ];
+                'success' => true,
+                'code' => 'REGISTRATION_SUCCESS',
+                'message' => 'Verification code sent. Please verify via SMS or email.',
+                'user' => $user_response,
+                'sms_response' => $smsResponse
+            ], 201);
 
-        // Send verification code via SMS (normalize for SMS format without +)
-        $smsPhone = PhoneHelper::normalizeForSMS($normalizedPhone);
-        $smsResponse = $this->sendVerificationSMS($smsPhone, $verification_code);
-
-        // Also send email notification
-        try {
-            Mail::to($user->email)->send(new VerificationCodeMail($user, $verification_code, 'register'));
+        } catch (ValidationException $e) {
+            // Handle validation errors
+            return $this->validationError($e, 'Registration validation failed');
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Handle database errors
+            DB::rollBack();
+            Log::error('Database error during registration: ' . $e->getMessage());
+            
+            // Check if it's a unique constraint error
+            if (strpos($e->getMessage(), 'UNIQUE constraint failed') !== false || 
+                strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                return $this->conflictError('Email or phone number already exists');
+            }
+            
+            return $this->databaseError($e, 'Registration failed due to database error');
         } catch (\Exception $e) {
-            Log::warning('Failed to send verification email: ' . $e->getMessage());
+            // Handle all other errors
+            DB::rollBack();
+            Log::error('Registration error: ' . $e->getMessage(), [
+                'exception' => get_class($e),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+            
+            return $this->serverError($e, 'Registration failed. Please try again later.');
         }
-
-        return response()->json([
-            'message' => 'Verification code sent. Please verify via SMS or email.',
-            'user' => $user_response,
-            'sms_response' => $smsResponse // For debugging, remove in production
-        ]);
     }
 
     /**
@@ -168,92 +188,129 @@ class AuthController extends Controller
     
     public function login(Request $request)
     {
-        // Accept either email OR phone_number, not both required
-        $request->validate([
-            'email' => 'nullable|email',
-            'phone_number' => 'nullable|string|max:15',
-            'password' => 'required',
-            'fcm_token' => 'nullable|string'
-        ]);
-
-        // Must provide at least one of email or phone_number
-        if (!$request->filled('email') && !$request->filled('phone_number')) {
-            throw ValidationException::withMessages([
-                'email' => ['Either email or phone_number must be provided.'],
-            ]);
-        }
-
-        // Find user by email OR phone_number
-        $user = null;
-        if ($request->filled('email')) {
-            $user = User::where('email', $request->email)->first();
-        } elseif ($request->filled('phone_number')) {
-            // Normalize phone number before querying
-            $normalizedPhone = PhoneHelper::normalize($request->phone_number);
-            $user = User::where('phone_number', $normalizedPhone)->first();
-        }
-
-        if (! $user || ! Hash::check($request->password, $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
-            ]);
-        }
-
-        $role = Role::find($user->role_id);
-
-        if ($role->name_key == 'visitor') {
-            throw ValidationException::withMessages([
-                'email' => ['Please complete your profile first.'],
-            ]);
-        }
-
-        if ($user->role_id == 3) {
-            $userController = new UserController();
-            $fullTeacherData = $userController->getFullTeacherData($user);
-
-            $userData = [
-                "role" => $role->name_key,
-                "data" => $fullTeacherData,
-            ];
-        } else {
-            //  For non-teacher roles
-            $userProfile = $user->profile;
-            $userData = [
-                "role" => $role->name_key,
-                "data" => $user,
-                "profile" => $userProfile,
-            ];
-        }
-
-        // if client provided a device token at login, save it
-        if ($request->filled('fcm_token')) {
-            try {
-                $user->fcm_token = $request->input('fcm_token');
-                $user->save();
-            } catch (\Throwable $e) {
-                // non-fatal; log but continue
-                Log::warning('Failed to save fcm_token on login: ' . $e->getMessage());
-            }
-        }
-
-        $token = $user->createToken('mobile-app-token')->plainTextToken;
-
-        // Send a welcome notification (best-effort)
-        $notificationSent = false;
         try {
-            $firebase = new FirebaseNotificationService();
-            $title = app()->getLocale() === 'ar' ? 'مرحبًا بك' : 'Welcome';
-            $body = app()->getLocale() === 'ar' ? 'مرحبًا بك في منصتنا' : 'Welcome to our platform!';
-            $notificationSent = $firebase->sendToUser($user, $title, $body, ['type' => 'welcome']);
-        } catch (\Throwable $e) {
-            Log::error('Failed to send welcome notification: ' . $e->getMessage());
-        }
+            // Validate input
+            $validated = $request->validate([
+                'email' => 'nullable|email',
+                'phone_number' => 'nullable|string|max:15',
+                'password' => 'required|string',
+                'fcm_token' => 'nullable|string'
+            ]);
 
-        return response()->json([
-            'user' => $userData,
-            'token' => $token,
-            'notification_sent' => $notificationSent,
-        ]);
+            // Must provide at least one of email or phone_number
+            if (!$request->filled('email') && !$request->filled('phone_number')) {
+                return $this->validationErrorArray(
+                    [
+                        'email' => ['Either email or phone_number must be provided.'],
+                        'phone_number' => ['Either email or phone_number must be provided.']
+                    ],
+                    'Please provide email or phone number'
+                );
+            }
+
+            // Find user by email OR phone_number
+            $user = null;
+            if ($request->filled('email')) {
+                $user = User::where('email', $request->email)->first();
+            } elseif ($request->filled('phone_number')) {
+                // Normalize phone number before querying
+                $normalizedPhone = PhoneHelper::normalize($request->phone_number);
+                if (!$normalizedPhone) {
+                    return $this->validationErrorArray(
+                        ['phone_number' => ['Invalid phone number format']],
+                        'Invalid phone number'
+                    );
+                }
+                $user = User::where('phone_number', $normalizedPhone)->first();
+            }
+
+            // Check credentials
+            if (!$user || !Hash::check($request->password, $user->password)) {
+                return $this->authError('Invalid email/phone or password');
+            }
+
+            // Get user role
+            $role = Role::find($user->role_id);
+            if (!$role) {
+                return $this->serverError(
+                    new \Exception('User role not found'),
+                    'Invalid user role'
+                );
+            }
+
+            // Check if profile is complete
+            if ($role->name_key == 'visitor') {
+                return $this->validationErrorArray(
+                    ['profile' => ['Please complete your profile first.']],
+                    'Profile incomplete'
+                );
+            }
+
+            // Get user data based on role
+            try {
+                if ($user->role_id == 3) {
+                    // Teacher role
+                    $userController = new UserController();
+                    $fullTeacherData = $userController->getFullTeacherData($user);
+                    $userData = [
+                        "role" => $role->name_key,
+                        "data" => $fullTeacherData,
+                    ];
+                } else {
+                    // Other roles (student, etc.)
+                    $userProfile = $user->profile;
+                    $userData = [
+                        "role" => $role->name_key,
+                        "data" => $user,
+                        "profile" => $userProfile,
+                    ];
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to fetch user data during login: ' . $e->getMessage());
+                return $this->serverError($e, 'Failed to fetch user data');
+            }
+
+            // Save FCM token (non-fatal if fails)
+            if ($request->filled('fcm_token')) {
+                try {
+                    $user->fcm_token = $request->input('fcm_token');
+                    $user->save();
+                } catch (\Exception $e) {
+                    Log::warning('Failed to save fcm_token: ' . $e->getMessage());
+                }
+            }
+
+            // Create authentication token
+            try {
+                $token = $user->createToken('mobile-app-token')->plainTextToken;
+            } catch (\Exception $e) {
+                Log::error('Failed to create token: ' . $e->getMessage());
+                return $this->serverError($e, 'Failed to create authentication token');
+            }
+
+            // Send welcome notification (best-effort, non-fatal)
+            $notificationSent = false;
+            try {
+                $firebase = new FirebaseNotificationService();
+                $title = app()->getLocale() === 'ar' ? 'مرحبًا بك' : 'Welcome';
+                $body = app()->getLocale() === 'ar' ? 'مرحبًا بك في منصتنا' : 'Welcome to our platform!';
+                $notificationSent = $firebase->sendToUser($user, $title, $body, ['type' => 'welcome']);
+            } catch (\Exception $e) {
+                Log::warning('Failed to send welcome notification: ' . $e->getMessage());
+            }
+
+            return $this->success([
+                'user' => $userData,
+                'token' => $token,
+                'notification_sent' => $notificationSent,
+            ], 'Login successful');
+
+        } catch (ValidationException $e) {
+            return $this->validationError($e, 'Login validation failed');
+        } catch (\Exception $e) {
+            Log::error('Login error: ' . $e->getMessage());
+            return $this->serverError($e, 'Login failed. Please try again.');
+        }
     }
 
 
@@ -403,32 +460,69 @@ class AuthController extends Controller
     }
 
     // Confirm Reset Password
+    // Confirm Reset Password - Verify code and reset password
     public function confirmResetPassword(Request $request)
     {
-        $request->validate([
-            'code' => 'required|digits:6,users,verification_code',
-            'user_id' => 'required|exists:users,id',
-            'new_password' => 'required|min:8|confirmed',
-        ]);
+        try {
+            // Validate input
+            $validated = $request->validate([
+                'user_id' => 'required|integer|exists:users,id',
+                'code' => 'required|digits:6',
+                'new_password' => 'required|string|min:8|confirmed',
+            ]);
 
-        $user = User::find($request->user_id);
+            // Find user
+            $user = User::findOrFail($validated['user_id']);
 
-        if (! $user) {
-            return response()->json([
-                'success' => false,
-                'message' => 'User not found.'
-            ], 404);
+            // Verify the reset code matches
+            if ($user->verification_code != $validated['code']) {
+                Log::warning('Invalid reset code attempt', [
+                    'user_id' => $user->id,
+                    'provided_code' => $validated['code'],
+                ]);
+                
+                return $this->validationErrorArray(
+                    ['code' => ['Invalid or expired verification code']],
+                    'Invalid verification code'
+                );
+            }
+
+            // Start transaction for atomic operation
+            DB::beginTransaction();
+
+            // Update password and clear verification code
+            $user->password = Hash::make($validated['new_password']);
+            $user->verification_code = null;
+            $user->save();
+
+            // Revoke all existing tokens (logout from all devices)
+            $user->tokens()->delete();
+
+            DB::commit();
+
+            Log::info('Password reset successful', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+            ]);
+
+            return $this->success(
+                ['user_id' => $user->id],
+                'Password reset successfully. Please login with your new password.'
+            );
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return $this->notFoundError('User not found');
+        } catch (ValidationException $e) {
+            return $this->validationError($e, 'Password reset validation failed');
+        } catch (\Illuminate\Database\QueryException $e) {
+            DB::rollBack();
+            Log::error('Database error during password reset: ' . $e->getMessage());
+            return $this->databaseError($e, 'Failed to reset password');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Password reset error: ' . $e->getMessage());
+            return $this->serverError($e, 'Failed to reset password. Please try again.');
         }
-
-        // Update password and clear verification code
-        $user->password = Hash::make($request->new_password);
-        $user->verification_code = null;
-        $user->save();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Password reset successfully.'
-        ]);
     }
 
     // resend code

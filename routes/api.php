@@ -106,7 +106,7 @@ Route::prefix('auth')->group(function () {
     Route::post('resend-code', [AuthController::class, 'resendCode']);
     Route::post('verify-reset-code', [AuthController::class, 'verifyResetCode']);
     Route::post('reset-password', [AuthController::class, 'resetPassword']);
-    Route::post('confirm-password', [AuthController::class, 'confirmPassword'])->middleware('auth:sanctum');
+    Route::post('confirm-password', [AuthController::class, 'confirmResetPassword'])->middleware('auth:sanctum');
     Route::post('change-password', [AuthController::class, 'updatePassword'])->middleware('auth:sanctum');
     Route::post('logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
     Route::post('delete-account', [AuthController::class, 'deleteAccount'])->middleware('auth:sanctum');
