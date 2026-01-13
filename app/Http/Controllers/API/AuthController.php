@@ -189,11 +189,11 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         try {
-            // Validate input
+            // Validate input - use looser validation for password since it can come as number/string
             $validated = $request->validate([
                 'email' => 'nullable|email',
-                'phone_number' => 'nullable|string|max:15',
-                'password' => 'required|string',
+                'phone_number' => 'nullable|max:15',
+                'password' => 'required',
                 'fcm_token' => 'nullable|string'
             ]);
 
@@ -437,25 +437,35 @@ class AuthController extends Controller
     // verify code for reset password
     public function verifyResetCode(Request $request)
     {
-        $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'code'    => 'required|digits:6'
-        ]);
-        $user = User::find($request->user_id);
-        if (! $user) {
-            return response()->json([
-                'message' => 'User not found.'
-            ], 404);
-        }
-        if ($user->verification_code == $request->code) {
-            return response()->json([
-                'message' => 'Code verified. You can now reset your password.',
-                'user_id' => $user->id
-            ], 200);
-        } else {
-            return response()->json([
-                'message' => 'Invalid verification code.'
-            ], 422);
+        try {
+            // Validate input - use looser validation for code since it can come as number/string
+            $validated = $request->validate([
+                'user_id' => 'required|exists:users,id',
+                'code'    => 'required'
+            ]);
+
+            $user = User::find($validated['user_id']);
+            if (!$user) {
+                return $this->notFoundError('User not found');
+            }
+
+            // Compare code as string (convert to string if it comes as number)
+            if ((string)$user->verification_code === (string)$validated['code']) {
+                return $this->success(
+                    ['user_id' => $user->id],
+                    'Code verified. You can now reset your password.'
+                );
+            } else {
+                return $this->validationErrorArray(
+                    ['code' => ['Invalid or expired verification code']],
+                    'Invalid verification code'
+                );
+            }
+
+        } catch (ValidationException $e) {
+            return $this->validationError($e);
+        } catch (\Exception $e) {
+            return $this->serverError($e);
         }
     }
 
@@ -464,18 +474,18 @@ class AuthController extends Controller
     public function confirmResetPassword(Request $request)
     {
         try {
-            // Validate input
+            // Validate input - use looser validation for code/password since they can come as number/string
             $validated = $request->validate([
                 'user_id' => 'required|integer|exists:users,id',
-                'code' => 'required|digits:6',
-                'new_password' => 'required|string|min:8|confirmed',
+                'code' => 'required',
+                'new_password' => 'required|min:8|confirmed',
             ]);
 
             // Find user
             $user = User::findOrFail($validated['user_id']);
 
-            // Verify the reset code matches
-            if ($user->verification_code != $validated['code']) {
+            // Verify the reset code matches (compare as string)
+            if ((string)$user->verification_code !== (string)$validated['code']) {
                 Log::warning('Invalid reset code attempt', [
                     'user_id' => $user->id,
                     'provided_code' => $validated['code'],

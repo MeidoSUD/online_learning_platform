@@ -13,15 +13,19 @@ class FirebaseNotificationService
     protected $messaging;
 
     public function __construct()
-    {
-        try {
-            $factory = (new Factory)->withServiceAccount(config('firebase.credentials.file'));
-            $this->messaging = $factory->createMessaging();
-        } catch (\Exception $e) {
-            Log::error('Firebase initialization failed: ' . $e->getMessage());
-            throw $e;
-        }
+{
+    try {
+        $factory = (new Factory)
+            ->withServiceAccount(
+                config('firebase.projects.app.credentials')
+            );
+
+        $this->messaging = $factory->createMessaging();
+    } catch (\Exception $e) {
+        Log::error('Firebase initialization failed: ' . $e->getMessage());
+        throw $e;
     }
+}
 
     /**
      * Send notification to a single user
