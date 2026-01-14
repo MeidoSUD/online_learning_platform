@@ -1,0 +1,522 @@
+{
+  "info": {
+    "_postman_id": "hyperpay-payment-api",
+    "name": "HyperPay Copy & Pay API - PCI-DSS Compliant",
+    "description": "Complete payment testing suite for HyperPay Copy & Pay integration. No card data handled on backend.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "123456"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login (Get Token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.data && jsonData.data.access_token) {",
+                  "        pm.environment.set('access_token', jsonData.data.access_token);",
+                  "        console.log('✅ Token saved: ' + jsonData.data.access_token.substring(0, 20) + '...');",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"student@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{api_url}}/auth/login",
+              "host": ["{{api_url}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payment Checkout",
+      "item": [
+        {
+          "name": "1️⃣ Create Checkout (New Card)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Generate unique transaction ID",
+                  "const timestamp = new Date().getTime();",
+                  "const randomId = Math.random().toString(36).substring(7);",
+                  "pm.environment.set('merchant_transaction_id', `order_${timestamp}_${randomId}`);",
+                  "console.log('✅ Generated transaction ID: ' + pm.environment.get('merchant_transaction_id'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('✅ Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('✅ Response structure is correct', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('success').that.equals(true);",
+                  "    pm.expect(jsonData).to.have.property('code').that.equals('SUCCESS');",
+                  "    pm.expect(jsonData).to.have.property('data');",
+                  "});",
+                  "",
+                  "pm.test('✅ Response has checkout_id', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.have.property('checkout_id');",
+                  "    pm.expect(jsonData.data).to.have.property('payment_id');",
+                  "    pm.expect(jsonData.data).to.have.property('redirect_url');",
+                  "});",
+                  "",
+                  "// Save for next request",
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set('checkout_id', jsonData.data.checkout_id);",
+                  "    pm.environment.set('payment_id', jsonData.data.payment_id);",
+                  "    console.log('✅ Saved checkout_id: ' + jsonData.data.checkout_id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 100.00,\n  \"currency\": \"SAR\",\n  \"payment_brand\": \"VISA\",\n  \"merchant_transaction_id\": \"{{merchant_transaction_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{api_url}}/payments/checkout",
+              "host": ["{{api_url}}"],
+              "path": ["payments", "checkout"]
+            }
+          }
+        },
+        {
+          "name": "2️⃣ Create Checkout (Saved Card)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('✅ Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set('checkout_id', jsonData.data.checkout_id);",
+                  "    console.log('✅ Using saved card - checkout_id: ' + jsonData.data.checkout_id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 50.00,\n  \"currency\": \"SAR\",\n  \"saved_card_id\": \"{{saved_card_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{api_url}}/payments/checkout",
+              "host": ["{{api_url}}"],
+              "path": ["payments", "checkout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payment Status",
+      "item": [
+        {
+          "name": "3️⃣ Check Payment Status (Success)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('✅ Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('✅ Payment is paid or failed', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.status).to.be.oneOf(['paid', 'failed']);",
+                  "});",
+                  "",
+                  "pm.test('✅ Response has payment details', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.have.all.keys(['payment_id', 'status', 'amount', 'currency', 'transaction_id']);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"checkout_id\": \"{{checkout_id}}\",\n  \"save_card\": false\n}"
+            },
+            "url": {
+              "raw": "{{api_url}}/payments/status",
+              "host": ["{{api_url}}"],
+              "path": ["payments", "status"]
+            }
+          }
+        },
+        {
+          "name": "3️⃣ Check Payment Status (Save Card)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('✅ Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  ""
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"checkout_id\": \"{{checkout_id}}\",\n  \"save_card\": true,\n  \"card_brand\": \"VISA\"\n}"
+            },
+            "url": {
+              "raw": "{{api_url}}/payments/status",
+              "host": ["{{api_url}}"],
+              "path": ["payments", "status"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Saved Cards",
+      "item": [
+        {
+          "name": "4️⃣ List All Saved Cards",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('✅ Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('✅ Response is array', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.saved_cards).to.be.an('array');",
+                  "});",
+                  "",
+                  "pm.test('✅ Each card has required fields', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.data.saved_cards.length > 0) {",
+                  "        var card = jsonData.data.saved_cards[0];",
+                  "        pm.expect(card).to.have.all.keys(['id', 'card_display', 'card_brand', 'last4', 'expiry', 'is_expired', 'is_default', 'nickname', 'created_at']);",
+                  "        pm.environment.set('saved_card_id', card.id);",
+                  "        console.log('✅ Saved card_id: ' + card.id);",
+                  "    } else {",
+                  "        console.log('⚠️  No saved cards found');",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{api_url}}/payments/saved-cards",
+              "host": ["{{api_url}}"],
+              "path": ["payments", "saved-cards"]
+            }
+          }
+        },
+        {
+          "name": "5️⃣ Set Default Card",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('✅ Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('✅ Card is now default', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.is_default).to.equal(true);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{api_url}}/payments/saved-cards/{{saved_card_id}}/default",
+              "host": ["{{api_url}}"],
+              "path": ["payments", "saved-cards", "{{saved_card_id}}", "default"]
+            }
+          }
+        },
+        {
+          "name": "6️⃣ Delete Saved Card",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('✅ Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('✅ Success message contains card info', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.include('removed');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{api_url}}/payments/saved-cards/{{saved_card_id}}",
+              "host": ["{{api_url}}"],
+              "path": ["payments", "saved-cards", "{{saved_card_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Error Scenarios",
+      "item": [
+        {
+          "name": "❌ Missing Amount",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currency\": \"SAR\",\n  \"payment_brand\": \"VISA\"\n}"
+            },
+            "url": {
+              "raw": "{{api_url}}/payments/checkout",
+              "host": ["{{api_url}}"],
+              "path": ["payments", "checkout"]
+            }
+          }
+        },
+        {
+          "name": "❌ Invalid Token",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer invalid_token_12345"
+              }
+            ],
+            "url": {
+              "raw": "{{api_url}}/payments/saved-cards",
+              "host": ["{{api_url}}"],
+              "path": ["payments", "saved-cards"]
+            }
+          }
+        },
+        {
+          "name": "❌ Non-existent Saved Card",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 100.00,\n  \"currency\": \"SAR\",\n  \"saved_card_id\": 99999\n}"
+            },
+            "url": {
+              "raw": "{{api_url}}/payments/checkout",
+              "host": ["{{api_url}}"],
+              "path": ["payments", "checkout"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "api_url",
+      "value": "{{base_url}}/api",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "checkout_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "payment_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "saved_card_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "merchant_transaction_id",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}
