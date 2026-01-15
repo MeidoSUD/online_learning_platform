@@ -44,6 +44,7 @@ class Course extends Model
         'teacher_profile',
         'teacher_basic',
         'teacher_reviews',
+        'available_slots',
     ];
 
     public function getTeacherProfileAttribute()
@@ -89,6 +90,14 @@ class Course extends Model
     public function setTeacherReviewsAttribute($value)
     {
         $this->attributes['teacher_reviews'] = $value;
+    }
+
+    public function getAvailableSlotsAttribute()
+    {
+        if (!$this->relationLoaded('availabilitySlots')) {
+            $this->load('availabilitySlots');
+        }
+        return $this->availabilitySlots;
     }
 
     public function countstudents()
