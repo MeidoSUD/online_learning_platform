@@ -443,7 +443,6 @@ class CourseController extends Controller
             'category_id' => 'nullable|exists:course_categories,id',
             'subject_id' => 'nullable|exists:subjects,id',
             'education_level_id' => 'nullable|exists:education_levels,id',
-            // 'class_id' => 'nullable|exists:classes,id',
             'service_id' => 'nullable|exists:services,id',
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:5000',
@@ -453,6 +452,7 @@ class CourseController extends Controller
             'status' => 'required|in:draft,published',
             'cover_image_id' => 'nullable|exists:attachments,id',
             'available_slots' => 'required|array',
+            'available_slots.*.id' => 'nullable|integer',
             'available_slots.*.day' => 'required',
             'available_slots.*.times' => 'nullable|array',
         ]);
@@ -468,8 +468,11 @@ class CourseController extends Controller
         if ($request->has('available_slots')) {
             $timeFormats = ['g:i A', 'h:i A', 'H:i', 'G:i'];
             
-            $newSlots = [];
+            $sentSlotIds = [];
+            $newSlotsToCreate = [];
+            
             foreach ($request->available_slots as $entry) {
+                $slotId = $entry['id'] ?? null;
                 $day = $entry['day'] ?? $entry['day_number'] ?? null;
                 if (!$day) continue;
 
@@ -490,47 +493,35 @@ class CourseController extends Controller
                     $startTime = $parsed->format('H:i');
                     $endTime = $parsed->copy()->addHour()->format('H:i');
                     
-                    $newSlots[] = [
-                        'day_number' => (int)$day,
-                        'start_time' => $startTime,
-                        'end_time' => $endTime,
-                    ];
+                    if ($slotId) {
+                        $sentSlotIds[] = (int)$slotId;
+                    } else {
+                        $newSlotsToCreate[] = [
+                            'day_number' => (int)$day,
+                            'start_time' => $startTime,
+                            'end_time' => $endTime,
+                        ];
+                    }
                 }
             }
 
             $existingSlots = $course->availabilitySlots;
             
-            foreach ($newSlots as $newSlot) {
-                $exists = $existingSlots->first(function ($existing) use ($newSlot) {
-                    return $existing->day_number == $newSlot['day_number'] 
-                        && $existing->start_time == $newSlot['start_time'];
-                });
-
-                if (!$exists) {
-                    $course->availabilitySlots()->create([
-                        'teacher_id' => $request->user()->id,
-                        'day_number' => $newSlot['day_number'],
-                        'start_time' => $newSlot['start_time'],
-                        'end_time' => $newSlot['end_time'],
-                        'is_available' => true,
-                        'is_booked' => false,
-                    ]);
+            foreach ($existingSlots as $existing) {
+                if (!in_array($existing->id, $sentSlotIds) && !$existing->is_booked) {
+                    $existing->delete();
                 }
             }
 
-            foreach ($existingSlots as $existing) {
-                $stillExists = false;
-                foreach ($newSlots as $newSlot) {
-                    if ($existing->day_number == $newSlot['day_number'] 
-                        && $existing->start_time == $newSlot['start_time']) {
-                        $stillExists = true;
-                        break;
-                    }
-                }
-                
-                if (!$stillExists && !$existing->is_booked) {
-                    $existing->delete();
-                }
+            foreach ($newSlotsToCreate as $newSlot) {
+                $course->availabilitySlots()->create([
+                    'teacher_id' => $request->user()->id,
+                    'day_number' => $newSlot['day_number'],
+                    'start_time' => $newSlot['start_time'],
+                    'end_time' => $newSlot['end_time'],
+                    'is_available' => true,
+                    'is_booked' => false,
+                ]);
             }
         }
 
