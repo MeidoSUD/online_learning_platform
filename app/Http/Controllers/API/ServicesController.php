@@ -15,18 +15,18 @@ use Illuminate\Support\Facades\DB;
 class ServicesController extends Controller
 {
 
-public function listServices()
+    public function listServices()
     {
-        $services = \App\Models\Services::where('status', 1)->get(['name_en','name_ar','description_en','description_ar','id']);
+        $services = \App\Models\Services::where('status', 1)->get(['key_name', 'name_en', 'name_ar', 'description_en', 'description_ar', 'id']);
         return response()->json($services);
     }
 
-public function studentIndex()
+    public function studentIndex()
     {
         //
         $services = \App\Models\Services::where('status', 1)
-        ->where('role_id', 4)
-        ->get();
+            ->where('role_id', 4)
+            ->get();
         return response()->json($services);
     }
 
@@ -36,11 +36,11 @@ public function studentIndex()
     public function getSubjectsByService($serviceId): JsonResponse
     {
         $subjects = Subject::select('id', 'name_en', 'name_ar')
-                          ->where('service_id', $serviceId)
-                          ->where('status', true)
-                          ->orderBy('id', 'asc')
-                          ->get();
-        
+            ->where('service_id', $serviceId)
+            ->where('status', true)
+            ->orderBy('id', 'asc')
+            ->get();
+
         return response()->json([
             'success' => true,
             'data' => $subjects
@@ -51,8 +51,8 @@ public function studentIndex()
     {
         //
         $services = \App\Models\Services::where('status', 1)
-        ->where('role_id', 3)
-        ->get();
+            ->where('role_id', 3)
+            ->get();
         return response()->json($services);
     }
 
@@ -67,7 +67,7 @@ public function studentIndex()
     public function subjectDetails($id)
     {
         $subject = Subject::with('service')->find($id);
-        if (! $subject) {
+        if (!$subject) {
             return response()->json(['message' => 'Subject not found'], 404);
         }
         return response()->json($subject);
