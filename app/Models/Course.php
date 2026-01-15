@@ -12,6 +12,10 @@ class Course extends Model
         'teacher_id',
         'category_id',
         'service_id',
+        'subject_id',
+        'education_level_id',
+      
+        'cover_image_id',
         'name',
         'description',
         'course_type',
@@ -40,6 +44,7 @@ class Course extends Model
         'teacher_profile',
         'teacher_basic',
         'teacher_reviews',
+        'available_slots',
     ];
 
     public function getTeacherProfileAttribute()
@@ -85,6 +90,14 @@ class Course extends Model
     public function setTeacherReviewsAttribute($value)
     {
         $this->attributes['teacher_reviews'] = $value;
+    }
+
+    public function getAvailableSlotsAttribute()
+    {
+        if (!$this->relationLoaded('availabilitySlots')) {
+            $this->load('availabilitySlots');
+        }
+        return $this->availabilitySlots;
     }
 
     public function countstudents()
