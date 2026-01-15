@@ -12,6 +12,10 @@ class Course extends Model
         'teacher_id',
         'category_id',
         'service_id',
+        'subject_id',
+        'education_level_id',
+      
+        'cover_image_id',
         'name',
         'description',
         'course_type',
