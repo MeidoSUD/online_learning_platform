@@ -465,26 +465,76 @@ class CourseController extends Controller
             'course_type', 'price', 'duration_hours', 'status', 'cover_image_id'
         ]));
 
-        // Update availability slots if provided
         if ($request->has('available_slots')) {
-            // Optionally, delete old slots first:
-            $course->availability_slots()->delete();
+            $timeFormats = ['g:i A', 'h:i A', 'H:i', 'G:i'];
+            
+            $newSlots = [];
+            foreach ($request->available_slots as $entry) {
+                $day = $entry['day'] ?? $entry['day_number'] ?? null;
+                if (!$day) continue;
 
-            foreach ($request->available_slots as $slot) {
-                $day = "{$slot['day']}";
-                $start = "{$slot['time_start']}:00";
-                $end = \Carbon\Carbon::parse($start)->addHour()->format('Y-m-d H:i:s');
-                $course->availability_slots()->create([
-                    'teacher_id' => $request->user()->id,
-                    'day' => $day,
-                    'start_time' => $start,
-                    'end_time' => $end,
-                    'is_booked' => false,
-                ]);
+                $times = $entry['times'] ?? [];
+                if (!is_array($times)) continue;
+
+                foreach ($times as $timeStr) {
+                    $timeStr = trim($timeStr);
+                    $parsed = null;
+                    foreach ($timeFormats as $fmt) {
+                        try {
+                            $parsed = \Carbon\Carbon::createFromFormat($fmt, $timeStr);
+                            if ($parsed) break;
+                        } catch (\Exception $e) {}
+                    }
+                    if (!$parsed) continue;
+
+                    $startTime = $parsed->format('H:i');
+                    $endTime = $parsed->copy()->addHour()->format('H:i');
+                    
+                    $newSlots[] = [
+                        'day_number' => (int)$day,
+                        'start_time' => $startTime,
+                        'end_time' => $endTime,
+                    ];
+                }
+            }
+
+            $existingSlots = $course->availabilitySlots;
+            
+            foreach ($newSlots as $newSlot) {
+                $exists = $existingSlots->first(function ($existing) use ($newSlot) {
+                    return $existing->day_number == $newSlot['day_number'] 
+                        && $existing->start_time == $newSlot['start_time'];
+                });
+
+                if (!$exists) {
+                    $course->availabilitySlots()->create([
+                        'teacher_id' => $request->user()->id,
+                        'day_number' => $newSlot['day_number'],
+                        'start_time' => $newSlot['start_time'],
+                        'end_time' => $newSlot['end_time'],
+                        'is_available' => true,
+                        'is_booked' => false,
+                    ]);
+                }
+            }
+
+            foreach ($existingSlots as $existing) {
+                $stillExists = false;
+                foreach ($newSlots as $newSlot) {
+                    if ($existing->day_number == $newSlot['day_number'] 
+                        && $existing->start_time == $newSlot['start_time']) {
+                        $stillExists = true;
+                        break;
+                    }
+                }
+                
+                if (!$stillExists && !$existing->is_booked) {
+                    $existing->delete();
+                }
             }
         }
 
-        $course->load(['teacher', 'category', 'coverImage', 'availability_slots']);
+        $course->load(['teacher', 'category', 'coverImage', 'availabilitySlots']);
 
         return response()->json([
             'success' => true,
@@ -528,7 +578,7 @@ class CourseController extends Controller
     // Teacher: Get my courses
     public function myCourses(Request $request): JsonResponse
     {
-        $courses = Course::with(['category', 'coverImage'])
+        $courses = Course::with(['category', 'coverImage', 'availabilitySlots'])
             ->where('teacher_id', $request->user()->id)
             ->withCount(['countstudents'])
             ->orderBy('created_at', 'desc')
