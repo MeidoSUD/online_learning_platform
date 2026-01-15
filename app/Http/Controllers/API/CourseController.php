@@ -301,6 +301,9 @@ class CourseController extends Controller
 
         $request->validate([
             'category_id' => 'nullable|exists:course_categories,id',
+            'subject_id' => 'nullable|exists:subjects,id',
+            'education_level_id' => 'nullable|exists:education_levels,id',
+            'service_id' => 'nullable|exists:services,id',
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:5000',
             'course_type' => 'required|in:single,package,subscription',
@@ -312,8 +315,18 @@ class CourseController extends Controller
             // each available_slots entry should be { day: int(1..7), times: [string,...] }
         ]);
 
-        $service = Services::where('name_en', 'Course')->first();
-        $service_id = $service ? $service->id : null;
+        $serviceId = $request->input('service_id');
+        if (!$serviceId) {
+             // Fallback to find by name if not provided
+             $service = Services::where('name_en', 'Course')
+                      ->orWhere('name_en', 'Courses')
+                      ->orWhere('name_en', 'Specialized Courses')
+                      ->orWhere('name_ar', 'دورة')
+                      ->orWhere('name_ar', 'دورات')
+                      ->orWhere('name_ar', 'الدورات المخصصة')
+                      ->first();
+             $serviceId = $service ? $service->id : 4; // Default to 4 (Specialized Courses) if all else fails
+        }
 
         $teacherId = $request->user()->id;
 
@@ -371,7 +384,9 @@ class CourseController extends Controller
         $course = Course::create([
             'teacher_id' => $teacherId,
             'category_id' => $request->input('category_id'),
-            'service_id' => $service_id,
+            'subject_id' => $request->input('subject_id'),
+            'education_level_id' => $request->input('education_level_id'),
+             'service_id' => $serviceId,
             'name' => $request->input('name'),
             'description' => $request->input('description'),
             'course_type' => $request->input('course_type'),
@@ -426,7 +441,10 @@ class CourseController extends Controller
     {
         $request->validate([
             'category_id' => 'nullable|exists:course_categories,id',
-            'service_id' => 'required|exists:services,id',
+            'subject_id' => 'nullable|exists:subjects,id',
+            'education_level_id' => 'nullable|exists:education_levels,id',
+            // 'class_id' => 'nullable|exists:classes,id',
+            'service_id' => 'nullable|exists:services,id',
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:5000',
             'course_type' => 'required|in:single,package,subscription',
@@ -435,15 +453,15 @@ class CourseController extends Controller
             'status' => 'required|in:draft,published',
             'cover_image_id' => 'nullable|exists:attachments,id',
             'available_slots' => 'required|array',
-            'available_slots.*.day' => 'required|string|date_format:Y-m-d',
-            'available_slots.*.time_start' => 'required|date_format:H:i',
+            'available_slots.*.day' => 'required',
+            'available_slots.*.times' => 'nullable|array',
         ]);
 
         $course = Course::where('teacher_id', $request->user()->id)
             ->findOrFail($id);
 
         $course->update($request->only([
-            'category_id', 'service_id', 'name', 'description',
+            'category_id', 'subject_id', 'education_level_id',  'service_id', 'name', 'description',
             'course_type', 'price', 'duration_hours', 'status', 'cover_image_id'
         ]));
 
