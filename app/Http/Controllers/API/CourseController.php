@@ -569,11 +569,20 @@ class CourseController extends Controller
     // Teacher: Get my courses
     public function myCourses(Request $request): JsonResponse
     {
+        $user = $request->user();
+        
         $courses = Course::with(['category', 'coverImage', 'availabilitySlots'])
-            ->where('teacher_id', $request->user()->id)
+            ->where('teacher_id', $user->id)
             ->withCount(['countstudents'])
             ->orderBy('created_at', 'desc')
             ->get();
+
+        // Attach teacher basic info for the frontend
+        $teacherBasic = $user->only(['id', 'first_name', 'last_name', 'gender', 'nationality']);
+        
+        $courses->each(function($course) use ($teacherBasic) {
+            $course->teacher_basic = $teacherBasic;
+        });
 
         return response()->json([
             'success' => true,
