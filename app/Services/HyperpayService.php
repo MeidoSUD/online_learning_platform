@@ -110,11 +110,13 @@ class HyperpayService
         $entityId = $this->selectEntityIdByBrand($brand);
 
         // Build HyperPay checkout request
+        // See: https://developers.hyper-pay.com/docs/copy-pay
         $checkoutPayload = [
             'entityId' => $entityId,
             'amount' => number_format((float)$payload['amount'], 2, '.', ''),
             'currency' => strtoupper($payload['currency']),
             'paymentType' => 'DB', // Debit - immediate capture
+            'integrity' => 'true', // Request checksum validation for security
         ];
 
         // Add optional fields if provided
@@ -235,13 +237,18 @@ class HyperpayService
     /**
      * Select HyperPay entity ID based on payment brand
      * Different entity IDs are used for VISA, MASTERCARD, and MADA
+     * If no brand is provided or no specific entity ID is configured, 
+     * falls back to the default entity ID.
      * 
-     * @param string $brand VISA|MASTER|MADA
+     * @param string $brand VISA|MASTER|MADA or empty string
      * @return string Entity ID for the brand
      * @throws Exception
      */
     private function selectEntityIdByBrand(string $brand): string
     {
+        // Normalize brand to uppercase and trim whitespace
+        $brand = strtoupper(trim($brand ?? ''));
+
         if ($brand === 'VISA' && config('hyperpay.visa_entity_id')) {
             return config('hyperpay.visa_entity_id');
         }
@@ -254,7 +261,7 @@ class HyperpayService
             return config('hyperpay.mada_entity_id');
         }
 
-        // Fallback to default entity ID
+        // Fallback to default entity ID if available
         if ($this->entityId) {
             return $this->entityId;
         }
