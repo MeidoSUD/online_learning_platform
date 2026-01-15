@@ -101,10 +101,13 @@ class PaymentController extends Controller
             // Create checkout payload
             // NOTE: Only send amount, currency, and paymentBrand as required by HyperPay
             // customer.email and customer.id are not allowed by HyperPay API
+            // Default payment_brand to VISA if not provided by Flutter app
+            $paymentBrand = $request->payment_brand ?? 'VISA';
+            
             $payload = [
                 'amount' => $request->amount,
                 'currency' => $request->currency,
-                'paymentBrand' => $request->payment_brand,
+                'paymentBrand' => $paymentBrand,
                 'merchantTransactionId' => $request->merchant_transaction_id ?? 'txn_' . Str::random(16),
                 'registrationId' => $registrationId, // Will be null if new card
             ];
