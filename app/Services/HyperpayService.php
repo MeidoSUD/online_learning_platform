@@ -90,6 +90,7 @@ class HyperpayService
      *     'customer_email'  => 'user@example.com', // Optional: For receipt
      *     'customer_id'     => 'cust_123',      // Optional: Customer reference
      *     'registrationId'  => 'reg_token',     // Optional: For saved card payment
+     *     'platform'        => 'iOS|Android',   // Optional: Mobile platform for deep linking
      * }
      * 
      * @return \Illuminate\Http\Client\Response
@@ -135,12 +136,29 @@ class HyperpayService
         // Enable 3D Secure for added security
         $checkoutPayload['customParameters[3DS2_enrolled]'] = 'true';
 
+        // ========================================================================
+        // DYNAMIC SHOPPER RESULT URL - Platform-Specific Deep Linking
+        // ========================================================================
+        // After payment, HyperPay redirects to this URL with the checkout ID
+        // This allows the app to intercept the response via deep linking
+        // 
+        // iOS: com.ewangeniuses.ewanapp.payments://checkout/{checkoutId}
+        // Android: com.ewan_mobile_app.payments://checkout/{checkoutId}
+        // Web/Browser fallback: https://api.example.com/payment-callback
+        // ========================================================================
+        $shopperResultUrl = $this->generateShopperResultUrl($payload['platform'] ?? null);
+        if (!empty($shopperResultUrl)) {
+            $checkoutPayload['shopperResultUrl'] = $shopperResultUrl;
+        }
+
         Log::info('HyperPay Copy & Pay Checkout Created', [
             'amount' => $checkoutPayload['amount'],
             'currency' => $checkoutPayload['currency'],
             'brand' => $brand,
             'entityId' => $entityId,
             'has_registration_id' => !empty($payload['registrationId']),
+            'platform' => $payload['platform'] ?? 'unknown',
+            'shopper_result_url' => $shopperResultUrl ?? 'not_set',
         ]);
 
         // NOTE: HyperPay doesn't return redirectUrl in the response.
@@ -268,4 +286,48 @@ class HyperpayService
 
         throw new Exception('HyperPay entity_id not configured for brand: ' . ($brand ?: 'default'));
     }
+
+    /**
+     * ========================================================================
+     * GENERATE SHOPPER RESULT URL - Platform-Specific Deep Linking
+     * ========================================================================
+     * 
+     * Creates a platform-specific deep link URL that HyperPay will redirect to
+     * after payment completion. This allows the mobile app to intercept the
+     * payment result and handle it natively.
+     * 
+     * The actual checkoutId will be appended by the caller.
+     * 
+     * Supported platforms:
+     * - iOS: com.ewangeniuses.ewanapp.payments://checkout?id={checkoutId}
+     * - Android: com.ewan_mobile_app.payments://checkout?id={checkoutId}
+     * - Web/Browser: https://api.example.com/payment-callback?id={checkoutId}
+     * 
+     * @param string|null $platform Platform identifier: 'iOS', 'Android', or null
+     * @return string|null Deep link URL or null if no platform specified
+     */
+    private function generateShopperResultUrl(?string $platform): ?string
+    {
+        if (empty($platform)) {
+            return null;
+        }
+
+        // Normalize platform identifier (case-insensitive)
+        $platform = strtolower(trim($platform));
+
+        // iOS deep link scheme
+        if ($platform === 'ios') {
+            return 'com.ewangeniuses.ewanapp.payments://checkout';
+        }
+
+        // Android deep link scheme
+        if ($platform === 'android') {
+            return 'com.ewan_mobile_app.payments://checkout';
+        }
+
+        // Unknown platform - return null to skip setting shopperResultUrl
+        Log::warning('Unknown platform for HyperPay shopperResultUrl', ['platform' => $platform]);
+        return null;
+    }
 }
+

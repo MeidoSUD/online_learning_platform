@@ -79,6 +79,7 @@ class PaymentController extends Controller
                 'saved_card_id' => 'nullable|integer|exists:saved_cards,id',
                 'customer_id' => 'nullable|string',
                 'merchant_transaction_id' => 'nullable|string',
+                'platform' => 'nullable|string|in:iOS,Android',
             ]);
 
             $user = auth()->user();
@@ -110,6 +111,7 @@ class PaymentController extends Controller
                 'paymentBrand' => $paymentBrand,
                 'merchantTransactionId' => $request->merchant_transaction_id ?? 'txn_' . Str::random(16),
                 'registrationId' => $registrationId, // Will be null if new card
+                'platform' => $request->platform, // iOS or Android for platform-specific deep linking
             ];
 
             // Call HyperPay to create checkout
