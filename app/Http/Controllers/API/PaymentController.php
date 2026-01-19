@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
-use App\Services\HyperpayService;
+use App\Services\MoyasarPay;
 use App\Models\Payment;
 use App\Models\SavedCard;
 use App\Models\User;
@@ -19,21 +19,21 @@ use Exception;
  * ============================================================================
  * PaymentController - PCI-DSS Compliant
  * ============================================================================
- * 
+ *
  * IMPORTANT CHANGES FROM PREVIOUS VERSION:
- * 
+ *
  * ❌ REMOVED:
  *    - directPayment() method - Backend NO LONGER receives card data
  *    - Card validation rules (card.number, card.cvv, etc.)
  *    - Server-side card processing
- * 
+ *
  * ✅ ADDED:
  *    - createCheckout() - Creates checkout session for Copy & Pay widget
  *    - paymentStatus() - Polls payment status and stores registrationId
  *    - listSavedCards() - Get user's saved payment methods
  *    - deleteSavedCard() - Remove a saved card
  *    - savePaymentMethod() - Store registrationId after successful payment
- * 
+ *
  * WHY THIS IS BETTER:
  * - Backend NEVER receives card details
  * - No PCI-DSS certification needed
@@ -41,18 +41,18 @@ use Exception;
  * - Tokenization support for saved cards
  * - Supports 3D Secure natively
  * - Lower liability for data breaches
- * 
+ *
  * ============================================================================
  */
 class PaymentController extends Controller
 {
     use ApiResponse;
 
-    protected HyperpayService $hyperpay;
+    protected MoyasarPay $moyasar;
 
-    public function __construct(HyperpayService $hyperpay)
+    public function __construct(MoyasarPay $moyasar)
     {
-        $this->hyperpay = $hyperpay;
+        $this->moyasar = $moyasar;
         $this->middleware('auth:sanctum', ['except' => ['paymentStatus']]);
     }
 
@@ -62,10 +62,10 @@ class PaymentController extends Controller
 
     /**
      * POST /api/payments/checkout
-     * 
+     *
      * Create a HyperPay checkout session for the Copy & Pay widget.
      * Customer will enter card details IN THE WIDGET (not sent to backend).
-     * 
+     *
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
@@ -75,100 +75,95 @@ class PaymentController extends Controller
             $request->validate([
                 'amount' => 'required|numeric|min:1',
                 'currency' => 'required|string|size:3',
-                'payment_brand' => 'nullable|string|in:VISA,MASTER,MADA',
+                'payment_brand' => 'nullable|string',
                 'saved_card_id' => 'nullable|integer|exists:saved_cards,id',
-                'customer_id' => 'nullable|string',
-                'merchant_transaction_id' => 'nullable|string',
-                'platform' => 'nullable|string|in:iOS,Android',
+                'description' => 'nullable|string',
+                'callback_url' => 'nullable|url',
             ]);
 
             $user = auth()->user();
+            $amount = (int)($request->amount * 100);
+            $callbackUrl = $request->callback_url ?? route('api.payment.callback');
 
-            // If using a saved card, get the registrationId
-            $registrationId = null;
             if ($request->filled('saved_card_id')) {
                 $savedCard = SavedCard::where('id', $request->saved_card_id)
                                       ->where('user_id', $user->id)
                                       ->firstOrFail();
 
-                // Check if card is expired
                 if ($savedCard->isExpired()) {
                     return $this->conflictError('Saved card has expired. Please use a different payment method.');
                 }
 
-                $registrationId = $savedCard->registration_id;
-            }
+                $payload = [
+                    'amount' => $amount,
+                    'currency' => strtoupper($request->currency),
+                    'description' => $request->description ?? "Payment for user {$user->id}",
+                    'callback_url' => $callbackUrl,
+                    'source' => [
+                        'type' => 'token',
+                        'token' => $savedCard->registration_id,
+                    ],
+                ];
 
-            // Create checkout payload
-            // NOTE: Only send amount, currency, and paymentBrand as required by HyperPay
-            // customer.email and customer.id are not allowed by HyperPay API
-            // Default payment_brand to VISA if not provided by Flutter app
-            $paymentBrand = $request->payment_brand ?? 'VISA';
-            
-            $payload = [
-                'amount' => $request->amount,
-                'currency' => $request->currency,
-                'paymentBrand' => $paymentBrand,
-                'merchantTransactionId' => $request->merchant_transaction_id ?? 'txn_' . Str::random(16),
-                'registrationId' => $registrationId, // Will be null if new card
-                'platform' => $request->platform, // iOS or Android for platform-specific deep linking
-            ];
+                $data = $this->moyasar->createPayment($payload);
 
-            // Call HyperPay to create checkout
-            $response = $this->hyperpay->createCheckout($payload);
-
-            if (!$response->successful()) {
-                Log::error('HyperPay checkout creation failed', [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
+                $payment = Payment::create([
+                    'student_id' => $user->id,
+                    'amount' => $request->amount,
+                    'currency' => strtoupper($request->currency),
+                    'payment_method' => 'MOYASAR_TOKEN',
+                    'status' => $data['status'],
+                    'transaction_reference' => $data['id'],
+                    'gateway_reference' => $data['id'],
+                    'gateway_response' => json_encode($data),
                 ]);
 
-                throw new Exception('Failed to create payment session. HyperPay returned: ' . $response->status());
+                return $this->success([
+                    'checkout_id' => $data['id'],
+                    'payment_id' => $payment->id,
+                    'redirect_url' => $data['source']['transaction_url'] ?? '',
+                    'amount' => $request->amount,
+                    'currency' => $request->currency,
+                ], 'Payment initiated successfully');
+            } else {
+                $payload = [
+                    'amount' => $amount,
+                    'currency' => strtoupper($request->currency),
+                    'description' => $request->description ?? "Payment for user {$user->id}",
+                    'callback_url' => $callbackUrl,
+                    'metadata' => [
+                        'user_id' => $user->id,
+                        'user_name' => $user->name,
+                    ]
+                ];
+
+                $data = $this->moyasar->createInvoice($payload);
+
+                $payment = Payment::create([
+                    'student_id' => $user->id,
+                    'amount' => $request->amount,
+                    'currency' => strtoupper($request->currency),
+                    'payment_method' => 'MOYASAR_HOSTED',
+                    'status' => $data['status'],
+                    'transaction_reference' => $data['id'],
+                    'gateway_reference' => $data['id'],
+                    'gateway_response' => json_encode($data),
+                ]);
+
+                return $this->success([
+                    'checkout_id' => $data['id'],
+                    'payment_id' => $payment->id,
+                    'redirect_url' => $data['url'] ?? '',
+                    'amount' => $request->amount,
+                    'currency' => $request->currency,
+                ], 'Payment initiated successfully');
             }
-
-            $data = $response->json();
-
-            if (empty($data['id'])) {
-                Log::warning('HyperPay checkout created but missing checkout ID', ['response' => $data]);
-                throw new Exception('Invalid payment session response from HyperPay');
-            }
-
-            // Create payment record (status: pending until confirmed)
-            $payment = Payment::create([
-                'student_id' => $user->id,
-                'booking_id' => null,
-                'teacher_id' => null,
-                'amount' => $request->amount,
-                'currency' => strtoupper($request->currency),
-                'payment_method' => 'HYPERPAY_COPYPAY',
-                'status' => 'pending',
-                'transaction_reference' => $data['id'],
-                'gateway_reference' => $data['id'],
-                'gateway_response' => json_encode($data),
-            ]);
-
-            // Construct the HyperPay Copy & Pay widget URL
-            // Format: {base_url}/v1/checkouts/{checkoutId}/payment.html
-            $checkoutId = $data['id'];
-            $hyperpayBase = rtrim(config('hyperpay.base_url'), '/');
-            $redirectUrl = $hyperpayBase . '/v1/checkouts/' . $checkoutId . '/payment.html';
-
-            return $this->success([
-                'checkout_id' => $checkoutId,
-                'payment_id' => $payment->id,
-                'redirect_url' => $redirectUrl,
-                'amount' => $request->amount,
-                'currency' => $request->currency,
-            ], 'Checkout session created successfully');
 
         } catch (ValidationException $e) {
             return $this->validationError($e, 'Validation failed');
         } catch (Exception $e) {
-            Log::error('Payment checkout error: ' . $e->getMessage(), [
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
-            return $this->serverError($e, 'Failed to create checkout');
+            Log::error('Payment creation error: ' . $e->getMessage());
+            return $this->serverError($e, 'Failed to create payment');
         }
     }
 
@@ -178,10 +173,10 @@ class PaymentController extends Controller
 
     /**
      * POST /api/payments/status
-     * 
+     *
      * Check the status of a payment after Copy & Pay widget completes.
      * If payment successful and customer saved card, registrationId is stored.
-     * 
+     *
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
@@ -189,50 +184,49 @@ class PaymentController extends Controller
     {
         try {
             $request->validate([
-                'checkout_id' => 'required|string',
+                'payment_id' => 'required|string',
                 'save_card' => 'nullable|boolean',
             ]);
 
-            $checkoutId = $request->checkout_id;
-
-            // Get payment status from HyperPay
-            $response = $this->hyperpay->getPaymentStatus($checkoutId);
-
-            if (!$response->successful()) {
-                Log::error('HyperPay status check failed', [
-                    'checkoutId' => $checkoutId,
-                    'status' => $response->status(),
-                ]);
-
-                throw new Exception('Failed to check payment status. HyperPay returned: ' . $response->status());
-            }
-
-            $data = $response->json();
-            $resultCode = $data['result']['code'] ?? null;
-            $resultDescription = $data['result']['description'] ?? 'Unknown error';
-
-            // Update payment record with response
-            $payment = Payment::where('gateway_reference', $checkoutId)->first();
+            $paymentId = $request->payment_id;
+            
+            // 1. Find the local payment record first to know how it was initiated
+            $payment = Payment::where('gateway_reference', $paymentId)->first();
             if (!$payment) {
-                return $this->notFoundError('Payment record not found');
+                // If not found by gateway_reference, try by id just in case
+                $payment = Payment::find($paymentId);
             }
 
-            // Check if payment succeeded
-            $isSuccessful = preg_match('/^(000\.000\.|000\.100\.1|000\.[36])/', $resultCode ?? '');
+            if (!$payment) {
+                return $this->notFoundError('Payment record not found localy for reference: ' . $paymentId);
+            }
 
-            if ($isSuccessful) {
+            // 2. Fetch data from Moyasar using the appropriate method
+            if ($payment->payment_method === 'MOYASAR_HOSTED') {
+                $invoice = $this->moyasar->fetchInvoice($paymentId);
+                
+                // For invoices, if paid, the actual payment details are in the payments array
+                if ($invoice['status'] === 'paid' && !empty($invoice['payments'])) {
+                    $data = $invoice['payments'][0];
+                } else {
+                    $data = $invoice;
+                }
+            } else {
+                $data = $this->moyasar->fetchPayment($paymentId);
+            }
+
+            if ($data['status'] === 'paid') {
                 $payment->update([
-                    'status' => 'paid',
+                    'status' => 'completed', // Using local constant STATUS_COMPLETED or 'completed'
                     'gateway_response' => json_encode($data),
                     'paid_at' => now(),
                 ]);
 
-                // Save card if requested and payment successful
-                if ($request->save_card && !empty($data['registrationId'])) {
+                if ($request->save_card && !empty($data['source']['token'])) {
                     $this->savePaymentMethod(
                         $payment->student_id,
                         $data,
-                        $request->card_brand ?? 'UNKNOWN'
+                        $data['source']['company'] ?? 'UNKNOWN'
                     );
                 }
 
@@ -241,28 +235,25 @@ class PaymentController extends Controller
                     'status' => 'paid',
                     'amount' => $payment->amount,
                     'currency' => $payment->currency,
-                    'transaction_id' => $data['id'] ?? $checkoutId,
+                    'transaction_id' => $data['id'],
                 ], 'Payment successful');
 
             } else {
                 $payment->update([
-                    'status' => 'failed',
+                    'status' => $data['status'],
                     'gateway_response' => json_encode($data),
                 ]);
 
-                return $this->conflictError('Payment failed: ' . $resultDescription, [
+                return $this->conflictError('Payment status: ' . $data['status'], [
                     'payment_id' => $payment->id,
-                    'error_code' => $resultCode,
+                    'message' => $data['source']['message'] ?? $data['message'] ?? 'Unknown error',
                 ]);
             }
 
         } catch (ValidationException $e) {
             return $this->validationError($e, 'Validation failed');
         } catch (Exception $e) {
-            Log::error('Payment status check error: ' . $e->getMessage(), [
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
+            Log::error('Payment status check error: ' . $e->getMessage());
             return $this->serverError($e, 'Error checking payment status');
         }
     }
@@ -273,10 +264,10 @@ class PaymentController extends Controller
 
     /**
      * GET /api/payments/saved-cards
-     * 
+     *
      * List all saved payment methods for the authenticated user.
      * Shows card display info (brand, last4, expiry) but never sensitive data.
-     * 
+     *
      * @return \Illuminate\Http\JsonResponse
      */
     public function listSavedCards()
@@ -315,9 +306,9 @@ class PaymentController extends Controller
 
     /**
      * POST /api/payments/saved-cards/{id}/default
-     * 
+     *
      * Set a saved card as the default payment method.
-     * 
+     *
      * @param SavedCard $savedCard
      * @return \Illuminate\Http\JsonResponse
      */
@@ -345,11 +336,11 @@ class PaymentController extends Controller
 
     /**
      * DELETE /api/payments/saved-cards/{id}
-     * 
+     *
      * Delete a saved payment method.
      * Note: registrationId is not revoked from HyperPay (tokens can remain valid)
      * but is soft-deleted and won't appear in the app.
-     * 
+     *
      * @param SavedCard $savedCard
      * @return \Illuminate\Http\JsonResponse
      */
@@ -379,69 +370,50 @@ class PaymentController extends Controller
 
     /**
      * Save a payment method after successful payment with registration token.
-     * 
+     *
      * This is called internally after successful payment if customer
      * selected "Save this card" option.
-     * 
+     *
      * SECURITY: Only registrationId and display info stored - never card number/CVV
-     * 
+     *
      * @param int $userId
      * @param array $hyperpayResponse HyperPay response containing registrationId
      * @param string $cardBrand VISA, MASTERCARD, MADA
      * @return SavedCard|null
      */
-    private function savePaymentMethod(int $userId, array $hyperpayResponse, string $cardBrand): ?SavedCard
+    private function savePaymentMethod(int $userId, array $moyasarResponse, string $cardBrand): ?SavedCard
     {
         try {
-            // Extract necessary fields from HyperPay response
-            $registrationId = $hyperpayResponse['registrationId'] ?? null;
-            if (!$registrationId) {
-                Log::warning('No registrationId in HyperPay response for card saving');
+            $token = $moyasarResponse['source']['token'] ?? null;
+            if (!$token) {
                 return null;
             }
 
-            // Extract card details from response (if available)
-            // Note: HyperPay may not return full details - use what's available
-            $cardData = $hyperpayResponse['card'] ?? [];
-            $last4 = substr($cardData['number'] ?? $hyperpayResponse['last4Digits'] ?? '****', -4);
-            $expiryMonth = $cardData['expiryMonth'] ?? null;
-            $expiryYear = $cardData['expiryYear'] ?? null;
+            $source = $moyasarResponse['source'];
+            $last4 = substr($source['number'] ?? '****', -4);
 
-            // Check if this registration ID already exists
-            $existingCard = SavedCard::where('registration_id', $registrationId)
+            $existingCard = SavedCard::where('registration_id', $token)
                                      ->where('user_id', $userId)
                                      ->first();
 
             if ($existingCard) {
-                Log::info('Card registration already saved', ['registration_id' => $registrationId]);
                 return $existingCard;
             }
 
-            // Create new saved card record
             $savedCard = SavedCard::create([
                 'user_id' => $userId,
-                'registration_id' => $registrationId,
+                'registration_id' => $token,
                 'card_brand' => strtoupper($cardBrand),
                 'last4' => $last4,
-                'expiry_month' => $expiryMonth,
-                'expiry_year' => $expiryYear,
-                'is_default' => false, // First card won't be set as default yet
-            ]);
-
-            Log::info('Payment method saved', [
-                'user_id' => $userId,
-                'saved_card_id' => $savedCard->id,
-                'card_brand' => strtoupper($cardBrand),
+                'expiry_month' => $source['month'] ?? null,
+                'expiry_year' => $source['year'] ?? null,
+                'is_default' => false,
             ]);
 
             return $savedCard;
 
         } catch (Exception $e) {
-            Log::error('Failed to save payment method: ' . $e->getMessage(), [
-                'user_id' => $userId,
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
+            Log::error('Failed to save payment method: ' . $e->getMessage());
             return null;
         }
     }
