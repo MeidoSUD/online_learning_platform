@@ -14,7 +14,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Exception;
-
+use  App\Models\Booking;
 /**
  * ============================================================================
  * PaymentController - PCI-DSS Compliant
@@ -78,6 +78,7 @@ class PaymentController extends Controller
                 'payment_brand' => 'nullable|string',
                 'saved_card_id' => 'nullable|integer|exists:saved_cards,id',
                 'booking_id' => 'nullable|integer|exists:bookings,id',
+                'teacher_id' => 'nullable|integer|exists:users,id',
                 'merchant_transaction_id' => 'nullable|string',
                 'description' => 'nullable|string',
                 'callback_url' => 'nullable|url',
@@ -87,12 +88,22 @@ class PaymentController extends Controller
             $amount = (int)($request->amount * 100);
             $callbackUrl = $request->callback_url ?? route('api.payment.callback');
             
-            // Extract booking_id if not explicitly provided
+            // Extract booking_id and teacher_id
             $bookingId = $request->booking_id;
+            $teacherId = $request->teacher_id;
+
             if (!$bookingId && $request->filled('merchant_transaction_id')) {
                 $mId = $request->merchant_transaction_id;
                 if (strpos($mId, 'booking_') === 0) {
                     $bookingId = str_replace('booking_', '', $mId);
+                }
+            }
+
+            // If we have a booking, we can get the teacher_id from it if it's not provided
+            if ($bookingId && !$teacherId) {
+                $booking = Booking::find($bookingId);
+                if ($booking) {
+                    $teacherId = $booking->teacher_id;
                 }
             }
 
@@ -117,6 +128,7 @@ class PaymentController extends Controller
                     'metadata' => [
                         'user_id' => $user->id,
                         'booking_id' => $bookingId,
+                        'teacher_id' => $teacherId,
                     ]
                 ];
 
@@ -125,6 +137,7 @@ class PaymentController extends Controller
                 $payment = Payment::create([
                     'booking_id' => $bookingId,
                     'student_id' => $user->id,
+                    'teacher_id' => $teacherId,
                     'amount' => $request->amount,
                     'currency' => strtoupper($request->currency),
                     'payment_method' => 'MOYASAR_TOKEN',
@@ -151,6 +164,7 @@ class PaymentController extends Controller
                         'user_id' => $user->id,
                         'user_name' => $user->name,
                         'booking_id' => $bookingId,
+                        'teacher_id' => $teacherId,
                     ]
                 ];
 
@@ -159,6 +173,7 @@ class PaymentController extends Controller
                 $payment = Payment::create([
                     'booking_id' => $bookingId,
                     'student_id' => $user->id,
+                    'teacher_id' => $teacherId,
                     'amount' => $request->amount,
                     'currency' => strtoupper($request->currency),
                     'payment_method' => 'MOYASAR_HOSTED',
