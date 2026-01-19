@@ -77,6 +77,8 @@ class PaymentController extends Controller
                 'currency' => 'required|string|size:3',
                 'payment_brand' => 'nullable|string',
                 'saved_card_id' => 'nullable|integer|exists:saved_cards,id',
+                'booking_id' => 'nullable|integer|exists:bookings,id',
+                'merchant_transaction_id' => 'nullable|string',
                 'description' => 'nullable|string',
                 'callback_url' => 'nullable|url',
             ]);
@@ -84,6 +86,15 @@ class PaymentController extends Controller
             $user = auth()->user();
             $amount = (int)($request->amount * 100);
             $callbackUrl = $request->callback_url ?? route('api.payment.callback');
+            
+            // Extract booking_id if not explicitly provided
+            $bookingId = $request->booking_id;
+            if (!$bookingId && $request->filled('merchant_transaction_id')) {
+                $mId = $request->merchant_transaction_id;
+                if (strpos($mId, 'booking_') === 0) {
+                    $bookingId = str_replace('booking_', '', $mId);
+                }
+            }
 
             if ($request->filled('saved_card_id')) {
                 $savedCard = SavedCard::where('id', $request->saved_card_id)
@@ -103,11 +114,16 @@ class PaymentController extends Controller
                         'type' => 'token',
                         'token' => $savedCard->registration_id,
                     ],
+                    'metadata' => [
+                        'user_id' => $user->id,
+                        'booking_id' => $bookingId,
+                    ]
                 ];
 
                 $data = $this->moyasar->createPayment($payload);
 
                 $payment = Payment::create([
+                    'booking_id' => $bookingId,
                     'student_id' => $user->id,
                     'amount' => $request->amount,
                     'currency' => strtoupper($request->currency),
@@ -134,12 +150,14 @@ class PaymentController extends Controller
                     'metadata' => [
                         'user_id' => $user->id,
                         'user_name' => $user->name,
+                        'booking_id' => $bookingId,
                     ]
                 ];
 
                 $data = $this->moyasar->createInvoice($payload);
 
                 $payment = Payment::create([
+                    'booking_id' => $bookingId,
                     'student_id' => $user->id,
                     'amount' => $request->amount,
                     'currency' => strtoupper($request->currency),
