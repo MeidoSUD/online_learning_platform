@@ -81,9 +81,63 @@ class MoyasarPay
     }
 
     /**
+     * Create a new invoice (hosted checkout)
+     * 
+     * @param array $data Invoice data including:
+     *   - amount: Amount in smallest currency unit
+     *   - currency: ISO-4217 currency code
+     *   - description: Human readable description
+     *   - callback_url: URL for redirection after payment
+     *   - metadata: Additional metadata
+     * 
+     * @return array Invoice response
+     * @throws Exception
+     */
+    public function createInvoice(array $data): array
+    {
+        try {
+            Log::info('Moyasar: Creating invoice', [
+                'amount' => $data['amount'] ?? null,
+                'currency' => $data['currency'] ?? null,
+            ]);
+
+            $response = Http::withBasicAuth($this->apiKey, '')
+                ->post("{$this->baseUrl}/invoices", $data);
+
+            if (!$response->successful()) {
+                $error = $response->json();
+                Log::error('Moyasar: Invoice creation failed', [
+                    'status' => $response->status(),
+                    'error' => $error,
+                    'data' => $data,
+                ]);
+
+                throw new Exception(
+                    $error['message'] ?? "Invoice creation failed: {$response->status()}",
+                    $response->status()
+                );
+            }
+
+            $invoiceData = $response->json();
+            Log::info('Moyasar: Invoice created successfully', [
+                'invoice_id' => $invoiceData['id'] ?? null,
+                'url' => $invoiceData['url'] ?? null,
+            ]);
+
+            return $invoiceData;
+        } catch (Exception $e) {
+            Log::error('Moyasar: Invoice creation exception', [
+                'error' => $e->getMessage(),
+                'code' => $e->getCode(),
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
      * Fetch payment details by ID
      * 
-     * @param string $paymentId Payment ID
+     * @param string $paymentId Payment ID (starts with pay_)
      * @return array Payment details
      * @throws Exception
      */
@@ -123,6 +177,56 @@ class MoyasarPay
         } catch (Exception $e) {
             Log::error('Moyasar: Fetch payment exception', [
                 'payment_id' => $paymentId,
+                'error' => $e->getMessage(),
+                'code' => $e->getCode(),
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Fetch invoice details by ID
+     * 
+     * @param string $invoiceId Invoice ID
+     * @return array Invoice details
+     * @throws Exception
+     */
+    public function fetchInvoice(string $invoiceId): array
+    {
+        try {
+            Log::info('Moyasar: Fetching invoice', ['invoice_id' => $invoiceId]);
+
+            if (empty($invoiceId)) {
+                throw new Exception('Invoice ID is required');
+            }
+
+            $response = Http::withBasicAuth($this->apiKey, '')
+                ->get("{$this->baseUrl}/invoices/{$invoiceId}");
+
+            if (!$response->successful()) {
+                $error = $response->json();
+                Log::error('Moyasar: Fetch invoice failed', [
+                    'status' => $response->status(),
+                    'invoice_id' => $invoiceId,
+                    'error' => $error,
+                ]);
+
+                throw new Exception(
+                    $error['message'] ?? "Failed to fetch invoice: {$response->status()}",
+                    $response->status()
+                );
+            }
+
+            $invoiceData = $response->json();
+            Log::info('Moyasar: Invoice fetched successfully', [
+                'invoice_id' => $invoiceData['id'] ?? null,
+                'status' => $invoiceData['status'] ?? null,
+            ]);
+
+            return $invoiceData;
+        } catch (Exception $e) {
+            Log::error('Moyasar: Fetch invoice exception', [
+                'invoice_id' => $invoiceId,
                 'error' => $e->getMessage(),
                 'code' => $e->getCode(),
             ]);
@@ -261,7 +365,7 @@ class MoyasarPay
      */
     private function validateCreatePaymentData(array $data): void
     {
-        $required = ['given_id', 'amount', 'currency', 'source'];
+        $required = ['amount', 'currency', 'source'];
 
         foreach ($required as $field) {
             if (empty($data[$field])) {
@@ -269,19 +373,16 @@ class MoyasarPay
             }
         }
 
-        // Validate amount is positive integer
         if (!is_int($data['amount']) || $data['amount'] <= 0) {
             throw new Exception('Amount must be a positive integer');
         }
 
-        // Validate source has required fields
         if (empty($data['source']['type'])) {
             throw new Exception('Source type is required');
         }
 
-        // If source is creditcard, callback_url is required
-        if ($data['source']['type'] === 'creditcard' && empty($data['callback_url'])) {
-            throw new Exception('callback_url is required for credit card payments');
+        if (in_array($data['source']['type'], ['creditcard', 'token']) && empty($data['callback_url'])) {
+            throw new Exception('callback_url is required for credit card or token payments');
         }
     }
 

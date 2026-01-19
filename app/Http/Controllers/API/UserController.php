@@ -1223,7 +1223,7 @@ class UserController extends Controller
                 'group_hour_price' => (float) (optional($teacher->teacherInfo)->group_hour_price ?? 0),
                 'max_group_size' => (int) (optional($teacher->teacherInfo)->max_group_size ?? 0),
                 'min_group_size' => (int) (optional($teacher->teacherInfo)->min_group_size ?? 0),
-                'teacher_subjects' => $isPrivateService ? $teacherSubjects : [],
+                'teacher_subjects' => $teacherSubjects,
             ]
         ];
     }
