@@ -38,9 +38,23 @@ class MoyasarPay
     public function createPayment(array $data): array
     {
         try {
+            // IMPORTANT: Moyasar expects amount in halala (smallest currency unit)
+            // SAR 200.00 = 20000 halala
+            // If amount is NOT already in halala (e.g., received as 200), multiply by 100
+            $amount = $data['amount'] ?? 0;
+            
+            // Check if amount needs conversion
+            // If amount is decimal (e.g., 200.50) or small (< 100), assume it's in SAR
+            if ($amount < 100 || (is_float($amount) && fmod($amount, 1) > 0)) {
+                $data['amount'] = intval($amount * 100);
+            } else {
+                // Already in halala format or very large, keep as is
+                $data['amount'] = intval($amount);
+            }
+
             Log::info('Moyasar: Creating payment', [
                 'given_id' => $data['given_id'] ?? null,
-                'amount' => $data['amount'] ?? null,
+                'amount' => $data['amount'] . ' halala',
                 'currency' => $data['currency'] ?? null,
             ]);
 
@@ -96,8 +110,22 @@ class MoyasarPay
     public function createInvoice(array $data): array
     {
         try {
+            // IMPORTANT: Moyasar expects amount in halala (smallest currency unit)
+            // SAR 200.00 = 20000 halala
+            // If amount is NOT already in halala (e.g., received as 200), multiply by 100
+            $amount = $data['amount'] ?? 0;
+            
+            // Check if amount needs conversion
+            // If amount is decimal (e.g., 200.50) or small (< 100), assume it's in SAR
+            if ($amount < 100 || (is_float($amount) && fmod($amount, 1) > 0)) {
+                $data['amount'] = intval($amount * 100);
+            } else {
+                // Already in halala format or very large, keep as is
+                $data['amount'] = intval($amount);
+            }
+
             Log::info('Moyasar: Creating invoice', [
-                'amount' => $data['amount'] ?? null,
+                'amount' => $data['amount'] . ' halala',
                 'currency' => $data['currency'] ?? null,
             ]);
 
@@ -423,6 +451,182 @@ class MoyasarPay
                 'error' => $e->getMessage(),
             ]);
             return null;
+        }
+    }
+
+    // ========================================================================
+    // TOKEN MANAGEMENT - Save cards for future payments
+    // ========================================================================
+
+    /**
+     * Create a tokenized card (for saving cards)
+     * 
+     * This creates a token that can be used for future payments without
+     * requiring the customer to enter card details again.
+     *
+     * @param array $data Card data including:
+     *   - name: Cardholder name (e.g., "Mohammed Ali")
+     *   - number: Card number (e.g., "4111111111111111")
+     *   - month: Expiry month (e.g., "09")
+     *   - year: Expiry year (e.g., "27")
+     *   - cvc: Security code (e.g., "911")
+     *   - callback_url: URL for 3D verification callback (optional)
+     *   - metadata: Additional metadata (optional)
+     *
+     * @return array Token response with:
+     *   - id: Token ID (e.g., "token_x6okRgkZJrhgDHyqJ9zztW2X1k")
+     *   - status: "initiated"
+     *   - brand: Card brand (visa, mastercard, etc.)
+     *   - last_four: Last 4 digits
+     *   - name: Cardholder name
+     *   - month: Expiry month
+     *   - year: Expiry year
+     *
+     * @throws Exception
+     */
+    public function createToken(array $data): array
+    {
+        try {
+            Log::info('Moyasar: Creating token for card', [
+                'name' => $data['name'] ?? null,
+                'last_four' => substr($data['number'] ?? '', -4),
+            ]);
+
+            // Validate required fields
+            $required = ['name', 'number', 'month', 'year', 'cvc'];
+            foreach ($required as $field) {
+                if (empty($data[$field])) {
+                    throw new Exception("Token creation requires: {$field}");
+                }
+            }
+
+            $response = Http::withBasicAuth($this->apiKey, '')
+                ->post("{$this->baseUrl}/tokens", $data);
+
+            if (!$response->successful()) {
+                $error = $response->json();
+                Log::error('Moyasar: Token creation failed', [
+                    'status' => $response->status(),
+                    'error' => $error,
+                ]);
+
+                throw new Exception(
+                    $error['message'] ?? "Token creation failed: {$response->status()}",
+                    $response->status()
+                );
+            }
+
+            $tokenData = $response->json();
+            Log::info('Moyasar: Token created successfully', [
+                'token_id' => $tokenData['id'] ?? null,
+                'brand' => $tokenData['brand'] ?? null,
+                'last_four' => $tokenData['last_four'] ?? null,
+            ]);
+
+            return $tokenData;
+        } catch (Exception $e) {
+            Log::error('Moyasar: Token creation exception', [
+                'error' => $e->getMessage(),
+                'code' => $e->getCode(),
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Fetch token details by ID
+     * 
+     * Used to verify token status before charging
+     *
+     * @param string $tokenId Token ID (e.g., "token_x6okRgkZJrhgDHyqJ9zztW2X1k")
+     * @return array Token details
+     * @throws Exception
+     */
+    public function fetchToken(string $tokenId): array
+    {
+        try {
+            Log::info('Moyasar: Fetching token', ['token_id' => $tokenId]);
+
+            if (empty($tokenId)) {
+                throw new Exception('Token ID is required');
+            }
+
+            $response = Http::withBasicAuth($this->apiKey, '')
+                ->get("{$this->baseUrl}/tokens/{$tokenId}");
+
+            if (!$response->successful()) {
+                $error = $response->json();
+                Log::error('Moyasar: Fetch token failed', [
+                    'status' => $response->status(),
+                    'token_id' => $tokenId,
+                    'error' => $error,
+                ]);
+
+                throw new Exception(
+                    $error['message'] ?? "Failed to fetch token: {$response->status()}",
+                    $response->status()
+                );
+            }
+
+            $tokenData = $response->json();
+            Log::info('Moyasar: Token fetched successfully', [
+                'token_id' => $tokenData['id'] ?? null,
+                'status' => $tokenData['status'] ?? null,
+            ]);
+
+            return $tokenData;
+        } catch (Exception $e) {
+            Log::error('Moyasar: Fetch token exception', [
+                'token_id' => $tokenId,
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Delete a token (remove saved card)
+     * 
+     * Revokes the token so it can no longer be used for payments
+     *
+     * @param string $tokenId Token ID to delete
+     * @return bool Success status
+     * @throws Exception
+     */
+    public function deleteToken(string $tokenId): bool
+    {
+        try {
+            Log::info('Moyasar: Deleting token', ['token_id' => $tokenId]);
+
+            if (empty($tokenId)) {
+                throw new Exception('Token ID is required');
+            }
+
+            $response = Http::withBasicAuth($this->apiKey, '')
+                ->delete("{$this->baseUrl}/tokens/{$tokenId}");
+
+            if (!$response->successful()) {
+                $error = $response->json();
+                Log::error('Moyasar: Delete token failed', [
+                    'status' => $response->status(),
+                    'token_id' => $tokenId,
+                    'error' => $error,
+                ]);
+
+                throw new Exception(
+                    $error['message'] ?? "Delete token failed: {$response->status()}",
+                    $response->status()
+                );
+            }
+
+            Log::info('Moyasar: Token deleted successfully', ['token_id' => $tokenId]);
+            return true;
+        } catch (Exception $e) {
+            Log::error('Moyasar: Delete token exception', [
+                'token_id' => $tokenId,
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
         }
     }
 }

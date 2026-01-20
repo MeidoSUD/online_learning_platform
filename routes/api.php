@@ -187,6 +187,20 @@
         // Delete saved card
         Route::delete('payments/saved-cards/{savedCard}', [PaymentController::class, 'deleteSavedCard']);
 
+        // ========================================================================
+        // MOYASAR TOKEN MANAGEMENT - Save & manage cards for future payments
+        // ========================================================================
+        // Create and save a card token
+        Route::post('payments/tokens/create', [PaymentController::class, 'createCardToken']);
+        // List all saved card tokens for user
+        Route::get('payments/tokens', [PaymentController::class, 'listCardTokens']);
+        // Delete a card token (revoke it)
+        Route::delete('payments/tokens/{savedCard}', [PaymentController::class, 'deleteCardToken']);
+        // Set a token as default
+        Route::post('payments/tokens/{savedCard}/set-default', [PaymentController::class, 'setDefaultCardToken']);
+        // Verify token is still valid
+        Route::post('payments/tokens/{savedCard}/verify', [PaymentController::class, 'verifyCardToken']);
+
         // Status check endpoint - Mobile app can poll this to check payment status
         Route::get('/payments/{paymentId}/status', [BookingController::class, 'checkPaymentStatus']);
         Route::get('/payments/callback', [BookingController::class, 'handlePaymentCallback'])->name('api.payment.callback');

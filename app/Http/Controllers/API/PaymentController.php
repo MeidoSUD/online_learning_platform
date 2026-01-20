@@ -450,5 +450,313 @@ class PaymentController extends Controller
             return null;
         }
     }
+
+    // ========================================================================
+    // MOYASAR TOKEN MANAGEMENT - Save & manage cards for future payments
+    // ========================================================================
+
+    /**
+     * POST /api/payments/tokens/create
+     *
+     * Create a Moyasar token (save a card for future payments)
+     * 
+     * This endpoint allows users to save their card details for future payments.
+     * The card token is created with Moyasar and stored locally in saved_cards table.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function createCardToken(Request $request)
+    {
+        try {
+            $user = auth()->user();
+            $currentYear = (int)Carbon::now()->format('y');
+
+            $request->validate([
+                'card_holder' => 'required|string|max:100',
+                'card_number' => 'required|regex:/^\d{13,19}$/',
+                'expiry_month' => 'required|integer|between:1,12',
+                'expiry_year' => 'required|integer|min:' . $currentYear,
+                'cvc' => 'required|regex:/^\d{3,4}$/',
+                'save_as_default' => 'nullable|boolean',
+                'nickname' => 'nullable|string|max:50',
+            ]);
+
+            Log::info('Creating Moyasar token for card', [
+                'user_id' => $user->id,
+                'last_four' => substr($request->card_number, -4),
+            ]);
+
+            // Step 1: Create token with Moyasar
+            $tokenData = $this->moyasar->createToken([
+                'name' => $request->card_holder,
+                'number' => $request->card_number,
+                'month' => str_pad($request->expiry_month, 2, '0', STR_PAD_LEFT),
+                'year' => $request->expiry_year,
+                'cvc' => $request->cvc,
+            ]);
+
+            Log::info('Moyasar token created successfully', [
+                'token_id' => $tokenData['id'],
+                'brand' => $tokenData['brand'] ?? 'unknown',
+            ]);
+
+            // Step 2: Save token locally
+            $savedCard = SavedCard::create([
+                'user_id' => $user->id,
+                'registration_id' => $tokenData['id'],  // Moyasar token ID
+                'card_brand' => strtoupper($tokenData['brand'] ?? 'UNKNOWN'),
+                'last4' => $tokenData['last_four'] ?? substr($request->card_number, -4),
+                'expiry_month' => $tokenData['month'] ?? $request->expiry_month,
+                'expiry_year' => $tokenData['year'] ?? $request->expiry_year,
+                'is_default' => $request->save_as_default ?? false,
+                'nickname' => $request->nickname ?? null,
+            ]);
+
+            // Step 3: If this should be default, unset others
+            if ($request->save_as_default) {
+                SavedCard::where('user_id', $user->id)
+                    ->where('id', '!=', $savedCard->id)
+                    ->update(['is_default' => false]);
+                
+                $savedCard->update(['is_default' => true]);
+            }
+
+            Log::info('Card token saved locally', [
+                'saved_card_id' => $savedCard->id,
+                'token_id' => $tokenData['id'],
+            ]);
+
+            return $this->success([
+                'saved_card' => [
+                    'id' => $savedCard->id,
+                    'card_display' => $savedCard->card_display,
+                    'last4' => $savedCard->last4,
+                    'brand' => $savedCard->card_brand,
+                    'expiry' => $savedCard->expiry_display,
+                    'is_default' => $savedCard->is_default,
+                    'nickname' => $savedCard->nickname,
+                ],
+                'token_id' => $tokenData['id'],
+            ], 'Card saved successfully');
+
+        } catch (ValidationException $e) {
+            return $this->validationError($e, 'Validation failed');
+        } catch (Exception $e) {
+            Log::error('Failed to create card token', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+            ]);
+            return $this->serverError($e, 'Failed to save card');
+        }
+    }
+
+    /**
+     * GET /api/payments/tokens
+     *
+     * List all saved card tokens for the authenticated user
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function listCardTokens()
+    {
+        try {
+            $user = auth()->user();
+
+            $tokens = SavedCard::where('user_id', $user->id)
+                ->where('deleted_at', null)
+                ->orderBy('is_default', 'desc')
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(function ($card) {
+                    return [
+                        'id' => $card->id,
+                        'token_id' => $card->registration_id,
+                        'card_display' => $card->card_display,
+                        'brand' => $card->card_brand,
+                        'last4' => $card->last4,
+                        'expiry' => $card->expiry_display,
+                        'is_expired' => $card->isExpired(),
+                        'is_default' => $card->is_default,
+                        'nickname' => $card->nickname,
+                        'created_at' => $card->created_at,
+                    ];
+                });
+
+            return $this->success([
+                'tokens' => $tokens,
+                'count' => count($tokens),
+            ], 'Card tokens retrieved successfully');
+
+        } catch (Exception $e) {
+            Log::error('Failed to list card tokens', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+            ]);
+            return $this->serverError($e, 'Failed to retrieve card tokens');
+        }
+    }
+
+    /**
+     * DELETE /api/payments/tokens/{token_id}
+     *
+     * Delete (revoke) a saved card token
+     * 
+     * This will:
+     * 1. Delete token from Moyasar (revoke it)
+     * 2. Delete local saved_card record
+     *
+     * @param SavedCard $savedCard
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function deleteCardToken(SavedCard $savedCard)
+    {
+        try {
+            $user = auth()->user();
+
+            // Verify ownership
+            if ($savedCard->user_id !== $user->id) {
+                return $this->authorizationError('Unauthorized to delete this card');
+            }
+
+            Log::info('Deleting card token', [
+                'saved_card_id' => $savedCard->id,
+                'token_id' => $savedCard->registration_id,
+            ]);
+
+            // Step 1: Revoke token from Moyasar
+            try {
+                $this->moyasar->deleteToken($savedCard->registration_id);
+                Log::info('Token revoked from Moyasar', ['token_id' => $savedCard->registration_id]);
+            } catch (Exception $e) {
+                Log::warning('Failed to revoke token from Moyasar', [
+                    'token_id' => $savedCard->registration_id,
+                    'error' => $e->getMessage(),
+                ]);
+                // Don't fail - still delete locally even if Moyasar deletion fails
+            }
+
+            // Step 2: Delete local record
+            $cardDisplay = $savedCard->card_display;
+            $savedCard->delete();
+
+            Log::info('Card token deleted', ['saved_card_id' => $savedCard->id]);
+
+            return $this->success([], "Card '{$cardDisplay}' has been removed");
+
+        } catch (Exception $e) {
+            Log::error('Failed to delete card token', [
+                'saved_card_id' => $savedCard->id ?? null,
+                'error' => $e->getMessage(),
+            ]);
+            return $this->serverError($e, 'Failed to delete card');
+        }
+    }
+
+    /**
+     * POST /api/payments/tokens/{token_id}/set-default
+     *
+     * Set a saved card token as the default payment method
+     *
+     * @param SavedCard $savedCard
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function setDefaultCardToken(SavedCard $savedCard)
+    {
+        try {
+            $user = auth()->user();
+
+            // Verify ownership
+            if ($savedCard->user_id !== $user->id) {
+                return $this->authorizationError('Unauthorized to modify this card');
+            }
+
+            // Check if expired
+            if ($savedCard->isExpired()) {
+                return $this->conflictError('Cannot set expired card as default');
+            }
+
+            // Unset all other default cards for this user
+            SavedCard::where('user_id', $user->id)
+                ->where('id', '!=', $savedCard->id)
+                ->update(['is_default' => false]);
+
+            // Set this one as default
+            $savedCard->update(['is_default' => true]);
+
+            Log::info('Default card updated', [
+                'user_id' => $user->id,
+                'saved_card_id' => $savedCard->id,
+            ]);
+
+            return $this->success([
+                'id' => $savedCard->id,
+                'is_default' => true,
+                'card_display' => $savedCard->card_display,
+            ], 'Default payment method updated');
+
+        } catch (Exception $e) {
+            Log::error('Failed to set default card', [
+                'saved_card_id' => $savedCard->id ?? null,
+                'error' => $e->getMessage(),
+            ]);
+            return $this->serverError($e, 'Failed to set default card');
+        }
+    }
+
+    /**
+     * POST /api/payments/tokens/{token_id}/verify
+     *
+     * Verify a token is still valid with Moyasar
+     *
+     * @param SavedCard $savedCard
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function verifyCardToken(SavedCard $savedCard)
+    {
+        try {
+            $user = auth()->user();
+
+            // Verify ownership
+            if ($savedCard->user_id !== $user->id) {
+                return $this->authorizationError('Unauthorized to verify this card');
+            }
+
+            Log::info('Verifying card token with Moyasar', [
+                'token_id' => $savedCard->registration_id,
+            ]);
+
+            // Fetch token from Moyasar
+            $tokenData = $this->moyasar->fetchToken($savedCard->registration_id);
+
+            // Check status
+            if ($tokenData['status'] === 'initiated') {
+                // Token is still active, update local record if needed
+                if ($tokenData['status'] !== $savedCard->status) {
+                    $savedCard->update(['status' => $tokenData['status']]);
+                }
+
+                return $this->success([
+                    'is_valid' => true,
+                    'token_id' => $tokenData['id'],
+                    'brand' => $tokenData['brand'],
+                    'last_four' => $tokenData['last_four'],
+                    'status' => $tokenData['status'],
+                ], 'Card is valid');
+            } else {
+                return $this->conflictError('Card token is no longer valid', [
+                    'is_valid' => false,
+                    'status' => $tokenData['status'],
+                ]);
+            }
+
+        } catch (Exception $e) {
+            Log::error('Failed to verify card token', [
+                'saved_card_id' => $savedCard->id ?? null,
+                'error' => $e->getMessage(),
+            ]);
+            return $this->serverError($e, 'Failed to verify card');
+        }
+    }
 }
 
