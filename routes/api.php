@@ -157,6 +157,7 @@
         Route::get('/courses', [CourseController::class, 'index']); // browse/search
         Route::get('/courses/{id}', [CourseController::class, 'show']); // course details
         Route::post('/courses/{id}/enroll', [CourseController::class, 'enroll']); // book/join course
+        Route::post('/courses/{id}/request-enrollment', [CourseController::class, 'requestEnrollment']); // request enrollment (pending)
         // lessons
         Route::get('/courses/{course_id}/lessons', [LessonController::class, 'index']);
         Route::get('/lessons/{id}', [LessonController::class, 'show']);

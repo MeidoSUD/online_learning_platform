@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Log;
 use App\Models\Booking;
 use App\Models\Services;
 use App\Models\Sessions;
@@ -126,6 +127,109 @@ class CourseController extends Controller
                 'teacher_reviews' => $teacher_reviews,
             ]
         ]);
+    }
+
+    // Student: Request enrollment in course (saves as pending)
+    /**
+     * POST /api/courses/{id}/request-enrollment
+     * 
+     * Creates an enrollment request with status 'pending'
+     * Can be used for both group and private courses
+     * Student can only have one pending request per course
+     * 
+     * Request body:
+     * {
+     *   "note": "Optional note about why requesting this course"
+     * }
+     * 
+     * Response (success):
+     * {
+     *   "success": true,
+     *   "message": "Enrollment request submitted successfully",
+     *   "data": {
+     *     "enrollment_id": 5,
+     *     "course_id": 12,
+     *     "status": "pending",
+     *     "requested_at": "2026-01-23T10:30:00Z"
+     *   }
+     * }
+     */
+    public function requestEnrollment(Request $request, int $id): JsonResponse
+    {
+        $user = $request->user();
+
+        // Validate course exists and is published
+        $course = Course::where('status', 'published')->findOrFail($id);
+
+        // Check if student already has an active enrollment in this course
+        $existing = \App\Models\Enrollment::where('course_id', $id)
+            ->where('student_id', $user->id)
+            ->where('status', 'active')
+            ->first();
+
+        if ($existing) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are already enrolled in this course'
+            ], 400);
+        }
+
+        // Check if student already has a pending request for this course
+        $pendingRequest = \App\Models\Enrollment::where('course_id', $id)
+            ->where('student_id', $user->id)
+            ->where('status', 'pending')
+            ->first();
+
+        if ($pendingRequest) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You already have a pending enrollment request for this course'
+            ], 400);
+        }
+
+        // Create enrollment request with pending status
+        $enrollment = \App\Models\Enrollment::create([
+            'student_id' => $user->id,
+            'course_id' => $id,
+            'enrollment_date' => now(),
+            'status' => 'pending',
+        ]);
+
+        Log::info('Student requested enrollment', [
+            'student_id' => $user->id,
+            'course_id' => $id,
+            'enrollment_id' => $enrollment->id,
+        ]);
+
+        // Send notification to teacher
+        try {
+            $ns = new \App\Services\NotificationService();
+            $title = app()->getLocale() == 'ar' ? 'طلب التحاق جديد' : 'New Enrollment Request';
+            $msg = app()->getLocale() == 'ar'
+                ? "لديك طلب التحاق جديد من {$user->name} في الدورة: {$course->name}"
+                : "{$user->name} requested to enroll in your course: {$course->name}";
+
+            $ns->send($course->teacher, 'enrollment_request', $title, $msg, [
+                'enrollment_id' => $enrollment->id,
+                'course_id' => $course->id,
+                'student_id' => $user->id,
+                'student_name' => $user->name,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to send enrollment request notification', ['error' => $e->getMessage()]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Enrollment request submitted successfully',
+            'data' => [
+                'enrollment_id' => $enrollment->id,
+                'course_id' => $id,
+                'student_id' => $user->id,
+                'status' => 'pending',
+                'requested_at' => $enrollment->created_at,
+            ]
+        ], 201);
     }
 
     // Student: Enroll in course
