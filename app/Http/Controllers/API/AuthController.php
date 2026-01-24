@@ -40,11 +40,19 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         try {
+            // Log incoming request for debugging
+            Log::info('Register request received', [
+                'all_input' => $request->all(),
+                'content_type' => $request->header('Content-Type'),
+                'has_password' => $request->filled('password'),
+                'password_length' => strlen((string)$request->input('password', '')),
+            ]);
+
             // Validate input with comprehensive rules
             $validated = $request->validate([
                 'first_name'    => 'required|string|max:255',
                 'last_name'     => 'required|string|max:255',
-                'email'         => 'required|string|email|unique:users',
+                'email'         => 'nullable|string|email|unique:users',
                 'phone_number'  => 'required|string|max:15',
                 'role_id'       => 'required|in:3,4', // 3=teacher, 4=student
                 'gender'        => 'nullable|in:male,female,other',
@@ -71,7 +79,7 @@ class AuthController extends Controller
             }
 
             DB::beginTransaction();
-            $verification_code = rand(100000, 999999);
+            $verification_code = rand(0000, 9999);
             // Create user - minimal data only
             $user = User::create([
                 'first_name'    => $validated['first_name'],
@@ -85,7 +93,7 @@ class AuthController extends Controller
                 'verified'      => false,
                 'verification_code' => $verification_code,
             ]);
-
+            Log::info($user);
             DB::commit();
 
             Log::info('New user registration', [
@@ -125,6 +133,12 @@ class AuthController extends Controller
             ], 201);
 
         } catch (ValidationException $e) {
+            // Log validation errors with detailed info
+            Log::warning('Register validation failed', [
+                'errors' => $e->errors(),
+                'request_input' => $request->all(),
+                'has_password' => $request->filled('password'),
+            ]);
             // Handle validation errors
             return $this->validationError($e, 'Registration validation failed');
         } catch (\Illuminate\Database\QueryException $e) {
@@ -333,7 +347,7 @@ class AuthController extends Controller
     {
         $request->validate([
             'user_id' => 'required|exists:users,id',
-            'code'    => 'required|digits:6'
+            'code'    => 'required|digits:4'
         ]);
 
         $user = User::find($request->user_id);
@@ -399,7 +413,7 @@ class AuthController extends Controller
             ], 404);
         }
 
-        $verification_code = rand(100000, 999999);
+        $verification_code = rand(0000, 9999);
         $user->verification_code = $verification_code;
         $user->save();
 
@@ -548,7 +562,7 @@ class AuthController extends Controller
             ], 404);
         }
 
-        $verification_code = rand(100000, 999999);
+        $verification_code = rand(0000, 9999);
         $user->verification_code = $verification_code;
         $user->save();
 

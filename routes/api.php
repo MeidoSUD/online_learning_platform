@@ -231,7 +231,7 @@
         Route::get('/classes/{education_level_id}', [EducationLevelController::class, 'classes']);
         Route::get('subjectsClasses/{class_id}', [EducationLevelController::class, 'getSubjectsByClass']);
         Route::get('banks', [PaymentMethodController::class, 'banks']);
-
+        Route::post('active-status', [UserController::class, 'updateActiveStatus']);
         // fcm token
         Route::post('/save-fcm-token', [FCMTokenController::class, 'save']);
         // Teacher Information

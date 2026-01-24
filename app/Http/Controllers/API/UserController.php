@@ -1301,4 +1301,23 @@ class UserController extends Controller
             'data' => $certificates
         ]);
     }
+
+    public function updateActiveStatus(Request $request)
+    {
+        $request->validate([
+            'is_active' => 'required|boolean',
+        ]);
+
+        $user = $request->user();
+        $user->is_active = $request->is_active;
+        $user->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Active status updated successfully',
+            'data' => [
+                'is_active' => $user->is_active,
+            ],
+        ]);
+    }
 }
