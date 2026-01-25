@@ -397,7 +397,7 @@ class UserController extends Controller
 
             // Update basic profile
             $profileData = $request->only(['bio', 'description', 'profile_photo_id', 'language_pref', 'terms_accepted']);
-            $profileData['verified'] = $request->input('verified', 0);
+            // $profileData['verified'] = $request->input('verified', 0);
 
             $profile = UserProfile::updateOrCreate(
                 ['user_id' => $user->id],
@@ -505,8 +505,8 @@ class UserController extends Controller
             $this->updateTeacherSubjects($request);
         }
 
-        // Update services
-        if ($request->has('services_id')) {
+        // Update services (handle both 'services' and 'services_id' parameter names)
+        if ($request->has('services_id') || $request->has('services')) {
             $this->updateTeacherServices($request);
         }
 
@@ -898,29 +898,75 @@ class UserController extends Controller
     // Update or create teacher services only
     public function updateTeacherServices(Request $request)
     {
-        $request->validate([
-            'services_id' => 'required|array',
-            'services_id.*' => 'exists:services,id',
-        ]);
+        // Handle both 'services' and 'services_id' parameter names
+        $servicesKey = $request->has('services_id') ? 'services_id' : 'services';
+        $servicesInput = $request->input($servicesKey);
+
+        // Convert single value to array if needed
+        if (!is_array($servicesInput)) {
+            if (is_string($servicesInput) && !empty($servicesInput)) {
+                // Try to parse as comma-separated or single value
+                $servicesInput = array_map('trim', explode(',', $servicesInput));
+            } else {
+                $servicesInput = [];
+            }
+        }
+
+        // If still empty, return error
+        if (empty($servicesInput)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No services provided',
+                'error' => 'At least one service must be selected'
+            ], 422);
+        }
 
         $teacher = $request->user();
-        TeacherServices::where('teacher_id', $teacher->id)->delete();
 
         try {
-            foreach ($request->services_id as $service_id) {
+            // Delete existing services
+            TeacherServices::where('teacher_id', $teacher->id)->delete();
+
+            // Create new service records
+            foreach ($servicesInput as $service_id) {
+                $service_id = (int)$service_id; // Ensure it's an integer
+                
+                // Validate service exists
+                $serviceExists = DB::table('services')->where('id', $service_id)->exists();
+                if (!$serviceExists) {
+                    Log::warning('Invalid service ID attempted', [
+                        'teacher_id' => $teacher->id,
+                        'service_id' => $service_id
+                    ]);
+                    continue; // Skip invalid services
+                }
+
                 TeacherServices::create([
                     'teacher_id' => $teacher->id,
                     'service_id' => $service_id,
                 ]);
             }
+
+            Log::info('Teacher services updated', [
+                'teacher_id' => $teacher->id,
+                'services' => $servicesInput
+            ]);
+
         } catch (\Exception $e) {
-            Log::error('TeacherServices save error: ' . $e->getMessage());
-            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+            Log::error('TeacherServices save error: ' . $e->getMessage(), [
+                'teacher_id' => $teacher->id,
+                'services' => $servicesInput
+            ]);
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to save services: ' . $e->getMessage()
+            ], 500);
         }
 
         return response()->json([
             'success' => true,
-            'data' => $request->services_id
+            'message' => 'Services updated successfully',
+            'data' => $servicesInput
         ]);
     }
 
@@ -1309,12 +1355,46 @@ class UserController extends Controller
         ]);
 
         $user = $request->user();
-        $user->is_active = $request->is_active;
+        $isActive = $request->boolean('is_active');
+
+        // If trying to set as active, check if profile is verified
+        if ($isActive) {
+            $userProfile = UserProfile::where('user_id', $user->id)->first();
+            
+            if (!$userProfile || !$userProfile->verified) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot activate account. User profile must be verified first.',
+                    'error' => 'Profile not verified'
+                ], 422);
+            }
+        }
+
+        $user->is_active = $isActive;
         $user->save();
+
+        Log::info('User active status updated', [
+            'user_id' => $user->id,
+            'is_active' => $isActive,
+            'verified' => (bool) optional($user->profile)->verified
+        ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Active status updated successfully',
+            'data' => [
+                'is_active' => (bool) $user->is_active,
+                'verified' => (bool) optional($user->profile)->verified,
+            ],
+        ]);
+    }
+
+    public function getActiveStatus(Request $request)
+    {
+        $user = $request->user();
+
+        return response()->json([
+            'success' => true,
             'data' => [
                 'is_active' => $user->is_active,
             ],

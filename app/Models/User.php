@@ -28,6 +28,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'gender',
         'teacher_type',
         'password',
+        'role_id',
         'fcm_token',
         'verified',
         'verification_code',
