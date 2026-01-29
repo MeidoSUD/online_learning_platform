@@ -49,37 +49,79 @@ class AuthController extends Controller
             ]);
 
             // Validate input with comprehensive rules
-            $validated = $request->validate([
-                'first_name'    => 'required|string|max:255',
-                'last_name'     => 'required|string|max:255',
-                'email'         => 'nullable|string|email|unique:users',
-                'phone_number'  => 'required|string|max:15',
-                'role_id'       => 'required|in:3,4', // 3=teacher, 4=student
-                'gender'        => 'nullable|in:male,female,other',
-                'nationality'   => 'nullable|string|max:255',
-                'password'      => 'required|string|min:8',
-            ]);
+            $validated = $request->validate(
+                [
+                    'first_name'    => 'required|string|max:255',
+                    'last_name'     => 'required|string|max:255',
+                    'email'         => 'nullable|string|email',
+                    'phone_number'  => 'required|string',
+                    'role_id'       => 'required|in:3,4',
+                    'gender'        => 'nullable|in:male,female,other',
+                    'nationality'   => 'nullable|string|max:255',
+                    'password'      => 'required|string|min:8',
+                ]
+            );
 
-            // Normalize phone number
+            if($request->role_id == 3) {
+                // Additional validation for students can be added here
+                // Check if email already exists
+                $existingByEmail = User::where('email', $validated['email'])->first();
+                if ($existingByEmail) {
+                    Log::warning('Registration attempt with existing email', [
+                        'email' => $validated['email'],
+                        'existing_user_id' => $existingByEmail->id,
+                    ]);
+                    
+                    return response()->json([
+                        'success' => false,
+                        'code' => 'ALREADY_REGISTERED',
+                        'status' => 'already_registered',
+                        'message_en' => 'This email is already registered. Please log in or use a different email.',
+                        'message_ar' => 'هذا البريد الإلكتروني مسجل بالفعل. يرجى تسجيل الدخول أو استخدام بريد إلكتروني مختلف.',
+                        'field' => 'email'
+                    ], 409); // 409 Conflict - resource already exists
+                }
+            }
+
+            
             $normalizedPhone = PhoneHelper::normalize($request->phone_number);
+            
             if (!$normalizedPhone) {
-                return $this->validationErrorArray(
-                    ['phone_number' => ['Invalid phone number format. Must be a valid KSA phone number.']],
-                    'Invalid phone number'
-                );
+                Log::warning('Failed to normalize phone after digit extraction', [
+                    'normalized_attempt' => $normalizedPhone,
+                ]);
+                
+                return response()->json([
+                    'success' => false,
+                    'code' => 'INVALID_PHONE',
+                    'status' => 'invalid',
+                    'message_en' => 'Unable to process phone number. Please try again with a different format.',
+                    'message_ar' => 'تعذر معالجة رقم الهاتف. يرجى المحاولة مرة أخرى بصيغة مختلفة.',
+                    'field' => 'phone_number'
+                ], 422);
             }
 
             // Check if phone already exists
-            $existingUser = User::where('phone_number', $normalizedPhone)->first();
-            if ($existingUser) {
-                return $this->conflictError(
-                    'Phone number already registered',
-                    'phone_number'
-                );
+            $existingByPhone = User::where('phone_number', $normalizedPhone)->first();
+            if ($existingByPhone) {
+                Log::warning('Registration attempt with existing phone', [
+                    'phone' => $normalizedPhone,
+                    'existing_user_id' => $existingByPhone->id,
+                ]);
+                
+                return response()->json([
+                    'success' => false,
+                    'code' => 'ALREADY_REGISTERED',
+                    'status' => 'already_registered',
+                    'message_en' => 'This phone number is already registered. Please log in or use a different phone number.',
+                    'message_ar' => 'رقم الهاتف هذا مسجل بالفعل. يرجى تسجيل الدخول أو استخدام رقم هاتف مختلف.',
+                    'field' => 'phone_number'
+                ], 409); // 409 Conflict
             }
 
             DB::beginTransaction();
-            $verification_code = rand(0000, 9999);
+            $verification_code = rand(1000, 9999);
+            
             // Create user - minimal data only
             $user = User::create([
                 'first_name'    => $validated['first_name'],
@@ -93,18 +135,25 @@ class AuthController extends Controller
                 'verified'      => false,
                 'verification_code' => $verification_code,
             ]);
-            Log::info($user);
+            
             DB::commit();
 
             Log::info('New user registration', [
                 'user_id' => $user->id,
                 'role_id' => $validated['role_id'],
                 'email' => $validated['email'],
+                'phone' => $normalizedPhone,
             ]);
 
             // Send verification code via SMS
             $smsPhone = PhoneHelper::normalizeForSMS($normalizedPhone);
-            $smsResponse = $this->sendVerificationSMS($smsPhone, $verification_code);
+            $smsResponse = null;
+            
+            try {
+                $smsResponse = $this->sendVerificationSMS($smsPhone, $verification_code);
+            } catch (\Exception $e) {
+                Log::warning('Failed to send SMS: ' . $e->getMessage());
+            }
 
             // Send email notification
             try {
@@ -127,7 +176,9 @@ class AuthController extends Controller
             return response()->json([
                 'success' => true,
                 'code' => 'REGISTRATION_SUCCESS',
-                'message' => 'Verification code sent. Please verify via SMS or email.',
+                'status' => 'unverified',
+                'message_en' => 'Registration successful. Verification code sent via SMS and email.',
+                'message_ar' => 'تم التسجيل بنجاح. تم إرسال رمز التحقق عبر الرسائل النصية والبريد الإلكتروني.',
                 'user' => $user_response,
                 'sms_response' => $smsResponse
             ], 201);
@@ -139,20 +190,46 @@ class AuthController extends Controller
                 'request_input' => $request->all(),
                 'has_password' => $request->filled('password'),
             ]);
-            // Handle validation errors
-            return $this->validationError($e, 'Registration validation failed');
+            
+            // Return validation error with bilingual messages
+            return response()->json([
+                'success' => false,
+                'code' => 'VALIDATION_ERROR',
+                'status' => 'invalid_input',
+                'message_en' => 'Please check your input and try again.',
+                'message_ar' => 'يرجى التحقق من مدخلاتك والمحاولة مرة أخرى.',
+                'errors' => $e->errors()
+            ], 422);
+            
         } catch (\Illuminate\Database\QueryException $e) {
             // Handle database errors
             DB::rollBack();
-            Log::error('Database error during registration: ' . $e->getMessage());
+            Log::error('Database error during registration: ' . $e->getMessage(), [
+                'exception' => $e->getMessage(),
+            ]);
             
             // Check if it's a unique constraint error
             if (strpos($e->getMessage(), 'UNIQUE constraint failed') !== false || 
                 strpos($e->getMessage(), 'Duplicate entry') !== false) {
-                return $this->conflictError('Email or phone number already exists');
+                
+                return response()->json([
+                    'success' => false,
+                    'code' => 'ALREADY_REGISTERED',
+                    'status' => 'already_registered',
+                    'message_en' => 'This email or phone number is already registered.',
+                    'message_ar' => 'هذا البريد الإلكتروني أو رقم الهاتف مسجل بالفعل.',
+                ], 409);
             }
             
-            return $this->databaseError($e, 'Registration failed due to database error');
+            // Generic database error - but don't expose SQL details
+            return response()->json([
+                'success' => false,
+                'code' => 'DATABASE_ERROR',
+                'status' => 'error',
+                'message_en' => 'An error occurred during registration. Please try again later.',
+                'message_ar' => 'حدث خطأ أثناء التسجيل. يرجى المحاولة لاحقًا.',
+            ], 422); // Use 422 instead of 500
+            
         } catch (\Exception $e) {
             // Handle all other errors
             DB::rollBack();
@@ -162,7 +239,14 @@ class AuthController extends Controller
                 'line' => $e->getLine(),
             ]);
             
-            return $this->serverError($e, 'Registration failed. Please try again later.');
+            // Return user-friendly error without exposing server details
+            return response()->json([
+                'success' => false,
+                'code' => 'REGISTRATION_ERROR',
+                'status' => 'error',
+                'message_en' => 'Registration failed. Please try again later.',
+                'message_ar' => 'فشل التسجيل. يرجى المحاولة لاحقًا.',
+            ], 422); // Use 422 instead of 500
         }
     }
 

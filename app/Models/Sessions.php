@@ -428,12 +428,19 @@ public function getHostUrlAttribute(): ?string
 
 public static function createForBooking(Booking $booking): void
 {
+    // Load relations to build session title
+    $booking = $booking->load(['service', 'subject']);
+    
+    // Build session title based on service type
+    $sessionTitle = self::buildSessionTitle($booking);
+    
     if ($booking->session_type === Booking::TYPE_SINGLE) {
         $session = self::create([
             'booking_id' => $booking->id,
             'student_id' => $booking->student_id,
             'teacher_id' => $booking->teacher_id,
             'session_number' => 1,
+            'session_title' => $sessionTitle,
             'session_date' => $booking->first_session_date,
             'start_time' => $booking->first_session_start_time,
             'end_time' => $booking->first_session_end_time,
@@ -441,7 +448,11 @@ public static function createForBooking(Booking $booking): void
             'status' => self::STATUS_SCHEDULED,
         ]);
         
-        // Don't create Zoom meeting here - wait for payment confirmation
+        Log::info('Session created for single booking', [
+            'session_id' => $session->id,
+            'booking_id' => $booking->id,
+            'session_title' => $sessionTitle,
+        ]);
         
     } else {
         // Create multiple sessions for package
@@ -450,21 +461,63 @@ public static function createForBooking(Booking $booking): void
         for ($i = 1; $i <= $booking->sessions_count; $i++) {
             $sessionDate = $i === 1 ? $startDate : $startDate->copy()->addWeeks($i - 1);
             
-            self::create([
+            $session = self::create([
                 'booking_id' => $booking->id,
                 'student_id' => $booking->student_id,
                 'teacher_id' => $booking->teacher_id,
                 'session_number' => $i,
+                'session_title' => $sessionTitle,
                 'session_date' => $sessionDate->format('Y-m-d'),
                 'start_time' => $booking->first_session_start_time,
                 'end_time' => $booking->first_session_end_time,
                 'duration' => $booking->session_duration,
                 'status' => self::STATUS_SCHEDULED,
             ]);
+            
+            Log::info("Package session {$i} created", [
+                'session_id' => $session->id,
+                'booking_id' => $booking->id,
+                'session_title' => $sessionTitle,
+            ]);
+        }
+    }
+}
+
+/**
+ * Build session title based on service and language
+ * 
+ * Rules:
+ * - Language Study service: "[Service Name] - [Language Name]" (e.g., "Language Study - English")
+ * - Other services: "[Service Name]" (e.g., "Private Lessons", "Courses")
+ * - Course bookings: Use course name
+ * 
+ * @param Booking $booking
+ * @return string
+ */
+private static function buildSessionTitle(Booking $booking): string
+{
+    // If course booking, use course name
+    if ($booking->course) {
+        return $booking->course->name ?? 'Session';
+    }
+    
+    // Service booking - check service type
+    if ($booking->service) {
+        $serviceName = $booking->service->name ?? 'Service';
+        
+        // Check if language_study service
+        if ($booking->service->key_name === 'language_study' && $booking->subject) {
+            // Include language name for language study service
+            $languageName = $booking->subject->name_en ?? 'Language';
+            return "{$serviceName} - {$languageName}";
         }
         
-        // Don't create Zoom meetings here - wait for payment confirmation
+        // Other services - just service name
+        return $serviceName;
     }
+    
+    // Fallback
+    return 'Session';
 }
 
     public static function getStatuses(): array

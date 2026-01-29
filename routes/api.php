@@ -304,8 +304,9 @@
         Route::delete('/language-study/{languageId}', [LanguageStudyController::class, 'deleteTeacherLanguage']);
     });
 
-    // Admin language management routes
+    
     Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(function () {
+        // Admin language management routes
         Route::get('/languages', [LanguageController::class, 'index']); // List all languages
         Route::post('/languages', [LanguageController::class, 'store']); // Create language
         Route::get('/languages/{id}', [LanguageController::class, 'show']); // Get language details
@@ -313,10 +314,6 @@
         Route::delete('/languages/{id}', [LanguageController::class, 'destroy']); // Soft delete language
         Route::delete('/languages/{id}/force', [LanguageController::class, 'forceDestroy']); // Hard delete language
         Route::post('/languages/{id}/restore', [LanguageController::class, 'restore']); // Restore soft-deleted language
-    });
-
-    // Admin education management routes
-    Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(function () {
         // Education Levels
         Route::get('/education-levels', [EducationLevelAdminController::class, 'index']); // List all education levels
         Route::post('/education-levels', [EducationLevelAdminController::class, 'store']); // Create education level

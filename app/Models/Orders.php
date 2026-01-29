@@ -17,7 +17,7 @@ class Orders extends Model
     protected $fillable = [
         'user_id', 'subject_id', 'teacher_id', 'class_id', 
         'education_level_id', 'type', 'min_price', 'max_price', 
-        'status', 'notes'
+        'status', 'notes' , 'order_type'
     ];
 
     public function student(): BelongsTo

@@ -9,6 +9,8 @@ use App\Services\MoyasarPay;
 use App\Models\Payment;
 use App\Models\SavedCard;
 use App\Models\User;
+use App\Models\AvailabilitySlot;
+use App\Models\Sessions;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -255,6 +257,77 @@ class PaymentController extends Controller
                     'paid_at' => now(),
                 ]);
 
+                // ⭐ IMPORTANT: Mark slot as booked and create sessions ONLY after payment success
+                // This ensures slots don't get locked if payment fails
+                try {
+                    $booking = $payment->booking;
+                    
+                    if ($booking) {
+                        // 1. Lock the slot with pessimistic locking to prevent race conditions
+                        $slot = AvailabilitySlot::where('id', $booking->availability_slot_id)
+                            ->lockForUpdate()
+                            ->first();
+                        
+                        if ($slot) {
+                            // Check if another payment already booked this slot
+                            if ($slot->is_booked || !$slot->is_available) {
+                                Log::warning('Slot already booked by another student', [
+                                    'slot_id' => $slot->id,
+                                    'payment_id' => $payment->id,
+                                    'booking_id' => $booking->id,
+                                ]);
+                                
+                                // This payment is successful but slot is no longer available
+                                // This should not happen in normal flow but handle gracefully
+                                $payment->update(['status' => 'completed']);
+                                
+                                return $this->conflictError('Slot was booked by another student', [
+                                    'payment_id' => $payment->id,
+                                    'message' => 'Payment received but slot is no longer available. Refund will be processed.',
+                                ]);
+                            }
+                            
+                            // 2. Mark slot as booked
+                            $slot->update([
+                                'is_available' => false,
+                                'is_booked' => true,
+                                'booking_id' => $booking->id,
+                            ]);
+                            
+                            Log::info('Slot booked after payment', [
+                                'slot_id' => $slot->id,
+                                'booking_id' => $booking->id,
+                                'payment_id' => $payment->id,
+                            ]);
+                            
+                            // 3. Create sessions with proper titles
+                            Sessions::createForBooking($booking);
+                            
+                            // 4. Update booking status to confirmed
+                            $booking->update(['status' => 'confirmed']);
+                            
+                            // 5. Schedule meeting generation jobs (Agora/Zoom)
+                            $this->scheduleMeetingJobs($booking);
+                            
+                            // 6. Send notifications
+                            $this->sendPaymentNotifications($booking);
+                            
+                            Log::info('Booking confirmed after payment', [
+                                'booking_id' => $booking->id,
+                                'payment_id' => $payment->id,
+                            ]);
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error processing post-payment actions', [
+                        'payment_id' => $payment->id,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                    ]);
+                    // Don't fail the payment response - it was already marked as paid at Moyasar
+                    // The slots/sessions/notifications can be reconciled later
+                }
+
                 if ($request->save_card && !empty($data['source']['token'])) {
                     $this->savePaymentMethod(
                         $payment->student_id,
@@ -450,5 +523,79 @@ class PaymentController extends Controller
             return null;
         }
     }
+
+    /**
+     * Schedule meeting generation jobs for all sessions in a booking
+     * 
+     * @param Booking $booking
+     * @return void
+     */
+    private function scheduleMeetingJobs(Booking $booking): void
+    {
+        $booking = $booking->load('sessions');
+        $sessions = $booking->sessions ?? [];
+        
+        foreach ($sessions as $session) {
+            try {
+                Log::info('Session meeting generation processing', ['session_id' => $session->id]);
+
+                // If session already has a meeting/join URL, skip creation
+                if (empty($session->meeting_id) || empty($session->join_url)) {
+                    $created = $session->createMeeting();
+                    Log::info('Session createMeeting() result', ['session_id' => $session->id, 'created' => $created]);
+                } else {
+                    Log::info('Session already has meeting info', ['session_id' => $session->id]);
+                }
+
+            } catch (\Exception $e) {
+                Log::error('Failed to create session meeting', ['session_id' => $session->id, 'error' => $e->getMessage()]);
+                // Continue with other sessions
+            }
+        }
+    }
+
+    /**
+     * Send payment success notifications to student and teacher
+     * 
+     * @param Booking $booking
+     * @return void
+     */
+    private function sendPaymentNotifications(Booking $booking): void
+    {
+        try {
+            $ns = new \App\Services\NotificationService();
+            
+            // Notify student
+            $titleStudent = app()->getLocale() == 'ar' ? 'تم الدفع بنجاح' : 'Payment successful';
+            $msgStudent = app()->getLocale() == 'ar'
+                ? "تم استلام دفعتك للحجز ({$booking->booking_reference}). شكراً."
+                : "Your payment for booking ({$booking->booking_reference}) was successful.";
+
+            if ($booking->student) {
+                $ns->send($booking->student, 'payment_success', $titleStudent, $msgStudent, [
+                    'booking_id' => $booking->id,
+                    'amount' => $booking->total_amount,
+                ]);
+            }
+
+            // Notify teacher
+            $titleTeacher = app()->getLocale() == 'ar' ? 'حجز جديد' : 'New booking';
+            $msgTeacher = app()->getLocale() == 'ar'
+                ? "لديك حجز جديد (#{$booking->booking_reference}) من {$booking->student?->first_name}"
+                : "You have a new booking (#{$booking->booking_reference}) from {$booking->student?->first_name}";
+
+            if ($booking->teacher) {
+                $ns->send($booking->teacher, 'booking_received', $titleTeacher, $msgTeacher, [
+                    'booking_id' => $booking->id,
+                    'student_id' => $booking->student_id,
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Failed to send payment notifications', ['booking_id' => $booking->id, 'error' => $e->getMessage()]);
+            // Don't throw - payment is already confirmed
+        }
+    }
 }
+
 

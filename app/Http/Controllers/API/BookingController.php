@@ -246,25 +246,19 @@ class BookingController extends Controller
                 'booking_date' => now(),
             ]);
 
-            // Mark slot as booked
-            $slot->update(['is_available' => false, 'is_booked' => true, 'booking_id' => $booking->id]);
-            // Create sessions skeleton
-            
-            try {
-                Sessions::createForBooking($booking);
-                Log::info('Sessions created successfully', ['booking_id' => $booking->id]);
-            } catch (\Exception $e) {
-                Log::error('Sessions::createForBooking failed', [
-                    'booking_id' => $booking->id,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-                throw $e; // Re-throw to trigger rollback
-            }
+            // NOTE: Slot is NOT marked as booked here
+            // IMPORTANT: Slot will ONLY be marked booked (is_booked=true, is_available=false) AFTER successful payment
+            // Sessions will ONLY be created AFTER payment succeeds
+            // This ensures slot remains available if payment fails, preventing customer confusion
+            // Slot locking happens in PaymentController.paymentStatus() when payment is confirmed
 
-            // No payment processing here — booking is created, user will pay via a separate endpoint
             DB::commit();
-            Log::info('Transaction committed successfully', ['booking_id' => $booking->id]);
+            Log::info('Booking created (pending payment, slot still available)', [
+                'booking_id' => $booking->id, 
+                'slot_id' => $slotId,
+                'slot_status' => 'still_available',
+                'next_step' => 'payment_via_PaymentController'
+            ]);
 
             // Let frontend know whether student has saved payment methods
             $hasSavedMethods = \App\Models\UserPaymentMethod::where('user_id', $studentId)->exists();
