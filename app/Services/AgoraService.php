@@ -16,14 +16,14 @@ class AgoraService
      */
     public function generateRtcToken($channelName, $userAccount, $role = \App\Agora\RtcTokenBuilder::RoleSubscriber, $expireSeconds = null)
     {
-        $appId = env('AGORA_APP_ID');
-        $appCertificate = env('AGORA_APP_CERTIFICATE');
+        $appId = config('services.agora.app_id');
+        $appCertificate = config('services.agora.app_certificate');
 
         if (! $appId || ! $appCertificate) {
             return null;
         }
 
-        $expireTimeSeconds = $expireSeconds ?? (int) env('AGORA_TOKEN_TTL', 3600);
+        $expireTimeSeconds = $expireSeconds ?? (int) config('services.agora.token_ttl', 3600);
         $privilegeExpireTs = time() + $expireTimeSeconds;
 
         return \App\Agora\RtcTokenBuilder::buildTokenWithUserAccount(
@@ -49,8 +49,8 @@ class AgoraService
      */
     public function createMeeting(int $sessionId, int $teacherId, int $studentId): ?array
     {
-        $appId = env('AGORA_APP_ID');
-        $appCertificate = env('AGORA_APP_CERTIFICATE');
+        $appId = config('services.agora.app_id');
+        $appCertificate = config('services.agora.app_certificate');
         if (! $appId || ! $appCertificate) {
             return null;
         }
@@ -61,7 +61,7 @@ class AgoraService
         $teacherAccount = 'teacher_' . $teacherId;
         $studentAccount = 'student_' . $studentId;
 
-        $expireSeconds = (int) env('AGORA_TOKEN_TTL', 3600);
+        $expireSeconds = (int) config('services.agora.token_ttl', 3600);
 
         $teacherToken = $this->generateRtcToken($channel, $teacherAccount, \App\Agora\RtcTokenBuilder::RolePublisher, $expireSeconds);
         $studentToken = $this->generateRtcToken($channel, $studentAccount, \App\Agora\RtcTokenBuilder::RoleSubscriber, $expireSeconds);
@@ -101,14 +101,14 @@ class AgoraService
      */
     public function generateTokenForAccount($sessionIdOrChannel, string $account, $role = \App\Agora\RtcTokenBuilder::RoleSubscriber, $expireSeconds = null): ?array
     {
-        $appId = env('AGORA_APP_ID');
-        $appCertificate = env('AGORA_APP_CERTIFICATE');
+        $appId = config('services.agora.app_id');
+        $appCertificate = config('services.agora.app_certificate');
         if (! $appId || ! $appCertificate) {
             return null;
         }
 
         $channel = is_int($sessionIdOrChannel) ? ('session_' . $sessionIdOrChannel) : (string) $sessionIdOrChannel;
-        $expireSeconds = $expireSeconds ?? (int) env('AGORA_TOKEN_TTL', 3600);
+        $expireSeconds = $expireSeconds ?? (int) config('services.agora.token_ttl', 3600);
 
         $token = $this->generateRtcToken($channel, $account, $role, $expireSeconds);
 

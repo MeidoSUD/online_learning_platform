@@ -57,4 +57,10 @@ return [
         'currency' => env('HYPERPAY_CURRENCY', 'SAR'),
     ],
 
+    'agora' => [
+        'app_id' => env('AGORA_APP_ID'),
+        'app_certificate' => env('AGORA_APP_CERTIFICATE'),
+        'token_ttl' => env('AGORA_TOKEN_TTL', 3600),
+    ],
+
 ];

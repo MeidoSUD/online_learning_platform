@@ -15,8 +15,8 @@ class AgoraController extends Controller
             'uid'     => 'required',
         ]);
 
-        $appId = env('AGORA_APP_ID');
-        $appCertificate = env('AGORA_APP_CERTIFICATE');
+        $appId = config('services.agora.app_id');
+        $appCertificate = config('services.agora.app_certificate');
 
         if (!$appId || !$appCertificate) {
             return response()->json(['error' => 'Agora credentials missing'], 500);

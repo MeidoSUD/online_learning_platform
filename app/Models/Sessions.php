@@ -426,62 +426,85 @@ public function getHostUrlAttribute(): ?string
 
     // Static methods
 
-public static function createForBooking(Booking $booking): void
-{
-    // Load relations to build session title
-    $booking = $booking->load(['service', 'subject']);
-    
-    // Build session title based on service type
-    $sessionTitle = self::buildSessionTitle($booking);
-    
-    if ($booking->session_type === Booking::TYPE_SINGLE) {
-        $session = self::create([
+    public static function createForBooking(Booking $booking): void
+    {
+        Log::info('Starting session creation for booking', [
             'booking_id' => $booking->id,
-            'student_id' => $booking->student_id,
-            'teacher_id' => $booking->teacher_id,
-            'session_number' => 1,
-            'session_title' => $sessionTitle,
-            'session_date' => $booking->first_session_date,
-            'start_time' => $booking->first_session_start_time,
-            'end_time' => $booking->first_session_end_time,
-            'duration' => $booking->session_duration,
-            'status' => self::STATUS_SCHEDULED,
+            'session_type' => $booking->session_type,
+            'first_session_date' => $booking->first_session_date,
         ]);
-        
-        Log::info('Session created for single booking', [
-            'session_id' => $session->id,
-            'booking_id' => $booking->id,
-            'session_title' => $sessionTitle,
-        ]);
-        
-    } else {
-        // Create multiple sessions for package
-        $startDate = Carbon::parse($booking->first_session_date);
-        
-        for ($i = 1; $i <= $booking->sessions_count; $i++) {
-            $sessionDate = $i === 1 ? $startDate : $startDate->copy()->addWeeks($i - 1);
-            
-            $session = self::create([
-                'booking_id' => $booking->id,
-                'student_id' => $booking->student_id,
-                'teacher_id' => $booking->teacher_id,
-                'session_number' => $i,
-                'session_title' => $sessionTitle,
-                'session_date' => $sessionDate->format('Y-m-d'),
-                'start_time' => $booking->first_session_start_time,
-                'end_time' => $booking->first_session_end_time,
-                'duration' => $booking->session_duration,
-                'status' => self::STATUS_SCHEDULED,
+
+        if (!$booking->first_session_date) {
+            Log::error('Session creation failed: first_session_date is missing', [
+                'booking_id' => $booking->id
             ]);
+            return;
+        }
+
+        try {
+            // Load relations to build session title
+            $booking = $booking->load(['service', 'subject']);
             
-            Log::info("Package session {$i} created", [
-                'session_id' => $session->id,
+            // Build session title based on service type
+            $sessionTitle = self::buildSessionTitle($booking);
+            
+            if ($booking->session_type === Booking::TYPE_SINGLE) {
+                $session = self::create([
+                    'booking_id' => $booking->id,
+                    'student_id' => $booking->student_id,
+                    'teacher_id' => $booking->teacher_id,
+                    'session_number' => 1,
+                    'session_title' => $sessionTitle,
+                    'session_date' => $booking->first_session_date,
+                    'start_time' => $booking->first_session_start_time,
+                    'end_time' => $booking->first_session_end_time,
+                    'duration' => $booking->session_duration,
+                    'status' => self::STATUS_SCHEDULED,
+                ]);
+                
+                Log::info('Session created for single booking', [
+                    'session_id' => $session->id,
+                    'booking_id' => $booking->id,
+                    'session_title' => $sessionTitle,
+                ]);
+                
+            } else {
+                // Create multiple sessions for package
+                $startDate = Carbon::parse($booking->first_session_date);
+                
+                for ($i = 1; $i <= $booking->sessions_count; $i++) {
+                    $sessionDate = $i === 1 ? $startDate : $startDate->copy()->addWeeks($i - 1);
+                    
+                    $session = self::create([
+                        'booking_id' => $booking->id,
+                        'student_id' => $booking->student_id,
+                        'teacher_id' => $booking->teacher_id,
+                        'session_number' => $i,
+                        'session_title' => $sessionTitle,
+                        'session_date' => $sessionDate->format('Y-m-d'),
+                        'start_time' => $booking->first_session_start_time,
+                        'end_time' => $booking->first_session_end_time,
+                        'duration' => $booking->session_duration,
+                        'status' => self::STATUS_SCHEDULED,
+                    ]);
+                    
+                    Log::info("Package session {$i} created", [
+                        'session_id' => $session->id,
+                        'booking_id' => $booking->id,
+                        'session_title' => $sessionTitle,
+                    ]);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to create sessions for booking', [
                 'booking_id' => $booking->id,
-                'session_title' => $sessionTitle,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
+            // Re-throw to ensure transaction rollback if called within transaction
+            throw $e;
         }
     }
-}
 
 /**
  * Build session title based on service and language

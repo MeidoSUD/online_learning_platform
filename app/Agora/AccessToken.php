@@ -36,7 +36,7 @@ class AccessToken
         if (is_string($str) && $str !== "") {
             return true;
         }
-        echo $name . " check failed, should be a non-empty string";
+        \Illuminate\Support\Facades\Log::error($name . " check failed, should be a non-empty string");
         return false;
     }
 
@@ -80,7 +80,7 @@ class AccessToken
         $appid_len = 32;
         $version = substr($token, 0, $ver_len);
         if ($version !== "006") {
-            echo 'invalid version ' . $version;
+            \Illuminate\Support\Facades\Log::error('invalid version ' . $version);
             return false;
         }
 

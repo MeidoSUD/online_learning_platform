@@ -1,8 +1,6 @@
 <?php
 namespace App\Agora;
 
-require_once "AccessToken.php";
-
 class RtcTokenBuilder
 {
     const RoleAttendee = 0;

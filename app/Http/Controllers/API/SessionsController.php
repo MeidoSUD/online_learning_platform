@@ -326,6 +326,12 @@ class SessionsController extends Controller
         $host = $agora->generateTokenForAccount($channel, $teacherAccount, \App\Agora\RtcTokenBuilder::RolePublisher);
 
         if (! $host || empty($host['token'])) {
+            Log::error('Failed to generate Agora host token', [
+                'channel' => $channel,
+                'account' => $teacherAccount,
+                'role' => \App\Agora\RtcTokenBuilder::RolePublisher,
+                'token' => $host['token'] ?? null,
+            ]);
             return response()->json(['success' => false, 'message' => 'Failed to generate Agora host token. Check Agora credentials.'], 500);
         }
 
@@ -404,6 +410,12 @@ class SessionsController extends Controller
 
         $tokenInfo = $agora->generateTokenForAccount($channel, $account, $roleConst);
         if (! $tokenInfo || empty($tokenInfo['token'])) {
+            Log::error('Failed to generate Agora token for participant', [
+                'channel' => $channel,
+                'account' => $account,
+                'role' => $roleName,
+                'token_info' => $tokenInfo,
+            ]);
             return response()->json(['success' => false, 'message' => 'Failed to generate Agora token for participant. Check Agora credentials.'], 500);
         }
 
