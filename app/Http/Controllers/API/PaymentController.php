@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Http\Controllers\Api;
-
+ 
 use App\Http\Controllers\Controller;
 use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
@@ -264,7 +264,7 @@ class PaymentController extends Controller
                     
                     if ($booking) {
                         // 1. Lock the slot with pessimistic locking to prevent race conditions
-                        $slot = AvailabilitySlot::where('id', $booking->availability_slot_id)
+                        $slot = AvailabilitySlot::where('id', $booking->timeslot_id)
                             ->lockForUpdate()
                             ->first();
                         
@@ -313,6 +313,12 @@ class PaymentController extends Controller
                             $this->sendPaymentNotifications($booking);
                             
                             Log::info('Booking confirmed after payment', [
+                                'booking_id' => $booking->id,
+                                'payment_id' => $payment->id,
+                            ]);
+                        }
+                        else{
+                            Log::error('Associated slot not found for booking', [
                                 'booking_id' => $booking->id,
                                 'payment_id' => $payment->id,
                             ]);

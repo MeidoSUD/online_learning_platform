@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use App\Models\Sessions;
 use Carbon\Carbon;
 use MacsiDigital\Zoom\Facades\Zoom;
-
+use App\Models\Services;
 
 class Booking extends Model
 {
@@ -45,7 +45,7 @@ class Booking extends Model
         'cancellation_reason',
         'cancelled_at',
         'refund_amount',
-        'refund_percentage'
+        'refund_percentage','timeslot_id','service_id'
     ];
 
     protected $casts = [
@@ -77,7 +77,10 @@ class Booking extends Model
     const TYPE_SINGLE = 'single';
     const TYPE_PACKAGE = 'package';
     // Relationships
-
+  public function service(): BelongsTo
+    {
+        return $this->belongsTo(Services::class, 'service_id');
+    }
     public function student(): BelongsTo
     {
         return $this->belongsTo(User::class, 'student_id');

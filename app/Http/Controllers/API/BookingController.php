@@ -14,7 +14,7 @@
  */
 
 namespace App\Http\Controllers\API;
-
+use App\Models\User;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Booking;
@@ -244,6 +244,10 @@ class BookingController extends Controller
                 'special_requests' => $request->special_requests,
                 'status' => Booking::STATUS_PENDING_PAYMENT,
                 'booking_date' => now(),
+                'timeslot_id' => $request->timeslot_id ?? null,
+
+                'service_id' =>$request->service_id ?? null
+              
             ]);
 
             // NOTE: Slot is NOT marked as booked here
