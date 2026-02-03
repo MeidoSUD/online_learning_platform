@@ -47,6 +47,7 @@
     use Illuminate\Support\Facades\Lang;
 
     use App\Http\Controllers\API\BookingCourseController;
+    use App\Http\Controllers\API\AppVersionController;
     /*  
 |--------------------------------------------------------------------------
 | API Routes
@@ -105,6 +106,11 @@
     Route::get('payments/callback', [BookingController::class, 'paymentCallback'])->name('api.payment.callback');
     Route::get('payment-methods', [PaymentMethodController::class, 'index']);
     Route::get('banks', [PaymentMethodController::class, 'banks']);
+
+    // ======================
+    // App Config & Version Management (Public - no auth required)
+    // ======================
+    Route::get('config', [AppVersionController::class, 'getConfig']); // Get latest app version info
     // ======================
     // Authentication & User Management
     // ======================
@@ -231,6 +237,9 @@
         Route::get('/classes/{education_level_id}', [EducationLevelController::class, 'classes']);
         Route::get('subjectsClasses/{class_id}', [EducationLevelController::class, 'getSubjectsByClass']);
         Route::get('banks', [PaymentMethodController::class, 'banks']);
+        Route::get('get-serivices', [ServicesController::class, 'teacherServices']);
+        Route::post('teacher-service', [ServicesController::class, 'addTeacherService']);
+        Route::post('teacher-upload-certificate', [ServicesController::class, 'uploadTeacherCertificate']);
         Route::put('active-status', [UserController::class, 'updateActiveStatus']);
         Route::get('active-status', [UserController::class, 'getActiveStatus']);
 
@@ -418,4 +427,9 @@
         // Misc admin tasks
         Route::post('/run-scheduler', [SystemController::class, 'runScheduler']);
         Route::post('/clear-cache', [SystemController::class, 'clearCache']);
+
+        // App Version Management
+        Route::get('/app-versions', [AppVersionController::class, 'listAppVersions']); // List all app versions
+        Route::post('/app-versions', [AppVersionController::class, 'storeAppVersion']); // Create new app version
+        Route::put('/app-versions/{id}', [AppVersionController::class, 'updateAppVersion']); // Update app version
     });
