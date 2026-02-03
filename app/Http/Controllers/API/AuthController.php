@@ -275,13 +275,36 @@ class AuthController extends Controller
     public function updatePassword(Request $request)
     {
         $request->validate([
-
+            'current_password' => 'required',
             'new_password'     => 'required|min:8|confirmed',
+        ], [
+            'current_password.required' => 'كلمة المرور الحالية مطلوبة',
+            'new_password.required' => 'كلمة المرور الجديدة مطلوبة',
+            'new_password.min' => 'يجب أن لا تقل كلمة المرور عن 8 أحرف',
+            'new_password.confirmed' => 'كلمة المرور الجديدة غير متطابقة مع التأكيد',
         ]);
+
         $user = $request->user();
+
+        if (!Hash::check($request->current_password, $user->password)) {
+            return response()->json([
+                'success' => false,
+                'message_ar' => 'كلمة المرور الحالية غير صحيحة',
+                'message_en' => 'Current password is incorrect',
+                'errors' => [
+                    'current_password' => ['كلمة المرور الحالية غير صحيحة']
+                ]
+            ], 422);
+        }
+
         $user->password = Hash::make($request->new_password);
         $user->save();
-        return response()->json(['message' => 'Password updated successfully']);
+
+        return response()->json([
+            'success' => true,
+            'message_ar' => 'تم تحديث كلمة المرور بنجاح',
+            'message_en' => 'Password updated successfully'
+        ]);
     }
     
     public function login(Request $request)
