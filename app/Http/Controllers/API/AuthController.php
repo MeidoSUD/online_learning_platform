@@ -19,6 +19,8 @@ use Illuminate\Support\Facades\Storage;
 use App\Models\Attachment;
 use App\Models\SupportTicket;
 use App\Models\SupportTicketReply;
+use App\Models\UserProfile;
+use App\Models\TeacherServices;
 use App\Traits\ApiResponse;
 
 class AuthController extends Controller
@@ -37,39 +39,119 @@ class AuthController extends Controller
      * )
      */
     // Register - Comprehensive error handling
+    /**
+     * Unified registration endpoint - routes to teacher or student based on role_id
+     * This is the backward-compatible endpoint used in existing clients
+     * 
+     * @OA\Post(
+     *     path="/api/auth/register",
+     *     summary="Register user (teacher or student)",
+     *     tags={"Auth"},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(type="object",
+     *             @OA\Property(property="first_name", type="string"),
+     *             @OA\Property(property="last_name", type="string"),
+     *             @OA\Property(property="email", type="string", format="email"),
+     *             @OA\Property(property="phone_number", type="string"),
+     *             @OA\Property(property="role_id", type="integer", enum={3,4}),
+     *             @OA\Property(property="password", type="string", format="password"),
+     *             @OA\Property(property="service_id", type="integer"),
+     *             @OA\Property(property="bio", type="string"),
+     *             @OA\Property(property="certificate", type="string", format="binary"),
+     *             @OA\Property(property="cv", type="string", format="binary")
+     *         )
+     *     ),
+     *     @OA\Response(response=201, description="User registered successfully"),
+     *     @OA\Response(response=409, description="User already registered"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
     public function register(Request $request)
     {
+        // Route to appropriate registration function based on role_id
+        $roleId = $request->input('role_id');
+        
+        if ($roleId == 3) {
+            return $this->registerTeacher($request);
+        } elseif ($roleId == 4) {
+            return $this->registerStudent($request);
+        } else {
+            return response()->json([
+                'success' => false,
+                'code' => 'INVALID_ROLE',
+                'status' => 'invalid_input',
+                'message_en' => 'Invalid role. Use 3 for teacher or 4 for student.',
+                'message_ar' => 'دور غير صالح. استخدم 3 للمعلم أو 4 للطالب.',
+            ], 422);
+        }
+    }
+
+    /**
+     * Teacher Registration
+     * 
+     * Registers a teacher with additional data:
+     * - service_id: Saved in teacher_services table
+     * - certificate: File saved in attachments table
+     * - cv: File saved in attachments table
+     * - bio: Saved in user_profiles table
+     * 
+     * @OA\Post(
+     *     path="/api/auth/register-teacher",
+     *     summary="Register as a teacher",
+     *     tags={"Auth"},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(type="object",
+     *             @OA\Property(property="first_name", type="string"),
+     *             @OA\Property(property="last_name", type="string"),
+     *             @OA\Property(property="email", type="string", format="email"),
+     *             @OA\Property(property="phone_number", type="string"),
+     *             @OA\Property(property="password", type="string", format="password"),
+     *             @OA\Property(property="service_id", type="integer", description="Service ID (1=private_lessons, 2=language_study, 3=courses, 4=language_study)"),
+     *             @OA\Property(property="bio", type="string", description="Teacher bio/about"),
+     *             @OA\Property(property="certificate", type="string", format="binary", description="Certificate file (PDF, image, etc)"),
+     *             @OA\Property(property="cv", type="string", format="binary", description="CV file (PDF, etc)"),
+     *             @OA\Property(property="gender", type="string", enum={"male", "female", "other"}),
+     *             @OA\Property(property="nationality", type="string")
+     *         )
+     *     ),
+     *     @OA\Response(response=201, description="Teacher registered successfully"),
+     *     @OA\Response(response=409, description="Teacher already registered"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
+    public function registerTeacher(Request $request)
+    {
         try {
-            // Log incoming request for debugging
-            Log::info('Register request received', [
-                'all_input' => $request->all(),
-                'content_type' => $request->header('Content-Type'),
-                'has_password' => $request->filled('password'),
-                'password_length' => strlen((string)$request->input('password', '')),
+            Log::info('Teacher registration request received', [
+                'has_service_id' => $request->filled('service_id'),
+                'has_certificate' => $request->hasFile('certificate'),
+                'has_cv' => $request->hasFile('cv'),
+                'has_bio' => $request->filled('bio'),
             ]);
 
-            // Validate input with comprehensive rules
-            $validated = $request->validate(
-                [
-                    'first_name'    => 'required|string|max:255',
-                    'last_name'     => 'required|string|max:255',
-                    'email'         => 'nullable|string|email',
-                    'phone_number'  => 'required|string',
-                    'role_id'       => 'required|in:3,4',
-                    'gender'        => 'nullable|in:male,female,other',
-                    'nationality'   => 'nullable|string|max:255',
-                    'password'      => 'required|string|min:8',
-                ]
-            );
+            // Validate teacher-specific input
+            $validated = $request->validate([
+                'first_name'    => 'required|string|max:255',
+                'last_name'     => 'required|string|max:255',
+                'email'         => 'nullable|string|email',
+                'phone_number'  => 'required|string',
+                'password'      => 'required|string|min:8',
+                'gender'        => 'nullable|in:male,female,other',
+                'nationality'   => 'nullable|string|max:255',
+                'service_id'    => 'nullable|exists:services,id',
+                'bio'           => 'nullable|string|max:2000',
+                'certificate'   => 'nullable|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:5120', // 5MB
+                'cv'            => 'nullable|file|mimes:pdf,doc,docx|max:5120', // 5MB
+            ]);
 
-            if($request->role_id == 3) {
-                // Additional validation for students can be added here
-                // Check if email already exists
+            // Check if email already exists
+            if ($request->filled('email')) {
                 $existingByEmail = User::where('email', $validated['email'])->first();
                 if ($existingByEmail) {
-                    Log::warning('Registration attempt with existing email', [
+                    Log::warning('Teacher registration - email already exists', [
                         'email' => $validated['email'],
-                        'existing_user_id' => $existingByEmail->id,
                     ]);
                     
                     return response()->json([
@@ -79,34 +161,32 @@ class AuthController extends Controller
                         'message_en' => 'This email is already registered. Please log in or use a different email.',
                         'message_ar' => 'هذا البريد الإلكتروني مسجل بالفعل. يرجى تسجيل الدخول أو استخدام بريد إلكتروني مختلف.',
                         'field' => 'email'
-                    ], 409); // 409 Conflict - resource already exists
+                    ], 409);
                 }
             }
 
-            
+            // Normalize and check phone
             $normalizedPhone = PhoneHelper::normalize($request->phone_number);
             
             if (!$normalizedPhone) {
-                Log::warning('Failed to normalize phone after digit extraction', [
-                    'normalized_attempt' => $normalizedPhone,
+                Log::warning('Teacher registration - failed to normalize phone', [
+                    'phone_input' => $request->phone_number,
                 ]);
                 
                 return response()->json([
                     'success' => false,
                     'code' => 'INVALID_PHONE',
                     'status' => 'invalid',
-                    'message_en' => 'Unable to process phone number. Please try again with a different format.',
-                    'message_ar' => 'تعذر معالجة رقم الهاتف. يرجى المحاولة مرة أخرى بصيغة مختلفة.',
+                    'message_en' => 'Invalid phone number format.',
+                    'message_ar' => 'صيغة رقم الهاتف غير صحيحة.',
                     'field' => 'phone_number'
                 ], 422);
             }
 
-            // Check if phone already exists
             $existingByPhone = User::where('phone_number', $normalizedPhone)->first();
             if ($existingByPhone) {
-                Log::warning('Registration attempt with existing phone', [
+                Log::warning('Teacher registration - phone already exists', [
                     'phone' => $normalizedPhone,
-                    'existing_user_id' => $existingByPhone->id,
                 ]);
                 
                 return response()->json([
@@ -116,13 +196,14 @@ class AuthController extends Controller
                     'message_en' => 'This phone number is already registered. Please log in or use a different phone number.',
                     'message_ar' => 'رقم الهاتف هذا مسجل بالفعل. يرجى تسجيل الدخول أو استخدام رقم هاتف مختلف.',
                     'field' => 'phone_number'
-                ], 409); // 409 Conflict
+                ], 409);
             }
 
             DB::beginTransaction();
+
             $verification_code = rand(1000, 9999);
             
-            // Create user - minimal data only
+            // Create teacher user
             $user = User::create([
                 'first_name'    => $validated['first_name'],
                 'last_name'     => $validated['last_name'],
@@ -131,38 +212,108 @@ class AuthController extends Controller
                 'gender'        => $validated['gender'] ?? null,
                 'nationality'   => $validated['nationality'] ?? null,
                 'password'      => Hash::make($validated['password']),
-                'role_id'       => $validated['role_id'],
+                'role_id'       => 3, // Teacher
                 'verified'      => false,
                 'verification_code' => $verification_code,
             ]);
-            
-            DB::commit();
 
-            Log::info('New user registration', [
-                'user_id' => $user->id,
-                'role_id' => $validated['role_id'],
-                'email' => $validated['email'],
-                'phone' => $normalizedPhone,
-            ]);
+            Log::info('Teacher user created', ['user_id' => $user->id]);
 
-            // Send verification code via SMS
-            $smsPhone = PhoneHelper::normalizeForSMS($normalizedPhone);
-            $smsResponse = null;
-            
-            try {
-                $smsResponse = $this->sendVerificationSMS($smsPhone, $verification_code);
-            } catch (\Exception $e) {
-                Log::warning('Failed to send SMS: ' . $e->getMessage());
+            // Create user profile with bio
+            if ($request->filled('bio')) {
+                UserProfile::create([
+                    'user_id' => $user->id,
+                    'bio' => $validated['bio'],
+                    'verified' => false,
+                ]);
+                Log::info('Teacher profile created with bio', ['user_id' => $user->id]);
             }
 
-            // Send email notification
+            // Add service if provided
+            if ($request->filled('service_id')) {
+                TeacherServices::create([
+                    'teacher_id' => $user->id,
+                    'service_id' => $validated['service_id'],
+                ]);
+                Log::info('Teacher service added', [
+                    'user_id' => $user->id,
+                    'service_id' => $validated['service_id']
+                ]);
+            }
+
+            // Handle certificate upload
+            if ($request->hasFile('certificate')) {
+                try {
+                    $certificateFile = $request->file('certificate');
+                    $certificatePath = $certificateFile->store('teacher-certificates', 'public');
+                    
+                    Attachment::create([
+                        'user_id' => $user->id,
+                        'type' => 'certificate',
+                        'file_path' => $certificatePath,
+                        'file_name' => $certificateFile->getClientOriginalName(),
+                        'file_size' => $certificateFile->getSize(),
+                        'mime_type' => $certificateFile->getMimeType(),
+                    ]);
+                    
+                    Log::info('Teacher certificate uploaded', [
+                        'user_id' => $user->id,
+                        'file_path' => $certificatePath
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Failed to upload certificate', [
+                        'user_id' => $user->id,
+                        'error' => $e->getMessage()
+                    ]);
+                    // Don't fail registration if file upload fails
+                }
+            }
+
+            // Handle CV upload
+            if ($request->hasFile('cv')) {
+                try {
+                    $cvFile = $request->file('cv');
+                    $cvPath = $cvFile->store('teacher-cvs', 'public');
+                    
+                    Attachment::create([
+                        'user_id' => $user->id,
+                        'type' => 'cv',
+                        'file_path' => $cvPath,
+                        'file_name' => $cvFile->getClientOriginalName(),
+                        'file_size' => $cvFile->getSize(),
+                        'mime_type' => $cvFile->getMimeType(),
+                    ]);
+                    
+                    Log::info('Teacher CV uploaded', [
+                        'user_id' => $user->id,
+                        'file_path' => $cvPath
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Failed to upload CV', [
+                        'user_id' => $user->id,
+                        'error' => $e->getMessage()
+                    ]);
+                    // Don't fail registration if file upload fails
+                }
+            }
+
+            DB::commit();
+
+            // Send verification code
+            $smsPhone = PhoneHelper::normalizeForSMS($normalizedPhone);
+            try {
+                $this->sendVerificationSMS($smsPhone, $verification_code);
+            } catch (\Exception $e) {
+                Log::warning('Failed to send SMS', ['error' => $e->getMessage()]);
+            }
+
             try {
                 Mail::to($user->email)->send(new VerificationCodeMail($user, $verification_code, 'register'));
             } catch (\Exception $e) {
-                Log::warning('Failed to send verification email: ' . $e->getMessage());
+                Log::warning('Failed to send verification email', ['error' => $e->getMessage()]);
             }
 
-            // Keep the same response structure (backward compatible)
+            // Same response structure (backward compatible)
             $user_response = [
                 "id" => $user->id,
                 "first_name" => $user->first_name,
@@ -177,21 +328,16 @@ class AuthController extends Controller
                 'success' => true,
                 'code' => 'REGISTRATION_SUCCESS',
                 'status' => 'unverified',
-                'message_en' => 'Registration successful. Verification code sent via SMS and email.',
-                'message_ar' => 'تم التسجيل بنجاح. تم إرسال رمز التحقق عبر الرسائل النصية والبريد الإلكتروني.',
+                'message_en' => 'Teacher registration successful. Verification code sent via SMS and email.',
+                'message_ar' => 'تم تسجيل المعلم بنجاح. تم إرسال رمز التحقق عبر الرسائل النصية والبريد الإلكتروني.',
                 'user' => $user_response,
-                'sms_response' => $smsResponse
             ], 201);
 
         } catch (ValidationException $e) {
-            // Log validation errors with detailed info
-            Log::warning('Register validation failed', [
+            Log::warning('Teacher registration validation failed', [
                 'errors' => $e->errors(),
-                'request_input' => $request->all(),
-                'has_password' => $request->filled('password'),
             ]);
             
-            // Return validation error with bilingual messages
             return response()->json([
                 'success' => false,
                 'code' => 'VALIDATION_ERROR',
@@ -201,54 +347,209 @@ class AuthController extends Controller
                 'errors' => $e->errors()
             ], 422);
             
-        } catch (\Illuminate\Database\QueryException $e) {
-            // Handle database errors
+        } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Database error during registration: ' . $e->getMessage(), [
-                'exception' => $e->getMessage(),
+            Log::error('Teacher registration error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             
-            // Check if it's a unique constraint error
-            if (strpos($e->getMessage(), 'UNIQUE constraint failed') !== false || 
-                strpos($e->getMessage(), 'Duplicate entry') !== false) {
+            return response()->json([
+                'success' => false,
+                'code' => 'REGISTRATION_ERROR',
+                'status' => 'error',
+                'message_en' => 'An error occurred during registration. Please try again later.',
+                'message_ar' => 'حدث خطأ أثناء التسجيل. يرجى المحاولة لاحقًا.',
+            ], 500);
+        }
+    }
+
+    /**
+     * Student Registration
+     * 
+     * Registers a student with basic information only
+     * 
+     * @OA\Post(
+     *     path="/api/auth/register-student",
+     *     summary="Register as a student",
+     *     tags={"Auth"},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(type="object",
+     *             @OA\Property(property="first_name", type="string"),
+     *             @OA\Property(property="last_name", type="string"),
+     *             @OA\Property(property="email", type="string", format="email"),
+     *             @OA\Property(property="phone_number", type="string"),
+     *             @OA\Property(property="password", type="string", format="password"),
+     *             @OA\Property(property="gender", type="string", enum={"male", "female", "other"}),
+     *             @OA\Property(property="nationality", type="string")
+     *         )
+     *     ),
+     *     @OA\Response(response=201, description="Student registered successfully"),
+     *     @OA\Response(response=409, description="Student already registered"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
+    public function registerStudent(Request $request)
+    {
+        try {
+            Log::info('Student registration request received', [
+                'email' => $request->input('email'),
+                'phone' => $request->input('phone_number'),
+            ]);
+
+            // Validate student input
+            $validated = $request->validate([
+                'first_name'    => 'required|string|max:255',
+                'last_name'     => 'required|string|max:255',
+                'email'         => 'nullable|string|email',
+                'phone_number'  => 'required|string',
+                'password'      => 'required|string|min:8',
+                'gender'        => 'nullable|in:male,female,other',
+                'nationality'   => 'nullable|string|max:255',
+            ]);
+
+            // Check if email already exists
+            if ($request->filled('email')) {
+                $existingByEmail = User::where('email', $validated['email'])->first();
+                if ($existingByEmail) {
+                    Log::warning('Student registration - email already exists', [
+                        'email' => $validated['email'],
+                    ]);
+                    
+                    return response()->json([
+                        'success' => false,
+                        'code' => 'ALREADY_REGISTERED',
+                        'status' => 'already_registered',
+                        'message_en' => 'This email is already registered. Please log in or use a different email.',
+                        'message_ar' => 'هذا البريد الإلكتروني مسجل بالفعل. يرجى تسجيل الدخول أو استخدام بريد إلكتروني مختلف.',
+                        'field' => 'email'
+                    ], 409);
+                }
+            }
+
+            // Normalize and check phone
+            $normalizedPhone = PhoneHelper::normalize($request->phone_number);
+            
+            if (!$normalizedPhone) {
+                Log::warning('Student registration - failed to normalize phone', [
+                    'phone_input' => $request->phone_number,
+                ]);
+                
+                return response()->json([
+                    'success' => false,
+                    'code' => 'INVALID_PHONE',
+                    'status' => 'invalid',
+                    'message_en' => 'Invalid phone number format.',
+                    'message_ar' => 'صيغة رقم الهاتف غير صحيحة.',
+                    'field' => 'phone_number'
+                ], 422);
+            }
+
+            $existingByPhone = User::where('phone_number', $normalizedPhone)->first();
+            if ($existingByPhone) {
+                Log::warning('Student registration - phone already exists', [
+                    'phone' => $normalizedPhone,
+                ]);
                 
                 return response()->json([
                     'success' => false,
                     'code' => 'ALREADY_REGISTERED',
                     'status' => 'already_registered',
-                    'message_en' => 'This email or phone number is already registered.',
-                    'message_ar' => 'هذا البريد الإلكتروني أو رقم الهاتف مسجل بالفعل.',
+                    'message_en' => 'This phone number is already registered. Please log in or use a different phone number.',
+                    'message_ar' => 'رقم الهاتف هذا مسجل بالفعل. يرجى تسجيل الدخول أو استخدام رقم هاتف مختلف.',
+                    'field' => 'phone_number'
                 ], 409);
             }
+
+            DB::beginTransaction();
+
+            $verification_code = rand(1000, 9999);
             
-            // Generic database error - but don't expose SQL details
+            // Create student user
+            $user = User::create([
+                'first_name'    => $validated['first_name'],
+                'last_name'     => $validated['last_name'],
+                'email'         => $validated['email'],
+                'phone_number'  => $normalizedPhone,
+                'gender'        => $validated['gender'] ?? null,
+                'nationality'   => $validated['nationality'] ?? null,
+                'password'      => Hash::make($validated['password']),
+                'role_id'       => 4, // Student
+                'verified'      => false,
+                'verification_code' => $verification_code,
+            ]);
+
+            Log::info('Student user created', ['user_id' => $user->id]);
+
+            DB::commit();
+
+            // Send verification code
+            $smsPhone = PhoneHelper::normalizeForSMS($normalizedPhone);
+            try {
+                $this->sendVerificationSMS($smsPhone, $verification_code);
+            } catch (\Exception $e) {
+                Log::warning('Failed to send SMS', ['error' => $e->getMessage()]);
+            }
+
+            try {
+                Mail::to($user->email)->send(new VerificationCodeMail($user, $verification_code, 'register'));
+            } catch (\Exception $e) {
+                Log::warning('Failed to send verification email', ['error' => $e->getMessage()]);
+            }
+
+            // Same response structure (backward compatible)
+            $user_response = [
+                "id" => $user->id,
+                "first_name" => $user->first_name,
+                "last_name" => $user->last_name,
+                "email" => $user->email,
+                "phone_number" => $user->phone_number,
+                "gender" => $user->gender,
+                "role_id" => $user->role_id,
+            ];
+
             return response()->json([
-                'success' => false,
-                'code' => 'DATABASE_ERROR',
-                'status' => 'error',
-                'message_en' => 'An error occurred during registration. Please try again later.',
-                'message_ar' => 'حدث خطأ أثناء التسجيل. يرجى المحاولة لاحقًا.',
-            ], 422); // Use 422 instead of 500
-            
-        } catch (\Exception $e) {
-            // Handle all other errors
-            DB::rollBack();
-            Log::error('Registration error: ' . $e->getMessage(), [
-                'exception' => get_class($e),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
+                'success' => true,
+                'code' => 'REGISTRATION_SUCCESS',
+                'status' => 'unverified',
+                'message_en' => 'Student registration successful. Verification code sent via SMS and email.',
+                'message_ar' => 'تم تسجيل الطالب بنجاح. تم إرسال رمز التحقق عبر الرسائل النصية والبريد الإلكتروني.',
+                'user' => $user_response,
+            ], 201);
+
+        } catch (ValidationException $e) {
+            Log::warning('Student registration validation failed', [
+                'errors' => $e->errors(),
             ]);
             
-            // Return user-friendly error without exposing server details
+            return response()->json([
+                'success' => false,
+                'code' => 'VALIDATION_ERROR',
+                'status' => 'invalid_input',
+                'message_en' => 'Please check your input and try again.',
+                'message_ar' => 'يرجى التحقق من مدخلاتك والمحاولة مرة أخرى.',
+                'errors' => $e->errors()
+            ], 422);
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Student registration error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return response()->json([
                 'success' => false,
                 'code' => 'REGISTRATION_ERROR',
                 'status' => 'error',
-                'message_en' => 'Registration failed. Please try again later.',
-                'message_ar' => 'فشل التسجيل. يرجى المحاولة لاحقًا.',
-            ], 422); // Use 422 instead of 500
+                'message_en' => 'An error occurred during registration. Please try again later.',
+                'message_ar' => 'حدث خطأ أثناء التسجيل. يرجى المحاولة لاحقًا.',
+            ], 500);
         }
     }
+
+
 
     /**
      * Send SMS using dreams.sa API
