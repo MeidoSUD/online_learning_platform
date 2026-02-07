@@ -1492,7 +1492,8 @@ class BookingController extends Controller
         $perPage = $request->get('per_page', 10);
 
         $query = Booking::with([
-            'course.subject',
+            'subject',
+            'courses',
             'course.service',
             'teacher.profile'
         ])->where('student_id', $studentId);
