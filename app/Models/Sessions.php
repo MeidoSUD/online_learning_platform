@@ -57,6 +57,7 @@ class Sessions extends Model
     const STATUS_SCHEDULED = 'scheduled';
     const STATUS_LIVE = 'live';
     const STATUS_ENDED = 'ended';
+    const STATUS_COMPLETED = 'completed';
     const STATUS_CANCELLED = 'cancelled';
     const STATUS_WAIT_TEACHER = 'wait_for_teacher';
 
@@ -73,6 +74,11 @@ class Sessions extends Model
     public function teacher(): BelongsTo
     {
         return $this->belongsTo(User::class, 'teacher_id');
+    }
+
+    public function reviews()
+    {
+        return $this->hasMany(Review::class, 'session_id');
     }
 
     // Scopes
@@ -145,6 +151,7 @@ class Sessions extends Model
             self::STATUS_SCHEDULED => 'Scheduled',
             self::STATUS_LIVE => 'Live',
             self::STATUS_ENDED => 'Ended',
+            self::STATUS_COMPLETED => 'Completed',
             self::STATUS_CANCELLED => 'Cancelled',
             self::STATUS_WAIT_TEACHER => 'Waiting for Teacher',
             default => ucfirst($this->status)
@@ -549,6 +556,7 @@ private static function buildSessionTitle(Booking $booking): string
             self::STATUS_SCHEDULED => 'Scheduled',
             self::STATUS_LIVE => 'Live',
             self::STATUS_ENDED => 'Ended',
+            self::STATUS_COMPLETED => 'Completed',
             self::STATUS_CANCELLED => 'Cancelled',
             self::STATUS_WAIT_TEACHER => 'Waiting for Teacher',
         ];
