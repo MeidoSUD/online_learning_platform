@@ -13,7 +13,7 @@ class Review extends Model
         'reviewed_id',
         'course_id',
         'rating',
-        'comment',
+        'comment','session_id'
     ];
 
     public function reviewer()
@@ -29,5 +29,10 @@ class Review extends Model
     public function course()
     {
         return $this->belongsTo(\App\Models\Course::class, 'course_id');
+    }
+
+    public function session()
+    {
+        return $this->belongsTo(\App\Models\Sessions::class, 'session_id');
     }
 }
