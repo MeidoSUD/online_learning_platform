@@ -20,34 +20,39 @@ class Wallet extends Model
         return $this->hasMany(WalletTransaction::class);
     }
 
-    public function credit($amount, $reason = '', $meta = [])
+    public function credit($amount, $description = '', $meta = [])
     {
+        $balanceBefore = $this->balance;
         $this->balance += $amount;
         $this->save();
 
         return $this->transactions()->create([
             'type' => 'credit',
             'amount' => $amount,
-            'reason' => $reason,
+            'balance_before' => $balanceBefore,
+            'balance_after' => $this->balance,
+            'description' => $description,
             'meta' => $meta
         ]);
     }
 
-    public function debit($amount, $reason = '', $meta = [])
+    public function debit($amount, $description = '', $meta = [])
     {
         if ($this->balance < $amount) {
             throw new \Exception("Insufficient balance");
         }
 
+        $balanceBefore = $this->balance;
         $this->balance -= $amount;
         $this->save();
 
         return $this->transactions()->create([
             'type' => 'debit',
             'amount' => $amount,
-            'reason' => $reason,
+            'balance_before' => $balanceBefore,
+            'balance_after' => $this->balance,
+            'description' => $description,
             'meta' => $meta
         ]);
     }
 }
-
