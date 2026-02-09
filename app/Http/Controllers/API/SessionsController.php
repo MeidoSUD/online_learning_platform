@@ -453,11 +453,13 @@ class SessionsController extends Controller
 
         // mark session as ended (this sets status -> completed and ended_at)
         $ended = $session->end();
-
+        Log::info(' $ended', [' $ended' => $ended]);
         if ($ended) {
             try {
                 $walletService = new TeacherWalletService();
-                $walletService->creditTeacherForSession($session);
+                $walletService2 = $walletService->creditTeacherForSession($session);
+                Log::info('$walletService', ['$walletService' => $walletService]);
+                Log::info('$walletService2', ['$walletService2' => $walletService2]);
             } catch (\Exception $e) {
                 Log::error('Failed to credit teacher wallet after session completion', [
                     'session_id' => $session->id,
