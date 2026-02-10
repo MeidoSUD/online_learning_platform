@@ -65,25 +65,56 @@ class ReviewController extends Controller
     }
 
     /**
-     * Store a new review ( course).
-     * reviewer_id is the authenticated user.
+     * Store a new review for a teacher after a completed session.
+     * Only students can review teachers, and only for completed sessions.
      */
-    public function storeTeacherReview(Request $request , $teacher_id)
+    public function storeTeacherReview(Request $request, $teacher_id)
     {
-        
         $request->validate([
-            'reviewed_id' => 'nullable|exists:users,id',
             'rating'      => 'required|integer|min:1|max:5',
             'comment'     => 'nullable|string|max:1000',
+            'session_id'  => 'required|exists:sessions,id'
         ]);
 
-        if (!$teacher_id) {
-            return response()->json(['success' => false, 'message' => 'teacher_id is required'], 422);
+        $student = $request->user();
+
+        // Check if session exists and belongs to this student
+        $session = \App\Models\Sessions::where('id', $request->session_id)
+            ->where('student_id', $student->id)
+            ->where('teacher_id', $teacher_id)
+            ->first();
+
+        if (!$session) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Session not found or does not belong to you'
+            ], 404);
+        }
+
+        // Check if session is completed
+        if ($session->status !== \App\Models\Sessions::STATUS_COMPLETED) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You can only review completed sessions'
+            ], 422);
+        }
+
+        // Check if student already reviewed this session
+        $existingReview = Review::where('session_id', $request->session_id)
+            ->where('reviewer_id', $student->id)
+            ->first();
+
+        if ($existingReview) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You have already reviewed this session'
+            ], 422);
         }
 
         $review = Review::create([
-            'reviewer_id' => $request->user()->id,
+            'reviewer_id' => $student->id,
             'reviewed_id' => $teacher_id,
+            'session_id'  => $request->session_id,
             'rating'      => $request->rating,
             'comment'     => $request->comment,
         ]);
@@ -91,7 +122,7 @@ class ReviewController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Review added successfully',
-            'data' => $review
+            'data' => $review->load(['reviewer', 'reviewedUser', 'session'])
         ], 201);
     }
 
@@ -157,7 +188,64 @@ class ReviewController extends Controller
      */
     public function myReviews(Request $request)
     {
-        $reviews = Review::where('reviewer_id', $request->user()->id)->with(['reviewedUser', 'course'])->get();
+        $reviews = Review::where('reviewer_id', $request->user()->id)->with(['reviewedUser', 'course', 'session'])->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $reviews
+        ]);
+    }
+
+    /**
+     * Get review for a specific session by the authenticated user.
+     */
+    public function getSessionReview(Request $request, $session_id)
+    {
+        $user = $request->user();
+
+        // Check if session exists and user is part of it
+        $session = \App\Models\Sessions::where('id', $session_id)
+            ->where(function($query) use ($user) {
+                $query->where('student_id', $user->id)
+                      ->orWhere('teacher_id', $user->id);
+            })
+            ->first();
+
+        if (!$session) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Session not found'
+            ], 404);
+        }
+
+        // Get review for this session
+        $review = Review::where('session_id', $session_id)
+            ->with(['reviewer', 'reviewedUser'])
+            ->first();
+
+        return response()->json([
+            'success' => true,
+            'data' => $review,
+            'can_review' => $session->status === \App\Models\Sessions::STATUS_COMPLETED && 
+                           $user->id === $session->student_id && 
+                           !$review
+        ]);
+    }
+
+    /**
+     * Get all reviews for sessions of the authenticated user (student or teacher).
+     */
+    public function mySessionReviews(Request $request)
+    {
+        $user = $request->user();
+
+        // Get reviews for sessions where user is student or teacher
+        $reviews = Review::whereHas('session', function($query) use ($user) {
+            $query->where('student_id', $user->id)
+                  ->orWhere('teacher_id', $user->id);
+        })
+        ->with(['reviewer', 'reviewedUser', 'session'])
+        ->get();
 
         return response()->json([
             'success' => true,

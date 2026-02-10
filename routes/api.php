@@ -69,6 +69,14 @@
         Route::post('/notifications/mark-all-as-read', [FCMTokenController::class, 'markAllAsRead']);
         Route::delete('/notifications/{id}/delete', [FCMTokenController::class, 'deleteNotification']);
         Route::post('/notifications/send', [NotificationController::class, 'sendToToken']);
+
+        // Session Reviews (Accessible by both student and teacher)
+        Route::get('/sessions/{session_id}/review', [ReviewController::class, 'getSessionReview']);
+        Route::get('/my-session-reviews', [ReviewController::class, 'mySessionReviews']);
+        
+        // Teacher Reviews
+        Route::get('/teachers/{teacher_id}/reviews', [ReviewController::class, 'index']);
+        Route::post('/teachers/{teacher_id}/reviews', [ReviewController::class, 'storeTeacherReview']);
     });
     Route::get('/common-subjects', [ServicesController::class, 'getAllSubjects']);
     // main screen APIs
@@ -125,10 +133,10 @@
         Route::post('verify-reset-code', [AuthController::class, 'verifyResetCode']);
         Route::post('reset-password', [AuthController::class, 'resetPassword']);
         Route::post('confirm-password', [AuthController::class, 'confirmResetPassword']);
-        Route::post('change-password', [AuthController::class, 'updatePassword']);
+        Route::post('change-password', [AuthController::class, 'updatePassword'])->middleware('auth:sanctum');
         Route::post('logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
-        Route::post('delete-account', [AuthController::class, 'deleteAccount']);
-        Route::get('profile', [AuthController::class, 'profile']);
+        Route::post('delete-account', [AuthController::class, 'deleteAccount'])->middleware('auth:sanctum');
+        Route::get('profile', [AuthController::class, 'profile'])->middleware('auth:sanctum');
     });
     // ======================
     // Profile (Shared)
@@ -216,10 +224,8 @@
         Route::get('/courses/{course_id}/reviews', [ReviewController::class, 'index']);
         Route::post('/courses/{course_id}/reviews', [ReviewController::class, 'store']);
         Route::delete('/courses/{course_id}/reviews/{id}', [ReviewController::class, 'destroy']);
-        // teacher reviews
-        Route::get('/teachers/{teacher_id}/reviews', [ReviewController::class, 'index']); // reviews for a teacher
-        Route::post('/teachers/{teacher_id}/reviews', [ReviewController::class, 'storeTeacherReview']); // add review for a teacher
-        Route::delete('/teachers/{teacher_id}/reviews/{id}', [ReviewController::class, 'destroy']); // delete review
+        
+        
         //disputes
         Route::post('/disputes', [DisputeController::class, 'store']); // Create new dispute      
         Route::get('/disputes/my', [DisputeController::class, 'index']); // List my disputes

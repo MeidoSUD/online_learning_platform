@@ -46,6 +46,18 @@ class User extends Authenticatable implements MustVerifyEmail
     ];
 
     /**
+     * The attributes to append to the model's array form.
+     *
+     * @var array
+     */
+    protected $appends = ['name'];
+
+    public function getNameAttribute()
+    {
+        return "{$this->first_name} {$this->last_name}";
+    }
+
+    /**
      * The attributes that should be cast.
      *
      * @var array<string, string>

@@ -5,8 +5,9 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Sessions;
-use Illuminate\Http\JsonResponse;   
+use Illuminate\Http\JsonResponse;
 use App\Services\AgoraService;
+use App\Services\TeacherWalletService;
 use Illuminate\Support\Facades\Log;
 
 
@@ -24,7 +25,7 @@ class SessionsController extends Controller
      *     )
      * )
      */
-    
+
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -100,7 +101,7 @@ class SessionsController extends Controller
 
         // Get all sessions for this teacher
         $query = Sessions::with(['teacher:id,first_name,last_name,email,nationality', 'student:id,first_name,last_name,email', 'booking'])
-                        ->where('teacher_id', $user->id);
+            ->where('teacher_id', $user->id);
 
         if ($status) {
             $query->where('status', $status);
@@ -113,7 +114,7 @@ class SessionsController extends Controller
             return $session->session_date . '|' . $session->start_time;
         })->map(function ($sessionGroup) use ($user) {
             $firstSession = $sessionGroup->first();
-            
+
             return [
                 'session_datetime' => [
                     'date' => $firstSession->session_date,
@@ -207,11 +208,11 @@ class SessionsController extends Controller
             'session_date' => $sessionDateFormatted,
             'day_name' => $dayName,
             'day_number' => $dayNumber,
-            'start_time' => $session->start_time instanceof \Carbon\Carbon 
-                ? $session->start_time->format('H:i:s') 
+            'start_time' => $session->start_time instanceof \Carbon\Carbon
+                ? $session->start_time->format('H:i:s')
                 : $session->start_time,
-            'end_time' => $session->end_time instanceof \Carbon\Carbon 
-                ? $session->end_time->format('H:i:s') 
+            'end_time' => $session->end_time instanceof \Carbon\Carbon
+                ? $session->end_time->format('H:i:s')
                 : $session->end_time,
             'duration' => $session->duration,
             'status' => $session->status,
@@ -305,12 +306,12 @@ class SessionsController extends Controller
 
         $session = Sessions::with(['teacher', 'student', 'booking'])->where('id', $sessionId)->where('teacher_id', $user->id)->first();
 
-        if (! $session) {
+        if (!$session) {
             return response()->json(['success' => false, 'message' => 'Session not found or you are not the teacher'], 404);
         }
 
         // Optional: enforce time window
-        if (! $session->can_start) {
+        if (!$session->can_start) {
             // Allow override for testing, but inform the client
             Log::info('Teacher tried to start session outside allowed window', ['session_id' => $session->id]);
             // return response()->json(['success'=>false,'message'=>'Session cannot be started yet'], 422);
@@ -325,7 +326,7 @@ class SessionsController extends Controller
         // Generate host token ONLY when teacher starts
         $host = $agora->generateTokenForAccount($channel, $teacherAccount, \App\Agora\RtcTokenBuilder::RolePublisher);
 
-        if (! $host || empty($host['token'])) {
+        if (!$host || empty($host['token'])) {
             Log::error('Failed to generate Agora host token', [
                 'channel' => $channel,
                 'account' => $teacherAccount,
@@ -378,7 +379,7 @@ class SessionsController extends Controller
             $q->where('student_id', $user->id)->orWhere('teacher_id', $user->id);
         })->first();
 
-        if (! $session) {
+        if (!$session) {
             return response()->json(['success' => false, 'message' => 'Session not found or you are not a participant'], 404);
         }
 
@@ -387,7 +388,7 @@ class SessionsController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Waiting for teacher to start the session',
-                'data' => [ 'session_status' => 'waiting_for_teacher' ],
+                'data' => ['session_status' => 'waiting_for_teacher'],
                 'errors' => null,
                 'meta' => null
             ], 423);
@@ -409,7 +410,7 @@ class SessionsController extends Controller
         }
 
         $tokenInfo = $agora->generateTokenForAccount($channel, $account, $roleConst);
-        if (! $tokenInfo || empty($tokenInfo['token'])) {
+        if (!$tokenInfo || empty($tokenInfo['token'])) {
             Log::error('Failed to generate Agora token for participant', [
                 'channel' => $channel,
                 'account' => $account,
@@ -446,12 +447,26 @@ class SessionsController extends Controller
 
         $session = Sessions::where('id', $sessionId)->where('teacher_id', $user->id)->first();
 
-        if (! $session) {
+        if (!$session) {
             return response()->json(['success' => false, 'message' => 'Session not found or you are not the teacher'], 404);
         }
 
         // mark session as ended (this sets status -> completed and ended_at)
         $ended = $session->end();
+        Log::info(' $ended', [' $ended' => $ended]);
+        if ($ended) {
+            try {
+                $walletService = new TeacherWalletService();
+                $walletService2 = $walletService->creditTeacherForSession($session);
+                Log::info('$walletService', ['$walletService' => $walletService]);
+                Log::info('$walletService2', ['$walletService2' => $walletService2]);
+            } catch (\Exception $e) {
+                Log::error('Failed to credit teacher wallet after session completion', [
+                    'session_id' => $session->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
 
         return response()->json([
             'success' => true,
@@ -463,4 +478,4 @@ class SessionsController extends Controller
             'meta' => null
         ]);
     }
-}   
+}
