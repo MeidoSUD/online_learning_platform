@@ -198,7 +198,7 @@ class UsersController extends Controller
 
     public function activate(Request $request, $id)
     {
-        $user = User::findOrFail($id);
+        $user = UserProfile::findOrFail($id);
         $user->update(['is_active' => true]);
         return response()->json(['success' => true]);
     }

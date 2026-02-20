@@ -48,6 +48,8 @@
 
     use App\Http\Controllers\API\BookingCourseController;
     use App\Http\Controllers\API\AppVersionController;
+    use App\Http\Controllers\API\AdsController;
+    use App\Http\Controllers\API\Admin\AdsAdminController;
     /*  
 |--------------------------------------------------------------------------
 | API Routes
@@ -119,6 +121,12 @@
     // App Config & Version Management (Public - no auth required)
     // ======================
     Route::get('config', [AppVersionController::class, 'getConfig']); // Get latest app version info
+    
+    // ======================
+    // Ads Panel (Public - accessible to all, role-based filtering)
+    // ======================
+    Route::get('ads', [AdsController::class, 'getAds']); // Get active ads based on user role
+    Route::get('ads/{id}', [AdsController::class, 'getAdById']); // Get single ad
     // ======================
     // Authentication & User Management
     // ======================
@@ -245,7 +253,7 @@
         Route::get('/classes/{education_level_id}', [EducationLevelController::class, 'classes']);
         Route::get('subjectsClasses/{class_id}', [EducationLevelController::class, 'getSubjectsByClass']);
         Route::get('banks', [PaymentMethodController::class, 'banks']);
-        Route::get('get-serivices', [ServicesController::class, 'teacherServices']);
+        Route::get('get-services', [ServicesController::class, 'teacherServices']);
         Route::post('teacher-service', [ServicesController::class, 'addTeacherService']);
         Route::post('teacher-upload-certificate', [ServicesController::class, 'uploadTeacherCertificate']);
         Route::put('active-status', [UserController::class, 'updateActiveStatus']);
@@ -440,4 +448,11 @@
         Route::get('/app-versions', [AppVersionController::class, 'listAppVersions']); // List all app versions
         Route::post('/app-versions', [AppVersionController::class, 'storeAppVersion']); // Create new app version
         Route::put('/app-versions/{id}', [AppVersionController::class, 'updateAppVersion']); // Update app version
+
+        // Ads Panel Management
+        Route::get('/ads', [AdsAdminController::class, 'listAds']); // List all ads with filters
+        Route::post('/ads', [AdsAdminController::class, 'createAd']); // Create new ad with image upload
+        Route::post('/ads/{id}', [AdsAdminController::class, 'updateAd']); // Update ad (use POST for multipart)
+        Route::put('/ads/{id}/toggle', [AdsAdminController::class, 'toggleAdStatus']); // Toggle ad active/inactive
+        Route::delete('/ads/{id}', [AdsAdminController::class, 'deleteAd']); // Delete ad
     });
