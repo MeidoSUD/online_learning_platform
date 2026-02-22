@@ -62,26 +62,36 @@ class DashboardController extends Controller
             
             // Total Revenue (sum of successful payments)
             $totalRevenue = Payment::where('status', 'success')
-                ->sum('amount');
+                ->sum('amount') ?? 0;
             
-            // Teachers Wallet Total (sum of all teacher wallets)
-            $teachersWalletTotal = Wallet::whereHas('user', function ($query) {
-                $query->where('role_id', 3);
-            })->sum('balance');
+            // Teachers Wallet Total (sum of all teacher wallets) - with error handling
+            $teachersWalletTotal = 0;
+            try {
+                $teachersWalletTotal = Wallet::whereHas('user', function ($query) {
+                    $query->where('role_id', 3);
+                })->sum('balance') ?? 0;
+            } catch (\Exception $e) {
+                Log::warning('Error calculating teachers wallet total', ['error' => $e->getMessage()]);
+                $teachersWalletTotal = 0;
+            }
             
             // Recent Activity (last 10 bookings)
-            $recentActivity = Booking::with(['user', 'availability'])
+            $recentActivity = Booking::with(['student', 'teacher'])
                 ->orderBy('created_at', 'desc')
                 ->limit(10)
                 ->get()
                 ->map(function ($booking) {
+                    // Get student or teacher name depending on context
+                    $studentName = optional($booking->student)->first_name . ' ' . optional($booking->student)->last_name;
+                    $teacherName = optional($booking->teacher)->first_name . ' ' . optional($booking->teacher)->last_name;
+                    
                     return [
                         'id' => $booking->id,
                         'type' => 'booking',
-                        'user_name' => $booking->user->first_name . ' ' . $booking->user->last_name,
-                        'user_role' => $booking->user->role_id == 3 ? 'teacher' : 'student',
+                        'student_name' => $studentName,
+                        'teacher_name' => $teacherName,
                         'status' => $booking->status,
-                        'amount' => $booking->price,
+                        'amount' => $booking->total_amount ?? 0,
                         'created_at' => $booking->created_at->format('Y-m-d H:i:s'),
                     ];
                 });

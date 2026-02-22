@@ -61,6 +61,7 @@
 |
 */
         Route::get('/users', [UsersController::class, 'index']);
+        Route::get('/dashboard', [DashboardController::class, 'dashboard']); // Comprehensive admin dashboard
 
 
     // Notification route

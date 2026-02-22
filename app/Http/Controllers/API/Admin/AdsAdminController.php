@@ -120,9 +120,9 @@ class AdsAdminController extends Controller
     public function createAd(Request $request)
     {
         try {
-            // Validate input
+            // Validate input - more flexible image validation
             $validated = $request->validate([
-                'image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120', // 5MB
+                'image' => 'required|file|mimes:jpeg,jpg,png,gif,webp,svg,bmp,tiff,ico|max:10240', // 10MB max
                 'description' => 'nullable|string|max:1000',
                 'role_id' => 'nullable|integer|in:3,4', // 3=teacher, 4=student, null=all
                 'platform' => 'required|in:web,app,both',
@@ -134,6 +134,18 @@ class AdsAdminController extends Controller
             // Upload image
             if ($request->hasFile('image')) {
                 $file = $request->file('image');
+                
+                // Verify file is actually uploaded
+                if (!$file->isValid()) {
+                    return response()->json([
+                        'success' => false,
+                        'code' => 'INVALID_FILE',
+                        'status' => 'error',
+                        'message_en' => 'Invalid file upload',
+                        'message_ar' => 'ملف غير صحيح',
+                    ], 422);
+                }
+                
                 $path = $file->store('ads', 'public');
 
                 $ad = AdsPanner::create([
@@ -248,9 +260,9 @@ class AdsAdminController extends Controller
                 ], 404);
             }
 
-            // Validate input
+            // Validate input - more flexible image validation
             $validated = $request->validate([
-                'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+                'image' => 'nullable|file|mimes:jpeg,jpg,png,gif,webp,svg,bmp,tiff,ico|max:10240', // 10MB max
                 'description' => 'nullable|string|max:1000',
                 'role_id' => 'nullable|integer|in:3,4',
                 'platform' => 'nullable|in:web,app,both',
