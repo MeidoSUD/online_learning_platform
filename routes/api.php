@@ -60,6 +60,7 @@
 | is assigned the "api" middleware group. Enjoy building your API!
 |
 */
+        Route::get('/users', [UsersController::class, 'index']);
 
 
     // Notification route
@@ -332,6 +333,23 @@
     
     Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(function () {
         // Admin language management routes
+        Route::get('/services', [ServicesController::class, 'listServices']);
+        Route::get('/services/search', [ServicesController::class, 'searchServices']);
+        Route::get('/subjects/{id}', [ServicesController::class, 'listSubjects']);
+        Route::get('/subjects/{id}', [ServicesController::class, 'subjectDetails']);
+        Route::get('categories', [CourseController::class, 'listCategories']);
+        Route::get('courses', [CourseController::class, 'index']); // browse/search
+        Route::get('courses/{id}', [CourseController::class, 'show']); // course details
+        Route::get('language-study', [LanguageStudyController::class, 'index']);
+        Route::get('language-study/teachers', [LanguageStudyController::class, 'getAllTeachersWithLanguages']); // Get all teachers with languages
+        Route::get('language-study/teacher/{teacherId}', [LanguageStudyController::class, 'getTeacherLanguages']); // Get specific teacher languages
+        Route::get('language-study/teachers/filter', [LanguageStudyController::class, 'filterTeachersByLanguage']); // Filter teachers by language
+        Route::get('/teachers', [UserController::class, 'listTeachers']);
+        Route::get('/teachers/{id}', [UserController::class, 'teacherDetails']);
+        Route::get('/education-levels', [EducationLevelController::class, 'levelsWithClassesAndSubjects']);
+        Route::get('/classes/{education_level_id}', [EducationLevelController::class, 'classes']);
+        Route::get('subjectsClasses/{class_id}', [EducationLevelController::class, 'getSubjectsByClass']);
+        Route::get('/services', [ServicesController::class, 'listServices']);
         Route::get('/languages', [LanguageController::class, 'index']); // List all languages
         Route::post('/languages', [LanguageController::class, 'store']); // Create language
         Route::get('/languages/{id}', [LanguageController::class, 'show']); // Get language details
@@ -377,6 +395,7 @@
         Route::get('/courses/pending-approval', [CourseController::class, 'pendingApproval']); // Get pending approval courses
 
         // Dashboard / system
+        Route::get('/dashboard', [DashboardController::class, 'dashboard']); // Comprehensive admin dashboard
         Route::get('/stats', [DashboardController::class, 'stats']);
         Route::get('/health', [DashboardController::class, 'health']);
 
