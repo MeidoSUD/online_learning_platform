@@ -275,8 +275,20 @@ class UserController extends Controller
                     'message' => 'Invalid user role'
                 ], 422);
             }
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Profile update validation error', [
+                'errors' => $e->errors(),
+                'message' => $e->getMessage()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Profile validation failed',
+                'errors' => $e->errors()
+            ], 422);
         } catch (\Exception $e) {
-            Log::error('Profile update error: ' . $e->getMessage());
+            Log::error('Profile update error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update profile',
@@ -440,6 +452,10 @@ class UserController extends Controller
                 $this->updateInstituteProfile($request, $user);
             } else {
                 // Individual teacher profile update
+                Log::info('Updating individual teacher profile', [
+                    'user_id' => $user->id,
+                    'has_teach_fields' => $request->hasAny(['teach_individual', 'teach_group', 'individual_hour_price', 'group_hour_price', 'max_group_size', 'min_group_size'])
+                ]);
                 $this->updateIndividualTeacherProfile($request, $user);
             }
 
@@ -786,8 +802,8 @@ class UserController extends Controller
             'individual_hour_price' => 'nullable|numeric|min:0',
             'teach_group' => 'required|boolean',
             'group_hour_price' => 'nullable|numeric|min:0',
-            'max_group_size' => 'nullable|integer|max:5',
-            'min_group_size' => 'nullable|integer|min:1',
+            'max_group_size' => 'nullable|integer|min:0|max:100',
+            'min_group_size' => 'nullable|integer|min:0|max:100',
             'class_ids' => 'required|array',
             'class_ids.*' => 'exists:classes,id',
             'subject_ids' => 'required|array',
@@ -850,8 +866,8 @@ class UserController extends Controller
                 'individual_hour_price' => 'nullable|numeric|min:0',
                 'teach_group' => 'required|boolean',
                 'group_hour_price' => 'nullable|numeric|min:0',
-                'max_group_size' => 'nullable|integer|max:5',
-                'min_group_size' => 'nullable|integer|min:1',
+                'max_group_size' => 'nullable|integer|min:0|max:100',
+                'min_group_size' => 'nullable|integer|min:0|max:100',
             ]);
 
             $teacher = $request->user();
