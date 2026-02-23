@@ -59,7 +59,8 @@
 | routes are loaded by the RouteServiceProvider within a group which
 | is assigned the "api" middleware group. Enjoy building your API!
 |
-*/
+*/              Route::get('/getteachers', [UsersController::class, 'teachers']);
+
         Route::get('/users', [UsersController::class, 'index']);
         Route::get('/dashboard', [DashboardController::class, 'dashboard']); // Comprehensive admin dashboard
 

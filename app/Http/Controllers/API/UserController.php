@@ -490,8 +490,8 @@ class UserController extends Controller
      */
     private function updateIndividualTeacherProfile(Request $request, User $user)
     {
-        // Update teacher info if provided
-        if ($request->hasAny(['bio', 'teach_individual', 'individual_hour_price', 'teach_group', 'group_hour_price', 'max_group_size', 'min_group_size'])) {
+        // Update teacher info ONLY if teaching-related fields are provided
+        if ($request->hasAny(['teach_individual', 'teach_group', 'individual_hour_price', 'group_hour_price', 'max_group_size', 'min_group_size'])) {
             $this->updateTeacherInfo($request);
         }
 
@@ -842,34 +842,37 @@ class UserController extends Controller
     // Update or create teacher info only
     public function updateTeacherInfo(Request $request)
     {
-        $request->validate([
-            'bio' => 'nullable|string|max:2000',
-            'teach_individual' => 'required|boolean',
-            'individual_hour_price' => 'nullable|numeric|min:0',
-            'teach_group' => 'required|boolean',
-            'group_hour_price' => 'nullable|numeric|min:0',
-            'max_group_size' => 'nullable|integer|max:5',
-            'min_group_size' => 'nullable|integer|min:1',
-        ]);
+        // Only validate if teaching fields are provided
+        if ($request->hasAny(['teach_individual', 'teach_group', 'individual_hour_price', 'group_hour_price', 'max_group_size', 'min_group_size'])) {
+            $request->validate([
+                'bio' => 'nullable|string|max:2000',
+                'teach_individual' => 'required|boolean',
+                'individual_hour_price' => 'nullable|numeric|min:0',
+                'teach_group' => 'required|boolean',
+                'group_hour_price' => 'nullable|numeric|min:0',
+                'max_group_size' => 'nullable|integer|max:5',
+                'min_group_size' => 'nullable|integer|min:1',
+            ]);
 
-        $teacher = $request->user();
-        $info = TeacherInfo::updateOrCreate(
-            ['teacher_id' => $teacher->id],
-            $request->only([
-                'bio',
-                'teach_individual',
-                'individual_hour_price',
-                'teach_group',
-                'group_hour_price',
-                'max_group_size',
-                'min_group_size'
-            ])
-        );
+            $teacher = $request->user();
+            $info = TeacherInfo::updateOrCreate(
+                ['teacher_id' => $teacher->id],
+                $request->only([
+                    'bio',
+                    'teach_individual',
+                    'individual_hour_price',
+                    'teach_group',
+                    'group_hour_price',
+                    'max_group_size',
+                    'min_group_size'
+                ])
+            );
 
-        return response()->json([
-            'success' => true,
-            'data' => $info
-        ]);
+            return response()->json([
+                'success' => true,
+                'data' => $info
+            ]);
+        }
     }
 
     // Update or create teacher classes only

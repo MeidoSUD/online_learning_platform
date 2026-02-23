@@ -24,7 +24,7 @@ class CreatePayoutsTable extends Migration
             $table->timestamp('created_at')->nullable();
 
             $table->foreign('teacher_id')->references('id')->on('users');
-            $table->foreign('payment_method_id')->references('id')->on('payment_methods');
+            $table->foreign('payment_method_id')->references('id')->on('user_payment_methods');
         });
     }
 
