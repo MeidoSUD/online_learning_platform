@@ -14,14 +14,35 @@ class UsersController extends Controller
 {
     public function index(Request $request)
     {
-        $q = User::query()->select(['id','first_name','last_name','email','phone_number','gender','role_id','is_active']);
+        $q = User::query()->select(['id','first_name','last_name','email','created_at','phone_number','gender','role_id','is_active']);
         if ($request->filled('role_id')) $q->where('role_id', $request->role_id);
 
-        // Eager-load attachments but only the ones that matter for the admin table (profile_photo, certificate)
+        // Filter by is_active if provided (accepts true/false or 1/0)
+        if ($request->has('is_active')) {
+            $isActive = filter_var($request->is_active, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            if (!is_null($isActive)) {
+                $q->where('is_active', $isActive);
+            }
+        }
+
+        // Filter by verified status via the related profile
+        if ($request->has('verified')) {
+            $verified = filter_var($request->verified, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            if (!is_null($verified)) {
+                $q->whereHas('profile', function ($query) use ($verified) {
+                    $query->where('verified', $verified);
+                });
+            }
+        }
+
+        // Eager-load attachments and profile but only the ones that matter for the admin table (profile_photo, certificate)
         $q->with(['attachments' => function ($query) {
             $query->whereIn('attached_to_type', ['profile_picture', 'certificate'])
                 ->select(['id','user_id','file_path','file_name','attached_to_type','attached_to_id']);
         }]);
+
+        // Also eager-load profile to avoid N+1 when checking verified
+        $q->with('profile');
 
         $paginated = $q->orderBy('id', 'desc')->paginate(25);
 
@@ -49,6 +70,7 @@ class UsersController extends Controller
                 'verified' => $user->profile->verified ?? false,
                 'profile_photo' => $profilePhoto,
                 'certificate' => $certificate,
+                'created_at' => $user->created_at
             ];
         });
 
@@ -184,7 +206,7 @@ class UsersController extends Controller
     {
         $user = User::findOrFail($id);
         $profile = UserProfile::firstOrCreate(['user_id' => $user->id]);
-        $profile->verified = true;
+        $profile->verified = $request->verified;
         $profile->save();
         return response()->json(['success' => true, 'message' => 'Teacher verified']);
     }
@@ -198,7 +220,7 @@ class UsersController extends Controller
 
     public function activate(Request $request, $id)
     {
-        $user = UserProfile::findOrFail($id);
+        $user = User::findOrFail($id);
         $user->update(['is_active' => true]);
         return response()->json(['success' => true]);
     }
