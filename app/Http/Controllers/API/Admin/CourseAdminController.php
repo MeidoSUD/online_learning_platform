@@ -116,7 +116,7 @@ class CourseAdminController extends Controller
                     ] : null,
                     'category' => $course->category ? [
                         'id' => $course->category->id,
-                        'name' => $course->category->name,
+                        'name' => $course->category->name_ar,
                     ] : null,
                     'enrollments_count' => $course->enrollments->count(),
                     'created_at' => $course->created_at,
@@ -336,7 +336,7 @@ class CourseAdminController extends Controller
     public function updateStatus(Request $request, $id): JsonResponse
     {
         $request->validate([
-            'status' => 'required|boolean',
+            'status' => 'required|in:published,draft',
         ]);
 
         try {

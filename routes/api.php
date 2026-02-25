@@ -39,6 +39,8 @@
     use App\Http\Controllers\API\Admin\EducationLevelAdminController;
     use App\Http\Controllers\API\Admin\CourseAdminController;
     use App\Http\Controllers\API\Admin\SupportTicketController;
+ 
+  
     use App\Http\Controllers\API\Admin\InstituteController;
     use App\Models\Payment;
     use App\Models\User;
@@ -386,11 +388,11 @@
         Route::post('/subjects/{id}/restore', [SubjectAdminController::class, 'restore']); // Restore soft-deleted subject
 
         // Courses
-        Route::get('/courses', [CourseController::class, 'index']); // List all courses
+        Route::get('/courses', [CourseAdminController::class, 'index']); // List all courses
         Route::get('/courses/{id}', [CourseController::class, 'show']); // Get course details
-        Route::put('/courses/{id}/approve', [CourseController::class, 'approve']); // Approve course
-        Route::put('/courses/{id}/reject', [CourseController::class, 'reject']); // Reject course
-        Route::put('/courses/{id}/status', [CourseController::class, 'updateStatus']); // Update course status
+        Route::put('/courses/{id}/approve', [CourseAdminController::class, 'approve']); // Approve course
+        Route::put('/courses/{id}/reject', [CourseAdminController::class, 'reject']); // Reject course
+        Route::put('/courses/{id}/status', [CourseAdminController::class, 'updateStatus']); // Update course status
         Route::put('/courses/{id}/feature', [CourseController::class, 'feature']); // Mark course as featured
         Route::delete('/courses/{id}', [CourseController::class, 'destroy']); // Delete course
         Route::get('/courses/pending-approval', [CourseController::class, 'pendingApproval']); // Get pending approval courses
