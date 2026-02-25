@@ -14,6 +14,8 @@ class Payout extends Model
         'amount',
         'payment_method_id',
         'status',
+        'receipt',
+        'reject_reason',
         'requested_at',
         'processed_at',
     ];

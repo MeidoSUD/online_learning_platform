@@ -452,9 +452,11 @@
         Route::delete('/institutes/{id}', [InstituteController::class, 'destroy']);
 
         // Payouts / transfer to teachers
-        Route::get('/payouts', [PayoutAdminController::class, 'index']);
-        Route::post('/payouts', [PayoutAdminController::class, 'store']);
-        Route::post('/payouts/{id}/mark-sent', [PayoutAdminController::class, 'markSent']);
+        Route::get('/payout-requests', [PayoutAdminController::class, 'index']);
+        Route::post('/payout-requests', [PayoutAdminController::class, 'store']);
+        Route::post('/payout-requests/{id}/mark-sent', [PayoutAdminController::class, 'markSent']);
+        Route::post('/payout-requests/{id}/approve', [PayoutAdminController::class, 'approve']);
+        Route::post('/payout-requests/{id}/reject', [PayoutAdminController::class, 'reject']);
 
 
         // Gallery / media control
