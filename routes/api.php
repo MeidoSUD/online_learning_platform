@@ -286,7 +286,8 @@
         Route::post('availability', [AvailabilityController::class, 'store']); // Add new slot
         Route::get('availability/{id}', [AvailabilityController::class, 'show']); // Show slot details
         Route::put('availability/{id}', [AvailabilityController::class, 'update']); // Update slot
-        Route::delete('availability/{id}', [AvailabilityController::class, 'destroy']); // Delete slot
+        Route::delete('availability/{id}', [AvailabilityController::class, 'destroy']); // Delete single slot
+        Route::delete('availability', [AvailabilityController::class, 'destroyBatch']); // Delete multiple slots (batch)
         // lessons
         Route::post('/courses/{course_id}/lessons', [LessonController::class, 'store']);
         Route::put('/lessons/{id}', [LessonController::class, 'update']);
