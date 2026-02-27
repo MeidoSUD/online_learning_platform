@@ -448,5 +448,57 @@ class AvailabilityController extends Controller
             'message' => 'Slot deleted successfully'
         ]);
     }
+
+    /**
+     * Delete multiple slots by IDs (batch delete)
+     * Used by Flutter to delete removed time slots
+     * Expects: ?ids=1,2,3 in query string
+     */
+    public function destroyBatch(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|string',
+        ]);
+
+        $teacherId = $request->user()->id;
+        // Parse comma-separated IDs from query string
+        $idsString = $request->input('ids', '');
+        $ids = array_filter(explode(',', $idsString), 'is_numeric');
+        $ids = array_map('intval', $ids);
+
+        if (empty($ids)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No valid IDs provided'
+            ], 422);
+        }
+
+        // Get slots that belong to this teacher
+        $slots = AvailabilitySlot::whereIn('id', $ids)
+            ->where('teacher_id', $teacherId)
+            ->get();
+
+        $deletedIds = [];
+        $failedIds = [];
+
+        foreach ($slots as $slot) {
+            try {
+                $slot->delete();
+                $deletedIds[] = $slot->id;
+            } catch (\Exception $e) {
+                $failedIds[] = [
+                    'id' => $slot->id,
+                    'error' => $e->getMessage()
+                ];
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Batch delete completed',
+            'deleted' => $deletedIds,
+            'failed' => $failedIds
+        ]);
+    }
 }
          

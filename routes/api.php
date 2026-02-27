@@ -39,6 +39,8 @@
     use App\Http\Controllers\API\Admin\EducationLevelAdminController;
     use App\Http\Controllers\API\Admin\CourseAdminController;
     use App\Http\Controllers\API\Admin\SupportTicketController;
+ 
+  
     use App\Http\Controllers\API\Admin\InstituteController;
     use App\Models\Payment;
     use App\Models\User;
@@ -285,7 +287,8 @@
         Route::post('availability', [AvailabilityController::class, 'store']); // Add new slot
         Route::get('availability/{id}', [AvailabilityController::class, 'show']); // Show slot details
         Route::put('availability/{id}', [AvailabilityController::class, 'update']); // Update slot
-        Route::delete('availability/{id}', [AvailabilityController::class, 'destroy']); // Delete slot
+        Route::delete('availability/{id}', [AvailabilityController::class, 'destroy']); // Delete single slot
+        Route::delete('availability', [AvailabilityController::class, 'destroyBatch']); // Delete multiple slots (batch)
         // lessons
         Route::post('/courses/{course_id}/lessons', [LessonController::class, 'store']);
         Route::put('/lessons/{id}', [LessonController::class, 'update']);
@@ -387,11 +390,11 @@
         Route::post('/subjects/{id}/restore', [SubjectAdminController::class, 'restore']); // Restore soft-deleted subject
 
         // Courses
-        Route::get('/courses', [CourseController::class, 'index']); // List all courses
+        Route::get('/courses', [CourseAdminController::class, 'index']); // List all courses
         Route::get('/courses/{id}', [CourseController::class, 'show']); // Get course details
-        Route::put('/courses/{id}/approve', [CourseController::class, 'approve']); // Approve course
-        Route::put('/courses/{id}/reject', [CourseController::class, 'reject']); // Reject course
-        Route::put('/courses/{id}/status', [CourseController::class, 'updateStatus']); // Update course status
+        Route::put('/courses/{id}/approve', [CourseAdminController::class, 'approve']); // Approve course
+        Route::put('/courses/{id}/reject', [CourseAdminController::class, 'reject']); // Reject course
+        Route::put('/courses/{id}/status', [CourseAdminController::class, 'updateStatus']); // Update course status
         Route::put('/courses/{id}/feature', [CourseController::class, 'feature']); // Mark course as featured
         Route::delete('/courses/{id}', [CourseController::class, 'destroy']); // Delete course
         Route::get('/courses/pending-approval', [CourseController::class, 'pendingApproval']); // Get pending approval courses
@@ -451,9 +454,11 @@
         Route::delete('/institutes/{id}', [InstituteController::class, 'destroy']);
 
         // Payouts / transfer to teachers
-        Route::get('/payouts', [PayoutAdminController::class, 'index']);
-        Route::post('/payouts', [PayoutAdminController::class, 'store']);
-        Route::post('/payouts/{id}/mark-sent', [PayoutAdminController::class, 'markSent']);
+        Route::get('/payout-requests', [PayoutAdminController::class, 'index']);
+        Route::post('/payout-requests', [PayoutAdminController::class, 'store']);
+        Route::post('/payout-requests/{id}/mark-sent', [PayoutAdminController::class, 'markSent']);
+        Route::post('/payout-requests/{id}/approve', [PayoutAdminController::class, 'approve']);
+        Route::post('/payout-requests/{id}/reject', [PayoutAdminController::class, 'reject']);
 
 
         // Gallery / media control

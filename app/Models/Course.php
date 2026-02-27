@@ -22,6 +22,8 @@ class Course extends Model
         'price',
         'duration_hours',
         'status',
+        'approval_status',
+        'rejection_reason',
     ];
     public function teacher()
     {

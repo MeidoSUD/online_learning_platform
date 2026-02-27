@@ -42,10 +42,11 @@ class AdsController extends Controller
 
             // Get user role from authenticated user or null for guest
             $roleId = null;
-            if ($request->user()) {
-                $roleId = $request->user()->role_id;
+            $user= auth('sanctum')->user();
+            if ($user) {
+                $roleId =  $user->role_id;
                 Log::info('Ads request from authenticated user', [
-                    'user_id' => $request->user()->id,
+                    'user_id' => $user->id,
                     'role_id' => $roleId,
                     'platform' => $platform,
                 ]);
