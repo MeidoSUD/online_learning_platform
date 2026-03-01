@@ -61,7 +61,7 @@ class SubjectAdminController extends Controller
 
             // Include soft-deleted if requested
             if ($request->boolean('include_deleted')) {
-                $query->withTrashed();
+                // $query->withTrashed();
             }
 
             // Filter by class
