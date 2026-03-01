@@ -106,6 +106,7 @@ class SubjectAdminController extends Controller
                     ] : null,
                     'teachers_count' => $subject->teachers->count(),
                     'status' => $subject->status,
+                    'service_id'=> $subject->service_id,
                     'created_at' => $subject->created_at,
                     'updated_at' => $subject->updated_at,
                     'deleted_at' => $subject->deleted_at,
