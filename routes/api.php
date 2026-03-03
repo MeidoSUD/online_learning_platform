@@ -351,9 +351,9 @@
         Route::get('language-study/teachers/filter', [LanguageStudyController::class, 'filterTeachersByLanguage']); // Filter teachers by language
         Route::get('/teachers', [UserController::class, 'listTeachers']);
         Route::get('/teachers/{id}', [UserController::class, 'teacherDetails']);
-        Route::get('/education-levels', [EducationLevelController::class, 'levelsWithClassesAndSubjects']);
-        Route::get('/classes/{education_level_id}', [EducationLevelController::class, 'classes']);
-        Route::get('subjectsClasses/{class_id}', [EducationLevelController::class, 'getSubjectsByClass']);
+        Route::get('/education-levels', [EducationLevelAdminController::class, 'levelsWithClassesAndSubjects']);
+        Route::get('/classes/{education_level_id}', [EducationLevelAdminController::class, 'classes']);
+        Route::get('subjectsClasses/{class_id}', [EducationLevelAdminController::class, 'getSubjectsByClass']);
         Route::get('/services', [ServicesController::class, 'listServices']);
         Route::get('/languages', [LanguageController::class, 'index']); // List all languages
         Route::post('/languages', [LanguageController::class, 'store']); // Create language

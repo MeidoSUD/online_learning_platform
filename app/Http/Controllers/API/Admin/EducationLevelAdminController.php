@@ -58,7 +58,7 @@ class EducationLevelAdminController extends Controller
 
             // Include soft-deleted if requested
             if ($request->boolean('include_deleted')) {
-                $query->withTrashed();
+                // $query->withTrashed();
             }
 
             // Filter by status
@@ -74,7 +74,7 @@ class EducationLevelAdminController extends Controller
                     'description' => $level->description,
                     'classes_count' => $level->classes->count(),
                     'subjects_count' => $level->subjects->count(),
-                    'students_count' => $level->students()->count(),
+                    'students_count' => \App\Models\UserEducationLevel::where('education_level_id', $level->id)->count(),
                     'status' => $level->status,
                     'created_at' => $level->created_at,
                     'updated_at' => $level->updated_at,
