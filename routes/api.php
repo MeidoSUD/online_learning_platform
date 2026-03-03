@@ -39,7 +39,8 @@
     use App\Http\Controllers\API\Admin\EducationLevelAdminController;
     use App\Http\Controllers\API\Admin\CourseAdminController;
     use App\Http\Controllers\API\Admin\SupportTicketController;
- 
+    use App\Http\Controllers\API\Admin\SettingController;
+
   
     use App\Http\Controllers\API\Admin\InstituteController;
     use App\Models\Payment;
@@ -66,6 +67,8 @@
         Route::get('/users', [UsersController::class, 'index']);
         Route::get('/dashboard', [DashboardController::class, 'dashboard']); // Comprehensive admin dashboard
 
+ Route::get('settings', [SettingController::class, 'index']);
+         Route::get('settings/{group}', [SettingController::class, 'byGroup']);
 
     // Notification route
     Route::post('/send-notification', [FCMTokenController::class, 'sendToToken']);
@@ -338,6 +341,14 @@
     
     Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(function () {
         // Admin language management routes
+
+
+          Route::get('settings', [SettingController::class, 'index']);
+        Route::get('settings/{group}', [SettingController::class, 'byGroup']);
+        Route::put('settings/bulk', [SettingController::class, 'bulkUpdate']);
+        Route::put('settings/{id}', [SettingController::class, 'update']);
+        Route::post('settings', [SettingController::class, 'store']);
+ 
         Route::get('/services', [ServicesController::class, 'listServices']);
         Route::get('/services/search', [ServicesController::class, 'searchServices']);
         Route::get('/subjects/{id}', [ServicesController::class, 'listSubjects']);
