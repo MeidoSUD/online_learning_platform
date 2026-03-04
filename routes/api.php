@@ -39,7 +39,8 @@
     use App\Http\Controllers\API\Admin\EducationLevelAdminController;
     use App\Http\Controllers\API\Admin\CourseAdminController;
     use App\Http\Controllers\API\Admin\SupportTicketController;
- 
+    use App\Http\Controllers\API\Admin\SettingController;
+
   
     use App\Http\Controllers\API\Admin\InstituteController;
     use App\Models\Payment;
@@ -66,6 +67,8 @@
         Route::get('/users', [UsersController::class, 'index']);
         Route::get('/dashboard', [DashboardController::class, 'dashboard']); // Comprehensive admin dashboard
 
+ Route::get('settings', [SettingController::class, 'index']);
+         Route::get('settings/{group}', [SettingController::class, 'byGroup']);
 
     // Notification route
     Route::post('/send-notification', [FCMTokenController::class, 'sendToToken']);
@@ -338,6 +341,14 @@
     
     Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(function () {
         // Admin language management routes
+
+
+          Route::get('settings', [SettingController::class, 'index']);
+        Route::get('settings/{group}', [SettingController::class, 'byGroup']);
+        Route::put('settings/bulk', [SettingController::class, 'bulkUpdate']);
+        Route::put('settings/{id}', [SettingController::class, 'update']);
+        Route::post('settings', [SettingController::class, 'store']);
+ 
         Route::get('/services', [ServicesController::class, 'listServices']);
         Route::get('/services/search', [ServicesController::class, 'searchServices']);
         Route::get('/subjects/{id}', [ServicesController::class, 'listSubjects']);
@@ -395,7 +406,7 @@
         Route::put('/courses/{id}/approve', [CourseAdminController::class, 'approve']); // Approve course
         Route::put('/courses/{id}/reject', [CourseAdminController::class, 'reject']); // Reject course
         Route::put('/courses/{id}/status', [CourseAdminController::class, 'updateStatus']); // Update course status
-        Route::put('/courses/{id}/feature', [CourseController::class, 'feature']); // Mark course as featured
+        Route::put('/courses/{id}/feature', [CourseAdminController::class, 'feature']); // Mark course as featured
         Route::delete('/courses/{id}', [CourseController::class, 'destroy']); // Delete course
         Route::get('/courses/pending-approval', [CourseController::class, 'pendingApproval']); // Get pending approval courses
 
@@ -479,6 +490,7 @@
         Route::get('/ads', [AdsAdminController::class, 'listAds']); // List all ads with filters
         Route::post('/ads', [AdsAdminController::class, 'createAd']); // Create new ad with image upload
         Route::post('/ads/{id}', [AdsAdminController::class, 'updateAd']); // Update ad (use POST for multipart)
-        Route::put('/ads/{id}/toggle', [AdsAdminController::class, 'toggleAdStatus']); // Toggle ad active/inactive
+        Route::put( '/ads/{id}/toggle', [AdsAdminController::class, 'toggleAdStatus']); // Toggle ad active/inactive
+        Route::put('/ads/{id}', [AdsAdminController::class, 'updateAd']); // Toggle ad active/inactive
         Route::delete('/ads/{id}', [AdsAdminController::class, 'deleteAd']); // Delete ad
     });

@@ -14,7 +14,7 @@ class Course extends Model
         'service_id',
         'subject_id',
         'education_level_id',
-      
+      'is_featured',
         'cover_image_id',
         'name',
         'description',
