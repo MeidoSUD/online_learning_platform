@@ -14,7 +14,7 @@ class UsersController extends Controller
 {
     public function index(Request $request)
     {
-        $q = User::query()->select(['id','first_name','last_name','email','created_at','phone_number','gender','role_id','is_active']);
+        $q = User::query()->select(['id','first_name','last_name','email','created_at','phone_number','gender','role_id','is_active','nationality']);
         if ($request->filled('role_id')) $q->where('role_id', $request->role_id);
 
         // Filter by is_active if provided (accepts true/false or 1/0)
@@ -66,6 +66,7 @@ class UsersController extends Controller
                 'phone_number' => $user->phone_number,
                 'gender' => $user->gender,
                 'role_id' => $user->role_id,
+                'nationality'=> $user->nationality,
                 'is_active' => $user->is_active,
                 'verified' => $user->profile->verified ?? false,
                 'profile_photo' => $profilePhoto,
@@ -166,9 +167,13 @@ class UsersController extends Controller
     {
         $data = $request->validate([
             'first_name' => 'required|string',
+            'last_name' => 'required|string',
+            'phone_number' => 'required|string',
+            'gender' => 'required|string',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:6',
-            'role_id' => 'nullable|integer'
+            'role_id' => 'nullable|integer',
+            'nationality'=> 'nullable|string'
         ]);
 
         $data['password'] = Hash::make($data['password']);
@@ -180,7 +185,7 @@ class UsersController extends Controller
     public function update(Request $request, $id)
     {
         $user = User::findOrFail($id);
-        $data = $request->only(['first_name','last_name','email','phone_number','role_id','is_active']);
+        $data = $request->only(['first_name','last_name','gender','email','phone_number','role_id','is_active','nationality']);
         if ($request->filled('password')) $data['password'] = Hash::make($request->password);
         $user->update(array_filter($data, function($v){ return $v !== null; }));
         return response()->json(['success' => true, 'data' => $user]);

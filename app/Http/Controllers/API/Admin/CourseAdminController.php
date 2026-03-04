@@ -108,6 +108,7 @@ class CourseAdminController extends Controller
                     'status' => $course->status,
                     'approval_status' => $course->approval_status,
                     'is_featured' => $course->is_featured ?? false,
+                    'rejection_reason'=> $course->rejection_reason,
                     'teacher' => $course->teacher ? [
                         'id' => $course->teacher->id,
                         'first_name' => $course->teacher->first_name,
