@@ -222,7 +222,7 @@
 
         // Status check endpoint - Mobile app can poll this to check payment status
         Route::get('/payments/{paymentId}/status', [BookingController::class, 'checkPaymentStatus']);
-        Route::get('/payments/callback', [BookingController::class, 'handlePaymentCallback'])->name('api.payment.callback');
+        Route::get('/payments/callback', [BookingController::class, 'handlePaymentCallback']); // No name - use the public callback route above
         // payments history
         Route::post('/payments', [PaymentController::class, 'store']); // pay for booking/course
         Route::get('/payments/history', [PaymentController::class, 'history']); // payment history
