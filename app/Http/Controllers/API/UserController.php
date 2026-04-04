@@ -1256,9 +1256,10 @@ class UserController extends Controller
             'gender' => $teacher->gender,
             'nationality' => $teacher->nationality,
             'verified' => (bool) optional($teacher->profile)->verified,
-            'verification_code' => $teacher->verification_code,
+            'verification_code' => (string) $teacher->verification_code,
             'social_provider' => $teacher->social_provider,
-            'social_provider_id' => $teacher->social_provider_id,
+            'social_provider_id' => (string) ($teacher->social_provider_id ?? ''),
+            'phone_number' => (string) $teacher->phone_number,
             'profile' => [
                 'is_active' => (int) $teacher->is_active,
                 'profile_photo' => $profilePhoto,
