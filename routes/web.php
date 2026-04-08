@@ -196,8 +196,8 @@ Route::middleware('LocaleMiddleware')->group(function () {
             Route::resource('notifications', NotificationController::class)->names('admin.notifications');
 
             // Settings (usually just edit/update)
-            Route::get('settings', [SettingController::class, 'index'])->name('admin.settings.index');
-            Route::post('settings', [SettingController::class, 'update'])->name('admin.settings.update');
+            // Route::get('settings', [SettingController::class, 'index'])->name('admin.settings.index');
+            // Route::post('settings', [SettingController::class, 'update'])->name('admin.settings.update');
 
             // Reports
             Route::get('reports/finance', [ReportsController::class, 'finance'])->name('admin.reports.finance');
