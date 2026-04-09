@@ -16,6 +16,7 @@ use App\Models\Attachment;
 use App\Models\TeacherServices;
 use App\Models\AvailabilitySlot;
 use App\Models\TeacherLanguage;
+use App\Models\PlatformPercentage;
 use Illuminate\Support\Facades\Log;
 use App\Helpers\PhoneHelper;
 use App\Models\TeacherInstitute;
@@ -1166,6 +1167,10 @@ class UserController extends Controller
             )
             ->first();
 
+        // Get current platform percentage to apply to teacher rates
+        $platformPercentage = PlatformPercentage::getActive();
+        $percentageValue = $platformPercentage ? ($platformPercentage->value / 100) : 0;
+
         // Current lessons count
         $currentLessons = DB::table('bookings')
             ->where('teacher_id', $teacher->id)
@@ -1284,9 +1289,9 @@ class UserController extends Controller
                 'languages_count' => (int) count($languages),
                 'courses_count' => (int) count($courses),
                 'teach_individual' => (bool) optional($teacher->teacherInfo)->teach_individual,
-                'individual_hour_price' => (float) (optional($teacher->teacherInfo)->individual_hour_price ?? 0),
+                'individual_hour_price' => (float) ((optional($teacher->teacherInfo)->individual_hour_price ?? 0) * (1 + $percentageValue)),
                 'teach_group' => (bool) optional($teacher->teacherInfo)->teach_group,
-                'group_hour_price' => (float) (optional($teacher->teacherInfo)->group_hour_price ?? 0),
+                'group_hour_price' => (float) ((optional($teacher->teacherInfo)->group_hour_price ?? 0) * (1 + $percentageValue)),
                 'max_group_size' => (int) (optional($teacher->teacherInfo)->max_group_size ?? 0),
                 'min_group_size' => (int) (optional($teacher->teacherInfo)->min_group_size ?? 0),
                 'teacher_subjects' => $teacherSubjects,

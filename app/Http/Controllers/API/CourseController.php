@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\Attachment;
+use App\Models\PlatformPercentage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -51,6 +52,10 @@ class CourseController extends Controller
             'level' => $request->query('level'),
         ];
 
+        // Get current platform percentage to apply to prices
+        $platformPercentage = PlatformPercentage::getActive();
+        $percentageValue = $platformPercentage ? ($platformPercentage->value / 100) : 0;
+
         // Paginate published courses for this service (use repository)
         $repo = app(\App\Repositories\EloquentCourseRepository::class);
         $courses = $repo->paginate(array_filter($filters, function ($v) { return $v !== null && $v !== ''; }), $perPage);
@@ -64,11 +69,13 @@ class CourseController extends Controller
         $reviews = \App\Models\Review::whereIn('reviewed_id', $teacherIds)->get()->groupBy('reviewed_id');
 
         // Enrich each course in the paginated collection
-        $transformed = $courses->getCollection()->transform(function ($course) use ($profiles, $teachers, $reviews) {
+        $transformed = $courses->getCollection()->transform(function ($course) use ($profiles, $teachers, $reviews, $percentageValue) {
             $teacher_id = $course->teacher_id;
             $course['teacher_profile'] = $profiles[$teacher_id] ?? null;
             $course['teacher_basic'] = $teachers[$teacher_id] ?? null;
             $course['teacher_reviews'] = $reviews[$teacher_id] ?? collect();
+            // Apply platform percentage to course price (keep same key name for mobile app compatibility)
+            $course['price'] = (float) (($course->price ?? 0) * (1 + $percentageValue));
             return $course;
         });
 
@@ -106,6 +113,13 @@ class CourseController extends Controller
             ->findOrFail($id);
 
         $teacher_id = $course->teacher_id;
+
+        // Get current platform percentage to apply to price
+        $platformPercentage = PlatformPercentage::getActive();
+        $percentageValue = $platformPercentage ? ($platformPercentage->value / 100) : 0;
+
+        // Apply percentage to course price (keep same key name for mobile app compatibility)
+        $course['price'] = (float) (($course->price ?? 0) * (1 + $percentageValue));
 
         // Get teacher profile
         $teacher_profile = \App\Models\UserProfile::where('user_id', $teacher_id)->first();
@@ -682,11 +696,20 @@ class CourseController extends Controller
     // Teacher: Get my courses
     public function myCourses(Request $request): JsonResponse
     {
+        // Get current platform percentage to apply to prices
+        $platformPercentage = PlatformPercentage::getActive();
+        $percentageValue = $platformPercentage ? ($platformPercentage->value / 100) : 0;
+
         $courses = Course::with(['category', 'coverImage', 'availabilitySlots'])
             ->where('teacher_id', $request->user()->id)
             ->withCount(['countstudents'])
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->get()
+            ->map(function ($course) use ($percentageValue) {
+                // Apply platform percentage to course price (keep same key name for mobile app compatibility)
+                $course['price'] = (float) (($course->price ?? 0) * (1 + $percentageValue));
+                return $course;
+            });
 
         return response()->json([
             'success' => true,
