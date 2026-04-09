@@ -24,9 +24,33 @@ class NotificationService
 
 
         foreach ($users as $user) {
-            $settings = NotificationSetting::where('user_id', $user->id)->first();
-            if ($settings && $settings->sms_enabled && $user->phone_number) {
-                $this->sendSMS($user->phone_number, $message);
+            try {
+                // 1. Always save to database for history
+                $this->saveToDatabase($user->id, $type, $title, $message, $data);
+
+                // 2. Get user settings
+                $settings = $this->getUserSettings($user->id);
+
+                // 3. Send Push Notification if enabled
+                if ($settings->push_enabled) {
+                    $this->sendPushNotification($user->id, $title, $message, $data);
+                }
+
+                // 4. Send Email if enabled
+                if ($settings->email_enabled && $user->email) {
+                    $this->sendEmail($user->email, $title, $message, $data);
+                }
+
+                // 5. Send SMS if enabled
+                if ($settings->sms_enabled && $user->phone_number) {
+                    $this->sendSMS($user->phone_number, $message);
+                }
+            } catch (\Exception $e) {
+                Log::error('Notification delivery failed', [
+                    'user_id' => $user->id,
+                    'type' => $type,
+                    'error' => $e->getMessage()
+                ]);
             }
         }
     }
@@ -63,11 +87,14 @@ class NotificationService
             'application_accepted' => 'application_notifications',
             'application_rejected' => 'application_notifications',
             'payment_completed' => 'payment_notifications',
+            'payment_success' => 'payment_notifications',
             'payment_failed' => 'payment_notifications',
+            'booking_received' => 'order_notifications',
             'session_scheduled' => 'session_notifications',
             'session_reminder' => 'session_notifications',
             'session_started' => 'session_notifications',
             'session_completed' => 'session_notifications',
+            'session_link_ready' => 'session_notifications',
         ];
 
         $settingKey = $typeMap[$type] ?? null;
