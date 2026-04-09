@@ -212,7 +212,7 @@ class ServiceAdminController extends Controller
             if ($request->hasFile('icon')) {
                 $icon = $request->file('icon');
                 $iconPath = $icon->store('services', 'public'); // Store in storage/app/public/services
-                $validated['image'] = $iconPath; // Save path to database
+                $validated['image'] = asset('storage/' . $iconPath); // Save full URL to database
             }
 
             // Set defaults
@@ -369,7 +369,7 @@ class ServiceAdminController extends Controller
             if ($request->hasFile('icon')) {
                 $icon = $request->file('icon');
                 $iconPath = $icon->store('services', 'public');
-                $validated['image'] = $iconPath;
+                $validated['image'] = asset('storage/' . $iconPath); // Save full URL to database
             }
 
             // Remove null values from update
@@ -506,7 +506,7 @@ class ServiceAdminController extends Controller
             'name_ar' => $service->name_ar,
             'description_en' => $service->description_en ?? null,
             'description_ar' => $service->description_ar ?? null,
-            'image' => $service->image ? asset('storage/' . $service->image) : null,
+            'image' => $service->image ?? null, // Image is already stored as full URL
             'status' => (string) ($service->status ?? 1),
             'role_id' => $service->role_id ? (string) $service->role_id : null,
             'created_at' => $service->created_at->format('Y-m-d H:i:s'),
