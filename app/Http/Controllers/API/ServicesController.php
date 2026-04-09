@@ -17,7 +17,7 @@ class ServicesController extends Controller
 
     public function listServices()
     {
-        $services = \App\Models\Services::where('status', 1)->get(['key_name', 'name_en', 'name_ar', 'description_en', 'description_ar', 'id']);
+        $services = \App\Models\Services::where('status', 1)->get(['key_name', 'name_en', 'name_ar', 'description_en', 'image','description_ar', 'id']);
         return response()->json($services);
     }
 
