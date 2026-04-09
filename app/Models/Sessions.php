@@ -450,7 +450,7 @@ public function getHostUrlAttribute(): ?string
 
         try {
             // Load relations to build session title
-            $booking = $booking->load(['service', 'subject']);
+            $booking = $booking->load(['subject.service', 'course']);
             
             // Build session title based on service type
             $sessionTitle = self::buildSessionTitle($booking);
@@ -531,12 +531,12 @@ private static function buildSessionTitle(Booking $booking): string
         return $booking->course->name ?? 'Session';
     }
     
-    // Service booking - check service type
-    if ($booking->service) {
-        $serviceName = $booking->service->name ?? 'Service';
+    // Service booking - check service type via subject
+    if ($booking->subject && $booking->subject->service) {
+        $serviceName = $booking->subject->service->name ?? 'Service';
         
         // Check if language_study service
-        if ($booking->service->key_name === 'language_study' && $booking->subject) {
+        if ($booking->subject->service->key_name === 'language_study') {
             // Include language name for language study service
             $languageName = $booking->subject->name_en ?? 'Language';
             return "{$serviceName} - {$languageName}";

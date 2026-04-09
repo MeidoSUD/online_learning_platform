@@ -316,6 +316,24 @@ class PaymentController extends Controller
                                 'booking_id' => $booking->id,
                                 'payment_id' => $payment->id,
                             ]);
+                        } else {
+                            Log::warning('Slot not found for booking during payment confirmation. Processing payment and booking confirmation anyway.', [
+                                'booking_id' => $booking->id,
+                                'payment_id' => $payment->id,
+                                'availability_slot_id' => $booking->availability_slot_id
+                            ]);
+
+                            // Create sessions
+                            Sessions::createForBooking($booking);
+                            
+                            // Update booking status to confirmed
+                            $booking->update(['status' => 'confirmed']);
+                            
+                            // Schedule meeting generation jobs (Agora/Zoom)
+                            $this->scheduleMeetingJobs($booking);
+                            
+                            // Send notifications
+                            $this->sendPaymentNotifications($booking);
                         }
                     }
                 } catch (\Exception $e) {

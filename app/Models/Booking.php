@@ -22,6 +22,7 @@ class Booking extends Model
         'booking_reference',
         'student_id',
         'teacher_id',
+        'availability_slot_id',
         'course_id',
         'subject_id',
         'language_id',
