@@ -168,11 +168,18 @@ class BookingController extends Controller
             if ($slot->date && trim((string)$slot->date) !== '') {
                 $slotDate = $slot->date instanceof \Carbon\Carbon ? $slot->date->format('Y-m-d') : (string) $slot->date;
             } elseif ($slot->day_number !== null) {
-                // Compute next occurrence of the weekday (0=Sunday .. 6=Saturday)
+                // Compute next occurrence of the weekday
+                // day_number format: 1=Saturday, 2=Sunday, 3=Monday, 4=Tuesday, 5=Wednesday, 6=Thursday, 7=Friday
+                // Convert to Carbon dayOfWeek format: 0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday
                 $today = Carbon::today();
-                $targetDay = (int) $slot->day_number;
+                $dayNumberFromApp = (int) $slot->day_number;
+                
+                // Convert app day number (1-7, starting Saturday) to Carbon dayOfWeek (0-6, starting Sunday)
+                // Mapping: 1(Sat)→6, 2(Sun)→0, 3(Mon)→1, 4(Tue)→2, 5(Wed)→3, 6(Thu)→4, 7(Fri)→5
+                $carbonDayOfWeek = ($dayNumberFromApp === 1) ? 6 : ($dayNumberFromApp - 2);
+                
                 $todayDow = $today->dayOfWeek; // 0 (Sunday) .. 6 (Saturday)
-                $delta = ($targetDay - $todayDow + 7) % 7;
+                $delta = ($carbonDayOfWeek - $todayDow + 7) % 7;
                 $candidate = $today->copy()->addDays($delta);
 
                                // If the slot time is earlier or equal to now for the same day, schedule next week
@@ -1970,14 +1977,16 @@ class BookingController extends Controller
 
     private function getDayName(?int $dayNumber): string
     {
+        // Map app day_number format (1-7) to day names
+        // 1=Saturday, 2=Sunday, 3=Monday, 4=Tuesday, 5=Wednesday, 6=Thursday, 7=Friday
         $dayNames = [
-            0 => 'Sunday',
-            1 => 'Monday',
-            2 => 'Tuesday',
-            3 => 'Wednesday',
-            4 => 'Thursday',
-            5 => 'Friday',
-            6 => 'Saturday',
+            1 => 'Saturday',
+            2 => 'Sunday',
+            3 => 'Monday',
+            4 => 'Tuesday',
+            5 => 'Wednesday',
+            6 => 'Thursday',
+            7 => 'Friday',
         ];
         return $dayNames[$dayNumber] ?? 'Unknown';
     }
