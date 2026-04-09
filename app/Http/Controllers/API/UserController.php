@@ -1246,13 +1246,13 @@ class UserController extends Controller
 
         // Map day numbers to Arabic day names
         $dayNames = [
-            1 => 'الاحد',      // Sunday
-            2 => 'الاتنين',     // Monday
-            3 => 'الثلاثاء',    // Tuesday
-            4 => 'الاربعاء',    // Wednesday
-            5 => 'الخميس',      // Thursday
-            6 => 'الجمعة',      // Friday
-            7 => 'السبت',       // Saturday
+            1 => 'السبت',       // Saturday
+            2 => 'الاحد',      // Sunday
+            3 => 'الاتنين',     // Monday
+            4 => 'الثلاثاء',    // Tuesday
+            5 => 'الاربعاء',    // Wednesday
+            6 => 'الخميس',      // Thursday
+            7 => 'الجمعة',      // Friday
         ];
 
         $availableTimes = [];
