@@ -754,8 +754,31 @@ class UserController extends Controller
         /* =======================
          | Pagination & Ordering
          ======================= */
-        $teachers = $query->orderByDesc('id')
-            ->paginate($request->get('per_page', 10));
+        
+        // Check if user wants all teachers (all=true or all=1)
+        $getAll = $request->boolean('all') || $request->get('all') === '1';
+        
+        if ($getAll) {
+            // Return all teachers without pagination
+            $teachers = $query->orderByDesc('id')->get();
+            
+            $transformedTeachers = $teachers->map(function ($teacher) {
+                return $this->getFullTeacherData($teacher);
+            });
+            
+            return response()->json([
+                'success' => true,
+                'data' => $transformedTeachers,
+                'pagination' => [
+                    'total' => count($transformedTeachers),
+                    'count' => count($transformedTeachers),
+                ]
+            ]);
+        }
+        
+        // Otherwise use pagination with default of 10 per page
+        $perPage = $request->get('per_page', 10);
+        $teachers = $query->orderByDesc('id')->paginate($perPage);
 
         $teachers->getCollection()->transform(function ($teacher) {
             return $this->getFullTeacherData($teacher);
