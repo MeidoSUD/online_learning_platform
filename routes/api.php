@@ -40,10 +40,12 @@
     use App\Http\Controllers\API\Admin\EducationLevelAdminController;
     use App\Http\Controllers\API\Admin\CourseAdminController;
     use App\Http\Controllers\API\Admin\SupportTicketController;
-    use App\Http\Controllers\API\Admin\SettingController;
+use App\Http\Controllers\API\Admin\SettingController;
+use App\Http\Controllers\API\Admin\RevenuePercentageController;
+use App\Http\Controllers\API\Admin\OrderAdminController;
 
   
-    use App\Http\Controllers\API\Admin\InstituteController;
+use App\Http\Controllers\API\Admin\InstituteController;
     use App\Models\Payment;
     use App\Models\User;
     // Agora token route for sessions
@@ -358,6 +360,24 @@
         Route::get('/services/{id}', [ServiceAdminController::class, 'show']); // Get service details
         Route::put('/services/{id}', [ServiceAdminController::class, 'update']); // Update service (icon optional)
         Route::delete('/services/{id}', [ServiceAdminController::class, 'destroy']); // Soft delete service
+
+        // ======================
+        // ADMIN REVENUE & PERCENTAGE MANAGEMENT
+        // ======================
+        Route::get('/revenue/percentage', [RevenuePercentageController::class, 'getCurrentPercentage']); // Get current percentage
+        Route::get('/revenue/history', [RevenuePercentageController::class, 'getPercentageHistory']); // Get percentage history
+        Route::post('/revenue/percentage', [RevenuePercentageController::class, 'setPercentage']); // Set new percentage
+        Route::get('/revenue/calculate', [RevenuePercentageController::class, 'calculatePrice']); // Calculate pricing
+        Route::get('/revenue/analytics', [RevenuePercentageController::class, 'getRevenueAnalytics']); // Get analytics
+
+        // ======================
+        // ADMIN ORDER MANAGEMENT
+        // ======================
+        Route::get('/orders', [OrderAdminController::class, 'index']); // List all orders with filters
+        Route::get('/orders/{id}', [OrderAdminController::class, 'show']); // Get single order details
+        Route::get('/orders/{id}/applications', [OrderAdminController::class, 'viewApplications']); // Get applications for order
+        Route::post('/orders/{id}/assign-teacher', [OrderAdminController::class, 'assignTeacher']); // Assign teacher to order
+        Route::put('/orders/{id}/status', [OrderAdminController::class, 'updateStatus']); // Update order status
  
         Route::get('/services-list', [ServicesController::class, 'listServices']);
         Route::get('/services/search', [ServicesController::class, 'searchServices']);

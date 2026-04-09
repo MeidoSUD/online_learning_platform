@@ -23,6 +23,7 @@ use App\Models\AvailabilitySlot;
 use App\Models\Payment;
 use App\Models\Sessions;
 use App\Models\Subject;
+use App\Models\PlatformPercentage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -212,8 +213,16 @@ class BookingController extends Controller
             // Sessions count
             $sessionsCount = $request->type === 'package' ? (int)$request->sessions_count : 1;
 
+            // Get current platform percentage
+            $platformPercentage = PlatformPercentage::getActive();
+            $percentageValue = $platformPercentage ? ($platformPercentage->value / 100) : 0;
+
             // Price calculations
-            $pricePerSession = ($basePrice * ($sessionDuration ?? 60)) / 60;
+            // Teacher gets: basePrice (their rate)
+            // Student pays: basePrice * (1 + platformPercentage/100)
+            $teacherRatePerSession = ($basePrice * ($sessionDuration ?? 60)) / 60;
+            $pricePerSession = $teacherRatePerSession * (1 + $percentageValue); // Apply platform percentage
+            
             $discount = $sessionsCount > 1 ? $this->calculatePackageDiscount($sessionsCount) : 0;
             $subtotal = $pricePerSession * $sessionsCount;
             $discountAmount = $subtotal * ($discount / 100);
@@ -235,7 +244,9 @@ class BookingController extends Controller
                 'first_session_start_time' => $slotDateTime->format('H:i:s'),
                 'first_session_end_time' => $slotEndDateTime->format('H:i:s'),
                 'session_duration' => $sessionDuration,
-                'price_per_session' => $pricePerSession,
+                'teacher_rate_per_session' => $teacherRatePerSession, // Teacher's original rate (without percentage)
+                'platform_percentage' => $platformPercentage ? $platformPercentage->value : 0, // Store percentage used
+                'price_per_session' => $pricePerSession, // Student pays this (teacher rate + percentage)
                 'subtotal' => $subtotal,
                 'discount_percentage' => $discount,
                 'discount_amount' => $discountAmount,
