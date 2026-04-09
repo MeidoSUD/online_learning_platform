@@ -30,6 +30,7 @@
     use App\Http\Controllers\API\Admin\PayoutAdminController;
     use App\Http\Controllers\API\Admin\SystemController;
     use App\Http\Controllers\API\Admin\ServiceController;
+    use App\Http\Controllers\API\Admin\ServiceAdminController;
     use App\Http\Controllers\API\Admin\GalleryController;
     use App\Http\Controllers\API\Admin\DisputeAdminController;
     use App\Http\Controllers\API\Admin\BookingAdminController;
@@ -348,8 +349,17 @@
         Route::put('settings/bulk', [SettingController::class, 'bulkUpdate']);
         Route::put('settings/{id}', [SettingController::class, 'update']);
         Route::post('settings', [SettingController::class, 'store']);
+
+        // ======================
+        // ADMIN SERVICES MANAGEMENT - Full CRUD with icon upload
+        // ======================
+        Route::get('/services', [ServiceAdminController::class, 'index']); // List all services with filters
+        Route::post('/services', [ServiceAdminController::class, 'store']); // Create new service with icon
+        Route::get('/services/{id}', [ServiceAdminController::class, 'show']); // Get service details
+        Route::put('/services/{id}', [ServiceAdminController::class, 'update']); // Update service (icon optional)
+        Route::delete('/services/{id}', [ServiceAdminController::class, 'destroy']); // Soft delete service
  
-        Route::get('/services', [ServicesController::class, 'listServices']);
+        Route::get('/services-list', [ServicesController::class, 'listServices']);
         Route::get('/services/search', [ServicesController::class, 'searchServices']);
         Route::get('/subjects/{id}', [ServicesController::class, 'listSubjects']);
         Route::get('/subjects/{id}', [ServicesController::class, 'subjectDetails']);

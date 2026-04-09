@@ -192,7 +192,7 @@ class ServiceAdminController extends Controller
                 'key_name' => 'nullable|string|max:255|unique:services,key_name',
                 'role_id' => 'nullable|integer|in:3,4',
                 'status' => 'nullable|integer|in:0,1',
-                'image' => 'nullable|string'
+                'icon' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:5120' // 5MB max
             ]);
 
             // Auto-generate key_name from name_en if not provided
@@ -208,6 +208,13 @@ class ServiceAdminController extends Controller
                 }
             }
 
+            // Handle icon upload
+            if ($request->hasFile('icon')) {
+                $icon = $request->file('icon');
+                $iconPath = $icon->store('services', 'public'); // Store in storage/app/public/services
+                $validated['image'] = $iconPath; // Save path to database
+            }
+
             // Set defaults
             $validated['status'] = $validated['status'] ?? 1;
             $validated['role_id'] = $validated['role_id'] ?? null;
@@ -218,7 +225,8 @@ class ServiceAdminController extends Controller
             Log::info('Service created', [
                 'service_id' => $service->id,
                 'name_en' => $service->name_en,
-                'key_name' => $service->key_name
+                'key_name' => $service->key_name,
+                'has_icon' => $request->hasFile('icon')
             ]);
 
             return response()->json([
@@ -340,7 +348,7 @@ class ServiceAdminController extends Controller
                 'key_name' => 'nullable|string|max:255|unique:services,key_name,' . $id,
                 'role_id' => 'nullable|integer|in:3,4',
                 'status' => 'nullable|integer|in:0,1',
-                'image' => 'nullable|string'
+                'icon' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:5120'
             ]);
 
             // If name_en is updated but key_name isn't, auto-update key_name
@@ -355,6 +363,13 @@ class ServiceAdminController extends Controller
                     $validated['key_name'] = "{$original}-{$counter}";
                     $counter++;
                 }
+            }
+
+            // Handle icon upload
+            if ($request->hasFile('icon')) {
+                $icon = $request->file('icon');
+                $iconPath = $icon->store('services', 'public');
+                $validated['image'] = $iconPath;
             }
 
             // Remove null values from update
@@ -491,7 +506,7 @@ class ServiceAdminController extends Controller
             'name_ar' => $service->name_ar,
             'description_en' => $service->description_en ?? null,
             'description_ar' => $service->description_ar ?? null,
-            'image' => $service->image ?? null,
+            'image' => $service->image ? asset('storage/' . $service->image) : null,
             'status' => (string) ($service->status ?? 1),
             'role_id' => $service->role_id ? (string) $service->role_id : null,
             'created_at' => $service->created_at->format('Y-m-d H:i:s'),

@@ -154,10 +154,10 @@ class OrderAdminController extends Controller
             $perPage = $request->input('per_page', 20);
             $orders = $query->paginate($perPage);
 
-            // Format response
-            $formattedOrders = $orders->getCollection()->map(function ($order) {
+            // Format response - use paginator items() wrapped in a collection to avoid calling getCollection()
+            $formattedOrders = collect($orders->items())->map(function ($order) {
                 return $this->formatOrderResponse($order);
-            });
+            })->values();
 
             return response()->json([
                 'success' => true,
