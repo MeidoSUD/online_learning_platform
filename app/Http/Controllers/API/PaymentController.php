@@ -264,7 +264,7 @@ class PaymentController extends Controller
                     
                     if ($booking) {
                         // 1. Lock the slot with pessimistic locking to prevent race conditions
-                        $slot = AvailabilitySlot::where('id', $booking->availability_slot_id)
+                        $slot = AvailabilitySlot::where('id', $booking->timeslot_id)
                             ->lockForUpdate()
                             ->first();
                         
@@ -315,6 +315,10 @@ class PaymentController extends Controller
                             Log::info('Booking confirmed after payment', [
                                 'booking_id' => $booking->id,
                                 'payment_id' => $payment->id,
+                            ]);
+                        }else{
+ Log::info('!Slot booked after payment', [
+                                'slot_id' => $booking->timeslot_id
                             ]);
                         }
                     }

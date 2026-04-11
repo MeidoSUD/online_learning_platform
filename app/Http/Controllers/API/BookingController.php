@@ -100,7 +100,7 @@ class BookingController extends Controller
                 // lock the slot row to avoid race conditions
                 $slot = AvailabilitySlot::where('id', $slotId)->lockForUpdate()->firstOrFail();
                
-
+ $service_id= $course-> service_id;
                 // Validate slot ownership and state with detailed reasons
                 $reasons = [];
                 if (! $slot->is_available) $reasons[] = 'slot_not_available';
@@ -218,11 +218,15 @@ class BookingController extends Controller
             $subtotal = $pricePerSession * $sessionsCount;
             $discountAmount = $subtotal * ($discount / 100);
             $total = $subtotal - $discountAmount;
-
+            if($request->subject_id)
+$subject=Subject::find($request->subject_id);
+$service_id=$subject->service_id;
             // Create booking record
             $booking = Booking::create([
                 'student_id' => $studentId,
                 'teacher_id' => $teacherId,
+                   'service_id' => $service_id,
+                   'timeslot_id'=>$request->timeslot_id,
                 'course_id' => $isCourse ? $course->id : null,
                 'subject_id' => !$isCourse ? $request->subject_id : null,
                 'language_id' => !$isCourse && $request->filled('language_id') ? $request->language_id : null,

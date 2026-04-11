@@ -18,8 +18,8 @@ class Booking extends Model
 {
     use HasFactory;
 
-    protected $fillable = [
-        'booking_reference',
+    protected $fillable = ['service_id',
+        'booking_reference','timeslot_id',
         'student_id',
         'teacher_id',
         'course_id',
@@ -87,7 +87,10 @@ class Booking extends Model
     {
         return $this->belongsTo(User::class, 'teacher_id');
     }
-
+ public function service()
+    {
+        return $this->belongsTo(Services::class, 'service_id');
+    }
     public function order()
 {
     return $this->belongsTo(\App\Models\Orders::class, 'order_id');

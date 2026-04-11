@@ -95,6 +95,7 @@ class BookingCourseController extends Controller
             $booking = Booking::create([
                 'student_id' => $studentId,
                 'teacher_id' => $teacherId,
+                'service_id' => $course->service_id,
                 'course_id' => $isCourse ? $request->course_id : null,
                 'subject_id' => !$isCourse ? $request->subject_id : null,
                 'language_id' => !$isCourse && $request->filled('language_id') ? $request->language_id : null,
