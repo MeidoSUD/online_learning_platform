@@ -236,19 +236,15 @@ $service_id = 0;
             $subtotal = $pricePerSession * $sessionsCount;
             $discountAmount = $subtotal * ($discount / 100);
             $total = $subtotal - $discountAmount;
-<<<<<<< HEAD
+
             if($request->subject_id)
             {
                 $subject=Subject::find($request->subject_id);
                 $service_id=$subject->service_id;
             }
-=======
-if($service_id == 0 && $request->subject_id)
-{$subject=Subject::find($request->subject_id);
-$service_id=$subject->service_id;}
->>>>>>> 20e16dd (fix token)
+
             // Create booking record
-            $booking = Booking::create([
+            $booking = Booking::create([ 
                 'student_id' => $studentId,
                 'teacher_id' => $teacherId,
                 'availability_slot_id' => $slotId,
