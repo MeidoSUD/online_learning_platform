@@ -14,7 +14,8 @@ return new class extends Migration
     public function up()
     {
         Schema::table('bookings', function (Blueprint $table) {
-            $table->unsignedBigInteger('availability_slot_id')->nullable()->after('id');
+            $table->unsignedBigInteger('timeslot_id')->nullable()->after('id');
+            $table->unsignedBigInteger('service_id')->nullable()->after('id');
             // Assuming the table is availability_slots
             // $table->foreign('availability_slot_id')->references('id')->on('availability_slots')->onDelete('set null');
         });
@@ -29,7 +30,8 @@ return new class extends Migration
     {
         Schema::table('bookings', function (Blueprint $table) {
             // $table->dropForeign(['availability_slot_id']);
-            $table->dropColumn('availability_slot_id');
+            $table->dropColumn('timeslot_id');
+            $table->dropColumn('service_id');
         });
     }
 };
