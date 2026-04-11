@@ -89,7 +89,7 @@ class BookingController extends Controller
                 'message' => 'Either course_id or service_id is required'
             ], 422);
         }
-
+$service_id = 0;
         DB::beginTransaction();
         try {
             $studentId = auth()->id();
@@ -101,7 +101,9 @@ class BookingController extends Controller
                 // lock the slot row to avoid race conditions
                 $slot = AvailabilitySlot::where('id', $slotId)->lockForUpdate()->firstOrFail();
                
- $service_id= $course-> service_id;
+
+                $service_id= $course->service_id;
+
                 // Validate slot ownership and state with detailed reasons
                 $reasons = [];
                 if (! $slot->is_available) $reasons[] = 'slot_not_available';
@@ -234,16 +236,23 @@ class BookingController extends Controller
             $subtotal = $pricePerSession * $sessionsCount;
             $discountAmount = $subtotal * ($discount / 100);
             $total = $subtotal - $discountAmount;
+<<<<<<< HEAD
             if($request->subject_id)
             {
                 $subject=Subject::find($request->subject_id);
                 $service_id=$subject->service_id;
             }
+=======
+if($service_id == 0 && $request->subject_id)
+{$subject=Subject::find($request->subject_id);
+$service_id=$subject->service_id;}
+>>>>>>> 20e16dd (fix token)
             // Create booking record
             $booking = Booking::create([
                 'student_id' => $studentId,
                 'teacher_id' => $teacherId,
                 'availability_slot_id' => $slotId,
+                 'service_id'=>$service_id,
                 'course_id' => $isCourse ? $course->id : null,
                 'subject_id' => !$isCourse ? $request->subject_id : null,
                 'language_id' => !$isCourse && $request->filled('language_id') ? $request->language_id : null,
@@ -274,7 +283,23 @@ class BookingController extends Controller
             // Sessions will ONLY be created AFTER payment succeeds
             // This ensures slot remains available if payment fails, preventing customer confusion
             // Slot locking happens in PaymentController.paymentStatus() when payment is confirmed
+$ns = new \App\Services\NotificationService();
 
+$title = app()->getLocale() == 'ar' 
+    ? 'تم إنشاء الحجز' 
+    : 'Booking Created';
+
+$msg = app()->getLocale() == 'ar'
+    ? "تم إنشاء الحجز ({$booking->booking_reference}) بنجاح. يمكنك متابعة التفاصيل من حسابك."
+    : "Your booking ({$booking->booking_reference}) has been created successfully. You can view the details in your account.";
+
+$ns->send($booking->student, 'booking_created', $title, $msg, [
+    'booking_id' => $booking->id,
+]);
+     $teacher = \App\Models\User::findOrFail($teacherId);
+$ns->send($teacher, 'booking_created', $title, $msg, [
+    'booking_id' => $booking->id,
+]);
             DB::commit();
             Log::info('Booking created (pending payment, slot still available)', [
                 'booking_id' => $booking->id, 
@@ -287,7 +312,7 @@ class BookingController extends Controller
             $hasSavedMethods = \App\Models\UserPaymentMethod::where('user_id', $studentId)->exists();
 
             // Load teacher with full data
-            $teacher = \App\Models\User::findOrFail($teacherId);
+        
             $teacherData = $this->getFullTeacherData($teacher);
 
             // Get subject data: from course name if course booking, or from Subject model if service booking
@@ -334,6 +359,7 @@ class BookingController extends Controller
             $responseData = [
                 'booking' => [
                     'id' => $booking->id,
+                   
                     'reference' => $booking->booking_reference,
                     'status' => $booking->status,
                     'total_amount' => $booking->total_amount,
