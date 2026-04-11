@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use App\Models\User;
+use App\Models\DeviceToken;
 use App\Http\Controllers\API\UserController;
 use App\Services\FirebaseNotificationService;
 use App\Helpers\PhoneHelper;
@@ -720,7 +721,16 @@ class AuthController extends Controller
             } catch (\Exception $e) {
                 Log::warning('Failed to send welcome notification: ' . $e->getMessage());
             }
-
+ DeviceToken::updateOrCreate(
+    [
+        'user_id' => $user->id,
+        'device_token' => $user->fcm_token,
+    ],
+    [
+        'device_type' => $request->device_type ?? 'android',
+        'is_active' => true,
+    ]
+);
             return $this->success([
                 'user' => $userData,
                 'token' => $token,
