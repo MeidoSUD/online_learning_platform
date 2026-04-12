@@ -587,11 +587,13 @@ class PaymentController extends Controller
         try {
             $ns = new \App\Services\NotificationService();
             
+            $firstSessionStart = \Carbon\Carbon::parse($booking->first_session_date . ' ' . $booking->first_session_start_time)->format('Y-m-d H:i');
+
             // Notify student
             $titleStudent = app()->getLocale() == 'ar' ? 'تم الدفع بنجاح' : 'Payment successful';
             $msgStudent = app()->getLocale() == 'ar'
-                ? "تم استلام دفعتك للحجز ({$booking->booking_reference}). شكراً."
-                : "Your payment for booking ({$booking->booking_reference}) was successful.";
+                ? "نجاح! لقد حجزت {$booking->sessions_count} جلسات مع المعلم. تبدأ جلستك الأولى في {$firstSessionStart}."
+                : "Success! You have booked {$booking->sessions_count} sessions with your teacher. Your first session starts on {$firstSessionStart}.";
 
             if ($booking->student) {
                 $ns->send($booking->student, 'payment_success', $titleStudent, $msgStudent, [
@@ -603,8 +605,8 @@ class PaymentController extends Controller
             // Notify teacher
             $titleTeacher = app()->getLocale() == 'ar' ? 'حجز جديد' : 'New booking';
             $msgTeacher = app()->getLocale() == 'ar'
-                ? "لديك حجز جديد (#{$booking->booking_reference}) من {$booking->student?->first_name}"
-                : "You have a new booking (#{$booking->booking_reference}) from {$booking->student?->first_name}";
+                ? "لديك حجز جديد (#{$booking->booking_reference}) من {$booking->student?->first_name} لعدد {$booking->sessions_count} جلسات. تبدأ يوم {$firstSessionStart}."
+                : "You have a new booking (#{$booking->booking_reference}) from {$booking->student?->first_name} for {$booking->sessions_count} sessions starting on {$firstSessionStart}.";
 
             if ($booking->teacher) {
                 $ns->send($booking->teacher, 'booking_received', $titleTeacher, $msgTeacher, [

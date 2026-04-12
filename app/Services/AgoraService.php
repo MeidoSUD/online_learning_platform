@@ -49,42 +49,27 @@ class AgoraService
      */
     public function createMeeting(int $sessionId, int $teacherId, int $studentId): ?array
     {
-        $appId = config('services.agora.app_id');
-        $appCertificate = config('services.agora.app_certificate');
-        if (! $appId || ! $appCertificate) {
-            return null;
-        }
-
         $channel = 'session_' . $sessionId;
 
-        // Use stable user accounts so tokens can be associated with a user
+        // We skip pre-generating tokens here because they expire in 24 hours.
+        // Instead, the mobile app should call /sessions/{id}/start or /sessions/{id}/join
+        // to get a fresh, valid token exactly when the session begins.
+        $meetUrl = rtrim(config('app.url', url('/')), '\/') . '/meet';
         $teacherAccount = 'teacher_' . $teacherId;
         $studentAccount = 'student_' . $studentId;
 
-        $expireSeconds = (int) config('services.agora.token_ttl', 3600);
-
-        $teacherToken = $this->generateRtcToken($channel, $teacherAccount, \App\Agora\RtcTokenBuilder::RolePublisher, $expireSeconds);
-        $studentToken = $this->generateRtcToken($channel, $studentAccount, \App\Agora\RtcTokenBuilder::RoleSubscriber, $expireSeconds);
-
-        $meetUrl = rtrim(config('app.url', url('/')), '\/') . '/meet';
-
-        $joinUrl = $meetUrl . '?channel=' . urlencode($channel) . '&token=' . urlencode($studentToken ?? '') . '&uid=' . urlencode($studentAccount) . '&type=join';
-        $hostUrl = $meetUrl . '?channel=' . urlencode($channel) . '&token=' . urlencode($teacherToken ?? '') . '&uid=' . urlencode($teacherAccount) . '&type=host';
+        $joinUrl = $meetUrl . '?channel=' . urlencode($channel) . '&uid=' . urlencode($studentAccount) . '&type=join';
+        $hostUrl = $meetUrl . '?channel=' . urlencode($channel) . '&uid=' . urlencode($teacherAccount) . '&type=host';
 
         return [
             'id' => $channel,
             'channel' => $channel,
             'join_url' => $joinUrl,
             'host_url' => $hostUrl,
-            'tokens' => [
-                'teacher' => $teacherToken,
-                'student' => $studentToken,
-            ],
             'accounts' => [
                 'teacher' => $teacherAccount,
                 'student' => $studentAccount,
             ],
-            'expires_in' => $expireSeconds,
         ];
     }
 

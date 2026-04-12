@@ -75,7 +75,8 @@ class BookingController extends Controller
             'availability_slot_id' => 'nullable|exists:availability_slots,id',
             'timeslot_id' => 'nullable|exists:availability_slots,id',
             'type' => 'required|in:single,package',
-            'sessions_count' => 'required_if:type,package|integer|min:1|max:50',
+            'sessions_count' => 'nullable|integer|min:1|max:50',
+            'total_sessions' => 'nullable|integer|min:1|max:50',
             'special_requests' => 'nullable|string|max:500',
         ]);
 
@@ -219,9 +220,12 @@ $service_id = 0;
                return response()->json(['success' => false, 'message' => 'Failed to parse slot datetime', 'error' => $e->getMessage()], 500);
             }
 
-            // Sessions count
-            $sessionsCount = $request->type === 'package' ? (int)$request->sessions_count : 1;
+            // Sessions count priority: total_sessions > sessions_count
+            $sessionsCountInput = $request->total_sessions ?? $request->sessions_count;
+            $sessionsCount = (int)($sessionsCountInput ?? ($request->type === 'package' ? 1 : 1));
 
+            // Force package type and pricing logic if multiple sessions
+            $sessionType = $sessionsCount > 1 ? 'package' : $request->type;
             // Get current platform percentage
             $platformPercentage = PlatformPercentage::getActive();
             $percentageValue = $platformPercentage ? ($platformPercentage->value / 100) : 0;
@@ -253,7 +257,7 @@ $service_id = 0;
                 'subject_id' => !$isCourse ? $request->subject_id : null,
                 'language_id' => !$isCourse && $request->filled('language_id') ? $request->language_id : null,
                 'booking_reference' => $this->generateBookingReference(),
-                'session_type' => $request->type,
+                'session_type' => $sessionType,
                 'sessions_count' => $sessionsCount,
                 'sessions_completed' => 0,
                 // store concrete datetimes/strings so Sessions::createForBooking gets valid values
