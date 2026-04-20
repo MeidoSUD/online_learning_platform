@@ -4,49 +4,59 @@ namespace App\Http\Controllers\API\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class SettingController extends Controller
 {
-    public function index(Request $request)
+    public function index(): JsonResponse
     {
-        $settings = Setting::orderBy('id', 'desc')->get();
+        $settings = Setting::all()->groupBy('group');
         
-        if ($request->has('group')) {
-            $settings = Setting::where('group', $request->group)->orderBy('id', 'desc')->get();
+        $grouped = [];
+        foreach ($settings as $group => $groupSettings) {
+            $grouped[$group] = $groupSettings->map(function ($setting) {
+                return [
+                    'id' => $setting->id,
+                    'key' => $setting->key,
+                    'value' => $setting->value,
+                    'type' => $setting->type,
+                    'group' => $setting->group,
+                    'description' => $setting->description,
+                ];
+            })->values();
         }
-        
-        return response()->json(['success' => true, 'data' => $settings]);
+
+        return $this->success($grouped);
     }
 
-    public function byGroup(string $group)
+    public function byGroup(string $group): JsonResponse
+    
     {
-        $settings = Setting::where('group', $group)->orderBy('id', 'desc')->get();
-        return response()->json(['success' => true, 'data' => $settings]);
+        $settings = Setting::byGroup($group)->get();
+
+        return $this->success($settings);
     }
 
-    public function update(Request $request, int $id)
+    public function update(Request $request, int $id): JsonResponse
     {
         $setting = Setting::find($id);
 
         if (!$setting) {
-            return response()->json(['success' => false, 'message' => __('responses.resource_not_found')], 404);
+            return $this->notFoundResponse(message: __('responses.resource_not_found'));
         }
 
         $validated = $request->validate([
             'value' => 'required',
-            'key' => 'sometimes|string|max:191',
-            'type' => 'sometimes|string',
-            'group' => 'sometimes|string|max:100',
-            'description' => 'nullable|string',
         ]);
 
-        $setting->update($validated);
+        $setting->value = $validated['value'];
+        $setting->save();
 
-        return response()->json(['success' => true, 'data' => $setting, 'message' => __('responses.operation_successful')]);
+        return $this->success($setting, __('responses.operation_successful'));
     }
 
-    public function bulkUpdate(Request $request)
+    public function bulkUpdate(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'settings' => 'required|array',
@@ -62,10 +72,10 @@ class SettingController extends Controller
             }
         }
 
-        return response()->json(['success' => true, 'message' => __('responses.operation_successful')]);
+        return $this->success([], __('responses.operation_successful'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'key' => 'required|string|max:191|unique:settings,key',
@@ -77,19 +87,19 @@ class SettingController extends Controller
 
         $setting = Setting::create($validated);
 
-        return response()->json(['success' => true, 'data' => $setting], 201);
+        return $this->createdResponse($setting, __('responses.resource_created_successfully'));
     }
 
-    public function destroy(int $id)
+    public function destroy(int $id): JsonResponse
     {
         $setting = Setting::find($id);
 
         if (!$setting) {
-            return response()->json(['success' => false, 'message' => __('responses.resource_not_found')], 404);
+            return $this->notFoundResponse(message: __('responses.resource_not_found'));
         }
 
         $setting->delete();
 
-        return response()->json(['success' => true, 'message' => __('responses.resource_deleted_successfully')]);
+        return $this->deletedResponse(__('responses.resource_deleted_successfully'));
     }
 }

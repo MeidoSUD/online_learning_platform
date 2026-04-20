@@ -1,3 +1,31 @@
+I/AppsFlyer_6.17.5( 5524): [Other] LAUNCH-8: preparing data: {"platform_extension_v2":{"platform":"android_flutter","version":"6.17.8"},"country":"US","af_timestamp":"1776664307419","appsflyerKey":"U********************A","isFirstCall":"true","registeredUninstall":false,"targetSDKver":36,"operator":"stc","isGaidWithGps":"false","app_version_code":"17","model":"24090RA29G","brand":"Redmi","deviceType":"user","kef5862":"b527f2711e33e3f048181e1b0c531a0d59181e0d5a1e1a","deviceData":{"cpu_abi":"arm64-v8a","build_display_id":"BP2A.250605.031.A3","btch":"ac","dim":{"xdp":"445.614","ydp":"445.614","x_px":"1220","y_px":"2712","d_dpi":"520","size":"2"},"arch":"","btl":"62.0","cpu_abi2":""},"disk":"110108\/232405","meta":{"rc":{"delay":40,"latency":36,"cdn_token":"fc038979a41e09743e77e57344b4313950243690c33d724984cf8596f1477c4e","error":"ConnectException: Failed to connect to qgz6ug.cdn-settings.appsflyersdk.com\/[::]:443"},"fetchAdIdLatency":67,"host":{"name":"appsflyersdk.com","prefix":"qgz6ug."}},"sdk":"36","app_version_name":"1.0.12","device":"malachite","cksm_v3":"2ab63fe4e3b49c7c","af_events_api":"1","prev_session_dur":75,"cell":{"mcc":420,"mnc":1},"network":"MOBILE","timepassedsincelastlaunch":"76","sig":"9691C6695FB9C3940D6466DDC02CA5385A615A00B4CCA70992FE3F0AA7BD7BA2","open_referrer":"android-app:\/\/com.android.shell","uid":"1776310605848-6203800892691468154","lang_code":"en","installDate":"2026-04-16_033526+0000","is_pc":false,"firstLaunchDate":"2026-04-16_063646+0300","ivc":false,"lang":"English","last_boot_time":1776242951503,"install_source_info":{"initiating_package":"com.android.shell"},"product":"malachite_global","counter":"16","date2":"2026-04-20_085134+0300","date1":"2026-04-16_063526+0300","advertiserId":"07902270-abee-4606-99ac-69af28ecffbb","advertiserIdEnabled":"true","GAID_retry":"false","carrier":"stc ksa","iaecounter":"0","af_preinstalled":"false","tokenRefreshConfigured":false,"gaidError":"0: ClassNotFoundException |","platformextension":"android_flutter"}
+I/AppsFlyer_6.17.5( 5524): [Cache] Caching request with URL: https://qgz6ug.launches.appsflyersdk.com/api/v6.17/androidevent?app_id=com.ewan_mobile_app&buildnumber=6.17.5
+I/AppsFlyer_6.17.5( 5524): [Cache] Cache request: done, cacheKey: 1776666345901
+I/AppsFlyer_6.17.5( 5524): [Cache] Deleting 1776666269506 from cache
+D/AppsFlyer_6.17.5( 5524): [HTTP Client] [22439035] POST:https://qgz6ug.launches.appsflyersdk.com/api/v6.17/androidevent?app_id=com.ewan_mobile_app&buildnumber=6.17.5
+D/AppsFlyer_6.17.5( 5524):  payload: <encrypted>
+W/AppsFlyer_6.17.5( 5524): [HTTP Client] Error while sending request to server: com.appsflyer.internal.components.network.http.exceptions.HttpException: Failed to connect to qgz6ug.launches.appsflyersdk.com/[::]:443
+D/AppsFlyer_6.17.5( 5524): [Queue] execution finished for LAUNCH-8, result: FAILURE
+I/ewan_mobile_app( 5524): Background young concurrent mark compact GC freed 5652KB AllocSpace bytes, 23(1396KB) LOS objects, 51% free, 6395KB/12MB, paused 2.485ms,12.507ms total 88.183ms
+D/AudioTrackImpl( 5524): [audioTrackData][zero] 14s(f:0 m:0 s:0 k:0 z:14001) : pid 5524 uid 10464 sessionId 32617 sr 48000 ch 2 fmt 1
+W/FileUtils( 5524): Failed to chmod(/data/miuilog/stability/jetrace): android.system.ErrnoException: chmod failed: EACCES (Permission denied)
+W/RuntimeInitImpl( 5524): dump java trace fail /data/miuilog/stability/jetrace/2026-04-20-09-25-46-204_com.ewan_mobile_app_5524.trace.tmp: open failed: EACCES (Permission denied)
+W/ScoutUtils( 5524): Failed to mkdir /data/miuilog/stability/hprof/
+I/Process ( 5524): Process is going to kill itself!
+I/Process ( 5524): java.lang.Exception
+I/Process ( 5524): 	at android.os.Process.killProcess(Process.java:1449)
+I/Process ( 5524): 	at com.android.internal.os.RuntimeInit$KillApplicationHandler.uncaughtException(RuntimeInit.java:205)
+I/Process ( 5524): 	at com.google.firebase.crashlytics.internal.common.CrashlyticsUncaughtExceptionHandler.uncaughtException(CrashlyticsUncaughtExceptionHandler.java:63)
+I/Process ( 5524): 	at java.lang.ThreadGroup.uncaughtException(ThreadGroup.java:1098)
+I/Process ( 5524): 	at java.lang.ThreadGroup.uncaughtException(ThreadGroup.java:1093)
+I/Process ( 5524): 	at java.lang.Thread.dispatchUncaughtException(Thread.java:3378)
+I/Process ( 5524): Sending signal. PID: 5524 SIG: 9
+I/libc    ( 5524): kill: send 9 to pid 5524
+I/libc    ( 5524): debug pid reuse, real pid 5524
+Lost connection to device.
+
+Exited.
+
 # Admin Dashboard API Guide
 
 ## Overview

@@ -54,6 +54,7 @@ use App\Http\Controllers\API\Admin\InstituteController;
 
     use App\Http\Controllers\API\BookingCourseController;
     use App\Http\Controllers\API\AppVersionController;
+    use App\Http\Controllers\API\AppConfigController;
     use App\Http\Controllers\API\AdsController;
     use App\Http\Controllers\API\Admin\AdsAdminController;
     /*  
@@ -72,6 +73,10 @@ use App\Http\Controllers\API\Admin\InstituteController;
 
  Route::get('settings', [SettingController::class, 'index']);
          Route::get('settings/{group}', [SettingController::class, 'byGroup']);
+
+    // App Configuration Routes (for mobile apps)
+    Route::get('app-config', [AppConfigController::class, 'getConfig']);
+    Route::get('app-settings', [AppConfigController::class, 'getAppSettings']);
 
     // Notification route
     Route::post('/send-notification', [FCMTokenController::class, 'sendToToken']);
@@ -351,6 +356,11 @@ use App\Http\Controllers\API\Admin\InstituteController;
         Route::put('settings/bulk', [SettingController::class, 'bulkUpdate']);
         Route::put('settings/{id}', [SettingController::class, 'update']);
         Route::post('settings', [SettingController::class, 'store']);
+
+        // App Configuration Management (Admin)
+        Route::get('app-config/settings', [AppConfigController::class, 'getAppSettings']);
+        Route::put('app-config/version', [AppConfigController::class, 'updateAppVersion']);
+        Route::put('app-config/maintenance', [AppConfigController::class, 'toggleMaintenanceMode']);
 
         // ======================
         // ADMIN SERVICES MANAGEMENT - Full CRUD with icon upload
