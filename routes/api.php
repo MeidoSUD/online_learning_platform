@@ -57,6 +57,7 @@ use App\Http\Controllers\API\Admin\InstituteController;
     use App\Http\Controllers\API\AppConfigController;
     use App\Http\Controllers\API\AdsController;
     use App\Http\Controllers\API\Admin\AdsAdminController;
+    use App\Http\Controllers\API\Admin\SessionsAdminController;
     /*  
 |--------------------------------------------------------------------------
 | API Routes
@@ -475,6 +476,11 @@ use App\Http\Controllers\API\Admin\InstituteController;
         Route::get('/bookings/{id}', [BookingAdminController::class, 'show']);
         Route::post('/bookings/{id}/mark-paid', [BookingAdminController::class, 'markPaid']);
         Route::post('/bookings/{id}/refund', [BookingAdminController::class, 'refund']);
+
+        // Sessions
+        Route::get('/sessions', [SessionsAdminController::class, 'index']);
+        Route::put('/sessions/{id}/reschedule', [SessionsAdminController::class, 'reschedule']);
+        Route::get('/users/{userId}/sessions', [SessionsAdminController::class, 'userSessions']);
 
         Route::get('/payments', [PaymentAdminController::class, 'index']);
         Route::get('/payments/{id}', [PaymentAdminController::class, 'show']);

@@ -12,8 +12,24 @@ class BookingAdminController extends Controller
     {
         $q = Booking::query();
         if ($request->filled('status')) $q->where('status', $request->status);
-        $bookings = $q->with(['student','course'])->orderByDesc('id')->paginate(25);
-        return response()->json(['success' => true, 'data' => $bookings]);
+        $paginator = $q->with(['student','teacher'])->orderByDesc('id')->paginate(25);
+        
+        $paginator->getCollection()->transform(function ($booking) {
+            return [
+                'id' => $booking->id,
+                'reference' => $booking->booking_reference,
+                'student_name' => $booking->student ? trim($booking->student->first_name . ' ' . $booking->student->last_name) : 'N/A',
+                'teacher_name' => $booking->teacher ? trim($booking->teacher->first_name . ' ' . $booking->teacher->last_name) : 'N/A',
+                'amount' => $booking->total_amount,
+                'status' => $booking->status,
+                'created_at' => $booking->created_at ? $booking->created_at->toIso8601String() : null,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $paginator->items()
+        ]);
     }
 
     public function show(Request $request, $id)
