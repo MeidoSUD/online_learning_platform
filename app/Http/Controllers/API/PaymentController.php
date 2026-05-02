@@ -588,31 +588,51 @@ class PaymentController extends Controller
             $ns = new \App\Services\NotificationService();
             
             $firstSessionStart = \Carbon\Carbon::parse($booking->first_session_date . ' ' . $booking->first_session_start_time)->format('Y-m-d H:i');
-
-            // Notify student
+            
+            // ============================================================
+            // STUDENT NOTIFICATIONS
+            // ============================================================
             $titleStudent = app()->getLocale() == 'ar' ? 'تم الدفع بنجاح' : 'Payment successful';
             $msgStudent = app()->getLocale() == 'ar'
                 ? "نجاح! لقد حجزت {$booking->sessions_count} جلسات مع المعلم. تبدأ جلستك الأولى في {$firstSessionStart}."
                 : "Success! You have booked {$booking->sessions_count} sessions with your teacher. Your first session starts on {$firstSessionStart}.";
-
             if ($booking->student) {
+                // Send push and email notifications
                 $ns->send($booking->student, 'payment_success', $titleStudent, $msgStudent, [
                     'booking_id' => $booking->id,
                     'amount' => $booking->total_amount,
                 ]);
+                
+                // Send SMS notification to student
+                if ($booking->student->phone_number) {
+                    $smsMsgStudent = app()->getLocale() == 'ar'
+                        ? "نجاح! لقد حجزت {$booking->sessions_count} جلسات. الجلسة الأولى في {$firstSessionStart}. / Success! You booked {$booking->sessions_count} sessions. First session is at {$firstSessionStart}."
+                        : "Success! You booked {$booking->sessions_count} sessions. First session is at {$firstSessionStart}. / نجاح! لقد حجزت {$booking->sessions_count} جلسات. الجلسة الأولى في {$firstSessionStart}.";
+                    $ns->sendBilingualSMS($booking->student->phone_number, $smsMsgStudent);
+                }
             }
 
-            // Notify teacher
+            // ============================================================
+            // TEACHER NOTIFICATIONS
+            // ============================================================
             $titleTeacher = app()->getLocale() == 'ar' ? 'حجز جديد' : 'New booking';
             $msgTeacher = app()->getLocale() == 'ar'
                 ? "لديك حجز جديد (#{$booking->booking_reference}) من {$booking->student?->first_name} لعدد {$booking->sessions_count} جلسات. تبدأ يوم {$firstSessionStart}."
                 : "You have a new booking (#{$booking->booking_reference}) from {$booking->student?->first_name} for {$booking->sessions_count} sessions starting on {$firstSessionStart}.";
-
             if ($booking->teacher) {
+                // Send push and email notifications
                 $ns->send($booking->teacher, 'booking_received', $titleTeacher, $msgTeacher, [
                     'booking_id' => $booking->id,
                     'student_id' => $booking->student_id,
                 ]);
+                
+                // Send SMS notification to teacher
+                if ($booking->teacher->phone_number) {
+                    $smsMsgTeacher = app()->getLocale() == 'ar'
+                        ? "لديك حجز جديد من {$booking->student?->first_name} لعدد {$booking->sessions_count} جلسات تبدأ في {$firstSessionStart}. / You have a new booking from {$booking->student?->first_name} for {$booking->sessions_count} sessions starting on {$firstSessionStart}."
+                        : "You have a new booking from {$booking->student?->first_name} for {$booking->sessions_count} sessions starting on {$firstSessionStart}. / لديك حجز جديد من {$booking->student?->first_name} لعدد {$booking->sessions_count} جلسات تبدأ في {$firstSessionStart}.";
+                    $ns->sendBilingualSMS($booking->teacher->phone_number, $smsMsgTeacher);
+                }
             }
 
         } catch (\Exception $e) {
@@ -621,5 +641,3 @@ class PaymentController extends Controller
         }
     }
 }
-
-

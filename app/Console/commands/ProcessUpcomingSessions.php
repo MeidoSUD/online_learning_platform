@@ -47,6 +47,7 @@ class ProcessUpcomingSessions extends Command
 
             // Output results
             $this->info("2-hour reminders sent: {$results['two_hour_reminders']}");
+            $this->info("1-hour SMS reminders sent: {$results['one_hour_sms_reminders']}");
             $this->info("Zoom meetings created: {$results['one_hour_zoom_created']}");
             
             if ($results['errors'] > 0) {

@@ -239,4 +239,50 @@ class NotificationService
         }
     }
     
+
+    /**
+     * Send bilingual SMS notification via dreams.sa provider
+     * This method sends SMS for critical scenarios like payment confirmation and session reminders
+     * 
+     * @param string $phone Phone number (will accept both +966 and 966 formats)
+     * @param string $message Bilingual message (Arabic and English)
+     * @return array Response from SMS provider
+     */
+    public function sendBilingualSMS(string $phone, string $message): array
+    {
+        try {
+            // Normalize phone number - remove + if present
+            $normalizedPhone = str_starts_with($phone, '+') ? substr($phone, 1) : $phone;
+            
+            $client = new \GuzzleHttp\Client();
+            $response = $client->post('https://www.dreams.sa/index.php/api/sendsms/', [
+                'form_params' => [
+                    'user'       => config('services.sms.user'),
+                    'secret_key' => config('services.sms.secret_key'),
+                    'sender'     => config('services.sms.sender'),
+                    'to'         => $normalizedPhone,
+                    'message'    => $message
+                ]
+            ]);
+
+            $responseData = json_decode($response->getBody(), true);
+
+            Log::info('Bilingual SMS sent successfully', [
+                'phone' => substr($normalizedPhone, -4),
+                'provider' => 'dreams.sa',
+                'response_status' => $responseData['status'] ?? 'unknown'
+            ]);
+
+            return $responseData;
+        } catch (\Exception $e) {
+            Log::error('Failed to send bilingual SMS', [
+                'phone' => substr($phone, -4),
+                'error' => $e->getMessage()
+            ]);
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
+        }
+    }
 }

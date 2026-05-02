@@ -17,6 +17,7 @@ class SessionNotificationService
     {
         $results = [
             'two_hour_reminders' => 0,
+            'one_hour_sms_reminders' => 0,
             'one_hour_zoom_created' => 0,
             'errors' => 0,
         ];
@@ -32,6 +33,23 @@ class SessionNotificationService
                     $results['two_hour_reminders']++;
                 } catch (\Exception $e) {
                     Log::error('Failed to send 2-hour reminder', [
+                        'session_id' => $session->id,
+                        'error' => $e->getMessage()
+                    ]);
+                    $results['errors']++;
+                }
+            }
+
+            // Get sessions that need 1-hour SMS reminders
+            $oneHourSmsReminders = $this->getSessionsForOneHourReminder();
+            Log::info('Found sessions for 1-hour SMS reminder', ['count' => $oneHourSmsReminders->count()]);
+            
+            foreach ($oneHourSmsReminders as $session) {
+                try {
+                    $this->sendOneHourReminder($session);
+                    $results['one_hour_sms_reminders']++;
+                } catch (\Exception $e) {
+                    Log::error('Failed to send 1-hour SMS reminder', [
                         'session_id' => $session->id,
                         'error' => $e->getMessage()
                     ]);
@@ -324,4 +342,113 @@ class SessionNotificationService
 
         return $results;
     }
+
+    /**
+     * Get sessions that need 1-hour SMS reminder
+     * Sessions that start in 55-65 minutes (1 hour ± 5 minutes buffer)
+     * and one_hour_reminder_sent_at is null
+     */
+    private function getSessionsForOneHourReminder()
+    {
+        $now = Carbon::now();
+        $oneHourFromNow = $now->copy()->addMinutes(55);
+        $oneHourBuffer = $now->copy()->addMinutes(65);
+
+        Log::info('getSessionsForOneHourReminder window', [
+            'now' => $now->toDateTimeString(),
+            'from' => $oneHourFromNow->toDateTimeString(),
+            'to' => $oneHourBuffer->toDateTimeString(),
+        ]);
+
+        $sessions = Sessions::with(['booking.teacher', 'booking.student', 'booking.course.subject'])
+            ->where('status', 'scheduled')
+            ->whereNull('one_hour_reminder_sent_at')
+            ->where(function ($query) use ($oneHourFromNow, $oneHourBuffer) {
+                $query->whereRaw("CONCAT(DATE(session_date), ' ', TIME(start_time)) BETWEEN ? AND ?", [
+                    $oneHourFromNow->format('Y-m-d H:i:s'),
+                    $oneHourBuffer->format('Y-m-d H:i:s')
+                ]);
+            })
+            ->get();
+
+        Log::info('Sessions found for 1-hour reminder', [
+            'count' => $sessions->count(),
+            'sessions' => $sessions->map(function ($s) {
+                return [
+                    'id' => $s->id,
+                    'datetime' => (string)$s->session_date . ' ' . (string)$s->start_time,
+                    'booking_id' => $s->booking_id,
+                ];
+            })->toArray(),
+        ]);
+
+        return $sessions;
+    }
+
+    /**
+     * Send 1-hour SMS reminder to both student and teacher
+     * Bilingual message reminding them that the session starts in 1 hour
+     */
+    private function sendOneHourReminder(Sessions $session): void
+    {
+        $notificationService = new NotificationService();
+        $sessionDateTime = $this->parseSessionDateTime($session);
+        $timeString = $sessionDateTime->format('h:i A');
+        $dateString = $sessionDateTime->format('M d, Y');
+
+        // Prepare bilingual SMS message
+        $smsMessage = app()->getLocale() == 'ar'
+            ? "تبدأ حصتك بعد ساعة واحدة. يرجى التحقق من التطبيق. / Your session will start in one hour. Please check the app."
+            : "Your session will start in one hour. Please check the app. / تبدأ حصتك بعد ساعة واحدة. يرجى التحقق من التطبيق.";
+
+        // Send SMS to student
+        if ($session->booking->student && $session->booking->student->phone_number) {
+            try {
+                $notificationService->sendBilingualSMS(
+                    $session->booking->student->phone_number,
+                    $smsMessage
+                );
+                Log::info('1-hour reminder SMS sent to student', [
+                    'session_id' => $session->id,
+                    'student_id' => $session->booking->student_id,
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Failed to send 1-hour SMS to student', [
+                    'session_id' => $session->id,
+                    'student_id' => $session->booking->student_id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
+
+        // Send SMS to teacher
+        if ($session->booking->teacher && $session->booking->teacher->phone_number) {
+            try {
+                $notificationService->sendBilingualSMS(
+                    $session->booking->teacher->phone_number,
+                    $smsMessage
+                );
+                Log::info('1-hour reminder SMS sent to teacher', [
+                    'session_id' => $session->id,
+                    'teacher_id' => $session->booking->teacher_id,
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Failed to send 1-hour SMS to teacher', [
+                    'session_id' => $session->id,
+                    'teacher_id' => $session->booking->teacher_id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
+
+        // Mark reminder as sent
+        $session->update(['one_hour_reminder_sent_at' => now()]);
+
+        Log::info('1-hour reminder marked as sent', [
+            'session_id' => $session->id,
+            'student_id' => $session->booking->student_id,
+            'teacher_id' => $session->booking->teacher_id
+        ]);
+    }
+
 }
