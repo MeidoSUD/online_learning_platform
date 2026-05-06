@@ -74,12 +74,12 @@ class PaymentController extends Controller
     public function createCheckout(Request $request)
     {
         try {
+            // ✅ SECURITY: booking_id is now REQUIRED to prevent manual amount manipulation
             $request->validate([
-                'amount' => 'required|numeric|min:1',
-                'currency' => 'required|string|size:3',
+                'booking_id' => 'required|integer|exists:bookings,id',
+                'currency' => 'nullable|string|size:3',
                 'payment_brand' => 'nullable|string',
                 'saved_card_id' => 'nullable|integer|exists:saved_cards,id',
-                'booking_id' => 'nullable|integer|exists:bookings,id',
                 'teacher_id' => 'nullable|integer|exists:users,id',
                 'merchant_transaction_id' => 'nullable|string',
                 'description' => 'nullable|string',
@@ -87,26 +87,28 @@ class PaymentController extends Controller
             ]);
 
             $user = auth()->user();
-            $amount = (int)($request->amount * 100);
             $callbackUrl = $request->callback_url ?? route('api.payment.callback');
             
-            // Extract booking_id and teacher_id
+            // ✅ Get booking - this is now REQUIRED
             $bookingId = $request->booking_id;
-            $teacherId = $request->teacher_id;
-
-            if (!$bookingId && $request->filled('merchant_transaction_id')) {
-                $mId = $request->merchant_transaction_id;
-                if (strpos($mId, 'booking_') === 0) {
-                    $bookingId = str_replace('booking_', '', $mId);
-                }
+            $booking = Booking::findOrFail($bookingId);
+            
+            // Verify the booking belongs to the authenticated student
+            if ($booking->student_id !== $user->id) {
+                return $this->authorizationError('This booking does not belong to you');
             }
-
-            // If we have a booking, we can get the teacher_id from it if it's not provided
-            if ($bookingId && !$teacherId) {
-                $booking = Booking::find($bookingId);
-                if ($booking) {
-                    $teacherId = $booking->teacher_id;
-                }
+            
+            // ✅ CALCULATE AMOUNT FROM BOOKING - NOT FROM USER INPUT
+            // Total amount is already stored in booking.total_amount
+            // If multiple sessions, the amount is already calculated during booking creation
+            $amount = (int)($booking->total_amount * 100); // Convert to cents
+            $currency = $request->currency ?? $booking->currency ?? 'SAR';
+            
+            // Extract teacher_id from booking
+            $teacherId = $booking->teacher_id;
+            
+            if (!$teacherId && $request->filled('teacher_id')) {
+                $teacherId = $request->teacher_id;
             }
 
             if ($request->filled('saved_card_id')) {
@@ -120,8 +122,8 @@ class PaymentController extends Controller
 
                 $payload = [
                     'amount' => $amount,
-                    'currency' => strtoupper($request->currency),
-                    'description' => $request->description ?? "Payment for user {$user->id}",
+                    'currency' => strtoupper($currency),
+                    'description' => $request->description ?? "Payment for booking #{$booking->booking_reference}",
                     'callback_url' => $callbackUrl,
                     'source' => [
                         'type' => 'token',
@@ -131,6 +133,7 @@ class PaymentController extends Controller
                         'user_id' => $user->id,
                         'booking_id' => $bookingId,
                         'teacher_id' => $teacherId,
+                        'sessions_count' => $booking->sessions_count,
                     ]
                 ];
 
@@ -140,8 +143,8 @@ class PaymentController extends Controller
                     'booking_id' => $bookingId,
                     'student_id' => $user->id,
                     'teacher_id' => $teacherId,
-                    'amount' => $request->amount,
-                    'currency' => strtoupper($request->currency),
+                    'amount' => $booking->total_amount,
+                    'currency' => $currency,
                     'payment_method' => 'MOYASAR_TOKEN',
                     'status' => $data['status'],
                     'transaction_reference' => $data['id'],
@@ -153,20 +156,22 @@ class PaymentController extends Controller
                     'checkout_id' => $data['id'],
                     'payment_id' => $payment->id,
                     'redirect_url' => $data['source']['transaction_url'] ?? '',
-                    'amount' => $request->amount,
-                    'currency' => $request->currency,
+                    'amount' => $booking->total_amount,
+                    'currency' => $currency,
+                    'sessions' => $booking->sessions_count,
                 ], 'Payment initiated successfully');
             } else {
                 $payload = [
                     'amount' => $amount,
-                    'currency' => strtoupper($request->currency),
-                    'description' => $request->description ?? "Payment for user {$user->id}",
+                    'currency' => strtoupper($currency),
+                    'description' => $request->description ?? "Payment for booking #{$booking->booking_reference}",
                     'callback_url' => $callbackUrl,
                     'metadata' => [
                         'user_id' => $user->id,
                         'user_name' => $user->name,
                         'booking_id' => $bookingId,
                         'teacher_id' => $teacherId,
+                        'sessions_count' => $booking->sessions_count,
                     ]
                 ];
 
@@ -176,8 +181,8 @@ class PaymentController extends Controller
                     'booking_id' => $bookingId,
                     'student_id' => $user->id,
                     'teacher_id' => $teacherId,
-                    'amount' => $request->amount,
-                    'currency' => strtoupper($request->currency),
+                    'amount' => $booking->total_amount,
+                    'currency' => $currency,
                     'payment_method' => 'MOYASAR_HOSTED',
                     'status' => $data['status'],
                     'transaction_reference' => $data['id'],
@@ -189,8 +194,9 @@ class PaymentController extends Controller
                     'checkout_id' => $data['id'],
                     'payment_id' => $payment->id,
                     'redirect_url' => $data['url'] ?? '',
-                    'amount' => $request->amount,
-                    'currency' => $request->currency,
+                    'amount' => $booking->total_amount,
+                    'currency' => $currency,
+                    'sessions' => $booking->sessions_count,
                 ], 'Payment initiated successfully');
             }
 
