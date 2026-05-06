@@ -269,7 +269,6 @@ class PaymentController extends Controller
                             ->first();
                         
                         if ($slot) {
-                            // Check if another payment already booked this slot
                             if ($slot->is_booked || !$slot->is_available) {
                                 Log::warning('Slot already booked by another student', [
                                     'slot_id' => $slot->id,
@@ -277,8 +276,6 @@ class PaymentController extends Controller
                                     'booking_id' => $booking->id,
                                 ]);
                                 
-                                // This payment is successful but slot is no longer available
-                                // This should not happen in normal flow but handle gracefully
                                 $payment->update(['status' => 'completed']);
                                 
                                 return $this->conflictError('Slot was booked by another student', [
@@ -287,7 +284,6 @@ class PaymentController extends Controller
                                 ]);
                             }
                             
-                            // 2. Mark slot as booked
                             $slot->update([
                                 'is_available' => false,
                                 'is_booked' => true,
@@ -300,26 +296,32 @@ class PaymentController extends Controller
                                 'payment_id' => $payment->id,
                             ]);
                             
-                            // 3. Create sessions with proper titles
                             Sessions::createForBooking($booking);
                             
-                            // 4. Update booking status to confirmed
                             $booking->update(['status' => 'confirmed']);
                             
-                            // 5. Schedule meeting generation jobs (Agora/Zoom)
                             $this->scheduleMeetingJobs($booking);
                             
-                            // 6. Send notifications
                             $this->sendPaymentNotifications($booking);
                             
                             Log::info('Booking confirmed after payment', [
                                 'booking_id' => $booking->id,
                                 'payment_id' => $payment->id,
                             ]);
-                        } else if($booking->course_id){
- Log::info('!Slot booked after payment', [
-                                'slot_id' => $booking->timeslot_id
+                        } else if ($booking->course_group_id) {
+                            Log::info('Group course booking - creating sessions after payment', [
+                                'booking_id' => $booking->id,
+                                'course_group_id' => $booking->course_group_id,
+                                'payment_id' => $payment->id,
                             ]);
+
+                            $courseGroup = \App\Models\CourseGroup::find($booking->course_group_id);
+                            if ($courseGroup) {
+                                Sessions::createForBooking($booking);
+                                $booking->update(['status' => 'confirmed']);
+                                $this->scheduleMeetingJobs($booking);
+                                $this->sendPaymentNotifications($booking);
+                            }
                         } else {
                             Log::warning('Slot not found for booking during payment confirmation. Processing payment and booking confirmation anyway.', [
                                 'booking_id' => $booking->id,

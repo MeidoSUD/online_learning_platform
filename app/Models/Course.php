@@ -14,13 +14,16 @@ class Course extends Model
         'service_id',
         'subject_id',
         'education_level_id',
-      'is_featured',
+        'is_featured',
         'cover_image_id',
         'name',
         'description',
         'course_type',
+        'course_format',
         'price',
         'duration_hours',
+        'max_students',
+        'min_students',
         'status',
         'approval_status',
         'rejection_reason',
@@ -150,5 +153,22 @@ class Course extends Model
     public function Bookings()
     {
         return $this->hasMany(Booking::class, 'course_id');
+    }
+
+    public function courseGroups()
+    {
+        return $this->hasMany(CourseGroup::class, 'course_id');
+    }
+
+    public function openGroups()
+    {
+        return $this->hasMany(CourseGroup::class, 'course_id')
+            ->where('status', CourseGroup::STATUS_OPEN);
+    }
+
+    public function activeGroups()
+    {
+        return $this->hasMany(CourseGroup::class, 'course_id')
+            ->whereIn('status', [CourseGroup::STATUS_OPEN, CourseGroup::STATUS_CONFIRMED, CourseGroup::STATUS_IN_PROGRESS]);
     }
 }

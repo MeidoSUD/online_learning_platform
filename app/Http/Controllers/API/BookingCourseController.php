@@ -23,11 +23,14 @@ class BookingCourseController extends Controller
     {
         $request->validate([
             'course_id' => 'nullable|exists:courses,id',
+            'course_group_id' => 'nullable|exists:course_groups,id',
             'service_id' => 'nullable|exists:services,id',
             'teacher_id' => 'nullable|integer|exists:users,id',
             'availability_slot_id' => 'nullable|exists:availability_slots,id',
             'subject_id' => 'nullable|integer',
             'type' => 'required|in:single,package',
+            'sessions_count' => 'nullable|integer|min:1|max:50',
+            'total_sessions' => 'nullable|integer|min:1|max:50',
         ]);
 
         $isCourse = $request->filled('course_id');
@@ -43,70 +46,176 @@ class BookingCourseController extends Controller
         DB::beginTransaction();
         try {
             $studentId = auth()->id();
+            $courseGroupId = null;
 
             if ($isCourse) {
                 $course = Course::with('teacher')->findOrFail($request->course_id);
                 $teacherId = $course->teacher_id;
-                $sessionDuration = $course->session_duration ?? 60;
-                $basePrice = $course->price_per_hour ?? $course->price ?? 0;
-                $currency = $course->currency ?? 'SAR';
+                $sessionDuration = ($course->duration_hours ?? 1) * 60;
+                $basePrice = $course->price ?? 0;
+                $currency = 'SAR';
+
+                $courseFormat = $course->course_format ?? 'individual';
+
+                if ($courseFormat === 'group') {
+                    if (!$request->filled('course_group_id')) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'For group courses you must select a course group'
+                        ], 422);
+                    }
+
+                    $courseGroup = \App\Models\CourseGroup::where('id', $request->course_group_id)
+                        ->where('course_id', $course->id)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if (!$courseGroup) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Selected group not found for this course'
+                        ], 404);
+                    }
+
+                    if ($courseGroup->status !== 'open' && $courseGroup->status !== 'confirmed') {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'This group is not accepting enrollments'
+                        ], 400);
+                    }
+
+                    if ($courseGroup->is_full) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'This group is full'
+                        ], 400);
+                    }
+
+                    $courseGroupId = $courseGroup->id;
+                    $sessionsCount = $courseGroup->total_sessions;
+                    $startDate = Carbon::parse($courseGroup->start_date);
+                    $schedulePattern = $courseGroup->schedule_pattern;
+
+                    $time = $schedulePattern['time'] ?? ($schedulePattern['start_time'] ?? '00:00');
+                    $endTime = $schedulePattern['end_time'] ?? null;
+
+                    if ($endTime) {
+                        $startCarbon = Carbon::parse($time);
+                        $endCarbon = Carbon::parse($endTime);
+                        $sessionDuration = $startCarbon->diffInMinutes($endCarbon);
+                    }
+
+                    $firstSessionDate = $startDate->format('Y-m-d');
+                    $startTime = is_string($time) ? $time : Carbon::parse($time)->format('H:i');
+                    $firstSessionEndTime = $endTime
+                        ? (is_string($endTime) ? $endTime : Carbon::parse($endTime)->format('H:i'))
+                        : Carbon::parse($startTime)->copy()->addMinutes($sessionDuration)->format('H:i');
+
+                } else {
+                    $slotId = $request->availability_slot_id;
+                    if (!$slotId) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'For individual courses you must select an availability slot'
+                        ], 422);
+                    }
+
+                    $slot = AvailabilitySlot::where('id', $slotId)->lockForUpdate()->firstOrFail();
+
+                    $reasons = [];
+                    if (!$slot->is_available) $reasons[] = 'slot_not_available';
+                    if ($slot->is_booked) $reasons[] = 'slot_already_booked';
+                    if ($slot->teacher_id !== $course->teacher_id) $reasons[] = 'slot_teacher_mismatch';
+                    if ($slot->course_id !== $course->id) $reasons[] = 'slot_course_mismatch';
+                    if (count($reasons) > 0) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Cannot book unavailable slot',
+                            'reasons' => $reasons,
+                        ], 400);
+                    }
+
+                    $slotDate = null;
+                    if ($slot->date && trim((string)$slot->date) !== '') {
+                        $slotDate = $slot->date instanceof Carbon ? $slot->date->format('Y-m-d') : (string) $slot->date;
+                    } elseif ($slot->day_number !== null) {
+                        $today = Carbon::today();
+                        $dayNumberFromApp = (int) $slot->day_number;
+                        $carbonDayOfWeek = ($dayNumberFromApp === 1) ? 6 : ($dayNumberFromApp - 2);
+                        $todayDow = $today->dayOfWeek;
+                        $delta = ($carbonDayOfWeek - $todayDow + 7) % 7;
+                        $candidate = $today->copy()->addDays($delta);
+
+                        $slotStart = $this->extractTimeOnly($slot->start_time);
+                        $candidateDateTime = Carbon::parse($candidate->format('Y-m-d') . ' ' . $slotStart);
+
+                        if ($candidateDateTime->lessThanOrEqualTo(now())) {
+                            $candidate->addDays(7);
+                        }
+
+                        $slotDate = $candidate->format('Y-m-d');
+                    } else {
+                        $slotDate = Carbon::today()->format('Y-m-d');
+                    }
+
+                    $firstSessionDate = $slotDate;
+                    $startTime = $this->extractTimeOnly($slot->start_time);
+                    $firstSessionEndTime = $this->extractTimeOnly($slot->end_time);
+
+                    $sessionsCountInput = $request->total_sessions ?? $request->sessions_count;
+                    $sessionsCount = (int)($sessionsCountInput ?? ($request->type === 'package' ? 1 : 1));
+                }
             } else {
                 $teacherId = $request->teacher_id;
                 $teacherInfo = \App\Models\TeacherInfo::where('teacher_id', $teacherId)->first();
                 $sessionDuration = 60;
                 $basePrice = ($request->type === 'single') ? ($teacherInfo->individual_hour_price ?? 0) : ($teacherInfo->group_hour_price ?? 0);
                 $currency = 'SAR';
+                $sessionsCount = $request->type === 'package' ? (int)($request->sessions_count ?? 1) : 1;
+                $firstSessionDate = null;
+                $startTime = null;
+                $firstSessionEndTime = null;
             }
 
-            $slot = null;
-            if ($request->filled('availability_slot_id')) {
-                $slot = AvailabilitySlot::lockForUpdate()->find($request->availability_slot_id);
-                if (!$slot || !$slot->is_available || $slot->teacher_id != $teacherId) {
-                    return response()->json(['success' => false, 'message' => 'Selected slot is no longer available'], 400);
-                }
-            }
+            $sessionType = $sessionsCount > 1 ? 'package' : $request->type;
 
-            $slotDate = null;
-            if ($slot) {
-                if ($slot->date && trim((string)$slot->date) !== '') {
-                    $slotDate = $slot->date instanceof Carbon ? $slot->date->format('Y-m-d') : (string) $slot->date;
-                } elseif ($slot->day_number !== null) {
-                    $today = Carbon::today();
-                    $targetDay = (int) $slot->day_number;
-                    $todayDow = $today->dayOfWeek;
-                    $delta = ($targetDay - $todayDow + 7) % 7;
-                    $candidate = $today->copy()->addDays($delta);
-                    
-                    $startTimeOnly = $this->extractTimeOnly($slot->start_time);
-                    if ($candidate->format('Y-m-d') == $today->format('Y-m-d') && Carbon::parse($startTimeOnly)->lessThanOrEqualTo(now())) {
-                         $candidate->addDays(7);
-                    }
-                    $slotDate = $candidate->format('Y-m-d');
-                }
-            }
+            $platformPercentage = \App\Models\PlatformPercentage::getActive();
+            $percentageValue = $platformPercentage ? ($platformPercentage->value / 100) : 0;
 
-            $sessionsCount = $request->type === 'package' ? (int)$request->sessions_count : 1;
-            $pricePerSession = ($basePrice * ($sessionDuration ?? 60)) / 60;
+            $teacherRatePerSession = ($basePrice * $sessionDuration) / 60;
+            $pricePerSession = $teacherRatePerSession * (1 + $percentageValue);
+
             $discount = $sessionsCount > 1 ? $this->calculatePackageDiscount($sessionsCount) : 0;
             $subtotal = $pricePerSession * $sessionsCount;
             $discountAmount = $subtotal * ($discount / 100);
             $total = $subtotal - $discountAmount;
 
+            $service_id = $isCourse ? ($course->service_id ?? 0) : ($request->service_id ?? 0);
+
+            if ($request->subject_id && !$isCourse) {
+                $subject = Subject::find($request->subject_id);
+                $service_id = $subject ? $subject->service_id : $service_id;
+            }
+
             $booking = Booking::create([
                 'student_id' => $studentId,
                 'teacher_id' => $teacherId,
-                'service_id' => $course->service_id,
-                'course_id' => $isCourse ? $request->course_id : null,
+                'availability_slot_id' => $isCourse && ($courseFormat ?? 'individual') !== 'group' ? $request->availability_slot_id : null,
+                'service_id' => $service_id,
+                'course_id' => $isCourse ? $course->id : null,
+                'course_group_id' => $courseGroupId,
                 'subject_id' => !$isCourse ? $request->subject_id : null,
                 'language_id' => !$isCourse && $request->filled('language_id') ? $request->language_id : null,
                 'booking_reference' => $this->generateBookingReference(),
-                'session_type' => $request->type,
+                'session_type' => $sessionType,
                 'sessions_count' => $sessionsCount,
                 'sessions_completed' => 0,
-                'first_session_date' => $slotDate,
-                'first_session_start_time' => $slot ? $this->extractTimeOnly($slot->start_time) : null,
-                'first_session_end_time' => $slot ? $this->extractTimeOnly($slot->end_time) : null,
+                'first_session_date' => $firstSessionDate,
+                'first_session_start_time' => $startTime,
+                'first_session_end_time' => $firstSessionEndTime,
                 'session_duration' => $sessionDuration,
+                'teacher_rate_per_session' => $teacherRatePerSession,
+                'platform_percentage' => $platformPercentage ? $platformPercentage->value : 0,
                 'price_per_session' => $pricePerSession,
                 'subtotal' => $subtotal,
                 'discount_percentage' => $discount,
@@ -118,18 +227,33 @@ class BookingCourseController extends Controller
                 'booking_date' => now(),
             ]);
 
-            if ($slot) {
-                $slot->update(['is_available' => false, 'is_booked' => true, 'booking_id' => $booking->id]);
-            }
+            $ns = new \App\Services\NotificationService();
 
-            if ($booking->first_session_date) {
-                Sessions::createForBooking($booking);
-            }
+            $title = app()->getLocale() == 'ar'
+                ? 'تم إنشاء الحجز'
+                : 'Booking Created';
+
+            $msg = app()->getLocale() == 'ar'
+                ? "تم إنشاء الحجز ({$booking->booking_reference}) بنجاح. يمكنك متابعة التفاصيل من حسابك."
+                : "Your booking ({$booking->booking_reference}) has been created successfully. You can view the details in your account.";
+
+            $ns->send($booking->student, 'booking_created', $title, $msg, [
+                'booking_id' => $booking->id,
+            ]);
+
+            $teacher = \App\Models\User::findOrFail($teacherId);
+            $ns->send($teacher, 'booking_created', $title, $msg, [
+                'booking_id' => $booking->id,
+            ]);
 
             DB::commit();
+            Log::info('Course booking created (pending payment)', [
+                'booking_id' => $booking->id,
+                'course_id' => $isCourse ? $course->id : null,
+                'course_group_id' => $courseGroupId,
+            ]);
 
-            $hasSavedMethods = UserPaymentMethod::where('user_id', $studentId)->exists();
-            $teacher = User::findOrFail($teacherId);
+            $hasSavedMethods = \App\Models\UserPaymentMethod::where('user_id', $studentId)->exists();
             $teacherData = $this->getFullTeacherData($teacher);
 
             $subjectData = null;
@@ -150,7 +274,7 @@ class BookingCourseController extends Controller
 
             $serviceData = null;
             if ($isService) {
-                $service = Services::find($request->service_id);
+                $service = \App\Models\Services::find($request->service_id);
                 $serviceData = $service ? [
                     'id' => $service->id,
                     'name' => $service->name,
@@ -159,7 +283,7 @@ class BookingCourseController extends Controller
             }
 
             $timeslotData = null;
-            if ($slot) {
+            if (isset($slot) && $slot) {
                 $timeslotData = [
                     'id' => $slot->id,
                     'day_number' => $slot->day_number,
@@ -170,13 +294,28 @@ class BookingCourseController extends Controller
                 ];
             }
 
+            $courseGroupData = null;
+            if ($courseGroupId) {
+                $cg = \App\Models\CourseGroup::find($courseGroupId);
+                if ($cg) {
+                    $courseGroupData = [
+                        'id' => $cg->id,
+                        'group_name' => $cg->group_name,
+                        'start_date' => $cg->start_date,
+                        'total_sessions' => $cg->total_sessions,
+                        'enrolled_count' => $cg->enrolled_count,
+                        'max_students' => $cg->max_students,
+                        'remaining_seats' => $cg->remaining_seats,
+                    ];
+                }
+            }
+
             $responseData = [
-                'booking_id' => $booking->id,
                 'booking' => [
                     'id' => $booking->id,
                     'reference' => $booking->booking_reference,
                     'status' => $booking->status,
-                    'total_amount' => (float)$booking->total_amount,
+                    'total_amount' => $booking->total_amount,
                     'currency' => $booking->currency,
                     'teacher' => $teacherData,
                     'student_id' => $booking->student_id,
@@ -190,6 +329,7 @@ class BookingCourseController extends Controller
                     'service' => $serviceData,
                     'subject' => $subjectData,
                     'timeslot' => $timeslotData,
+                    'course_group' => $courseGroupData,
                 ]
             ];
 
@@ -197,7 +337,7 @@ class BookingCourseController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Booking creation failed', [
+            Log::error('Course booking creation failed', [
                 'student_id' => auth()->id(),
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

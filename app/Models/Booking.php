@@ -25,6 +25,7 @@ class Booking extends Model
         'availability_slot_id',
         'service_id',
         'course_id',
+        'course_group_id',
         'subject_id',
         'language_id',
         'order_id',
@@ -109,6 +110,11 @@ class Booking extends Model
     public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class);
+    }
+
+    public function courseGroup(): BelongsTo
+    {
+        return $this->belongsTo(CourseGroup::class, 'course_group_id');
     }
 
     public function payment(): HasOne

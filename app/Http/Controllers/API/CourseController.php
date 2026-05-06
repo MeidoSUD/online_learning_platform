@@ -108,7 +108,7 @@ class CourseController extends Controller
      */
     public function show(Request $request, int $id): JsonResponse
     {
-        $course = Course::with(['teacher', 'category','availabilitySlots', 'coverImage', 'Bookings'])
+        $course = Course::with(['teacher', 'category','availabilitySlots', 'courseGroups', 'coverImage', 'Bookings'])
             ->where('status', 'published')
             ->findOrFail($id);
 
@@ -411,11 +411,6 @@ class CourseController extends Controller
      */
     public function  store(Request $request): JsonResponse
     {
-        // New store behavior:
-        // - accept course data (name, price, duration_hours, description, category_id, status)
-        // - accept cover_image file and save as Attachment
-        // - accept available_slots in the same shape as teacher availability: [{ day: 1..7, times: ['09:00','2:00 PM'] }, ...]
-        // - prevent creating course slots that conflict with the teacher's existing (personal) slots
 
         $request->validate([
             'category_id' => 'nullable|exists:course_categories,id',
@@ -425,17 +420,21 @@ class CourseController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:5000',
             'course_type' => 'required|in:single,package,subscription',
+            'course_format' => 'required|in:individual,group',
             'price' => 'nullable|numeric|min:0|max:999999.99',
             'duration_hours' => 'nullable|integer|min:1|max:1000',
+            'max_students' => 'nullable|integer|min:1|max:100',
+            'min_students' => 'nullable|integer|min:1|max:100',
             'status' => 'required|in:draft,published',
             'cover_image' => 'nullable|file|image|max:4096',
-            'available_slots' => 'required|array',
-            // each available_slots entry should be { day: int(1..7), times: [string,...] }
+            'available_slots' => 'nullable|array',
+            'schedule_pattern' => 'nullable|array',
+            'start_date' => 'nullable|date',
+            'total_sessions' => 'nullable|integer|min:1',
         ]);
 
         $serviceId = $request->input('service_id');
         if (!$serviceId) {
-             // Fallback to find by name if not provided
              $service = Services::where('name_en', 'Course')
                       ->orWhere('name_en', 'Courses')
                       ->orWhere('name_en', 'Specialized Courses')
@@ -443,62 +442,12 @@ class CourseController extends Controller
                       ->orWhere('name_ar', 'دورات')
                       ->orWhere('name_ar', 'الدورات المخصصة')
                       ->first();
-             $serviceId = $service ? $service->id : 4; // Default to 4 (Specialized Courses) if all else fails
+             $serviceId = $service ? $service->id : 4;
         }
 
         $teacherId = $request->user()->id;
+        $courseFormat = $request->input('course_format', 'individual');
 
-        // Validate structure of available_slots and parse times
-        $timeFormats = ['g:i A', 'h:i A', 'H:i', 'G:i'];
-
-        $parsedSlots = [];
-        foreach ($request->available_slots as $entry) {
-            $day = $entry['day'] ?? $entry['day_number'] ?? null;
-            if (!is_numeric($day) || (int)$day < 1 || (int)$day > 7) {
-                return response()->json(['success' => false, 'message' => 'Each available_slots entry must include a valid day (1..7)'], 422);
-            }
-            if (!isset($entry['times']) || !is_array($entry['times'])) {
-                return response()->json(['success' => false, 'message' => 'Each available_slots entry must include a times array'], 422);
-            }
-
-            foreach ($entry['times'] as $timeStr) {
-                $timeStr = trim($timeStr);
-                $parsed = null;
-                foreach ($timeFormats as $fmt) {
-                    try {
-                        $parsed = \Carbon\Carbon::createFromFormat($fmt, $timeStr);
-                        if ($parsed) break;
-                    } catch (\Exception $e) {
-                        // continue trying formats
-                    }
-                }
-                if (!$parsed) {
-                    return response()->json(['success' => false, 'message' => "Invalid time format: {$timeStr}"], 422);
-                }
-
-                $startTime = $parsed->format('H:i');
-                $endTime = $parsed->copy()->addHour()->format('H:i');
-
-                // Check teacher's existing personal slots (those saved with no course_id) for exact start_time conflicts on the same day
-                $conflict = \App\Models\AvailabilitySlot::where('teacher_id', $teacherId)
-                    ->whereNull('course_id')
-                    ->where('day_number', (int)$day)
-                    ->where('start_time', $startTime)
-                    ->exists();
-
-                if ($conflict) {
-                    return response()->json(['success' => false, 'message' => "Cannot add course slot: teacher already has a personal slot on day {$day} at {$startTime}"], 422);
-                }
-
-                $parsedSlots[] = [
-                    'day_number' => (int)$day,
-                    'start_time' => $startTime,
-                    'end_time' => $endTime,
-                ];
-            }
-        }
-
-        // Create the course
         $course = Course::create([
             'teacher_id' => $teacherId,
             'category_id' => $request->input('category_id'),
@@ -508,48 +457,126 @@ class CourseController extends Controller
             'name' => $request->input('name'),
             'description' => $request->input('description'),
             'course_type' => $request->input('course_type'),
+            'course_format' => $courseFormat,
             'price' => $request->input('price'),
             'duration_hours' => $request->input('duration_hours'),
+            'max_students' => $request->input('max_students'),
+            'min_students' => $request->input('min_students'),
             'status' => $request->input('status'),
         ]);
 
-        // Handle cover image upload (store in public disk and create Attachment)
         if ($request->hasFile('cover_image')) {
             $file = $request->file('cover_image');
             $path = $file->store('course_covers', 'public');
+            $fileUrl = asset('storage/' . $path);
 
             $attachment = Attachment::create([
                 'user_id' => $teacherId,
-                'file_path' => $path,
+                'file_path' => $fileUrl,
                 'file_name' => $file->getClientOriginalName(),
                 'file_type' => $file->getClientMimeType(),
                 'file_size' => $file->getSize(),
             ]);
 
-            // Link attachment id to course (courses table uses cover_image_id in other code)
             $course->cover_image_id = $attachment->id;
             $course->save();
         }
 
-        // Create availability slots for the course
-        foreach ($parsedSlots as $slot) {
-            $course->availabilitySlots()->create([
-                'teacher_id' => $teacherId,
-                'course_id' => $course->id,
-                'day_number' => $slot['day_number'],
-                'start_time' => $slot['start_time'],
-                'end_time' => $slot['end_time'],
-                'is_available' => true,
-                'is_booked' => false,
-            ]);
-        }
+        if ($courseFormat === 'group') {
+            if (!$request->filled('schedule_pattern') || !$request->filled('start_date') || !$request->filled('total_sessions')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Group courses require schedule_pattern, start_date, and total_sessions'
+                ], 422);
+            }
 
-        // If the course was marked as published, you may want to set a published_at timestamp here.
+            $schedulePattern = $request->input('schedule_pattern');
+            $startDate = $request->input('start_date');
+            $totalSessions = $request->input('total_sessions');
+
+            if (isset($schedulePattern['days']) && is_array($schedulePattern['days']) && count($schedulePattern['days']) > 0) {
+                $daysPerWeek = count($schedulePattern['days']);
+                $weeksNeeded = ceil($totalSessions / $daysPerWeek);
+            } else {
+                $weeksNeeded = $totalSessions;
+            }
+
+            \App\Models\CourseGroup::create([
+                'course_id' => $course->id,
+                'start_date' => $startDate,
+                'schedule_pattern' => $schedulePattern,
+                'total_sessions' => $totalSessions,
+                'max_students' => $request->input('max_students', 10),
+                'min_students' => $request->input('min_students'),
+                'status' => 'open',
+            ]);
+        } else {
+            if ($request->filled('available_slots')) {
+                $timeFormats = ['g:i A', 'h:i A', 'H:i', 'G:i'];
+
+                $parsedSlots = [];
+                foreach ($request->available_slots as $entry) {
+                    $day = $entry['day'] ?? $entry['day_number'] ?? null;
+                    if (!is_numeric($day) || (int)$day < 1 || (int)$day > 7) {
+                        return response()->json(['success' => false, 'message' => 'Each available_slots entry must include a valid day (1..7)'], 422);
+                    }
+                    if (!isset($entry['times']) || !is_array($entry['times'])) {
+                        return response()->json(['success' => false, 'message' => 'Each available_slots entry must include a times array'], 422);
+                    }
+
+                    foreach ($entry['times'] as $timeStr) {
+                        $timeStr = trim($timeStr);
+                        $parsed = null;
+                        foreach ($timeFormats as $fmt) {
+                            try {
+                                $parsed = \Carbon\Carbon::createFromFormat($fmt, $timeStr);
+                                if ($parsed) break;
+                            } catch (\Exception $e) {
+                            }
+                        }
+                        if (!$parsed) {
+                            return response()->json(['success' => false, 'message' => "Invalid time format: {$timeStr}"], 422);
+                        }
+
+                        $startTime = $parsed->format('H:i');
+                        $endTime = $parsed->copy()->addHour()->format('H:i');
+
+                        $conflict = \App\Models\AvailabilitySlot::where('teacher_id', $teacherId)
+                            ->whereNull('course_id')
+                            ->where('day_number', (int)$day)
+                            ->where('start_time', $startTime)
+                            ->exists();
+
+                        if ($conflict) {
+                            return response()->json(['success' => false, 'message' => "Cannot add course slot: teacher already has a personal slot on day {$day} at {$startTime}"], 422);
+                        }
+
+                        $parsedSlots[] = [
+                            'day_number' => (int)$day,
+                            'start_time' => $startTime,
+                            'end_time' => $endTime,
+                        ];
+                    }
+                }
+
+                foreach ($parsedSlots as $slot) {
+                    $course->availabilitySlots()->create([
+                        'teacher_id' => $teacherId,
+                        'course_id' => $course->id,
+                        'day_number' => $slot['day_number'],
+                        'start_time' => $slot['start_time'],
+                        'end_time' => $slot['end_time'],
+                        'is_available' => true,
+                        'is_booked' => false,
+                    ]);
+                }
+            }
+        }
 
         return response()->json([
             'success' => true,
             'message' => 'Course created successfully',
-            'data' => $course->load(['availabilitySlots', 'coverImage'])
+            'data' => $course->load($courseFormat === 'group' ? 'courseGroups' : 'availabilitySlots')
         ], 201);
     }
 
@@ -560,18 +587,20 @@ class CourseController extends Controller
             'category_id' => 'nullable|exists:course_categories,id',
             'subject_id' => 'nullable|exists:subjects,id',
             'education_level_id' => 'nullable|exists:education_levels,id',
-            // 'class_id' => 'nullable|exists:classes,id',
             'service_id' => 'nullable|exists:services,id',
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:5000',
             'course_type' => 'required|in:single,package,subscription',
+            'course_format' => 'nullable|in:individual,group',
             'price' => 'nullable|numeric|min:0|max:999999.99',
             'duration_hours' => 'nullable|integer|min:1|max:1000',
+            'max_students' => 'nullable|integer|min:1|max:100',
+            'min_students' => 'nullable|integer|min:1|max:100',
             'status' => 'required|in:draft,published',
             'cover_image' => 'nullable|image|max:5120',
             'cover_image_id' => 'nullable|exists:attachments,id',
-            'available_slots' => 'required|array',
-            'available_slots.*.day' => 'required',
+            'available_slots' => 'nullable|array',
+            'available_slots.*.day' => 'nullable',
             'available_slots.*.times' => 'nullable|array',
         ]);
 
@@ -579,28 +608,11 @@ class CourseController extends Controller
             ->findOrFail($id);
 
         $course->update($request->only([
-            'category_id', 'subject_id', 'education_level_id',  'service_id', 'name', 'description',
-            'course_type', 'price', 'duration_hours', 'status', 'cover_image_id'
+            'category_id', 'subject_id', 'education_level_id', 'service_id', 'name', 'description',
+            'course_type', 'course_format', 'price', 'duration_hours', 'max_students', 'min_students', 'status', 'cover_image_id'
         ]));
 
-        if ($request->hasFile('cover_image')) {
-            $file = $request->file('cover_image');
-            $path = $file->store('course_covers', 'public');
-            $fileUrl = asset('storage/' . $path);
-
-            $attachment = Attachment::create([
-                'user_id' => $request->user()->id,
-                'file_path' => $path,
-                'file_name' => $file->getClientOriginalName(),
-                'file_type' => $file->getClientMimeType(),
-                'file_size' => $file->getSize(),
-            ]);
-
-            $course->cover_image_id = $attachment->id;
-            $course->save();
-        }
-
-        if ($request->has('available_slots')) {
+        if ($course->course_format === 'individual' && $request->has('available_slots')) {
             $timeFormats = ['g:i A', 'h:i A', 'H:i', 'G:i'];
             
             $newSlots = [];
@@ -669,7 +681,7 @@ class CourseController extends Controller
             }
         }
 
-        $course->load(['teacher', 'category', 'coverImage', 'educationLevel', 'availabilitySlots']);
+        $course->load(['teacher', 'category', 'coverImage', 'availabilitySlots', 'courseGroups']);
 
         return response()->json([
             'success' => true,
@@ -742,6 +754,212 @@ class CourseController extends Controller
         return response()->json([
             'success' => true,
             'data' => $categories
+        ]);
+    }
+
+    public function getCourseGroups(Request $request, int $id): JsonResponse
+    {
+        $course = Course::where('status', 'published')->findOrFail($id);
+
+        if (($course->course_format ?? 'individual') !== 'group') {
+            return response()->json([
+                'success' => false,
+                'message' => 'This course does not have groups'
+            ], 400);
+        }
+
+        $groups = \App\Models\CourseGroup::where('course_id', $course->id)
+            ->whereIn('status', ['open', 'confirmed', 'in_progress'])
+            ->orderBy('start_date', 'asc')
+            ->get()
+            ->map(function ($group) {
+                return [
+                    'id' => $group->id,
+                    'group_name' => $group->group_name,
+                    'start_date' => $group->start_date,
+                    'schedule_pattern' => $group->schedule_pattern,
+                    'total_sessions' => $group->total_sessions,
+                    'max_students' => $group->max_students,
+                    'min_students' => $group->min_students,
+                    'enrolled_count' => $group->enrolled_count,
+                    'remaining_seats' => $group->remaining_seats,
+                    'is_full' => $group->is_full,
+                    'min_students_reached' => $group->min_students_reached,
+                    'status' => $group->status,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => $groups
+        ]);
+    }
+
+    public function createGroup(Request $request, int $courseId): JsonResponse
+    {
+        $course = Course::where('teacher_id', $request->user()->id)
+            ->findOrFail($courseId);
+
+        if (($course->course_format ?? 'individual') !== 'group') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only group courses can have groups'
+            ], 400);
+        }
+
+        $request->validate([
+            'group_name' => 'nullable|string|max:255',
+            'start_date' => 'required|date|after:today',
+            'schedule_pattern' => 'required|array',
+            'schedule_pattern.days' => 'required|array|min:1',
+            'schedule_pattern.time' => 'required|string',
+            'schedule_pattern.end_time' => 'nullable|string',
+            'total_sessions' => 'required|integer|min:1',
+            'max_students' => 'nullable|integer|min:1|max:100',
+            'min_students' => 'nullable|integer|min:1|max:100',
+        ]);
+
+        $group = \App\Models\CourseGroup::create([
+            'course_id' => $course->id,
+            'group_name' => $request->input('group_name'),
+            'start_date' => $request->input('start_date'),
+            'schedule_pattern' => $request->input('schedule_pattern'),
+            'total_sessions' => $request->input('total_sessions'),
+            'max_students' => $request->input('max_students', $course->max_students ?? 10),
+            'min_students' => $request->input('min_students', $course->min_students),
+            'status' => 'open',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Group created successfully',
+            'data' => $group
+        ], 201);
+    }
+
+    public function getTeacherGroups(Request $request, int $courseId): JsonResponse
+    {
+        $course = Course::where('teacher_id', $request->user()->id)
+            ->findOrFail($courseId);
+
+        $groups = \App\Models\CourseGroup::where('course_id', $course->id)
+            ->withCount(['bookings' => function ($q) {
+                $q->where('status', 'confirmed');
+            }])
+            ->orderBy('start_date', 'asc')
+            ->get()
+            ->map(function ($group) {
+                return [
+                    'id' => $group->id,
+                    'group_name' => $group->group_name,
+                    'start_date' => $group->start_date,
+                    'schedule_pattern' => $group->schedule_pattern,
+                    'total_sessions' => $group->total_sessions,
+                    'max_students' => $group->max_students,
+                    'min_students' => $group->min_students,
+                    'enrolled_count' => $group->enrolled_count,
+                    'remaining_seats' => $group->remaining_seats,
+                    'is_full' => $group->is_full,
+                    'min_students_reached' => $group->min_students_reached,
+                    'status' => $group->status,
+                    'created_at' => $group->created_at,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => $groups
+        ]);
+    }
+
+    public function getGroupStudents(Request $request, int $courseId, int $groupId): JsonResponse
+    {
+        $course = Course::where('teacher_id', $request->user()->id)
+            ->findOrFail($courseId);
+
+        $group = \App\Models\CourseGroup::where('course_id', $course->id)
+            ->where('id', $groupId)
+            ->with(['bookings' => function ($q) {
+                $q->with(['student.profile', 'student'])->where('status', 'confirmed');
+            }])
+            ->firstOrFail();
+
+        $students = $group->bookings->map(function ($booking) {
+            return [
+                'booking_id' => $booking->id,
+                'booking_reference' => $booking->booking_reference,
+                'student_id' => $booking->student_id,
+                'student_name' => $booking->student ? ($booking->student->first_name . ' ' . $booking->student->last_name) : 'Unknown',
+                'student_email' => $booking->student?->email,
+                'student_phone' => $booking->student?->phone_number,
+                'status' => $booking->status,
+                'sessions_count' => $booking->sessions_count,
+                'sessions_completed' => $booking->sessions_completed,
+                'booked_at' => $booking->created_at,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'group' => [
+                    'id' => $group->id,
+                    'group_name' => $group->group_name,
+                    'start_date' => $group->start_date,
+                    'status' => $group->status,
+                    'enrolled_count' => $group->enrolled_count,
+                    'max_students' => $group->max_students,
+                ],
+                'students' => $students,
+            ]
+        ]);
+    }
+
+    public function startGroup(Request $request, int $courseId, int $groupId): JsonResponse
+    {
+        $course = Course::where('teacher_id', $request->user()->id)
+            ->findOrFail($courseId);
+
+        $group = \App\Models\CourseGroup::where('course_id', $course->id)
+            ->where('id', $groupId)
+            ->firstOrFail();
+
+        if (!$group->min_students_reached) {
+            return response()->json([
+                'success' => false,
+                'message' => "Minimum {$group->min_students} students required. Currently {$group->enrolled_count} enrolled."
+            ], 400);
+        }
+
+        if ($group->status === 'in_progress' || $group->status === 'completed') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Group has already been started or completed.'
+            ], 400);
+        }
+
+        $group->update(['status' => 'in_progress']);
+
+        $bookings = $group->bookings()->where('status', 'confirmed')->with('sessions')->get();
+
+        foreach ($bookings as $booking) {
+            $ns = new \App\Services\NotificationService();
+            $title = app()->getLocale() == 'ar' ? 'بدأت المجموعة' : 'Group Started';
+            $msg = app()->getLocale() == 'ar'
+                ? "بدأت المجموعة '{$group->group_name}' للدورة '{$course->name}'. الجلسة الأولى في {$group->start_date}."
+                : "The group '{$group->group_name}' for course '{$course->name}' has started. First session on {$group->start_date}.";
+
+            $ns->send($booking->student, 'group_started', $title, $msg, [
+                'group_id' => $group->id,
+                'course_id' => $course->id,
+                'start_date' => $group->start_date,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Group started successfully. Notifications sent to all enrolled students.',
+            'data' => $group
         ]);
     }
 

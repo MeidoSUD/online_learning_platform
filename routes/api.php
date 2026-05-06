@@ -106,6 +106,7 @@ use App\Http\Controllers\API\Admin\InstituteController;
     Route::get('categories', [CourseController::class, 'listCategories']);
     Route::get('courses', [CourseController::class, 'index']); // browse/search
     Route::get('courses/{id}', [CourseController::class, 'show']); // course details
+    Route::get('courses/{id}/groups', [CourseController::class, 'getCourseGroups']); // get available groups
     Route::get('language-study', [LanguageStudyController::class, 'index']);
     Route::get('language-study/teachers', [LanguageStudyController::class, 'getAllTeachersWithLanguages']); // Get all teachers with languages
     Route::get('language-study/teacher/{teacherId}', [LanguageStudyController::class, 'getTeacherLanguages']); // Get specific teacher languages
@@ -197,6 +198,7 @@ use App\Http\Controllers\API\Admin\InstituteController;
         //courses
         Route::get('/courses', [CourseController::class, 'index']); // browse/search
         Route::get('/courses/{id}', [CourseController::class, 'show']); // course details
+        Route::get('/courses/{id}/groups', [CourseController::class, 'getCourseGroups']); // get group course groups
         Route::post('/courses/{id}/enroll', [CourseController::class, 'enroll']); // book/join course
         Route::post('/courses/{id}/request-enrollment', [CourseController::class, 'requestEnrollment']); // request enrollment (pending)
         // lessons
@@ -287,6 +289,10 @@ use App\Http\Controllers\API\Admin\InstituteController;
         Route::put('/courses/{id}', [CourseController::class, 'update']);
         Route::delete('/courses/{id}', [CourseController::class, 'destroy']);
         Route::get('/courses', [CourseController::class, 'myCourses']);
+        Route::get('/courses/{id}/groups', [CourseController::class, 'getTeacherGroups']);
+        Route::post('/courses/{id}/groups', [CourseController::class, 'createGroup']);
+        Route::get('/courses/{id}/groups/{groupId}/students', [CourseController::class, 'getGroupStudents']);
+        Route::post('/courses/{id}/groups/{groupId}/start', [CourseController::class, 'startGroup']);
         // subjects and classes
         Route::get('subjects', [TeacherController::class, 'indexSubjects']);
         Route::post('subjects', [TeacherController::class, 'storeSubject']);

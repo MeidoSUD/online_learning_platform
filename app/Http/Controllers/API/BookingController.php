@@ -90,7 +90,9 @@ class BookingController extends Controller
                 'message' => 'Either course_id or service_id is required'
             ], 422);
         }
-$service_id = 0;
+        $service_id = 0;
+        $course = null;  // ✅ Initialize course variable
+        
         DB::beginTransaction();
         try {
             $studentId = auth()->id();
@@ -1057,7 +1059,7 @@ $ns->send($teacher, 'booking_created', $title, $msg, [
 
         $query = Booking::with([
             'subject',
-            'courses',
+            'course',
             'course.service',
             'teacher.profile'
         ])->where('student_id', $studentId);
@@ -1085,11 +1087,18 @@ $ns->send($teacher, 'booking_created', $title, $msg, [
             // Load teacher with full data
             $teacherData = $this->getFullTeacherData($booking->teacher);
 
-            // Get subject data if course booking
+            // Get subject data - initialize to null for all bookings
             $courseData = null;
+            $subjectData = null;  // ✅ Initialize for all bookings
+            
             if ($booking->course) {
                 $courseData = Course::find($booking->course_id);
-            } else {
+                // Get subject from course if available
+                if ($booking->course->subject) {
+                    $subjectData = $booking->course->subject;
+                }
+            } else if ($booking->subject_id) {
+                // For service bookings with subject
                 $subjectData = Subject::find($booking->subject_id);
             }
 

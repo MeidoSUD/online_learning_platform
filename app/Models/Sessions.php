@@ -449,11 +449,14 @@ public function getHostUrlAttribute(): ?string
         }
 
         try {
-            // Load relations to build session title
-            $booking = $booking->load(['subject.service', 'course']);
+            $booking = $booking->load(['subject.service', 'course', 'courseGroup']);
             
-            // Build session title based on service type
             $sessionTitle = self::buildSessionTitle($booking);
+
+            if ($booking->course_group_id && $booking->courseGroup) {
+                self::createGroupCourseSessions($booking, $sessionTitle);
+                return;
+            }
             
             if ($booking->session_type === Booking::TYPE_SINGLE) {
                 $session = self::create([
@@ -476,7 +479,6 @@ public function getHostUrlAttribute(): ?string
                 ]);
                 
             } else {
-                // Create multiple sessions for package
                 $startDate = Carbon::parse($booking->first_session_date);
                 
                 for ($i = 1; $i <= $booking->sessions_count; $i++) {
@@ -508,8 +510,81 @@ public function getHostUrlAttribute(): ?string
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            // Re-throw to ensure transaction rollback if called within transaction
             throw $e;
+        }
+    }
+
+    private static function createGroupCourseSessions(Booking $booking, string $sessionTitle): void
+    {
+        $courseGroup = $booking->courseGroup;
+        $schedulePattern = $courseGroup->schedule_pattern;
+        $startDate = Carbon::parse($courseGroup->start_date);
+        $totalSessions = $courseGroup->total_sessions;
+
+        $time = $schedulePattern['time'] ?? ($schedulePattern['start_time'] ?? '00:00');
+        $endTime = $schedulePattern['end_time'] ?? null;
+        $startTime = is_string($time) ? $time : Carbon::parse($time)->format('H:i');
+        $firstSessionEndTime = $endTime
+            ? (is_string($endTime) ? $endTime : Carbon::parse($endTime)->format('H:i'))
+            : Carbon::parse($startTime)->copy()->addMinutes($booking->session_duration)->format('H:i');
+
+        $duration = $booking->session_duration;
+        if ($endTime) {
+            $startCarbon = Carbon::parse($startTime);
+            $endCarbon = Carbon::parse($endTime);
+            $duration = $startCarbon->diffInMinutes($endCarbon);
+        }
+
+        $appDays = $schedulePattern['days'] ?? [];
+
+        if (empty($appDays)) {
+            $carbonDays = [$startDate->dayOfWeek];
+        } else {
+            $carbonDays = array_map(function ($appDay) {
+                $appDay = (int)$appDay;
+                if ($appDay === 1) return 6;
+                return $appDay - 2;
+            }, $appDays);
+        }
+
+        sort($carbonDays);
+
+        $sessionNumber = 0;
+        $currentDate = $startDate->copy();
+        $maxIterations = $totalSessions * 10;
+        $iterations = 0;
+
+        while ($sessionNumber < $totalSessions && $iterations < $maxIterations) {
+            $iterations++;
+            $currentDow = $currentDate->dayOfWeek;
+
+            if (in_array($currentDow, $carbonDays)) {
+                $sessionNumber++;
+
+                self::create([
+                    'booking_id' => $booking->id,
+                    'student_id' => $booking->student_id,
+                    'teacher_id' => $booking->teacher_id,
+                    'session_number' => $sessionNumber,
+                    'session_title' => $sessionTitle,
+                    'session_date' => $currentDate->format('Y-m-d'),
+                    'start_time' => $startTime,
+                    'end_time' => $firstSessionEndTime,
+                    'duration' => $duration,
+                    'status' => self::STATUS_SCHEDULED,
+                ]);
+
+                Log::info("Group course session {$sessionNumber} created", [
+                    'session_date' => $currentDate->format('Y-m-d'),
+                    'booking_id' => $booking->id,
+                ]);
+            }
+
+            $currentDate->addDay();
+        }
+
+        if ($booking->courseGroup) {
+            $booking->courseGroup->incrementEnrolledCount();
         }
     }
 
