@@ -517,11 +517,10 @@ class CourseController extends Controller
         if ($request->hasFile('cover_image')) {
             $file = $request->file('cover_image');
             $path = $file->store('course_covers', 'public');
-            $fileUrl = asset('storage/' . $path);
 
             $attachment = Attachment::create([
                 'user_id' => $teacherId,
-                'file_path' => $fileUrl,
+                'file_path' => $path,
                 'file_name' => $file->getClientOriginalName(),
                 'file_type' => $file->getClientMimeType(),
                 'file_size' => $file->getSize(),
@@ -550,7 +549,7 @@ class CourseController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Course created successfully',
-            'data' => $course->load('availabilitySlots')
+            'data' => $course->load(['availabilitySlots', 'coverImage'])
         ], 201);
     }
 
@@ -569,6 +568,7 @@ class CourseController extends Controller
             'price' => 'nullable|numeric|min:0|max:999999.99',
             'duration_hours' => 'nullable|integer|min:1|max:1000',
             'status' => 'required|in:draft,published',
+            'cover_image' => 'nullable|image|max:5120',
             'cover_image_id' => 'nullable|exists:attachments,id',
             'available_slots' => 'required|array',
             'available_slots.*.day' => 'required',
@@ -582,6 +582,23 @@ class CourseController extends Controller
             'category_id', 'subject_id', 'education_level_id',  'service_id', 'name', 'description',
             'course_type', 'price', 'duration_hours', 'status', 'cover_image_id'
         ]));
+
+        if ($request->hasFile('cover_image')) {
+            $file = $request->file('cover_image');
+            $path = $file->store('course_covers', 'public');
+            $fileUrl = asset('storage/' . $path);
+
+            $attachment = Attachment::create([
+                'user_id' => $request->user()->id,
+                'file_path' => $path,
+                'file_name' => $file->getClientOriginalName(),
+                'file_type' => $file->getClientMimeType(),
+                'file_size' => $file->getSize(),
+            ]);
+
+            $course->cover_image_id = $attachment->id;
+            $course->save();
+        }
 
         if ($request->has('available_slots')) {
             $timeFormats = ['g:i A', 'h:i A', 'H:i', 'G:i'];
@@ -652,7 +669,7 @@ class CourseController extends Controller
             }
         }
 
-        $course->load(['teacher', 'category', 'coverImage', 'availabilitySlots']);
+        $course->load(['teacher', 'category', 'coverImage', 'educationLevel', 'availabilitySlots']);
 
         return response()->json([
             'success' => true,
@@ -700,7 +717,7 @@ class CourseController extends Controller
         $platformPercentage = PlatformPercentage::getActive();
         $percentageValue = $platformPercentage ? ($platformPercentage->value / 100) : 0;
 
-        $courses = Course::with(['category', 'coverImage', 'availabilitySlots'])
+        $courses = Course::with(['category', 'coverImage', 'educationLevel', 'availabilitySlots'])
             ->where('teacher_id', $request->user()->id)
             ->withCount(['countstudents'])
             ->orderBy('created_at', 'desc')

@@ -40,7 +40,7 @@ class Course extends Model
     }
     public function coverImage()
     {
-        return $this->morphOne(Attachment::class, 'attached_to');
+        return $this->belongsTo(Attachment::class, 'cover_image_id');
     }
     protected $appends = [
         'teacher_profile',

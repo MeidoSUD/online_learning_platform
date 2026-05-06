@@ -11,6 +11,7 @@ class Attachment extends Model
     use HasFactory;
     protected $table = 'attachments';
     protected $fillable = ['user_id', 'file_path', 'file_name', 'file_type', 'file_size', 'attached_to_type'];
+    protected $appends = ['url'];
 
     // Polymorphic relationships
     public function related()
