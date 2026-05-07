@@ -7,11 +7,11 @@ use App\Models\Course;
 
 class TeacherProfileHelper
 {
-    public static function checkAndUpdateProfileCompleted(User $teacher): bool
+    public static function checkAndUpdateProfileCompleted($teacher_id): bool
     {
-        $hasCourses = Course::where('teacher_id', $teacher->id)->exists();
-        User::where('id', $teacher->id)->update(['profile_completed' => $hasCourses]);
-        $teacher->profile_completed = $hasCourses;
+        $hasCourses = Course::where('teacher_id', $teacher_id)->exists();
+        User::where('id', $teacher_id)->update(['profile_completed' => $hasCourses]);
+       
         return $hasCourses;
     }
 

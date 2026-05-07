@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Log;
 use App\Models\Booking;
 use App\Models\Services;
 use App\Models\Sessions;
-
+use App\Helpers\TeacherProfileHelper;
 class CourseController extends Controller
 {
     /**
@@ -464,7 +464,7 @@ class CourseController extends Controller
             'min_students' => $request->input('min_students'),
             'status' => $request->input('status'),
         ]);
-
+TeacherProfileHelper::checkAndUpdateProfileCompleted( $teacherId);
         if ($request->hasFile('cover_image')) {
             $file = $request->file('cover_image');
             $path = $file->store('course_covers', 'public');
@@ -611,6 +611,8 @@ class CourseController extends Controller
             'category_id', 'subject_id', 'education_level_id', 'service_id', 'name', 'description',
             'course_type', 'course_format', 'price', 'duration_hours', 'max_students', 'min_students', 'status', 'cover_image_id'
         ]));
+        $teacherId=$request->user()->id;
+TeacherProfileHelper::checkAndUpdateProfileCompleted( $teacherId);
 
         if ($course->course_format === 'individual' && $request->has('available_slots')) {
             $timeFormats = ['g:i A', 'h:i A', 'H:i', 'G:i'];
