@@ -32,7 +32,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'fcm_token',
         'verified',
         'verification_code',
-        // Add other fields as needed (e.g. role_id, is_active)
+        'profile_completed',
     ];
 
     /**
@@ -64,6 +64,7 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'profile_completed' => 'boolean',
     ];
 
     // Example relationship for user_type (if needed)

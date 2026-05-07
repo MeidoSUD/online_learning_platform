@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Helpers\TeacherProfileHelper;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\TeacherTeachClasses;
@@ -76,7 +77,8 @@ class TeacherController extends Controller
         }
 
         TeacherSubject::insert($data);
-
+        $teacherId=$request->user()->id;
+TeacherProfileHelper::checkAndUpdateProfileCompleted( $teacherId);
         return response()->json([
             'message' => 'Subjects updated successfully',
         ]);
@@ -116,7 +118,8 @@ class TeacherController extends Controller
         $teacherSubject->update([
             'subject_id' => $request->subject_id,
         ]);
-
+        $teacherId=$request->user()->id;
+TeacherProfileHelper::checkAndUpdateProfileCompleted( $teacherId);
         return response()->json(['data' => $teacherSubject, 'message' => 'Subject updated']);
     }
 
@@ -140,6 +143,8 @@ class TeacherController extends Controller
     {
         $teacherSubject = TeacherSubject::findOrFail($id);
         $teacherSubject->delete();
+ $teacherId=$request->user()->id;
+TeacherProfileHelper::checkAndUpdateProfileCompleted( $teacherId);
 
         return response()->json(['message' => 'Subject deleted']);
     }
