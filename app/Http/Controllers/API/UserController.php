@@ -661,6 +661,7 @@ class UserController extends Controller
     {
         $query = User::where('role_id', 3)
             ->where('is_active', 1)
+              ->where('profile_completed', 1)
             ->with(['teacherInfo', 'teacherServices', 'subjects', 'teacherLanguages']);
 
         /* =======================
@@ -803,6 +804,7 @@ class UserController extends Controller
     {
         $teacher = User::where('role_id', 3)
             ->where('is_active', 1)
+          
             ->find($id);
 
         if (!$teacher) {
