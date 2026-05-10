@@ -29,6 +29,8 @@ class SessionsController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
+        $this->autoUpdateOverdueSessions($user);
+        
         $status = $request->get('status', null); // optional: filter by status
         $perPage = $request->get('per_page', 15);
 
@@ -89,6 +91,7 @@ class SessionsController extends Controller
     public function groupedSessions(Request $request): JsonResponse
     {
         $user = $request->user();
+        $this->autoUpdateOverdueSessions($user);
 
         if ($user->role_id != 3) {
             return response()->json([
@@ -269,6 +272,7 @@ class SessionsController extends Controller
     public function show(Request $request, $sessionId): JsonResponse
     {
         $user = $request->user();
+        $this->autoUpdateOverdueSessions($user);
 
         $session = Sessions::with(['teacher:id,first_name,last_name,email,nationality', 'student:id,first_name,last_name,email', 'booking'])->where('id', $sessionId)
             ->where(function ($query) use ($user) {
@@ -477,5 +481,35 @@ class SessionsController extends Controller
             'errors' => null,
             'meta' => null
         ]);
+    }
+
+    /**
+     * Automatically update overdue sessions to 'ended' status.
+     * A session is considered overdue if the session_date is before today.
+     * This logic gives flexibility for teachers to start/end sessions on the same day.
+     */
+    private function autoUpdateOverdueSessions($user): void
+    {
+        try {
+            $today = \Carbon\Carbon::today()->format('Y-m-d');
+            
+            $query = Sessions::whereIn('status', [Sessions::STATUS_SCHEDULED, Sessions::STATUS_LIVE])
+                ->where('session_date', '<', $today);
+
+            // Filter by user to optimize, though global update is also fine
+            if ($user->role_id == 3) { // Teacher
+                $query->where('teacher_id', $user->id);
+            } elseif ($user->role_id == 4) { // Student
+                $query->where('student_id', $user->id);
+            }
+
+            $affected = $query->update(['status' => Sessions::STATUS_ENDED]);
+            
+            if ($affected > 0) {
+                Log::info("Auto-updated {$affected} overdue sessions to 'ended' for user {$user->id}");
+            }
+        } catch (\Exception $e) {
+            Log::error("Failed to auto-update overdue sessions: " . $e->getMessage());
+        }
     }
 }

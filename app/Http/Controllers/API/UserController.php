@@ -659,9 +659,20 @@ class UserController extends Controller
     // List all teachers with optional filters
     public function listTeachers(Request $request)
     {
+        // ✅ First, update profile_completed status for all teachers with teacherServices
+        // This ensures we get the latest status even if teacher updated their profile
+        $allTeachersWithServices = User::where('role_id', 3)
+            ->where('is_active', 1)
+            ->whereHas('teacherServices')
+            ->pluck('id');
+
+        foreach ($allTeachersWithServices as $teacherId) {
+            \App\Helpers\TeacherProfileHelper::checkAndUpdateProfileCompleted($teacherId);
+        }
+
         $query = User::where('role_id', 3)
             ->where('is_active', 1)
-              ->where('profile_completed', 1)
+            ->where('profile_completed', 1)
             ->with(['teacherInfo', 'teacherServices', 'subjects', 'teacherLanguages']);
 
         /* =======================
@@ -804,7 +815,6 @@ class UserController extends Controller
     {
         $teacher = User::where('role_id', 3)
             ->where('is_active', 1)
-          
             ->find($id);
 
         if (!$teacher) {
@@ -813,6 +823,9 @@ class UserController extends Controller
                 'message' => 'Teacher not found'
             ], 404);
         }
+
+        // ✅ Update profile completion status based on current data
+        \App\Helpers\TeacherProfileHelper::checkAndUpdateProfileCompleted($teacher->id);
 
         return response()->json([
             'success' => true,
@@ -869,6 +882,9 @@ class UserController extends Controller
                 'subject_id' => $subject_id,
             ]);
         }
+
+        // ✅ Update profile completion status after changes
+        \App\Helpers\TeacherProfileHelper::checkAndUpdateProfileCompleted($teacher->id);
 
         return response()->json([
             'success' => true,

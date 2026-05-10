@@ -285,23 +285,6 @@ class BookingController extends Controller
             // Sessions will ONLY be created AFTER payment succeeds
             // This ensures slot remains available if payment fails, preventing customer confusion
             // Slot locking happens in PaymentController.paymentStatus() when payment is confirmed
-$ns = new \App\Services\NotificationService();
-
-$title = app()->getLocale() == 'ar' 
-    ? 'تم إنشاء الحجز' 
-    : 'Booking Created';
-
-$msg = app()->getLocale() == 'ar'
-    ? "تم إنشاء الحجز ({$booking->booking_reference}) بنجاح. يمكنك متابعة التفاصيل من حسابك."
-    : "Your booking ({$booking->booking_reference}) has been created successfully. You can view the details in your account.";
-
-$ns->send($booking->student, 'booking_created', $title, $msg, [
-    'booking_id' => $booking->id,
-]);
-     $teacher = \App\Models\User::findOrFail($teacherId);
-$ns->send($teacher, 'booking_created', $title, $msg, [
-    'booking_id' => $booking->id,
-]);
             DB::commit();
             Log::info('Booking created (pending payment, slot still available)', [
                 'booking_id' => $booking->id, 
@@ -501,11 +484,15 @@ $ns->send($teacher, 'booking_created', $title, $msg, [
                 try {
                     $ns = new \App\Services\NotificationService();
                     
-                    // Notify Student
+                    $firstSessionStart = \Carbon\Carbon::parse($booking->first_session_date . ' ' . $booking->first_session_start_time)->format('Y-m-d H:i');
+
+                    // ============================================================
+                    // STUDENT NOTIFICATIONS
+                    // ============================================================
                     $titleStudent = app()->getLocale() == 'ar' ? 'تم الدفع بنجاح' : 'Payment successful';
                     $msgStudent = app()->getLocale() == 'ar'
-                        ? "تم استلام دفعتك للحجز ({$booking->booking_reference}). شكراً."
-                        : "Your payment for booking ({$booking->booking_reference}) was successful.";
+                        ? "نجاح! لقد حجزت {$booking->sessions_count} جلسات مع المعلم. تبدأ جلستك الأولى في {$firstSessionStart}."
+                        : "Success! You have booked {$booking->sessions_count} sessions with your teacher. Your first session starts on {$firstSessionStart}.";
 
                     $ns->send($booking->student, 'payment_success', $titleStudent, $msgStudent, [
                         'booking_id' => $booking->id,
@@ -513,16 +500,34 @@ $ns->send($teacher, 'booking_created', $title, $msg, [
                         'amount' => $booking->total_amount,
                     ]);
 
-                    // Notify Teacher
+                    // Send SMS notification to student
+                    if ($booking->student && $booking->student->phone_number) {
+                        $smsMsgStudent = app()->getLocale() == 'ar'
+                            ? "نجاح! لقد حجزت {$booking->sessions_count} جلسات. الجلسة الأولى في {$firstSessionStart}. / Success! You booked {$booking->sessions_count} sessions. First session is at {$firstSessionStart}."
+                            : "Success! You booked {$booking->sessions_count} sessions. First session is at {$firstSessionStart}. / نجاح! لقد حجزت {$booking->sessions_count} جلسات. الجلسة الأولى في {$firstSessionStart}.";
+                        $ns->sendBilingualSMS($booking->student->phone_number, $smsMsgStudent);
+                    }
+
+                    // ============================================================
+                    // TEACHER NOTIFICATIONS
+                    // ============================================================
                     $titleTeacher = app()->getLocale() == 'ar' ? 'حجز جديد' : 'New booking';
                     $msgTeacher = app()->getLocale() == 'ar'
-                        ? "لديك حجز جديد (#{$booking->booking_reference}) من {$booking->student?->first_name}"
-                        : "You have a new booking (#{$booking->booking_reference}) from {$booking->student?->first_name}";
+                        ? "لديك حجز جديد (#{$booking->booking_reference}) من {$booking->student?->first_name} لعدد {$booking->sessions_count} جلسات. تبدأ يوم {$firstSessionStart}."
+                        : "You have a new booking (#{$booking->booking_reference}) from {$booking->student?->first_name} for {$booking->sessions_count} sessions starting on {$firstSessionStart}.";
 
                     $ns->send($booking->teacher, 'booking_received', $titleTeacher, $msgTeacher, [
                         'booking_id' => $booking->id,
                         'student_id' => $booking->student_id,
                     ]);
+
+                    // Send SMS notification to teacher
+                    if ($booking->teacher && $booking->teacher->phone_number) {
+                        $smsMsgTeacher = app()->getLocale() == 'ar'
+                            ? "لديك حجز جديد من {$booking->student?->first_name} لعدد {$booking->sessions_count} جلسات تبدأ في {$firstSessionStart}. / You have a new booking from {$booking->student?->first_name} for {$booking->sessions_count} sessions starting on {$firstSessionStart}."
+                            : "You have a new booking from {$booking->student?->first_name} for {$booking->sessions_count} sessions starting on {$firstSessionStart}. / لديك حجز جديد من {$booking->student?->first_name} لعدد {$booking->sessions_count} جلسات تبدأ في {$firstSessionStart}.";
+                        $ns->sendBilingualSMS($booking->teacher->phone_number, $smsMsgTeacher);
+                    }
                 } catch (\Exception $e) {
                     Log::error('Payment success notifications failed', ['error' => $e->getMessage()]);
                 }
@@ -867,11 +872,15 @@ $ns->send($teacher, 'booking_created', $title, $msg, [
             try {
                 $ns = new \App\Services\NotificationService();
                 
-                // Notify Student
+                $firstSessionStart = \Carbon\Carbon::parse($booking->first_session_date . ' ' . $booking->first_session_start_time)->format('Y-m-d H:i');
+
+                // ============================================================
+                // STUDENT NOTIFICATIONS
+                // ============================================================
                 $titleStudent = app()->getLocale() == 'ar' ? 'تم الدفع بنجاح' : 'Payment successful';
                 $msgStudent = app()->getLocale() == 'ar'
-                    ? "تم استلام دفعتك للحجز ({$booking->booking_reference}). شكراً."
-                    : "Your payment for booking ({$booking->booking_reference}) was successful.";
+                    ? "نجاح! لقد حجزت {$booking->sessions_count} جلسات مع المعلم. تبدأ جلستك الأولى في {$firstSessionStart}."
+                    : "Success! You have booked {$booking->sessions_count} sessions with your teacher. Your first session starts on {$firstSessionStart}.";
 
                 $ns->send($booking->student, 'payment_success', $titleStudent, $msgStudent, [
                     'booking_id' => $booking->id,
@@ -879,16 +888,34 @@ $ns->send($teacher, 'booking_created', $title, $msg, [
                     'amount' => $booking->total_amount,
                 ]);
 
-                // Notify Teacher
+                // Send SMS notification to student
+                if ($booking->student && $booking->student->phone_number) {
+                    $smsMsgStudent = app()->getLocale() == 'ar'
+                        ? "نجاح! لقد حجزت {$booking->sessions_count} جلسات. الجلسة الأولى في {$firstSessionStart}. / Success! You booked {$booking->sessions_count} sessions. First session is at {$firstSessionStart}."
+                        : "Success! You booked {$booking->sessions_count} sessions. First session is at {$firstSessionStart}. / نجاح! لقد حجزت {$booking->sessions_count} جلسات. الجلسة الأولى في {$firstSessionStart}.";
+                    $ns->sendBilingualSMS($booking->student->phone_number, $smsMsgStudent);
+                }
+
+                // ============================================================
+                // TEACHER NOTIFICATIONS
+                // ============================================================
                 $titleTeacher = app()->getLocale() == 'ar' ? 'حجز جديد' : 'New booking';
                 $msgTeacher = app()->getLocale() == 'ar'
-                    ? "لديك حجز جديد (#{$booking->booking_reference}) من {$booking->student?->first_name}"
-                    : "You have a new booking (#{$booking->booking_reference}) from {$booking->student?->first_name}";
+                    ? "لديك حجز جديد (#{$booking->booking_reference}) من {$booking->student?->first_name} لعدد {$booking->sessions_count} جلسات. تبدأ يوم {$firstSessionStart}."
+                    : "You have a new booking (#{$booking->booking_reference}) from {$booking->student?->first_name} for {$booking->sessions_count} sessions starting on {$firstSessionStart}.";
 
                 $ns->send($booking->teacher, 'booking_received', $titleTeacher, $msgTeacher, [
                     'booking_id' => $booking->id,
                     'student_id' => $booking->student_id,
                 ]);
+
+                // Send SMS notification to teacher
+                if ($booking->teacher && $booking->teacher->phone_number) {
+                    $smsMsgTeacher = app()->getLocale() == 'ar'
+                        ? "لديك حجز جديد من {$booking->student?->first_name} لعدد {$booking->sessions_count} جلسات تبدأ في {$firstSessionStart}. / You have a new booking from {$booking->student?->first_name} for {$booking->sessions_count} sessions starting on {$firstSessionStart}."
+                        : "You have a new booking from {$booking->student?->first_name} for {$booking->sessions_count} sessions starting on {$firstSessionStart}. / لديك حجز جديد من {$booking->student?->first_name} لعدد {$booking->sessions_count} جلسات تبدأ في {$firstSessionStart}.";
+                    $ns->sendBilingualSMS($booking->teacher->phone_number, $smsMsgTeacher);
+                }
             } catch (\Exception $e) {
                 Log::error('Payment success notifications failed', ['error' => $e->getMessage()]);
             }
@@ -1674,23 +1701,56 @@ $ns->send($teacher, 'booking_created', $title, $msg, [
 
             Log::info('Payment confirmed via callback', ['payment_id' => $payment->id]);
 
-            // Send notification
+            // Send success notification to both student and teacher
             try {
                 $ns = new \App\Services\NotificationService();
-                $title = app()->getLocale() == 'ar' ? 'تم الدفع بنجاح' : 'Payment successful';
-                $msg = app()->getLocale() == 'ar'
-                    ? "تم استلام دفعتك للحجز ({$booking->booking_reference}). شكراً."
-                    : "Your payment for booking ({$booking->booking_reference}) was successful.";
+                
+                $firstSessionStart = \Carbon\Carbon::parse($booking->first_session_date . ' ' . $booking->first_session_start_time)->format('Y-m-d H:i');
 
-                if ($booking && $booking->student) {
-                    $ns->send($booking->student, 'payment_success', $title, $msg, [
-                        'booking_id' => $booking->id,
-                        'payment_id' => $payment->id,
-                        'amount' => $booking->total_amount,
-                    ]);
+                // ============================================================
+                // STUDENT NOTIFICATIONS
+                // ============================================================
+                $titleStudent = app()->getLocale() == 'ar' ? 'تم الدفع بنجاح' : 'Payment successful';
+                $msgStudent = app()->getLocale() == 'ar'
+                    ? "نجاح! لقد حجزت {$booking->sessions_count} جلسات مع المعلم. تبدأ جلستك الأولى في {$firstSessionStart}."
+                    : "Success! You have booked {$booking->sessions_count} sessions with your teacher. Your first session starts on {$firstSessionStart}.";
+
+                $ns->send($booking->student, 'payment_success', $titleStudent, $msgStudent, [
+                    'booking_id' => $booking->id,
+                    'payment_id' => $payment->id,
+                    'amount' => $booking->total_amount,
+                ]);
+
+                // Send SMS notification to student
+                if ($booking->student && $booking->student->phone_number) {
+                    $smsMsgStudent = app()->getLocale() == 'ar'
+                        ? "نجاح! لقد حجزت {$booking->sessions_count} جلسات. الجلسة الأولى في {$firstSessionStart}. / Success! You booked {$booking->sessions_count} sessions. First session is at {$firstSessionStart}."
+                        : "Success! You booked {$booking->sessions_count} sessions. First session is at {$firstSessionStart}. / نجاح! لقد حجزت {$booking->sessions_count} جلسات. الجلسة الأولى في {$firstSessionStart}.";
+                    $ns->sendBilingualSMS($booking->student->phone_number, $smsMsgStudent);
+                }
+
+                // ============================================================
+                // TEACHER NOTIFICATIONS
+                // ============================================================
+                $titleTeacher = app()->getLocale() == 'ar' ? 'حجز جديد' : 'New booking';
+                $msgTeacher = app()->getLocale() == 'ar'
+                    ? "لديك حجز جديد (#{$booking->booking_reference}) من {$booking->student?->first_name} لعدد {$booking->sessions_count} جلسات. تبدأ يوم {$firstSessionStart}."
+                    : "You have a new booking (#{$booking->booking_reference}) from {$booking->student?->first_name} for {$booking->sessions_count} sessions starting on {$firstSessionStart}.";
+
+                $ns->send($booking->teacher, 'booking_received', $titleTeacher, $msgTeacher, [
+                    'booking_id' => $booking->id,
+                    'student_id' => $booking->student_id,
+                ]);
+
+                // Send SMS notification to teacher
+                if ($booking->teacher && $booking->teacher->phone_number) {
+                    $smsMsgTeacher = app()->getLocale() == 'ar'
+                        ? "لديك حجز جديد من {$booking->student?->first_name} لعدد {$booking->sessions_count} جلسات تبدأ في {$firstSessionStart}. / You have a new booking from {$booking->student?->first_name} for {$booking->sessions_count} sessions starting on {$firstSessionStart}."
+                        : "You have a new booking from {$booking->student?->first_name} for {$booking->sessions_count} sessions starting on {$firstSessionStart}. / لديك حجز جديد من {$booking->student?->first_name} لعدد {$booking->sessions_count} جلسات تبدأ في {$firstSessionStart}.";
+                    $ns->sendBilingualSMS($booking->teacher->phone_number, $smsMsgTeacher);
                 }
             } catch (\Exception $e) {
-                Log::error('Notification failed', ['error' => $e->getMessage()]);
+                Log::error('Payment success notifications failed', ['error' => $e->getMessage()]);
             }
 
             return response()->json([
