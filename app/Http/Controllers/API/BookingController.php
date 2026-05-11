@@ -297,7 +297,7 @@ class BookingController extends Controller
             $hasSavedMethods = \App\Models\UserPaymentMethod::where('user_id', $studentId)->exists();
 
             // Load teacher with full data
-        
+            $teacher = $isCourse ? $course->teacher : \App\Models\User::find($teacherId);
             $teacherData = $this->getFullTeacherData($teacher);
 
             // Get subject data: from course name if course booking, or from Subject model if service booking
