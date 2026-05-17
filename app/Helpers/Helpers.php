@@ -5,8 +5,21 @@ namespace App\Helpers;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Config;
+use App\Models\AvailabilitySlot;
+
 class Helpers
 {
+    static function updateAvailabilitySlot($id)
+    {
+        $model = AvailabilitySlot::find($id);
+
+        if (!$model) {
+            return false;
+        }
+        $model->is_booked = 1;
+        $model->is_available = 0;
+        return $model->save();
+    }
     static function isActive($pattern)
     {
         return \Illuminate\Support\Str::is($pattern, request()->path()) ? 'active' : '';

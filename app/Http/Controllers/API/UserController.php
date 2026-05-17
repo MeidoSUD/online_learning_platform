@@ -323,7 +323,7 @@ class UserController extends Controller
             // Update user basic info if provided
             if ($request->hasAny(['first_name', 'last_name', 'email', 'phone_number'])) {
                 $updateData = $request->only(['first_name', 'last_name', 'email', 'phone_number']);
-                
+
                 // Normalize phone if provided
                 if (isset($updateData['phone_number'])) {
                     $normalizedPhone = PhoneHelper::normalize($updateData['phone_number']);
@@ -334,7 +334,7 @@ class UserController extends Controller
                             'message' => 'Invalid phone number format.'
                         ], 422);
                     }
-                    
+
                     // Check if phone already exists
                     $existingPhone = User::where('phone_number', $normalizedPhone)
                         ->where('id', '!=', $user->id)
@@ -346,10 +346,10 @@ class UserController extends Controller
                             'message' => 'Phone number already in use.'
                         ], 422);
                     }
-                    
+
                     $updateData['phone_number'] = $normalizedPhone;
                 }
-                
+
                 $user->update($updateData);
             }
 
@@ -387,7 +387,6 @@ class UserController extends Controller
                     ],
                 ]
             ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Student profile update error: ' . $e->getMessage());
@@ -420,7 +419,7 @@ class UserController extends Controller
             // Update user basic info
             if ($request->hasAny(['first_name', 'last_name', 'email', 'phone_number'])) {
                 $updateData = $request->only(['first_name', 'last_name', 'email', 'phone_number']);
-                
+
                 if (isset($updateData['phone_number'])) {
                     $normalizedPhone = PhoneHelper::normalize($updateData['phone_number']);
                     if (!$normalizedPhone) {
@@ -430,7 +429,7 @@ class UserController extends Controller
                             'message' => 'Invalid phone number format.'
                         ], 422);
                     }
-                    
+
                     $existingPhone = User::where('phone_number', $normalizedPhone)
                         ->where('id', '!=', $user->id)
                         ->first();
@@ -441,10 +440,10 @@ class UserController extends Controller
                             'message' => 'Phone number already in use.'
                         ], 422);
                     }
-                    
+
                     $updateData['phone_number'] = $normalizedPhone;
                 }
-                
+
                 $user->update($updateData);
             }
 
@@ -489,7 +488,6 @@ class UserController extends Controller
                 'message' => 'Profile updated successfully',
                 'data' => $this->getFullTeacherData($user)
             ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Teacher profile update error: ' . $e->getMessage());
@@ -649,7 +647,6 @@ class UserController extends Controller
                 'user_id' => $institute->user_id,
                 'path' => $filePath
             ]);
-
         } catch (\Exception $e) {
             Log::error("Failed to upload institute $attachmentType: " . $e->getMessage());
             throw $e;
@@ -702,14 +699,14 @@ class UserController extends Controller
                 if ($request->filled('min_price')) {
                     $q->where(function ($x) use ($request) {
                         $x->where('individual_hour_price', '>=', $request->min_price)
-                          ->orWhere('group_hour_price', '>=', $request->min_price);
+                            ->orWhere('group_hour_price', '>=', $request->min_price);
                     });
                 }
 
                 if ($request->filled('max_price')) {
                     $q->where(function ($x) use ($request) {
                         $x->where('individual_hour_price', '<=', $request->max_price)
-                          ->orWhere('group_hour_price', '<=', $request->max_price);
+                            ->orWhere('group_hour_price', '<=', $request->max_price);
                     });
                 }
             });
@@ -747,7 +744,7 @@ class UserController extends Controller
         if ($request->filled('min_rate')) {
             $query->whereHas('reviews', function ($q) use ($request) {
                 $q->groupBy('reviewed_id')
-                  ->havingRaw('AVG(rating) >= ?', [$request->min_rate]);
+                    ->havingRaw('AVG(rating) >= ?', [$request->min_rate]);
             });
         }
 
@@ -758,26 +755,26 @@ class UserController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('first_name', 'like', "%{$search}%")
-                  ->orWhere('last_name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
         /* =======================
          | Pagination & Ordering
          ======================= */
-        
+
         // Check if user wants all teachers (all=true or all=1)
         $getAll = $request->boolean('all') || $request->get('all') === '1';
-        
+
         if ($getAll) {
             // Return all teachers without pagination
             $teachers = $query->orderByDesc('id')->get();
-            
+
             $transformedTeachers = $teachers->map(function ($teacher) {
                 return $this->getFullTeacherData($teacher);
             });
-            
+
             return response()->json([
                 'success' => true,
                 'data' => $transformedTeachers,
@@ -787,7 +784,7 @@ class UserController extends Controller
                 ]
             ]);
         }
-        
+
         // Otherwise use pagination with default of 10 per page
         $perPage = $request->get('per_page', 10);
         $teachers = $query->orderByDesc('id')->paginate($perPage);
@@ -991,7 +988,7 @@ class UserController extends Controller
             // Create new service records
             foreach ($servicesInput as $service_id) {
                 $service_id = (int)$service_id; // Ensure it's an integer
-                
+
                 // Validate service exists
                 $serviceExists = DB::table('services')->where('id', $service_id)->exists();
                 if (!$serviceExists) {
@@ -1012,7 +1009,6 @@ class UserController extends Controller
                 'teacher_id' => $teacher->id,
                 'services' => $servicesInput
             ]);
-
         } catch (\Exception $e) {
             Log::error('TeacherServices save error: ' . $e->getMessage(), [
                 'teacher_id' => $teacher->id,
@@ -1059,14 +1055,14 @@ class UserController extends Controller
     public function deleteAccount(Request $request)
     {
         $user = $request->user();
-        
+
         try {
             // Revoke all tokens
             $user->tokens()->delete();
-            
+
             // Delete the user
             $user->delete();
-            
+
             return response()->json([
                 'success' => true,
                 'message' => 'Account deleted successfully'
@@ -1258,7 +1254,7 @@ class UserController extends Controller
 
         // Get availability slots grouped by day
         $availabilitySlots = AvailabilitySlot::where('teacher_id', $teacher->id)
-            ->where('is_available', true)
+            // ->where('is_available', true)
             ->get()
             ->groupBy('day_number');
 
@@ -1279,6 +1275,8 @@ class UserController extends Controller
             $times = $slots->map(function ($slot) {
                 return [
                     'id' => $slot->id,
+                    'is_booked' => $slot->is_booked,
+                    'is_available' => $slot->is_available,
                     'time' => $slot->start_time->format('h:i A') // Format time as "5:00 PM"
                 ];
             })->values()->toArray();
@@ -1426,7 +1424,7 @@ class UserController extends Controller
         // If trying to set as active, check if profile is verified
         if ($isActive) {
             $userProfile = UserProfile::where('user_id', $user->id)->first();
-            
+
             if (!$userProfile || !$userProfile->verified) {
                 return response()->json([
                     'success' => false,
