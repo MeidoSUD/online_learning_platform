@@ -113,6 +113,7 @@ use App\Http\Controllers\API\Admin\InstituteController;
     Route::get('language-study/teachers/filter', [LanguageStudyController::class, 'filterTeachersByLanguage']); // Filter teachers by language
     Route::get('/teachers', [UserController::class, 'listTeachers']);
     Route::get('/teachers/{id}', [UserController::class, 'teacherDetails']);
+    Route::get('/teachers/{id}/students', [BookingController::class, 'getTeacherStudentsPublic']);
     Route::get('/education-levels', [EducationLevelController::class, 'levelsWithClassesAndSubjects']);
     Route::get('/classes/{education_level_id}', [EducationLevelController::class, 'classes']);
     Route::get('subjectsClasses/{class_id}', [EducationLevelController::class, 'getSubjectsByClass']);
@@ -318,6 +319,7 @@ use App\Http\Controllers\API\Admin\InstituteController;
         Route::delete('/applications/{application_id}', [TeacherApplicationController::class, 'cancelApplication']);
         // bookings
         Route::post('booking', [BookingController::class, 'index']);
+        Route::get('bookings/students', [BookingController::class, 'getTeacherStudents']);
         //sessions
         Route::get('/sessions', [SessionsController::class, 'index']);
         Route::get('/sessions/{id}', [SessionsController::class, 'show']);
