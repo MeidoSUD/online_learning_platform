@@ -1824,4 +1824,82 @@ class BookingController extends Controller
             ], 404);
         }
     }
+
+    public function getTeacherStudents(Request $request): JsonResponse
+    {
+        $teacherId = auth()->id();
+
+        $studentIds = Booking::where('teacher_id', $teacherId)
+            ->where('status', '!=', 'cancelled')
+            ->distinct()
+            ->pluck('student_id');
+
+        $students = \App\Models\User::whereIn('id', $studentIds)->get();
+
+        $studentsData = $students->map(function ($student) use ($teacherId) {
+            $bookingsCount = Booking::where('teacher_id', $teacherId)
+                ->where('student_id', $student->id)
+                ->where('status', '!=', 'cancelled')
+                ->count();
+
+            $profilePhoto = $student->attachments()
+                ->where('attached_to_type', 'profile_picture')
+                ->latest()
+                ->value('file_path');
+
+            return [
+                'id' => $student->id,
+                'name' => $student->first_name . ' ' . $student->last_name,
+                'first_name' => $student->first_name,
+                'last_name' => $student->last_name,
+                'email' => $student->email,
+                'phone_number' => $student->phone_number,
+                'image' => $profilePhoto,
+                'bookings_count' => $bookingsCount,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $studentsData
+        ]);
+    }
+
+    public function getTeacherStudentsPublic($teacherId): JsonResponse
+    {
+        $studentIds = Booking::where('teacher_id', $teacherId)
+            ->where('status', '!=', 'cancelled')
+            ->distinct()
+            ->pluck('student_id');
+
+        $students = \App\Models\User::whereIn('id', $studentIds)->get();
+
+        $studentsData = $students->map(function ($student) use ($teacherId) {
+            $bookingsCount = Booking::where('teacher_id', $teacherId)
+                ->where('student_id', $student->id)
+                ->where('status', '!=', 'cancelled')
+                ->count();
+
+            $profilePhoto = $student->attachments()
+                ->where('attached_to_type', 'profile_picture')
+                ->latest()
+                ->value('file_path');
+
+            return [
+                'id' => $student->id,
+                'name' => $student->first_name . ' ' . $student->last_name,
+                'first_name' => $student->first_name,
+                'last_name' => $student->last_name,
+                'email' => $student->email,
+                'phone_number' => $student->phone_number,
+                'image' => $profilePhoto,
+                'bookings_count' => $bookingsCount,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $studentsData
+        ]);
+    }
 }
