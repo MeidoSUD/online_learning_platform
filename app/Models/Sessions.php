@@ -4,6 +4,7 @@
 
 namespace App\Models;
 
+use App\Helpers\Helpers;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -110,7 +111,7 @@ class Sessions extends Model
     public function scopeUpcoming($query)
     {
         return $query->where('status', self::STATUS_SCHEDULED)
-                    ->where('session_date', '>=', now()->format('Y-m-d'));
+            ->where('session_date', '>=', now()->format('Y-m-d'));
     }
 
     public function scopeForStudent($query, $studentId)
@@ -138,7 +139,7 @@ class Sessions extends Model
     {
         $hours = floor($this->duration / 60);
         $minutes = $this->duration % 60;
-        
+
         if ($hours > 0) {
             return $hours . 'h ' . ($minutes > 0 ? $minutes . 'm' : '');
         }
@@ -147,7 +148,7 @@ class Sessions extends Model
 
     public function getStatusLabelAttribute(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             self::STATUS_SCHEDULED => 'Scheduled',
             self::STATUS_LIVE => 'Live',
             self::STATUS_ENDED => 'Ended',
@@ -255,7 +256,7 @@ class Sessions extends Model
         } else {
             $dateStr = trim((string) $date);
             // If date-time string given, extract date part
-            if (preg_match('/^(\d{4}-\d{2}-\d{2})/',$dateStr, $m)) {
+            if (preg_match('/^(\d{4}-\d{2}-\d{2})/', $dateStr, $m)) {
                 $dateStr = $m[1];
             }
         }
@@ -417,19 +418,19 @@ class Sessions extends Model
         }
     }
 
-private function generateMeetingPassword(): string
-{
-    return 'TUT' . $this->id . rand(100, 999);
-}
+    private function generateMeetingPassword(): string
+    {
+        return 'TUT' . $this->id . rand(100, 999);
+    }
 
-// Add this accessor to get host URL from teacher_notes
-public function getHostUrlAttribute(): ?string
-{
-    if (!$this->teacher_notes) return null;
-    
-    preg_match('/Host URL: (.+)/', $this->teacher_notes, $matches);
-    return $matches[1] ?? null;
-}
+    // Add this accessor to get host URL from teacher_notes
+    public function getHostUrlAttribute(): ?string
+    {
+        if (!$this->teacher_notes) return null;
+
+        preg_match('/Host URL: (.+)/', $this->teacher_notes, $matches);
+        return $matches[1] ?? null;
+    }
 
     // Static methods
 
@@ -450,17 +451,18 @@ public function getHostUrlAttribute(): ?string
 
         try {
             $booking = $booking->load(['subject.service', 'course', 'courseGroup']);
-            
+
             $sessionTitle = self::buildSessionTitle($booking);
 
             if ($booking->course_group_id && $booking->courseGroup) {
                 self::createGroupCourseSessions($booking, $sessionTitle);
                 return;
             }
-            
+
             if ($booking->session_type === Booking::TYPE_SINGLE) {
                 $session = self::create([
                     'booking_id' => $booking->id,
+                    'availability_slot_id' => $booking->availability_slot_id,
                     'student_id' => $booking->student_id,
                     'teacher_id' => $booking->teacher_id,
                     'session_number' => 1,
@@ -471,20 +473,22 @@ public function getHostUrlAttribute(): ?string
                     'duration' => $booking->session_duration,
                     'status' => self::STATUS_SCHEDULED,
                 ]);
-                
+                if ($session) {
+                    Helpers::updateAvailabilitySlot($session->availability_slot_id);
+                }
                 Log::info('Session created for single booking', [
                     'session_id' => $session->id,
                     'booking_id' => $booking->id,
                     'session_title' => $sessionTitle,
                 ]);
-                
             } else {
                 $startDate = Carbon::parse($booking->first_session_date);
-                
+
                 for ($i = 1; $i <= $booking->sessions_count; $i++) {
                     $sessionDate = $i === 1 ? $startDate : $startDate->copy()->addWeeks($i - 1);
-                    
+
                     $session = self::create([
+                        'availability_slot_id' => $booking->availability_slot_id,
                         'booking_id' => $booking->id,
                         'student_id' => $booking->student_id,
                         'teacher_id' => $booking->teacher_id,
@@ -496,7 +500,9 @@ public function getHostUrlAttribute(): ?string
                         'duration' => $booking->session_duration,
                         'status' => self::STATUS_SCHEDULED,
                     ]);
-                    
+                    if ($session) {
+                        Helpers::updateAvailabilitySlot($session->availability_slot_id);
+                    }
                     Log::info("Package session {$i} created", [
                         'session_id' => $session->id,
                         'booking_id' => $booking->id,
@@ -562,6 +568,7 @@ public function getHostUrlAttribute(): ?string
                 $sessionNumber++;
 
                 self::create([
+                    'availability_slot_id' => $booking->availability_slot_id,
                     'booking_id' => $booking->id,
                     'student_id' => $booking->student_id,
                     'teacher_id' => $booking->teacher_id,
@@ -573,7 +580,9 @@ public function getHostUrlAttribute(): ?string
                     'duration' => $duration,
                     'status' => self::STATUS_SCHEDULED,
                 ]);
-
+                if ($session) {
+                    Helpers::updateAvailabilitySlot($booking->availability_slot_id);
+                }
                 Log::info("Group course session {$sessionNumber} created", [
                     'session_date' => $currentDate->format('Y-m-d'),
                     'booking_id' => $booking->id,
@@ -588,42 +597,42 @@ public function getHostUrlAttribute(): ?string
         }
     }
 
-/**
- * Build session title based on service and language
- * 
- * Rules:
- * - Language Study service: "[Service Name] - [Language Name]" (e.g., "Language Study - English")
- * - Other services: "[Service Name]" (e.g., "Private Lessons", "Courses")
- * - Course bookings: Use course name
- * 
- * @param Booking $booking
- * @return string
- */
-private static function buildSessionTitle(Booking $booking): string
-{
-    // If course booking, use course name
-    if ($booking->course) {
-        return $booking->course->name ?? 'Session';
-    }
-    
-    // Service booking - check service type via subject
-    if ($booking->subject && $booking->subject->service) {
-        $serviceName = $booking->subject->service->name ?? 'Service';
-        
-        // Check if language_study service
-        if ($booking->subject->service->key_name === 'language_study') {
-            // Include language name for language study service
-            $languageName = $booking->subject->name_en ?? 'Language';
-            return "{$serviceName} - {$languageName}";
+    /**
+     * Build session title based on service and language
+     * 
+     * Rules:
+     * - Language Study service: "[Service Name] - [Language Name]" (e.g., "Language Study - English")
+     * - Other services: "[Service Name]" (e.g., "Private Lessons", "Courses")
+     * - Course bookings: Use course name
+     * 
+     * @param Booking $booking
+     * @return string
+     */
+    private static function buildSessionTitle(Booking $booking): string
+    {
+        // If course booking, use course name
+        if ($booking->course) {
+            return $booking->course->name ?? 'Session';
         }
-        
-        // Other services - just service name
-        return $serviceName;
+
+        // Service booking - check service type via subject
+        if ($booking->subject && $booking->subject->service) {
+            $serviceName = $booking->subject->service->name ?? 'Service';
+
+            // Check if language_study service
+            if ($booking->subject->service->key_name === 'language_study') {
+                // Include language name for language study service
+                $languageName = $booking->subject->name_en ?? 'Language';
+                return "{$serviceName} - {$languageName}";
+            }
+
+            // Other services - just service name
+            return $serviceName;
+        }
+
+        // Fallback
+        return 'Session';
     }
-    
-    // Fallback
-    return 'Session';
-}
 
     public static function getStatuses(): array
     {
@@ -643,10 +652,9 @@ private static function buildSessionTitle(Booking $booking): string
         parent::boot();
 
         static::creating(function ($session) {
-    // This creates fake URLs immediately when session is created
-    if (!$session->join_url) {
-        
-    }
+            // This creates fake URLs immediately when session is created
+            if (!$session->join_url) {
+            }
         });
 
         static::updated(function ($session) {
