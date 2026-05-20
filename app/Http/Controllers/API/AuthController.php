@@ -780,6 +780,19 @@ class AuthController extends Controller
             $user->verification_code = null;
             $user->save();
 
+            // Send welcome notification if teacher
+            if ($user->role_id == 3) { // Teacher role
+                try {
+                    $this->sendTeacherWelcomeNotification($user);
+                } catch (\Exception $e) {
+                    Log::warning('Failed to send teacher welcome notification', [
+                        'user_id' => $user->id,
+                        'error' => $e->getMessage()
+                    ]);
+                    // Don't fail verification if notification fails
+                }
+            }
+
             $token = $user->createToken('mobile-app-token')->plainTextToken;
 
             return response()->json([
@@ -791,6 +804,67 @@ class AuthController extends Controller
             return response()->json([
                 'message' => 'Invalid verification code.'
             ], 422);
+        }
+    }
+
+    /**
+     * Send welcome notification to teacher after email verification
+     * Includes push notification and SMS
+     */
+    private function sendTeacherWelcomeNotification(User $user): void
+    {
+        $titleAr = 'مرحباً بك في منصة تعليمية';
+        $titleEn = 'Welcome to Our Teaching Platform';
+        
+        $messageAr = 'تم تسجيلك بنجاح، وأصبحت الآن جزءًا من منصة تعليمية تهدف لربطك بالطلاب وتحويل خبرتك إلى دخل حقيقي
+
+نحن حاليًا في مرحلة تجهيز المعلمين استعدادًا للإطلاق الرسمي، فاستعد لاستقبال طلابك قريبًا وابدأ رحلتك نحو زيادة دخلك وبناء مستقبلك التعليمي معنا';
+
+        $messageEn = 'Welcome to our teaching platform! You have successfully registered and joined a community dedicated to connecting you with students and turning your expertise into real income.
+
+We are currently in the teacher preparation phase ahead of our official launch. Get ready to receive your students soon and start your journey towards increasing your income and building your educational future with us.';
+
+        // Save to database
+        \App\Models\Notification::create([
+            'user_id' => $user->id,
+            'type' => 'teacher_welcome',
+            'title' => app()->getLocale() == 'ar' ? $titleAr : $titleEn,
+            'message' => app()->getLocale() == 'ar' ? $messageAr : $messageEn,
+            'data' => [
+                'user_id' => $user->id,
+                'role' => 'teacher',
+            ]
+        ]);
+
+        // Send push notification
+        try {
+            $ns = new \App\Services\NotificationService();
+            $ns->send($user, 'teacher_welcome', 
+                app()->getLocale() == 'ar' ? $titleAr : $titleEn,
+                app()->getLocale() == 'ar' ? $messageAr : $messageEn,
+                ['user_id' => $user->id, 'role' => 'teacher']
+            );
+        } catch (\Exception $e) {
+            Log::warning('Failed to send push notification', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+
+        // Send bilingual SMS
+        try {
+            if ($user->phone_number) {
+                $normalizedPhone = \App\Helpers\PhoneHelper::normalizeForSMS($user->phone_number);
+                $ns = new \App\Services\NotificationService();
+                $ns->sendBilingualSMS($normalizedPhone, $messageAr . "\n\n" . $messageEn);
+                
+                Log::info('Teacher welcome SMS sent', ['user_id' => $user->id]);
+            }
+        } catch (\Exception $e) {
+            Log::warning('Failed to send SMS notification', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
         }
     }
 

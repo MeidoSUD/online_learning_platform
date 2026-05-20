@@ -266,6 +266,11 @@ class NotificationService
             ]);
 
             $responseData = json_decode($response->getBody(), true);
+            
+            // Ensure response is always an array - dreams.sa might return int (1) for success
+            if (!is_array($responseData)) {
+                $responseData = ['status' => $responseData, 'success' => true];
+            }
 
             Log::info('Bilingual SMS sent successfully', [
                 'phone' => substr($normalizedPhone, -4),

@@ -43,6 +43,7 @@
 use App\Http\Controllers\API\Admin\SettingController;
 use App\Http\Controllers\API\Admin\RevenuePercentageController;
 use App\Http\Controllers\API\Admin\OrderAdminController;
+use App\Http\Controllers\API\Admin\TermsConditionsAdminController;
 
   
 use App\Http\Controllers\API\Admin\InstituteController;
@@ -547,4 +548,14 @@ use App\Http\Controllers\API\Admin\InstituteController;
         Route::put( '/ads/{id}/toggle', [AdsAdminController::class, 'toggleAdStatus']); // Toggle ad active/inactive
         Route::put('/ads/{id}', [AdsAdminController::class, 'updateAd']); // Toggle ad active/inactive
         Route::delete('/ads/{id}', [AdsAdminController::class, 'deleteAd']); // Delete ad
+
+        // Terms & Conditions Management
+        Route::get('/terms-conditions', [TermsConditionsAdminController::class, 'index']); // List all terms and conditions
+        Route::post('/terms-conditions', [TermsConditionsAdminController::class, 'store']); // Create terms and conditions
+        Route::get('/terms-conditions/{id}', [TermsConditionsAdminController::class, 'show']); // Get terms and conditions details
+        Route::put('/terms-conditions/{id}', [TermsConditionsAdminController::class, 'update']); // Update terms and conditions
+        Route::delete('/terms-conditions/{id}', [TermsConditionsAdminController::class, 'destroy']); // Soft delete terms and conditions
+        Route::delete('/terms-conditions/{id}/force', [TermsConditionsAdminController::class, 'forceDelete']); // Permanently delete terms and conditions
+        Route::post('/terms-conditions/{id}/restore', [TermsConditionsAdminController::class, 'restore']); // Restore soft-deleted terms and conditions
+        Route::get('/terms-conditions/type/{type}', [TermsConditionsAdminController::class, 'getByType']); // Get latest active terms and conditions by type
     });

@@ -11,6 +11,7 @@ use App\Models\SavedCard;
 use App\Models\User;
 use App\Models\AvailabilitySlot;
 use App\Models\Sessions;
+use App\Models\Languages;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -708,8 +709,12 @@ class PaymentController extends Controller
                 } 
                 elseif ($service && $service->key_name === 'language_learning') {
                     // ✅ Language Learning service - use language name
-                    $language = $booking->languages()->first();
-                    $languageName = $language?->name ?? 'Language';
+                    if ($booking->language_id) {
+                        $language = Languages::find($booking->language_id);
+                        $languageName = $language?->name_en ?? 'Language';
+                    } else {
+                        $languageName = 'Language';
+                    }
                     return app()->getLocale() == 'ar' 
                         ? "دراسة لغة: {$languageName}" 
                         : "Language: {$languageName}";
