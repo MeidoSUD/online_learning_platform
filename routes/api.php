@@ -240,6 +240,7 @@ use App\Http\Controllers\API\Admin\InstituteController;
         Route::get('/payments/history', [PaymentController::class, 'history']); // payment history
         // sessions
         Route::get('/sessions', [SessionsController::class, 'index']); // list my sessions
+        Route::get('/teachers/{id}/sessions', [BookingController::class, 'mySessions']);
         Route::get('/sessions/grouped', [SessionsController::class, 'groupedSessions']); // teacher: grouped sessions by time
         Route::get('/sessions/{id}', [SessionsController::class, 'show']); // session details
         Route::post('/sessions/{id}/join', [SessionsController::class, 'join']); // join session
@@ -319,7 +320,6 @@ use App\Http\Controllers\API\Admin\InstituteController;
         Route::delete('/applications/{application_id}', [TeacherApplicationController::class, 'cancelApplication']);
         // bookings
         Route::post('booking', [BookingController::class, 'index']);
-        Route::get('bookings/students', [BookingController::class, 'getTeacherStudents']);
         //sessions
         Route::get('/sessions', [SessionsController::class, 'index']);
         Route::get('/sessions/{id}', [SessionsController::class, 'show']);

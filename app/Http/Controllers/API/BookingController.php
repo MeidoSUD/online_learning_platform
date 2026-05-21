@@ -1825,43 +1825,125 @@ class BookingController extends Controller
         }
     }
 
-    public function getTeacherStudents(Request $request): JsonResponse
+    public function mySessions(Request $request, $teacherId): JsonResponse
     {
-        $teacherId = auth()->id();
+        $studentId = auth()->id();
+        $perPage = $request->get('per_page', 5);
 
-        $studentIds = Booking::where('teacher_id', $teacherId)
-            ->where('status', '!=', 'cancelled')
-            ->distinct()
-            ->pluck('student_id');
+        $sessions = Sessions::where('student_id', $studentId)
+            ->where('teacher_id', $teacherId)
+            ->with(['teacher', 'student', 'booking.course'])
+            ->orderBy('session_date', 'desc')
+            ->orderBy('start_time', 'desc')
+            ->paginate($perPage);
 
-        $students = \App\Models\User::whereIn('id', $studentIds)->get();
+        $sessions->through(function ($session) {
+            $subjectData = null;
+            if ($session->booking) {
+                if ($session->booking->course) {
+                    $subjectData = [
+                        'id' => $session->booking->course->id,
+                        'name_en' => $session->booking->course->title ?? $session->booking->course->name,
+                        'name_ar' => $session->booking->course->title_ar ?? $session->booking->course->name_ar,
+                    ];
+                } else if (isset($session->booking->subject_id)) {
+                    $subject = \App\Models\Subject::find($session->booking->subject_id);
+                    if ($subject) {
+                        $subjectData = [
+                            'id' => $subject->id,
+                            'name_en' => $subject->name_en,
+                            'name_ar' => $subject->name_ar,
+                        ];
+                    }
+                }
+            }
 
-        $studentsData = $students->map(function ($student) use ($teacherId) {
-            $bookingsCount = Booking::where('teacher_id', $teacherId)
-                ->where('student_id', $student->id)
-                ->where('status', '!=', 'cancelled')
-                ->count();
-
-            $profilePhoto = $student->attachments()
-                ->where('attached_to_type', 'profile_picture')
-                ->latest()
-                ->value('file_path');
+            $rawDate = $session->session_date;
+            try {
+                if ($rawDate instanceof \Carbon\Carbon) {
+                    $sessionDateFormatted = $rawDate->format('Y-m-d');
+                    $dayNumber = $rawDate->dayOfWeek;
+                    $dayName = $rawDate->format('l');
+                } else {
+                    $dt = \Carbon\Carbon::parse((string) $rawDate);
+                    $sessionDateFormatted = $dt->format('Y-m-d');
+                    $dayNumber = $dt->dayOfWeek;
+                    $dayName = $dt->format('l');
+                }
+            } catch (\Exception $e) {
+                $sessionDateFormatted = substr((string) $rawDate, 0, 10);
+                try {
+                    $dt = \Carbon\Carbon::parse($sessionDateFormatted);
+                    $dayNumber = $dt->dayOfWeek;
+                    $dayName = $dt->format('l');
+                } catch (\Exception $ex) {
+                    $dayNumber = null;
+                    $dayName = null;
+                }
+            }
 
             return [
-                'id' => $student->id,
-                'name' => $student->first_name . ' ' . $student->last_name,
-                'first_name' => $student->first_name,
-                'last_name' => $student->last_name,
-                'email' => $student->email,
-                'phone_number' => $student->phone_number,
-                'image' => $profilePhoto,
-                'bookings_count' => $bookingsCount,
+                'id' => $session->id,
+                'booking_id' => $session->booking_id,
+                'session_number' => $session->session_number,
+                'session_title' => $session->session_title,
+                'session_date' => $sessionDateFormatted,
+                'day_name' => $dayName,
+                'day_number' => $dayNumber,
+                'start_time' => $session->start_time instanceof \Carbon\Carbon
+                    ? $session->start_time->format('H:i:s')
+                    : $session->start_time,
+                'end_time' => $session->end_time instanceof \Carbon\Carbon
+                    ? $session->end_time->format('H:i:s')
+                    : $session->end_time,
+                'duration' => $session->duration,
+                'status' => $session->status,
+                'teacher' => $session->teacher ? [
+                    'id' => $session->teacher->id,
+                    'name' => $session->teacher->first_name . ' ' . $session->teacher->last_name,
+                    'email' => $session->teacher->email,
+                ] : null,
+                'student' => $session->student ? [
+                    'id' => $session->student->id,
+                    'name' => $session->student->first_name . ' ' . $session->student->last_name,
+                    'email' => $session->student->email,
+                ] : null,
+                'meeting' => [
+                    'meeting_id' => $session->meeting_id,
+                    'join_url' => $session->join_url,
+                    'host_url' => $session->host_url,
+                ],
+                'subject' => $subjectData,
+                'booking' => $session->booking ? [
+                    'id' => $session->booking->id,
+                    'reference' => $session->booking->booking_reference,
+                    'type' => $session->booking->session_type,
+                    'total_sessions' => $session->booking->sessions_count,
+                    'completed_sessions' => $session->booking->sessions_completed,
+                ] : null,
+                'session_info' => [
+                    'started_at' => $session->started_at,
+                    'ended_at' => $session->ended_at,
+                    'teacher_notes' => $session->teacher_notes,
+                    'homework' => $session->homework,
+                    'materials_shared' => $session->materials_shared,
+                ],
+                'ratings' => [
+                    'student_rating' => $session->student_rating,
+                    'teacher_rating' => $session->teacher_rating,
+                ],
             ];
         });
 
         return response()->json([
             'success' => true,
-            'data' => $studentsData
+            'data' => $sessions,
+            'pagination' => [
+                'current_page' => $sessions->currentPage(),
+                'last_page' => $sessions->lastPage(),
+                'per_page' => $sessions->perPage(),
+                'total' => $sessions->total(),
+            ]
         ]);
     }
 
