@@ -17,31 +17,26 @@ class NotificationService
      */
     public function send($users, string $type, string $title, string $message, array $data = []): void
     {
-        // Convert single user to array
         if ($users instanceof User) {
             $users = [$users];
         }
 
+        $data['type'] = $type;
 
         foreach ($users as $user) {
             try {
-                // 1. Always save to database for history
                 $this->saveToDatabase($user->id, $type, $title, $message, $data);
 
-                // 2. Get user settings
                 $settings = $this->getUserSettings($user->id);
 
-                // 3. Send Push Notification if enabled
                 if ($settings->push_enabled) {
                     $this->sendPushNotification($user->id, $title, $message, $data);
                 }
 
-                // 4. Send Email if enabled
                 if ($settings->email_enabled && $user->email) {
                     $this->sendEmail($user->email, $title, $message, $data);
                 }
 
-                // 5. Send SMS if enabled
                 if ($settings->sms_enabled && $user->phone_number) {
                     $this->sendSMS($user->phone_number, $message);
                 }
@@ -132,31 +127,25 @@ class NotificationService
                 return;
             }
 
-            $serverKey = config('services.fcm.server_key');
+            $messaging = app('firebase.messaging');
 
-            $response = Http::withHeaders([
-                'Authorization' => 'key=' . $serverKey,
-                'Content-Type' => 'application/json',
-            ])->post('https://fcm.googleapis.com/fcm/send', [
-                'registration_ids' => $tokens,
-                'notification' => [
-                    'title' => $title,
-                    'body' => $message,
-                    'sound' => 'default',
-                    'badge' => 1,
-                ],
-                'data' => array_merge($data, [
-                    'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
-                ]),
-                'priority' => 'high',
-            ]);
-
-            if (!$response->successful()) {
-                Log::error('FCM push notification failed', [
-                    'user_id' => $userId,
-                    'response' => $response->body()
-                ]);
+            $formattedData = [];
+            foreach ($data as $key => $value) {
+                $formattedData[(string)$key] = (string)$value;
             }
+
+            $messageObject = \Kreait\Firebase\Messaging\CloudMessage::new()
+                ->withNotification(\Kreait\Firebase\Messaging\Notification::create($title, $message))
+                ->withData($formattedData);
+
+            $messaging->sendMulticast($messageObject, $tokens);
+            Log::info('Push notification sent successfully to user', [
+                'user_id' => $userId,
+                'tokens_count' => count($tokens),
+            ]);
+            Log::info('messageObject', [
+                'messageObject' => $messageObject,
+            ]);
         } catch (\Exception $e) {
             Log::error('Push notification error: ' . $e->getMessage());
         }
@@ -238,7 +227,7 @@ class NotificationService
             Log::error('Email sending error: ' . $e->getMessage());
         }
     }
-    
+
 
     /**
      * Send bilingual SMS notification via dreams.sa provider
@@ -253,7 +242,7 @@ class NotificationService
         try {
             // Normalize phone number - remove + if present
             $normalizedPhone = str_starts_with($phone, '+') ? substr($phone, 1) : $phone;
-            
+
             $client = new \GuzzleHttp\Client();
             $response = $client->post('https://www.dreams.sa/index.php/api/sendsms/', [
                 'form_params' => [
