@@ -40,12 +40,12 @@
     use App\Http\Controllers\API\Admin\EducationLevelAdminController;
     use App\Http\Controllers\API\Admin\CourseAdminController;
     use App\Http\Controllers\API\Admin\SupportTicketController;
-use App\Http\Controllers\API\Admin\SettingController;
-use App\Http\Controllers\API\Admin\RevenuePercentageController;
-use App\Http\Controllers\API\Admin\OrderAdminController;
+    use App\Http\Controllers\API\Admin\SettingController;
+    use App\Http\Controllers\API\Admin\RevenuePercentageController;
+    use App\Http\Controllers\API\Admin\OrderAdminController;
 
-  
-use App\Http\Controllers\API\Admin\InstituteController;
+
+    use App\Http\Controllers\API\Admin\InstituteController;
     use App\Models\Payment;
     use App\Models\User;
     // Agora token route for sessions
@@ -67,13 +67,15 @@ use App\Http\Controllers\API\Admin\InstituteController;
 | routes are loaded by the RouteServiceProvider within a group which
 | is assigned the "api" middleware group. Enjoy building your API!
 |
-*/              Route::get('/getteachers', [UsersController::class, 'teachers']);
+*/
 
-        Route::get('/users', [UsersController::class, 'index']);
-        Route::get('/dashboard', [DashboardController::class, 'dashboard']); // Comprehensive admin dashboard
+    Route::get('/getteachers', [UsersController::class, 'teachers']);
 
- Route::get('settings', [SettingController::class, 'index']);
-         Route::get('settings/{group}', [SettingController::class, 'byGroup']);
+    Route::get('/users', [UsersController::class, 'index']);
+    Route::get('/dashboard', [DashboardController::class, 'dashboard']); // Comprehensive admin dashboard
+
+    Route::get('settings', [SettingController::class, 'index']);
+    Route::get('settings/{group}', [SettingController::class, 'byGroup']);
 
     // App Configuration Routes (for mobile apps)
     Route::get('app-config', [AppConfigController::class, 'getConfig']);
@@ -92,7 +94,7 @@ use App\Http\Controllers\API\Admin\InstituteController;
         // Session Reviews (Accessible by both student and teacher)
         Route::get('/sessions/{session_id}/review', [ReviewController::class, 'getSessionReview']);
         Route::get('/my-session-reviews', [ReviewController::class, 'mySessionReviews']);
-        
+
         // Teacher Reviews
         Route::get('/teachers/{teacher_id}/reviews', [ReviewController::class, 'index']);
         Route::post('/teachers/{teacher_id}/reviews', [ReviewController::class, 'storeTeacherReview']);
@@ -140,7 +142,7 @@ use App\Http\Controllers\API\Admin\InstituteController;
     // App Config & Version Management (Public - no auth required)
     // ======================
     Route::get('config', [AppVersionController::class, 'getConfig']); // Get latest app version info
-    
+
     // ======================
     // Ads Panel (Public - accessible to all, role-based filtering)
     // ======================
@@ -183,184 +185,17 @@ use App\Http\Controllers\API\Admin\InstituteController;
     // Student & Teacher
     // ======================
 
-    // Student routes with 'student' role middleware
-    Route::prefix('student')->middleware(['auth:sanctum', 'role:student'])->group(function () {
-        // fcm token
-        Route::post('/save-fcm-token', [FCMTokenController::class, 'save']);
-        // services
-        Route::get('/services', [ServicesController::class, 'studentIndex']);
-        Route::get('/services/{serviceId}/subjects', [ServicesController::class, 'getSubjectsByService']);
-        // all teachers
-        Route::get('/teachers', [UserController::class, 'listTeachers']);
-        Route::get('/teachers/{id}', [UserController::class, 'teacherDetails']);
-        // subjects
-        Route::get('/subjects', [ServicesController::class, 'listSubjects']);
-        Route::get('/subjects/{id}', [ServicesController::class, 'subjectDetails']);
-        //courses
-        Route::get('/courses', [CourseController::class, 'index']); // browse/search
-        Route::get('/courses/{id}', [CourseController::class, 'show']); // course details
-        Route::get('/courses/{id}/groups', [CourseController::class, 'getCourseGroups']); // get group course groups
-        Route::post('/courses/{id}/enroll', [CourseController::class, 'enroll']); // book/join course
-        Route::post('/courses/{id}/request-enrollment', [CourseController::class, 'requestEnrollment']); // request enrollment (pending)
-        // lessons
-        Route::get('/courses/{course_id}/lessons', [LessonController::class, 'index']);
-        Route::get('/lessons/{id}', [LessonController::class, 'show']);
-        Route::post('/lessons/{id}/complete', [LessonController::class, 'markComplete']);
-        // Orders
-        Route::post('/orders', [OrdersController::class, 'store']);
-        Route::get('/orders', [OrdersController::class, 'index']);
-        Route::get('/orders/{id}', [OrdersController::class, 'show']);
-        Route::put('/orders/{id}', [OrdersController::class, 'update']);
-        Route::delete('/orders/{id}', [OrdersController::class, 'destroy']);
-        Route::get('/orders/{order_id}/applications', [OrdersController::class, 'getApplications']);
-        Route::post('/orders/{order_id}/applications/{application_id}/accept', [OrdersController::class, 'acceptApplication']);
-        // bookings
-        Route::post('/booking', [BookingController::class, 'createBooking']); // create booking
-        Route::get('/booking', [BookingController::class, 'getStudentBookings']);   // list my bookings
-        Route::get('/booking/{bookingId}', [BookingController::class, 'getBookingDetails']); // view specific booking
-        Route::put('/booking/{bookingId}/cancel', [BookingController::class, 'cancelBooking']); // cancel booking
-        Route::post('/booking/pay', [BookingController::class, 'payBooking']); // pay for booking (card payment)
 
-        // Create checkout session (requires authentication)
-        Route::post('payments/checkout', [PaymentController::class, 'createCheckout']);
-        // Check payment status (public - called after payment widget completes)
-        Route::post('payments/status', [PaymentController::class, 'paymentStatus']);
-        // List user's saved cards (requires authentication)
-        Route::get('payments/saved-cards', [PaymentController::class, 'listSavedCards']);
-        // Set default saved card
-        Route::post('payments/saved-cards/{savedCard}/default', [PaymentController::class, 'setDefaultSavedCard']);
-        // Delete saved card
-        Route::delete('payments/saved-cards/{savedCard}', [PaymentController::class, 'deleteSavedCard']);
-
-        // Status check endpoint - Mobile app can poll this to check payment status
-        Route::get('/payments/{paymentId}/status', [BookingController::class, 'checkPaymentStatus']);
-        Route::get('/payments/callback', [BookingController::class, 'handlePaymentCallback']); // No name - use the public callback route above
-        // payments history
-        Route::post('/payments', [PaymentController::class, 'store']); // pay for booking/course
-        Route::get('/payments/history', [PaymentController::class, 'history']); // payment history
-        // sessions
-        Route::get('/sessions', [SessionsController::class, 'index']); // list my sessions
-        Route::get('/teachers/{id}/sessions', [BookingController::class, 'mySessions']);
-        Route::get('/sessions/grouped', [SessionsController::class, 'groupedSessions']); // teacher: grouped sessions by time
-        Route::get('/sessions/{id}', [SessionsController::class, 'show']); // session details
-        Route::post('/sessions/{id}/join', [SessionsController::class, 'join']); // join session
-        // add payment method
-        Route::get('payment-methods', [UserPaymentMethodController::class, 'index']);
-        Route::post('payment-methods', [UserPaymentMethodController::class, 'store']);
-        Route::put('payment-methods/{id}', [UserPaymentMethodController::class, 'update']);
-        Route::delete('payment-methods/{id}', [UserPaymentMethodController::class, 'destroy']);
-        // courses reviews
-        Route::get('/courses/{course_id}/reviews', [ReviewController::class, 'index']);
-        Route::post('/courses/{course_id}/reviews', [ReviewController::class, 'store']);
-        Route::delete('/courses/{course_id}/reviews/{id}', [ReviewController::class, 'destroy']);
-        
-        
-        //disputes
-        Route::post('/disputes', [DisputeController::class, 'store']); // Create new dispute      
-        Route::get('/disputes/my', [DisputeController::class, 'index']); // List my disputes
-        Route::get('/disputes/{id}', [DisputeController::class, 'show']); // View specific dispute
-        Route::delete('/disputes/{id}', [DisputeController::class, 'destroy']); // Delete specific dispute
-
-        // certificates
-        Route::get('/certificates', [UserController::class, 'listCertificates']);
-        // by ab
-        Route::post('/booking/course', [BookingCourseController::class, 'createBooking']); // create booking
+    require __DIR__ . '/teacher.php';
+    require __DIR__ . '/student.php';
 
 
-    });
 
-    Route::prefix('teacher')->middleware(['auth:sanctum', 'role:teacher'])->group(function () {
-        Route::get('/education-levels', [EducationLevelController::class, 'levelsWithClassesAndSubjects']);
-        Route::get('/classes/{education_level_id}', [EducationLevelController::class, 'classes']);
-        Route::get('subjectsClasses/{class_id}', [EducationLevelController::class, 'getSubjectsByClass']);
-        Route::get('banks', [PaymentMethodController::class, 'banks']);
-        Route::get('get-services', [ServicesController::class, 'teacherServices']);
-        Route::post('teacher-service', [ServicesController::class, 'addTeacherService']);
-        Route::post('teacher-upload-certificate', [ServicesController::class, 'uploadTeacherCertificate']);
-        Route::put('active-status', [UserController::class, 'updateActiveStatus']);
-        Route::get('active-status', [UserController::class, 'getActiveStatus']);
-
-        // fcm token
-        Route::post('/save-fcm-token', [FCMTokenController::class, 'save']);
-        // Teacher Information
-        Route::post('/info', [UserController::class, 'createOrUpdateTeacherInfo']);
-        // services
-        Route::get('/services', [ServicesController::class, 'teacherIndex']);
-        // courses
-        Route::post('/courses', [CourseController::class, 'store']);
-        Route::put('/courses/{id}', [CourseController::class, 'update']);
-        Route::delete('/courses/{id}', [CourseController::class, 'destroy']);
-        Route::get('/courses', [CourseController::class, 'myCourses']);
-        Route::get('/courses/{id}/groups', [CourseController::class, 'getTeacherGroups']);
-        Route::post('/courses/{id}/groups', [CourseController::class, 'createGroup']);
-        Route::get('/courses/{id}/groups/{groupId}/students', [CourseController::class, 'getGroupStudents']);
-        Route::post('/courses/{id}/groups/{groupId}/start', [CourseController::class, 'startGroup']);
-        // subjects and classes
-        Route::get('subjects', [TeacherController::class, 'indexSubjects']);
-        Route::post('subjects', [TeacherController::class, 'storeSubject']);
-        Route::delete('subjects/{id}', [TeacherController::class, 'destroySubject']);
-        Route::get('classes', [TeacherController::class, 'indexClasses']);
-        Route::post('classes', [TeacherController::class, 'storeClass']);
-        Route::delete('classes/{id}', [TeacherController::class, 'destroyClass']);
-        // availability slots
-        Route::get('availability', [AvailabilityController::class, 'index']); // List all my slots
-        Route::post('availability', [AvailabilityController::class, 'store']); // Add new slot
-        Route::get('availability/{id}', [AvailabilityController::class, 'show']); // Show slot details
-        Route::put('availability/{id}', [AvailabilityController::class, 'update']); // Update slot
-        Route::delete('availability/{id}', [AvailabilityController::class, 'destroy']); // Delete single slot
-        Route::delete('availability', [AvailabilityController::class, 'destroyBatch']); // Delete multiple slots (batch)
-        // lessons
-        Route::post('/courses/{course_id}/lessons', [LessonController::class, 'store']);
-        Route::put('/lessons/{id}', [LessonController::class, 'update']);
-        Route::delete('/lessons/{id}', [LessonController::class, 'destroy']);
-        // Orders
-        Route::get('/orders/browse', [TeacherApplicationController::class, 'browseOrders']);
-        Route::post('/orders/{order_id}/apply', [TeacherApplicationController::class, 'apply']);
-        Route::get('/my-applications', [TeacherApplicationController::class, 'myApplications']);
-        Route::delete('/applications/{application_id}', [TeacherApplicationController::class, 'cancelApplication']);
-        // bookings
-        Route::post('booking', [BookingController::class, 'index']);
-        //sessions
-        Route::get('/sessions', [SessionsController::class, 'index']);
-        Route::get('/sessions/{id}', [SessionsController::class, 'show']);
-        Route::post('/sessions/{id}/start', [SessionsController::class, 'start']);
-        Route::post('/sessions/{id}/end', [SessionsController::class, 'end']);
-
-        Route::get('/teachers', [UserController::class, 'listTeachers']);
-        Route::get('/teachers/{id}', [UserController::class, 'teacherDetails']);
-        //wallet
-        Route::get('/wallet', [WalletController::class, 'show']);
-        Route::post('/wallet/withdraw', [WalletController::class, 'withdraw']);
-        Route::get('/wallet/withdrawals', [WalletController::class, 'listWithdrawals']);
-        Route::get('/wallet/withdrawals/{id}', [WalletController::class, 'getWithdrawal']);
-        Route::delete('/wallet/withdrawals/{id}', [WalletController::class, 'cancelWithdrawal']);
-        // payments methods
-        Route::get('payment-methods', [UserPaymentMethodController::class, 'index']);
-        Route::post('payment-methods', [UserPaymentMethodController::class, 'store']);
-        Route::put('payment-methods/set-default/{id}', [UserPaymentMethodController::class, 'setDefault']);
-        Route::delete('payment-methods/{id}', [UserPaymentMethodController::class, 'destroy']);
-        // reviews
-        Route::get('/courses/{course_id}/reviews', [ReviewController::class, 'index']);
-        Route::post('/courses/{course_id}/reviews', [ReviewController::class, 'store']);
-        //disputes
-        Route::post('/disputes', [DisputeController::class, 'store']); // Create new dispute      
-        Route::get('/disputes/my', [DisputeController::class, 'index']); // List my disputes
-        Route::get('/disputes/{id}', [DisputeController::class, 'show']); // View specific dispute
-        Route::delete('/disputes/{id}', [DisputeController::class, 'destroy']); // Delete specific dispute
-
-        // Language study routes for teachers
-        Route::get('language-study/{teacherId}', [LanguageStudyController::class, 'getTeacherLanguages']); // Get specific teacher languages
-        Route::post('/language-study/languages', [LanguageStudyController::class, 'addTeacherLanguages']);
-        Route::put('/language-study/languages', [LanguageStudyController::class, 'updateTeacherLanguages']);
-        Route::delete('/language-study/{languageId}', [LanguageStudyController::class, 'deleteTeacherLanguage']);
-    });
-
-    
     Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(function () {
         // Admin language management routes
 
 
-          Route::get('settings', [SettingController::class, 'index']);
+        Route::get('settings', [SettingController::class, 'index']);
         Route::get('settings/{group}', [SettingController::class, 'byGroup']);
         Route::put('settings/bulk', [SettingController::class, 'bulkUpdate']);
         Route::put('settings/{id}', [SettingController::class, 'update']);
@@ -397,7 +232,7 @@ use App\Http\Controllers\API\Admin\InstituteController;
         Route::get('/orders/{id}/applications', [OrderAdminController::class, 'viewApplications']); // Get applications for order
         Route::post('/orders/{id}/assign-teacher', [OrderAdminController::class, 'assignTeacher']); // Assign teacher to order
         Route::put('/orders/{id}/status', [OrderAdminController::class, 'updateStatus']); // Update order status
- 
+
         Route::get('/services-list', [ServicesController::class, 'listServices']);
         Route::get('/services/search', [ServicesController::class, 'searchServices']);
         Route::get('/subjects/{id}', [ServicesController::class, 'listSubjects']);
@@ -544,7 +379,7 @@ use App\Http\Controllers\API\Admin\InstituteController;
         Route::get('/ads', [AdsAdminController::class, 'listAds']); // List all ads with filters
         Route::post('/ads', [AdsAdminController::class, 'createAd']); // Create new ad with image upload
         Route::post('/ads/{id}', [AdsAdminController::class, 'updateAd']); // Update ad (use POST for multipart)
-        Route::put( '/ads/{id}/toggle', [AdsAdminController::class, 'toggleAdStatus']); // Toggle ad active/inactive
+        Route::put('/ads/{id}/toggle', [AdsAdminController::class, 'toggleAdStatus']); // Toggle ad active/inactive
         Route::put('/ads/{id}', [AdsAdminController::class, 'updateAd']); // Toggle ad active/inactive
         Route::delete('/ads/{id}', [AdsAdminController::class, 'deleteAd']); // Delete ad
     });

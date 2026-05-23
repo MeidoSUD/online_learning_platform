@@ -595,7 +595,9 @@ class PaymentController extends Controller
         try {
             $ns = new \App\Services\NotificationService();
             
-            $firstSessionStart = \Carbon\Carbon::parse($booking->first_session_date . ' ' . $booking->first_session_start_time)->format('Y-m-d H:i');
+            $sessionDate = \Carbon\Carbon::parse($booking->first_session_date)->format('Y-m-d');
+            $sessionTime = \Carbon\Carbon::parse($booking->first_session_start_time)->format('H:i:s');
+            $firstSessionStart = \Carbon\Carbon::parse($sessionDate . ' ' . $sessionTime)->format('Y-m-d H:i');
             
             // ============================================================
             // STUDENT NOTIFICATIONS

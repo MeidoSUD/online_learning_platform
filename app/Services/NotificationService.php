@@ -20,7 +20,13 @@ class NotificationService
         if ($users instanceof User) {
             $users = [$users];
         }
-
+        Log::info('send notification', [
+            'users' => $users,
+            'type' => $type,
+            'title' => $title,
+            'message' => $message,
+            'data' => $data,
+        ]);
         $data['type'] = $type;
 
         foreach ($users as $user) {
@@ -141,6 +147,7 @@ class NotificationService
             $messaging->sendMulticast($messageObject, $tokens);
             Log::info('Push notification sent successfully to user', [
                 'user_id' => $userId,
+
                 'tokens_count' => count($tokens),
             ]);
             Log::info('messageObject', [
