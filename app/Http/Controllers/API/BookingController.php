@@ -84,7 +84,7 @@ class BookingController extends Controller
         $isCourse = $request->filled('course_id');
         $isService = $request->filled('service_id');
 
-        if (! $isCourse && ! $isService) {
+        if (!$isCourse && !$isService) {
             return response()->json([
                 'success' => false,
                 'message' => 'Either course_id or service_id is required'
@@ -109,10 +109,14 @@ class BookingController extends Controller
 
                 // Validate slot ownership and state with detailed reasons
                 $reasons = [];
-                if (! $slot->is_available) $reasons[] = 'slot_not_available';
-                if ($slot->is_booked) $reasons[] = 'slot_already_booked';
-                if ($slot->teacher_id !== $course->teacher_id) $reasons[] = 'slot_teacher_mismatch';
-                if ($slot->course_id !== $course->id) $reasons[] = 'slot_course_mismatch';
+                if (!$slot->is_available)
+                    $reasons[] = 'slot_not_available';
+                if ($slot->is_booked)
+                    $reasons[] = 'slot_already_booked';
+                if ($slot->teacher_id !== $course->teacher_id)
+                    $reasons[] = 'slot_teacher_mismatch';
+                if ($slot->course_id !== $course->id)
+                    $reasons[] = 'slot_course_mismatch';
                 if (count($reasons) > 0) {
                     return response()->json([
                         'success' => false,
@@ -120,8 +124,8 @@ class BookingController extends Controller
                         'reasons' => $reasons,
                         'slot' => [
                             'id' => $slot->id,
-                            'is_available' => (bool)$slot->is_available,
-                            'is_booked' => (bool)$slot->is_booked,
+                            'is_available' => (bool) $slot->is_available,
+                            'is_booked' => (bool) $slot->is_booked,
                             'teacher_id' => $slot->teacher_id,
                             'course_id' => $slot->course_id,
                         ]
@@ -140,9 +144,12 @@ class BookingController extends Controller
                 $slot = AvailabilitySlot::where('id', $slotId)->lockForUpdate()->firstOrFail();
 
                 $reasons = [];
-                if (! $slot->is_available) $reasons[] = 'slot_not_available';
-                if ($slot->is_booked) $reasons[] = 'slot_already_booked';
-                if ($slot->teacher_id != $teacherId) $reasons[] = 'slot_teacher_mismatch';
+                if (!$slot->is_available)
+                    $reasons[] = 'slot_not_available';
+                if ($slot->is_booked)
+                    $reasons[] = 'slot_already_booked';
+                if ($slot->teacher_id != $teacherId)
+                    $reasons[] = 'slot_teacher_mismatch';
                 if (count($reasons) > 0) {
                     return response()->json([
                         'success' => false,
@@ -150,8 +157,8 @@ class BookingController extends Controller
                         'reasons' => $reasons,
                         'slot' => [
                             'id' => $slot->id,
-                            'is_available' => (bool)$slot->is_available,
-                            'is_booked' => (bool)$slot->is_booked,
+                            'is_available' => (bool) $slot->is_available,
+                            'is_booked' => (bool) $slot->is_booked,
                             'teacher_id' => $slot->teacher_id,
                         ]
                     ], 400);
@@ -170,7 +177,7 @@ class BookingController extends Controller
             $slotDate = null;
 
 
-            if ($slot->date && trim((string)$slot->date) !== '') {
+            if ($slot->date && trim((string) $slot->date) !== '') {
                 $slotDate = $slot->date instanceof \Carbon\Carbon ? $slot->date->format('Y-m-d') : (string) $slot->date;
             } elseif ($slot->day_number !== null) {
                 // Compute next occurrence of the weekday
@@ -224,7 +231,7 @@ class BookingController extends Controller
 
             // Sessions count priority: total_sessions > sessions_count
             $sessionsCountInput = $request->total_sessions ?? $request->sessions_count;
-            $sessionsCount = (int)($sessionsCountInput ?? ($request->type === 'package' ? 1 : 1));
+            $sessionsCount = (int) ($sessionsCountInput ?? ($request->type === 'package' ? 1 : 1));
 
             // Force package type and pricing logic if multiple sessions
             $sessionType = $sessionsCount > 1 ? 'package' : $request->type;
@@ -355,7 +362,7 @@ class BookingController extends Controller
                     'session_type' => $booking->session_type,
                     'sessions_count' => $booking->sessions_count,
                 ],
-                'requires_payment_method' => ! $hasSavedMethods,
+                'requires_payment_method' => !$hasSavedMethods,
                 'meta' => [
                     'service' => $serviceData,
                     'subject' => $subjectData,
@@ -1025,7 +1032,7 @@ class BookingController extends Controller
                 }
 
                 // Notify participants if join_url is present
-                if (! empty($session->join_url)) {
+                if (!empty($session->join_url)) {
                     $ns = new \App\Services\NotificationService();
 
                     $titleStudent = app()->getLocale() == 'ar' ? 'رابط الحصة جاهز' : 'Lesson Link Ready';
@@ -1126,7 +1133,7 @@ class BookingController extends Controller
                 'id' => $booking->id,
                 'reference' => $booking->booking_reference,
                 'teacher' => $teacherData,
-                'course' =>  $courseData,
+                'course' => $courseData,
                 'subject' => $subjectData,
                 'session_info' => [
                     'type' => $booking->session_type,
@@ -1397,9 +1404,12 @@ class BookingController extends Controller
 
     private function calculatePackageDiscount(int $sessionsCount): float
     {
-        if ($sessionsCount >= 20) return 20; // 20% discount for 20+ sessions
-        if ($sessionsCount >= 10) return 15; // 15% discount for 10+ sessions
-        if ($sessionsCount >= 5) return 10;  // 10% discount for 5+ sessions
+        if ($sessionsCount >= 20)
+            return 20; // 20% discount for 20+ sessions
+        if ($sessionsCount >= 10)
+            return 15; // 15% discount for 10+ sessions
+        if ($sessionsCount >= 5)
+            return 10;  // 10% discount for 5+ sessions
         return 0;
     }
 
@@ -1825,125 +1835,43 @@ class BookingController extends Controller
         }
     }
 
-    public function mySessions(Request $request, $teacherId): JsonResponse
+    public function getTeacherStudents(Request $request): JsonResponse
     {
-        $studentId = auth()->id();
-        $perPage = $request->get('per_page', 5);
+        $teacherId = auth()->id();
 
-        $sessions = Sessions::where('student_id', $studentId)
-            ->where('teacher_id', $teacherId)
-            ->with(['teacher', 'student', 'booking.course'])
-            ->orderBy('session_date', 'desc')
-            ->orderBy('start_time', 'desc')
-            ->paginate($perPage);
+        $studentIds = Booking::where('teacher_id', $teacherId)
+            ->where('status', '!=', 'cancelled')
+            ->distinct()
+            ->pluck('student_id');
 
-        $sessions->through(function ($session) {
-            $subjectData = null;
-            if ($session->booking) {
-                if ($session->booking->course) {
-                    $subjectData = [
-                        'id' => $session->booking->course->id,
-                        'name_en' => $session->booking->course->title ?? $session->booking->course->name,
-                        'name_ar' => $session->booking->course->title_ar ?? $session->booking->course->name_ar,
-                    ];
-                } else if (isset($session->booking->subject_id)) {
-                    $subject = \App\Models\Subject::find($session->booking->subject_id);
-                    if ($subject) {
-                        $subjectData = [
-                            'id' => $subject->id,
-                            'name_en' => $subject->name_en,
-                            'name_ar' => $subject->name_ar,
-                        ];
-                    }
-                }
-            }
+        $students = \App\Models\User::whereIn('id', $studentIds)->get();
 
-            $rawDate = $session->session_date;
-            try {
-                if ($rawDate instanceof \Carbon\Carbon) {
-                    $sessionDateFormatted = $rawDate->format('Y-m-d');
-                    $dayNumber = $rawDate->dayOfWeek;
-                    $dayName = $rawDate->format('l');
-                } else {
-                    $dt = \Carbon\Carbon::parse((string) $rawDate);
-                    $sessionDateFormatted = $dt->format('Y-m-d');
-                    $dayNumber = $dt->dayOfWeek;
-                    $dayName = $dt->format('l');
-                }
-            } catch (\Exception $e) {
-                $sessionDateFormatted = substr((string) $rawDate, 0, 10);
-                try {
-                    $dt = \Carbon\Carbon::parse($sessionDateFormatted);
-                    $dayNumber = $dt->dayOfWeek;
-                    $dayName = $dt->format('l');
-                } catch (\Exception $ex) {
-                    $dayNumber = null;
-                    $dayName = null;
-                }
-            }
+        $studentsData = $students->map(function ($student) use ($teacherId) {
+            $bookingsCount = Booking::where('teacher_id', $teacherId)
+                ->where('student_id', $student->id)
+                ->where('status', '!=', 'cancelled')
+                ->count();
+
+            $profilePhoto = $student->attachments()
+                ->where('attached_to_type', 'profile_picture')
+                ->latest()
+                ->value('file_path');
 
             return [
-                'id' => $session->id,
-                'booking_id' => $session->booking_id,
-                'session_number' => $session->session_number,
-                'session_title' => $session->session_title,
-                'session_date' => $sessionDateFormatted,
-                'day_name' => $dayName,
-                'day_number' => $dayNumber,
-                'start_time' => $session->start_time instanceof \Carbon\Carbon
-                    ? $session->start_time->format('H:i:s')
-                    : $session->start_time,
-                'end_time' => $session->end_time instanceof \Carbon\Carbon
-                    ? $session->end_time->format('H:i:s')
-                    : $session->end_time,
-                'duration' => $session->duration,
-                'status' => $session->status,
-                'teacher' => $session->teacher ? [
-                    'id' => $session->teacher->id,
-                    'name' => $session->teacher->first_name . ' ' . $session->teacher->last_name,
-                    'email' => $session->teacher->email,
-                ] : null,
-                'student' => $session->student ? [
-                    'id' => $session->student->id,
-                    'name' => $session->student->first_name . ' ' . $session->student->last_name,
-                    'email' => $session->student->email,
-                ] : null,
-                'meeting' => [
-                    'meeting_id' => $session->meeting_id,
-                    'join_url' => $session->join_url,
-                    'host_url' => $session->host_url,
-                ],
-                'subject' => $subjectData,
-                'booking' => $session->booking ? [
-                    'id' => $session->booking->id,
-                    'reference' => $session->booking->booking_reference,
-                    'type' => $session->booking->session_type,
-                    'total_sessions' => $session->booking->sessions_count,
-                    'completed_sessions' => $session->booking->sessions_completed,
-                ] : null,
-                'session_info' => [
-                    'started_at' => $session->started_at,
-                    'ended_at' => $session->ended_at,
-                    'teacher_notes' => $session->teacher_notes,
-                    'homework' => $session->homework,
-                    'materials_shared' => $session->materials_shared,
-                ],
-                'ratings' => [
-                    'student_rating' => $session->student_rating,
-                    'teacher_rating' => $session->teacher_rating,
-                ],
+                'id' => $student->id,
+                'name' => $student->first_name . ' ' . $student->last_name,
+                'first_name' => $student->first_name,
+                'last_name' => $student->last_name,
+                'email' => $student->email,
+                'phone_number' => $student->phone_number,
+                'image' => $profilePhoto,
+                'bookings_count' => $bookingsCount,
             ];
         });
 
         return response()->json([
             'success' => true,
-            'data' => $sessions,
-            'pagination' => [
-                'current_page' => $sessions->currentPage(),
-                'last_page' => $sessions->lastPage(),
-                'per_page' => $sessions->perPage(),
-                'total' => $sessions->total(),
-            ]
+            'data' => $studentsData
         ]);
     }
 
