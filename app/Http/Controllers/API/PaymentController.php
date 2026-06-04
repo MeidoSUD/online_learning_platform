@@ -11,6 +11,7 @@ use App\Models\SavedCard;
 use App\Models\User;
 use App\Models\AvailabilitySlot;
 use App\Models\Sessions;
+use App\Models\Languages;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -595,17 +596,38 @@ class PaymentController extends Controller
         try {
             $ns = new \App\Services\NotificationService();
             
-            $sessionDate = \Carbon\Carbon::parse($booking->first_session_date)->format('Y-m-d');
-            $sessionTime = \Carbon\Carbon::parse($booking->first_session_start_time)->format('H:i:s');
-            $firstSessionStart = \Carbon\Carbon::parse($sessionDate . ' ' . $sessionTime)->format('Y-m-d H:i');
+            // ✅ Safely parse date and time
+            try {
+                $firstSessionDate = $booking->first_session_date;
+                $firstSessionTime = $booking->first_session_start_time;
+                
+                // Handle different date formats
+                if ($firstSessionDate instanceof \DateTime) {
+                    $firstSessionDate = $firstSessionDate->format('Y-m-d');
+                }
+                if ($firstSessionTime instanceof \DateTime) {
+                    $firstSessionTime = $firstSessionTime->format('H:i');
+                }
+                
+                $firstSessionStart = \Carbon\Carbon::parse($firstSessionDate . ' ' . $firstSessionTime)->format('Y-m-d H:i');
+            } catch (\Exception $e) {
+                Log::warning('Could not parse session date/time', [
+                    'first_session_date' => $booking->first_session_date,
+                    'first_session_start_time' => $booking->first_session_start_time,
+                    'error' => $e->getMessage()
+                ]);
+                $firstSessionStart = 'upcoming';
+            }
+            
+            // ✅ Get appropriate title based on service type
+            $titleStudent = $this->getTitleForBooking($booking);
             
             // ============================================================
             // STUDENT NOTIFICATIONS
             // ============================================================
-            $titleStudent = app()->getLocale() == 'ar' ? 'تم الدفع بنجاح' : 'Payment successful';
             $msgStudent = app()->getLocale() == 'ar'
-                ? "نجاح! لقد حجزت {$booking->sessions_count} جلسات مع المعلم. تبدأ جلستك الأولى في {$firstSessionStart}."
-                : "Success! You have booked {$booking->sessions_count} sessions with your teacher. Your first session starts on {$firstSessionStart}.";
+                ? "نجاح! لقد حجزت {$booking->sessions_count} جلسات. تبدأ جلستك الأولى في {$firstSessionStart}."
+                : "Success! You have booked {$booking->sessions_count} sessions. Your first session starts on {$firstSessionStart}.";
             if ($booking->student) {
                 // Send push and email notifications
                 $ns->send($booking->student, 'payment_success', $titleStudent, $msgStudent, [
@@ -648,6 +670,66 @@ class PaymentController extends Controller
         } catch (\Exception $e) {
             Log::error('Failed to send payment notifications', ['booking_id' => $booking->id, 'error' => $e->getMessage()]);
             // Don't throw - payment is already confirmed
+        }
+    }
+
+    /**
+     * Get appropriate title for booking based on service type
+     * - Private Lessons: Subject name
+     * - Language Learning: Language name
+     * - Courses: Course name
+     */
+    private function getTitleForBooking(Booking $booking): string
+    {
+        try {
+            // Load relationships if not already loaded
+            if (!$booking->relationLoaded('course') || !$booking->relationLoaded('subject')) {
+                $booking->load(['course', 'subject']);
+            }
+
+            // Check service type from booking
+            if ($booking->course_id && $booking->course) {
+                // ✅ Courses service - use course name
+                $courseName = $booking->course->name ?? 'Course';
+                return app()->getLocale() == 'ar' 
+                    ? "تم حجز الكورس: {$courseName}" 
+                    : "Course booked: {$courseName}";
+            } 
+            elseif ($booking->service_id) {
+                // Load service to check type
+                $service = $booking->service;
+                
+                if ($service && $service->key_name === 'private_lesson') {
+                    // ✅ Private Lessons service - use subject name
+                    $subjectName = $booking->subject?->name_en ?? 'Lesson';
+                    $subjectNameAr = $booking->subject?->name_ar ?? $subjectName;
+                    return app()->getLocale() == 'ar' 
+                        ? "درس خصوصي في: {$subjectNameAr}" 
+                        : "Private lesson: {$subjectName}";
+                } 
+                elseif ($service && $service->key_name === 'language_learning') {
+                    // ✅ Language Learning service - use language name
+                    if ($booking->language_id) {
+                        $language = Languages::find($booking->language_id);
+                        $languageName = $language?->name_en ?? 'Language';
+                    } else {
+                        $languageName = 'Language';
+                    }
+                    return app()->getLocale() == 'ar' 
+                        ? "دراسة لغة: {$languageName}" 
+                        : "Language: {$languageName}";
+                }
+            }
+
+            // ✅ Default fallback if service type not determined
+            return app()->getLocale() == 'ar' ? 'تم الدفع بنجاح' : 'Payment successful';
+            
+        } catch (\Exception $e) {
+            Log::warning('Could not determine booking title', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage()
+            ]);
+            return app()->getLocale() == 'ar' ? 'تم الدفع بنجاح' : 'Payment successful';
         }
     }
 }

@@ -987,7 +987,7 @@ class UserController extends Controller
 
             // Create new service records
             foreach ($servicesInput as $service_id) {
-                $service_id = (int) $service_id; // Ensure it's an integer
+                $service_id = (int)$service_id; // Ensure it's an integer
 
                 // Validate service exists
                 $serviceExists = DB::table('services')->where('id', $service_id)->exists();

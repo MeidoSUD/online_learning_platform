@@ -177,6 +177,7 @@ class BookingController extends Controller
             $slotDate = null;
 
 
+
             if ($slot->date && trim((string) $slot->date) !== '') {
                 $slotDate = $slot->date instanceof \Carbon\Carbon ? $slot->date->format('Y-m-d') : (string) $slot->date;
             } elseif ($slot->day_number !== null) {
