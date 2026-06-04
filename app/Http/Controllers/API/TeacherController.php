@@ -62,23 +62,15 @@ class TeacherController extends Controller
 
         $teacherId = $request->user()->id;
 
-        //  Delete old subjects
-        TeacherSubject::where('teacher_id', $teacherId)->delete();
-
-        //  Insert new subjects
-        $data = [];
         foreach ($request->subjects_id as $subjectId) {
-            $data[] = [
+            TeacherSubject::firstOrCreate([
                 'teacher_id' => $teacherId,
                 'subject_id' => $subjectId,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ];
+            ]);
         }
 
-        TeacherSubject::insert($data);
-        $teacherId=$request->user()->id;
-TeacherProfileHelper::checkAndUpdateProfileCompleted( $teacherId);
+        TeacherProfileHelper::checkAndUpdateProfileCompleted($teacherId);
+
         return response()->json([
             'message' => 'Subjects updated successfully',
         ]);
@@ -139,12 +131,15 @@ TeacherProfileHelper::checkAndUpdateProfileCompleted( $teacherId);
         return response()->json(['data' => $teacherClass, 'message' => 'Class updated']);
     }
 
-    public function destroySubject($id)
+    public function destroySubject(Request $request, $id)
     {
-        $teacherSubject = TeacherSubject::findOrFail($id);
+        $teacherId = $request->user()->id;
+        $teacherSubject = TeacherSubject::where('teacher_id', $teacherId)
+            ->where('subject_id', $id)
+            ->firstOrFail();
+
         $teacherSubject->delete();
- $teacherId=$request->user()->id;
-TeacherProfileHelper::checkAndUpdateProfileCompleted( $teacherId);
+        TeacherProfileHelper::checkAndUpdateProfileCompleted($teacherId);
 
         return response()->json(['message' => 'Subject deleted']);
     }
