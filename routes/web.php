@@ -128,6 +128,41 @@ Route::get('/test-notification', function () {
 
     return $result ? 'Notification sent!' : 'Failed to send notification';
 });
+Route::get('/test-push-notification', function (Request $request) {
+    $userId = $request->query('user_id');
+    $title = $request->query('title', 'Test Push Notification');
+    $message = $request->query('message', 'This is a test push notification');
+    $data = ['booking_id' => 1, "type" => "booking_received",];
+
+    if (!$userId) {
+        return response()->json([
+            'error' => 'user_id query parameter is required. Example: /test-push-notification?user_id=1',
+        ], 400);
+    }
+
+    $service = app(\App\Services\NotificationService::class);
+    $method = new \ReflectionMethod($service, 'sendPushNotification');
+    $method->setAccessible(true);
+
+    try {
+        $method->invoke($service, (int) $userId, $title, $message, (array) $data);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Push notification sent',
+            'user_id' => (int) $userId,
+            'title' => $title,
+            'body' => $message,
+            'data' => (array) $data,
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ], 500);
+    }
+});
 Route::get('/lang/{locale}', function ($locale) {
     $supportedLocales = ['en', 'ar'];
     if (in_array($locale, $supportedLocales)) {
@@ -305,7 +340,7 @@ Route::middleware('LocaleMiddleware')->group(function () {
         Route::get('/calendar', [StudentController::class, 'calendar'])->name('calendar');
         // calendar
         Route::get('/calendar', [StudentController::class, 'calendar'])->name('calendar');
-    Route::get('/session/{id}', [StudentController::class, 'sessionDetails'])->name('session.details');
+        Route::get('/session/{id}', [StudentController::class, 'sessionDetails'])->name('session.details');
         // Profile extra routes
         Route::get('/profile/payment-method', [UserController::class, 'paymentMethod'])->name('profile.paymentMethod');
         Route::get('/profile/booking-history', [UserController::class, 'bookingHistory'])->name('profile.bookingHistory');
@@ -346,8 +381,8 @@ Route::middleware('LocaleMiddleware')->group(function () {
         // Dashboard
         Route::get('/dashboard', [TeacherController::class, 'index'])->name('dashboard');
         // Calendar
-         Route::get('/calendar', [TeacherController::class, 'calendar'])->name('calendar');
-    Route::get('/session/{id}', [TeacherController::class, 'sessionDetails'])->name('session.details');
+        Route::get('/calendar', [TeacherController::class, 'calendar'])->name('calendar');
+        Route::get('/session/{id}', [TeacherController::class, 'sessionDetails'])->name('session.details');
         // Teacher Info Setup
         Route::get('/info', [TeacherController::class, 'showInfo'])->name('info');
         Route::post('/info', [TeacherController::class, 'updateInfo'])->name('info.update');

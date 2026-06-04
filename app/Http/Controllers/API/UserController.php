@@ -108,25 +108,25 @@ class UserController extends Controller
     {
         $user = $request->user();
         $request->validate([
-            'role_id'      => 'required|in:3,4', // Must be teacher or student
+            'role_id' => 'required|in:3,4', // Must be teacher or student
             'profile_photo' => 'nullable|image|max:2048', // Optional profile photo
-            'certificate'   => 'nullable|mimes:pdf,doc,docx|max:5120', // Optional certificate
-            'resume'        => 'nullable|mimes:pdf,doc,docx|max:5120', // Optional resume
+            'certificate' => 'nullable|mimes:pdf,doc,docx|max:5120', // Optional certificate
+            'resume' => 'nullable|mimes:pdf,doc,docx|max:5120', // Optional resume
             'language_pref' => 'nullable|string|max:255', // Optional language preference
             'terms_accepted' => 'required|boolean|in:1', // Must accept terms
-            'bio'           => 'nullable|string|max:1000', // Optional bio
+            'bio' => 'nullable|string|max:1000', // Optional bio
             'education_level' => 'nullable|string|max:255', // Optional education level
-            'class_id'      => 'nullable|exists:classes,id', // Optional class association
-            'subjects'      => 'nullable|array', // Optional subjects array
-            'email'         => 'required|string|email|unique:users,email,' . $request->user()->id,
-            'phone_number'   => 'required|string|max:15|unique:users,phone_number,' . $request->user()->id,
+            'class_id' => 'nullable|exists:classes,id', // Optional class association
+            'subjects' => 'nullable|array', // Optional subjects array
+            'email' => 'required|string|email|unique:users,email,' . $request->user()->id,
+            'phone_number' => 'required|string|max:15|unique:users,phone_number,' . $request->user()->id,
         ]);
 
         // Role-specific validation
         $rules = [];
         if ($user->role && $user->role->name_key === 'teacher') {
             $rules['profile_photo'] = 'nullable|image|max:2048';
-            $rules['certificate']   = 'nullable|mimes:pdf,doc,docx|max:5120';
+            $rules['certificate'] = 'nullable|mimes:pdf,doc,docx|max:5120';
             $rules['resume'] = 'nullable|mimes:pdf,doc,docx|max:5120';
         } elseif ($user->role && $user->role->name_key === 'student') {
             $rules['profile_photo'] = 'nullable|image|max:2048';
@@ -242,7 +242,7 @@ class UserController extends Controller
 
             // Only allow updating role_id if it's currently null (first-time setup)
             if ($user->role_id === 2 || $user->role_id === null) {
-                $user->role_id = (int)$request->input('role_id');
+                $user->role_id = (int) $request->input('role_id');
                 $user->save();
                 Log::info('User role set to: ' . $user->role_id);
             } else if ($user->role_id != $request->input('role_id')) {
@@ -541,11 +541,11 @@ class UserController extends Controller
     {
         // Validate institute fields
         $request->validate([
-            'institute_name'        => 'nullable|string|max:255',
-            'commercial_register'   => 'nullable|string|max:255',
-            'license_number'        => 'nullable|string|max:255',
-            'description'           => 'nullable|string|max:5000',
-            'website'               => 'nullable|url|max:255',
+            'institute_name' => 'nullable|string|max:255',
+            'commercial_register' => 'nullable|string|max:255',
+            'license_number' => 'nullable|string|max:255',
+            'description' => 'nullable|string|max:5000',
+            'website' => 'nullable|url|max:255',
         ]);
 
         // Find or create institute record
@@ -1299,6 +1299,7 @@ class UserController extends Controller
             'role_id' => $teacher->role_id,
             'gender' => $teacher->gender,
             'nationality' => $teacher->nationality,
+            'teacher_type' => $teacher->teacher_type,
             'verified' => (bool) optional($teacher->profile)->verified,
             'verification_code' => (string) $teacher->verification_code,
             'social_provider' => $teacher->social_provider,
@@ -1349,7 +1350,7 @@ class UserController extends Controller
         $path = $file->store($folder, 'public'); // Saves to storage/app/public/$folder
 
         $attachment = \App\Models\Attachment::create([
-            'user_id'   => $user->id,
+            'user_id' => $user->id,
             'file_path' => asset('storage/' . $path), // Full URL for mobile apps
             'file_name' => $file->getClientOriginalName(),
             'file_type' => $file->getClientMimeType(),
@@ -1372,12 +1373,12 @@ class UserController extends Controller
 
             // Create attachment record in database
             $attachment = Attachment::create([
-                'user_id'           => $user->id,
-                'file_path'         => $fileUrl,
-                'file_name'         => $file->getClientOriginalName(),
-                'file_type'         => $file->getClientMimeType(),
-                'file_size'         => $file->getSize(),
-                'attached_to_type'      => $attachedToType, // Store as profile-related attachment
+                'user_id' => $user->id,
+                'file_path' => $fileUrl,
+                'file_name' => $file->getClientOriginalName(),
+                'file_type' => $file->getClientMimeType(),
+                'file_size' => $file->getSize(),
+                'attached_to_type' => $attachedToType, // Store as profile-related attachment
             ]);
 
             Log::info('File uploaded and attachment created', [

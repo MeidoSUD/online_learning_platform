@@ -72,7 +72,7 @@ class AuthController extends Controller
     {
         // Route to appropriate registration function based on role_id
         $roleId = $request->input('role_id');
-        
+
         if ($roleId == 3) {
             return $this->registerTeacher($request);
         } elseif ($roleId == 4) {
@@ -134,17 +134,17 @@ class AuthController extends Controller
 
             // Validate teacher-specific input
             $validated = $request->validate([
-                'first_name'    => 'required|string|max:255',
-                'last_name'     => 'required|string|max:255',
-                'email'         => 'nullable|string|email',
-                'phone_number'  => 'required|string',
-                'password'      => 'required|string|min:8',
-                'gender'        => 'nullable|in:male,female,other',
-                'nationality'   => 'nullable|string|max:255',
-                'service_id'    => 'nullable|exists:services,id',
-                'bio'           => 'nullable|string|max:2000',
-                'certificate'   => 'nullable|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:5120', // 5MB
-                'cv'            => 'nullable|file|mimes:pdf,doc,docx|max:5120', // 5MB
+                'first_name' => 'required|string|max:255',
+                'last_name' => 'required|string|max:255',
+                'email' => 'nullable|string|email',
+                'phone_number' => 'required|string',
+                'password' => 'required|string|min:8',
+                'gender' => 'nullable|in:male,female,other',
+                'nationality' => 'nullable|string|max:255',
+                'service_id' => 'nullable|exists:services,id',
+                'bio' => 'nullable|string|max:2000',
+                'certificate' => 'nullable|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:5120', // 5MB
+                'cv' => 'nullable|file|mimes:pdf,doc,docx|max:5120', // 5MB
             ]);
 
             // Check if email already exists
@@ -154,7 +154,7 @@ class AuthController extends Controller
                     Log::warning('Teacher registration - email already exists', [
                         'email' => $validated['email'],
                     ]);
-                    
+
                     return response()->json([
                         'success' => false,
                         'code' => 'ALREADY_REGISTERED',
@@ -168,12 +168,12 @@ class AuthController extends Controller
 
             // Normalize and check phone
             $normalizedPhone = PhoneHelper::normalize($request->phone_number);
-            
+
             if (!$normalizedPhone) {
                 Log::warning('Teacher registration - failed to normalize phone', [
                     'phone_input' => $request->phone_number,
                 ]);
-                
+
                 return response()->json([
                     'success' => false,
                     'code' => 'INVALID_PHONE',
@@ -189,7 +189,7 @@ class AuthController extends Controller
                 Log::warning('Teacher registration - phone already exists', [
                     'phone' => $normalizedPhone,
                 ]);
-                
+
                 return response()->json([
                     'success' => false,
                     'code' => 'ALREADY_REGISTERED',
@@ -203,18 +203,18 @@ class AuthController extends Controller
             DB::beginTransaction();
 
             $verification_code = rand(1000, 9999);
-            
+
             // Create teacher user
             $user = User::create([
-                'first_name'    => $validated['first_name'],
-                'last_name'     => $validated['last_name'],
-                'email'         => $validated['email'],
-                'phone_number'  => $normalizedPhone,
-                'gender'        => $validated['gender'] ?? null,
-                'nationality'   => $validated['nationality'] ?? null,
-                'password'      => Hash::make($validated['password']),
-                'role_id'       => 3, // Teacher
-                'verified'      => false,
+                'first_name' => $validated['first_name'],
+                'last_name' => $validated['last_name'],
+                'email' => $validated['email'],
+                'phone_number' => $normalizedPhone,
+                'gender' => $validated['gender'] ?? null,
+                'nationality' => $validated['nationality'] ?? null,
+                'password' => Hash::make($validated['password']),
+                'role_id' => 3, // Teacher
+                'verified' => false,
                 'verification_code' => $verification_code,
             ]);
 
@@ -247,7 +247,7 @@ class AuthController extends Controller
                 try {
                     $certificateFile = $request->file('certificate');
                     $certificatePath = $certificateFile->store('teacher-certificates', 'public');
-                    
+
                     Attachment::create([
                         'user_id' => $user->id,
                         'type' => 'certificate',
@@ -256,7 +256,7 @@ class AuthController extends Controller
                         'file_size' => $certificateFile->getSize(),
                         'mime_type' => $certificateFile->getMimeType(),
                     ]);
-                    
+
                     Log::info('Teacher certificate uploaded', [
                         'user_id' => $user->id,
                         'file_path' => $certificatePath
@@ -275,7 +275,7 @@ class AuthController extends Controller
                 try {
                     $cvFile = $request->file('cv');
                     $cvPath = $cvFile->store('teacher-cvs', 'public');
-                    
+
                     Attachment::create([
                         'user_id' => $user->id,
                         'type' => 'cv',
@@ -284,7 +284,7 @@ class AuthController extends Controller
                         'file_size' => $cvFile->getSize(),
                         'mime_type' => $cvFile->getMimeType(),
                     ]);
-                    
+
                     Log::info('Teacher CV uploaded', [
                         'user_id' => $user->id,
                         'file_path' => $cvPath
@@ -338,7 +338,7 @@ class AuthController extends Controller
             Log::warning('Teacher registration validation failed', [
                 'errors' => $e->errors(),
             ]);
-            
+
             return response()->json([
                 'success' => false,
                 'code' => 'VALIDATION_ERROR',
@@ -347,14 +347,14 @@ class AuthController extends Controller
                 'message_ar' => 'يرجى التحقق من مدخلاتك والمحاولة مرة أخرى.',
                 'errors' => $e->errors()
             ], 422);
-            
+
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Teacher registration error', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             return response()->json([
                 'success' => false,
                 'code' => 'REGISTRATION_ERROR',
@@ -401,13 +401,13 @@ class AuthController extends Controller
 
             // Validate student input
             $validated = $request->validate([
-                'first_name'    => 'required|string|max:255',
-                'last_name'     => 'required|string|max:255',
-                'email'         => 'nullable|string|email',
-                'phone_number'  => 'required|string',
-                'password'      => 'required|string|min:8',
-                'gender'        => 'nullable|in:male,female,other',
-                'nationality'   => 'nullable|string|max:255',
+                'first_name' => 'required|string|max:255',
+                'last_name' => 'required|string|max:255',
+                'email' => 'nullable|string|email',
+                'phone_number' => 'required|string',
+                'password' => 'required|string|min:8',
+                'gender' => 'nullable|in:male,female,other',
+                'nationality' => 'nullable|string|max:255',
             ]);
 
             // Check if email already exists
@@ -417,7 +417,7 @@ class AuthController extends Controller
                     Log::warning('Student registration - email already exists', [
                         'email' => $validated['email'],
                     ]);
-                    
+
                     return response()->json([
                         'success' => false,
                         'code' => 'ALREADY_REGISTERED',
@@ -431,12 +431,12 @@ class AuthController extends Controller
 
             // Normalize and check phone
             $normalizedPhone = PhoneHelper::normalize($request->phone_number);
-            
+
             if (!$normalizedPhone) {
                 Log::warning('Student registration - failed to normalize phone', [
                     'phone_input' => $request->phone_number,
                 ]);
-                
+
                 return response()->json([
                     'success' => false,
                     'code' => 'INVALID_PHONE',
@@ -452,7 +452,7 @@ class AuthController extends Controller
                 Log::warning('Student registration - phone already exists', [
                     'phone' => $normalizedPhone,
                 ]);
-                
+
                 return response()->json([
                     'success' => false,
                     'code' => 'ALREADY_REGISTERED',
@@ -466,18 +466,18 @@ class AuthController extends Controller
             DB::beginTransaction();
 
             $verification_code = rand(1000, 9999);
-            
+
             // Create student user
             $user = User::create([
-                'first_name'    => $validated['first_name'],
-                'last_name'     => $validated['last_name'],
-                'email'         => $validated['email'],
-                'phone_number'  => $normalizedPhone,
-                'gender'        => $validated['gender'] ?? null,
-                'nationality'   => $validated['nationality'] ?? null,
-                'password'      => Hash::make($validated['password']),
-                'role_id'       => 4, // Student
-                'verified'      => false,
+                'first_name' => $validated['first_name'],
+                'last_name' => $validated['last_name'],
+                'email' => $validated['email'],
+                'phone_number' => $normalizedPhone,
+                'gender' => $validated['gender'] ?? null,
+                'nationality' => $validated['nationality'] ?? null,
+                'password' => Hash::make($validated['password']),
+                'role_id' => 4, // Student
+                'verified' => false,
                 'verification_code' => $verification_code,
             ]);
 
@@ -523,7 +523,7 @@ class AuthController extends Controller
             Log::warning('Student registration validation failed', [
                 'errors' => $e->errors(),
             ]);
-            
+
             return response()->json([
                 'success' => false,
                 'code' => 'VALIDATION_ERROR',
@@ -532,14 +532,14 @@ class AuthController extends Controller
                 'message_ar' => 'يرجى التحقق من مدخلاتك والمحاولة مرة أخرى.',
                 'errors' => $e->errors()
             ], 422);
-            
+
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Student registration error', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             return response()->json([
                 'success' => false,
                 'code' => 'REGISTRATION_ERROR',
@@ -560,15 +560,15 @@ class AuthController extends Controller
     {
         // Ensure we have the SMS format (without +)
         $smsPhone = str_starts_with($to, '+') ? substr($to, 1) : $to;
-        
+
         $client = new \GuzzleHttp\Client();
         $response = $client->post('https://www.dreams.sa/index.php/api/sendsms/', [
             'form_params' => [
-                'user'       => config('services.sms.user'),
+                'user' => config('services.sms.user'),
                 'secret_key' => config('services.sms.secret_key'),
-                'sender'     => config('services.sms.sender'),
-                'to'         => $smsPhone,
-                'message'   => "Welcome to the Geniuses Family! Your verification code is: $code\n مرحبًا بك في عائلة العباقرة! رمز التحقق الخاص بك هو: $code\n"
+                'sender' => config('services.sms.sender'),
+                'to' => $smsPhone,
+                'message' => "Welcome to the Geniuses Family! Your verification code is: $code\n مرحبًا بك في عائلة العباقرة! رمز التحقق الخاص بك هو: $code\n"
             ]
         ]);
         return json_decode($response->getBody(), true);
@@ -578,7 +578,7 @@ class AuthController extends Controller
     {
         $request->validate([
             'current_password' => 'required',
-            'new_password'     => 'required|min:8|confirmed',
+            'new_password' => 'required|min:8|confirmed',
         ], [
             'current_password.required' => 'كلمة المرور الحالية مطلوبة',
             'new_password.required' => 'كلمة المرور الجديدة مطلوبة',
@@ -608,7 +608,7 @@ class AuthController extends Controller
             'message_en' => 'Password updated successfully'
         ]);
     }
-    
+
     public function login(Request $request)
     {
         try {
@@ -721,16 +721,16 @@ class AuthController extends Controller
             } catch (\Exception $e) {
                 Log::warning('Failed to send welcome notification: ' . $e->getMessage());
             }
- DeviceToken::updateOrCreate(
-    [
-        'user_id' => $user->id,
-        'device_token' => $user->fcm_token,
-    ],
-    [
-        'device_type' => $request->device_type ?? 'android',
-        'is_active' => true,
-    ]
-);
+            DeviceToken::updateOrCreate(
+                [
+                    'user_id' => $user->id,
+                    'device_token' => $user->fcm_token,
+                ],
+                [
+                    'device_type' => $request->device_type ?? 'android',
+                    'is_active' => true,
+                ]
+            );
             return $this->success([
                 'user' => $userData,
                 'token' => $token,
@@ -765,11 +765,11 @@ class AuthController extends Controller
     {
         $request->validate([
             'user_id' => 'required|exists:users,id',
-            'code'    => 'required|digits:4'
+            'code' => 'required|digits:4'
         ]);
 
         $user = User::find($request->user_id);
-        if (! $user) {
+        if (!$user) {
             return response()->json([
                 'message' => 'User not found.'
             ], 404);
@@ -797,8 +797,8 @@ class AuthController extends Controller
 
             return response()->json([
                 'message' => 'Verification successful.',
-                'token'   => $token,
-                'user'    => $user
+                'token' => $token,
+                'user' => $user
             ]);
         } else {
             return response()->json([
@@ -947,7 +947,7 @@ We are currently in the teacher preparation phase ahead of our official launch. 
             // Validate input - use looser validation for code since it can come as number/string
             $validated = $request->validate([
                 'user_id' => 'required|exists:users,id',
-                'code'    => 'required'
+                'code' => 'required'
             ]);
 
             $user = User::find($validated['user_id']);
@@ -956,7 +956,7 @@ We are currently in the teacher preparation phase ahead of our official launch. 
             }
 
             // Compare code as string (convert to string if it comes as number)
-            if ((string)$user->verification_code === (string)$validated['code']) {
+            if ((string) $user->verification_code === (string) $validated['code']) {
                 return $this->success(
                     ['user_id' => $user->id],
                     'Code verified. You can now reset your password.'
@@ -991,12 +991,12 @@ We are currently in the teacher preparation phase ahead of our official launch. 
             $user = User::findOrFail($validated['user_id']);
 
             // Verify the reset code matches (compare as string)
-            if ((string)$user->verification_code !== (string)$validated['code']) {
+            if ((string) $user->verification_code !== (string) $validated['code']) {
                 Log::warning('Invalid reset code attempt', [
                     'user_id' => $user->id,
                     'provided_code' => $validated['code'],
                 ]);
-                
+
                 return $this->validationErrorArray(
                     ['code' => ['Invalid or expired verification code']],
                     'Invalid verification code'
@@ -1048,7 +1048,7 @@ We are currently in the teacher preparation phase ahead of our official launch. 
             'user_id' => 'required|exists:users,id',
         ]);
         $user = User::find($request->user_id);
-        if (! $user) {
+        if (!$user) {
             return response()->json([
                 'message' => 'User not found.'
             ], 404);
@@ -1067,18 +1067,18 @@ We are currently in the teacher preparation phase ahead of our official launch. 
         ]);
     }
 
-    
+
     // Get User Details
     public function getUserDetails(Request $request)
     {
         $user = $request->user();
-        if (! $user) {
+        if (!$user) {
             return response()->json([
                 'success' => false,
                 'message' => 'User not authenticated.'
             ], 401);
         }
-        if( $user->role_id == 3 ) { // Teacher
+        if ($user->role_id == 3) { // Teacher
             $userController = new UserController();
             $user = $userController->getFullTeacherData($user);
         } else {
@@ -1095,7 +1095,8 @@ We are currently in the teacher preparation phase ahead of our official launch. 
                 'nationality' => $user->nationality,
                 'phone_number' => $user->phone_number,
                 'role_id' => $user->role_id,
-                'profile' => 
+                
+                'profile' =>
                     ['profile_photo' => $profilePhoto]
             ];
         }

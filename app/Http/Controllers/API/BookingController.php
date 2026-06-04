@@ -84,7 +84,7 @@ class BookingController extends Controller
         $isCourse = $request->filled('course_id');
         $isService = $request->filled('service_id');
 
-        if (! $isCourse && ! $isService) {
+        if (!$isCourse && !$isService) {
             return response()->json([
                 'success' => false,
                 'message' => 'Either course_id or service_id is required'
@@ -109,10 +109,14 @@ class BookingController extends Controller
 
                 // Validate slot ownership and state with detailed reasons
                 $reasons = [];
-                if (! $slot->is_available) $reasons[] = 'slot_not_available';
-                if ($slot->is_booked) $reasons[] = 'slot_already_booked';
-                if ($slot->teacher_id !== $course->teacher_id) $reasons[] = 'slot_teacher_mismatch';
-                if ($slot->course_id !== $course->id) $reasons[] = 'slot_course_mismatch';
+                if (!$slot->is_available)
+                    $reasons[] = 'slot_not_available';
+                if ($slot->is_booked)
+                    $reasons[] = 'slot_already_booked';
+                if ($slot->teacher_id !== $course->teacher_id)
+                    $reasons[] = 'slot_teacher_mismatch';
+                if ($slot->course_id !== $course->id)
+                    $reasons[] = 'slot_course_mismatch';
                 if (count($reasons) > 0) {
                     return response()->json([
                         'success' => false,
@@ -120,8 +124,8 @@ class BookingController extends Controller
                         'reasons' => $reasons,
                         'slot' => [
                             'id' => $slot->id,
-                            'is_available' => (bool)$slot->is_available,
-                            'is_booked' => (bool)$slot->is_booked,
+                            'is_available' => (bool) $slot->is_available,
+                            'is_booked' => (bool) $slot->is_booked,
                             'teacher_id' => $slot->teacher_id,
                             'course_id' => $slot->course_id,
                         ]
@@ -140,9 +144,12 @@ class BookingController extends Controller
                 $slot = AvailabilitySlot::where('id', $slotId)->lockForUpdate()->firstOrFail();
 
                 $reasons = [];
-                if (! $slot->is_available) $reasons[] = 'slot_not_available';
-                if ($slot->is_booked) $reasons[] = 'slot_already_booked';
-                if ($slot->teacher_id != $teacherId) $reasons[] = 'slot_teacher_mismatch';
+                if (!$slot->is_available)
+                    $reasons[] = 'slot_not_available';
+                if ($slot->is_booked)
+                    $reasons[] = 'slot_already_booked';
+                if ($slot->teacher_id != $teacherId)
+                    $reasons[] = 'slot_teacher_mismatch';
                 if (count($reasons) > 0) {
                     return response()->json([
                         'success' => false,
@@ -150,8 +157,8 @@ class BookingController extends Controller
                         'reasons' => $reasons,
                         'slot' => [
                             'id' => $slot->id,
-                            'is_available' => (bool)$slot->is_available,
-                            'is_booked' => (bool)$slot->is_booked,
+                            'is_available' => (bool) $slot->is_available,
+                            'is_booked' => (bool) $slot->is_booked,
                             'teacher_id' => $slot->teacher_id,
                         ]
                     ], 400);
@@ -170,7 +177,8 @@ class BookingController extends Controller
             $slotDate = null;
 
 
-            if ($slot->date && trim((string)$slot->date) !== '') {
+
+            if ($slot->date && trim((string) $slot->date) !== '') {
                 $slotDate = $slot->date instanceof \Carbon\Carbon ? $slot->date->format('Y-m-d') : (string) $slot->date;
             } elseif ($slot->day_number !== null) {
                 // Compute next occurrence of the weekday
@@ -224,7 +232,7 @@ class BookingController extends Controller
 
             // Sessions count priority: total_sessions > sessions_count
             $sessionsCountInput = $request->total_sessions ?? $request->sessions_count;
-            $sessionsCount = (int)($sessionsCountInput ?? ($request->type === 'package' ? 1 : 1));
+            $sessionsCount = (int) ($sessionsCountInput ?? ($request->type === 'package' ? 1 : 1));
 
             // Force package type and pricing logic if multiple sessions
             $sessionType = $sessionsCount > 1 ? 'package' : $request->type;
@@ -355,7 +363,7 @@ class BookingController extends Controller
                     'session_type' => $booking->session_type,
                     'sessions_count' => $booking->sessions_count,
                 ],
-                'requires_payment_method' => ! $hasSavedMethods,
+                'requires_payment_method' => !$hasSavedMethods,
                 'meta' => [
                     'service' => $serviceData,
                     'subject' => $subjectData,
@@ -1025,7 +1033,7 @@ class BookingController extends Controller
                 }
 
                 // Notify participants if join_url is present
-                if (! empty($session->join_url)) {
+                if (!empty($session->join_url)) {
                     $ns = new \App\Services\NotificationService();
 
                     $titleStudent = app()->getLocale() == 'ar' ? 'رابط الحصة جاهز' : 'Lesson Link Ready';
@@ -1126,7 +1134,7 @@ class BookingController extends Controller
                 'id' => $booking->id,
                 'reference' => $booking->booking_reference,
                 'teacher' => $teacherData,
-                'course' =>  $courseData,
+                'course' => $courseData,
                 'subject' => $subjectData,
                 'session_info' => [
                     'type' => $booking->session_type,
@@ -1397,9 +1405,12 @@ class BookingController extends Controller
 
     private function calculatePackageDiscount(int $sessionsCount): float
     {
-        if ($sessionsCount >= 20) return 20; // 20% discount for 20+ sessions
-        if ($sessionsCount >= 10) return 15; // 15% discount for 10+ sessions
-        if ($sessionsCount >= 5) return 10;  // 10% discount for 5+ sessions
+        if ($sessionsCount >= 20)
+            return 20; // 20% discount for 20+ sessions
+        if ($sessionsCount >= 10)
+            return 15; // 15% discount for 10+ sessions
+        if ($sessionsCount >= 5)
+            return 10;  // 10% discount for 5+ sessions
         return 0;
     }
 
