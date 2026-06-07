@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers\Api;
 
+use App\Helpers\NotificationHelper;
 use App\Http\Controllers\Controller;
 use App\Models\Orders;
 use App\Models\TeacherInfo;
@@ -137,8 +138,7 @@ class TeacherApplicationController extends Controller
         'status' => 'pending'
     ]);
 
-    // TODO: Notify student about new application
-    // NotificationHelper::newApplication($order->student, $application);
+        NotificationHelper::applicationReceived($order->student, $application);
 
     return response()->json([
         'success' => true,
