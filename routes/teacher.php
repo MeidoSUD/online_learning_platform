@@ -127,7 +127,8 @@ Route::prefix('teacher')->middleware(['auth:sanctum', 'role:teacher'])->group(fu
     // payments methods
     Route::get('payment-methods', [UserPaymentMethodController::class, 'index']);
     Route::post('payment-methods', [UserPaymentMethodController::class, 'store']);
-    Route::put('payment-methods/set-default/{id}', [UserPaymentMethodController::class, 'setDefault']);
+    Route::put('payment-methods/{id}', [UserPaymentMethodController::class, 'update']);
+    Route::post('payment-methods/set-default/{id}', [UserPaymentMethodController::class, 'setDefault']);
     Route::delete('payment-methods/{id}', [UserPaymentMethodController::class, 'destroy']);
     // reviews
     Route::get('/courses/{course_id}/reviews', [ReviewController::class, 'index']);
