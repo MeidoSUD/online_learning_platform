@@ -29,6 +29,7 @@ class CreateUsersTable extends Migration
             $table->string('social_provider')->nullable();
             $table->string('social_provider_id')->nullable();
             $table->string('remember_token')->nullable();
+            $table->string('agora_chat_uid')->nullable();
             $table->tinyInteger('is_active')->default(1);
             $table->timestamps();
             $table->softDeletes();

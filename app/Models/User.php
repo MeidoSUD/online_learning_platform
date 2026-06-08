@@ -33,6 +33,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'verified',
         'verification_code',
         'profile_completed',
+        'agora_chat_uid',
     ];
 
     /**

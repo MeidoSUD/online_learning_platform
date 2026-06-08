@@ -526,6 +526,15 @@ class UserController extends Controller
         }
 
         Log::info('Individual teacher profile updated', ['user_id' => $user->id]);
+        // Allow individual teachers to upload a cover image or intro video similar to institute flow
+        if ($request->hasFile('cover_image')) {
+            // Use the attachments table and store under teachers/covers
+            $this->saveUserAttachment($request, 'cover_image', 'teachers/covers', $user, 'cover_image');
+        }
+
+        if ($request->hasFile('intro_video')) {
+            $this->saveUserAttachment($request, 'intro_video', 'teachers/videos', $user, 'intro_video');
+        }
     }
 
     /**
@@ -651,6 +660,91 @@ class UserController extends Controller
             Log::error("Failed to upload institute $attachmentType: " . $e->getMessage());
             throw $e;
         }
+    }
+
+    /**
+     * Save an attachment for a user (individual teacher flows)
+     * Mirrors the institute attachment logic but attaches to the user record.
+     */
+    private function saveUserAttachment(Request $request, $fieldName, $path, User $user, $attachmentType)
+    {
+        if (! $request->hasFile($fieldName)) {
+            return;
+        }
+
+        try {
+            // Delete old attachment if exists for this user and type
+            $oldAttachment = Attachment::where('user_id', $user->id)
+                ->where('attached_to_type', $attachmentType)
+                ->first();
+
+            if ($oldAttachment && Storage::exists($oldAttachment->file_path)) {
+                Storage::delete($oldAttachment->file_path);
+            }
+
+            $file = $request->file($fieldName);
+            $filePath = $file->store($path, 'public');
+
+            Attachment::updateOrCreate(
+                [
+                    'user_id' => $user->id,
+                    'attached_to_type' => $attachmentType,
+                    'attached_to_id' => $user->id,
+                ],
+                [
+                    'file_path' => $filePath,
+                    'file_name' => $file->getClientOriginalName(),
+                    'file_type' => $file->getClientMimeType(),
+                    'file_size' => $file->getSize(),
+                    'created_by' => $user->id,
+                ]
+            );
+
+            Log::info("User $attachmentType uploaded", [
+                'user_id' => $user->id,
+                'path' => $filePath
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Failed to upload user $attachmentType: " . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
+     * Delete an attachment by id. Removes file from storage and DB record.
+     * DELETE /api/attachments/{id}
+     */
+    public function deleteAttachment(Request $request, $id)
+    {
+        $user = $request->user();
+
+        $attachment = Attachment::where('id', $id)->first();
+        if (! $attachment) {
+            return response()->json(['success' => false, 'message' => 'Attachment not found'], 404);
+        }
+
+        // Only allow owner or admins to delete
+        if ($attachment->user_id != $user->id && ! optional($user->role)->name_key === 'admin') {
+            return response()->json(['success' => false, 'message' => 'Not authorized to delete this attachment'], 403);
+        }
+
+        try {
+            if (Storage::exists($attachment->file_path)) {
+                Storage::delete($attachment->file_path);
+            }
+        } catch (\Exception $e) {
+            // Log and continue to delete db record
+            Log::warning('Failed to delete attachment file from storage: ' . $e->getMessage());
+        }
+
+        try {
+            $attachment->delete();
+        } catch (\Exception $e) {
+            Log::error('Failed to delete attachment record: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to delete attachment record'], 500);
+        }
+
+        return response()->json(['success' => true, 'message' => 'Attachment deleted']);
     }
 
     // List all teachers with optional filters

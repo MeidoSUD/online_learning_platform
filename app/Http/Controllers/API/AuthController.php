@@ -721,16 +721,26 @@ class AuthController extends Controller
             } catch (\Exception $e) {
                 Log::warning('Failed to send welcome notification: ' . $e->getMessage());
             }
-            DeviceToken::updateOrCreate(
-                [
-                    'user_id' => $user->id,
-                    'device_token' => $user->fcm_token,
-                ],
-                [
-                    'device_type' => $request->device_type ?? 'android',
-                    'is_active' => true,
-                ]
-            );
+            // Only save device token if we have a non-empty token (from request or user record)
+            $deviceTokenValue = $request->input('fcm_token') ?? $user->fcm_token;
+            if (!empty($deviceTokenValue)) {
+                try {
+                    DeviceToken::updateOrCreate(
+                        [
+                            'user_id' => $user->id,
+                            'device_token' => $deviceTokenValue,
+                        ],
+                        [
+                            'device_type' => $request->device_type ?? 'android',
+                            'is_active' => true,
+                        ]
+                    );
+                } catch (\Exception $e) {
+                    Log::warning('Failed to save device token: ' . $e->getMessage(), ['user_id' => $user->id]);
+                }
+            } else {
+                Log::warning('No device token available to save for user', ['user_id' => $user->id]);
+            }
             return $this->success([
                 'user' => $userData,
                 'token' => $token,

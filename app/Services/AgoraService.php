@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Agora\RtcTokenBuilder;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class AgoraService
 {
@@ -102,6 +104,169 @@ class AgoraService
             'token' => $token,
             'uid' => $account,
             'expires_in' => $expireSeconds,
+        ];
+    }
+
+    /**
+     * Generate an RTM (chat) token for a given user account.
+     * Uses the RtmTokenBuilder present in app/Agora.
+     *
+     * @param string $account user account string (e.g. 'teacher_12' or 'student_34')
+     * @param int|null $expireSeconds
+     * @return array|null [ 'token' => string, 'uid' => string, 'expires_in' => int ]|null
+     */
+    public function generateRtmTokenForAccount(string $account, $expireSeconds = null): ?array
+    {
+        $appId = config('services.agora.app_id');
+        $appCertificate = config('services.agora.app_certificate');
+        if (! $appId || ! $appCertificate) {
+            return null;
+        }
+
+        $expireSeconds = $expireSeconds ?? (int) config('services.agora.token_ttl', 3600);
+        $privilegeExpireTs = time() + $expireSeconds;
+
+        try {
+            $token = \App\Agora\RtmTokenBuilder::buildToken(
+                $appId,
+                $appCertificate,
+                (string) $account,
+                \App\Agora\RtmTokenBuilder::RoleRtmUser,
+                $privilegeExpireTs
+            );
+
+            return [
+                'token' => $token,
+                'uid' => $account,
+                'expires_in' => $expireSeconds,
+            ];
+        } catch (\Throwable $e) {
+            // Token builder may throw if dependencies are missing — surface as null to caller
+            return null;
+        }
+    }
+
+    // ──────────────────────────────────────────────
+    //  Agora Chat (RTM) REST API — User Registration
+    // ──────────────────────────────────────────────
+
+    /**
+     * Register (or look up) a user on Agora Chat via REST API.
+     * Each user (teacher/student) must be registered once on Agora's platform
+     * before they can login to Agora Chat with an RTM token.
+     *
+     * The Agora Chat UUID is returned so your app can store it in the
+     * `users.agora_chat_uid` column for future reference.
+     *
+     * @param string $username e.g. 'teacher_12' or 'student_34'
+     * @return string|null The Agora Chat UUID on success, or null on failure
+     */
+    public function registerChatUser(string $username): ?string
+    {
+        $appId = config('services.agora.app_id');
+        $appCertificate = config('services.agora.app_certificate');
+
+        if (! $appId || ! $appCertificate) {
+            Log::error('AgoraService::registerChatUser — app_id or app_certificate missing');
+            return null;
+        }
+
+        $baseUrl = 'https://api.agora.io/dev/v1/project/' . $appId;
+
+        try {
+            // Step 1: Try to create the user
+            $response = Http::withBasicAuth($appId, $appCertificate)
+                ->timeout(10)
+                ->acceptJson()
+                ->post($baseUrl . '/users', [
+                    'username' => $username,
+                ]);
+
+            if ($response->successful()) {
+                $body = $response->json();
+                $uuid = $body['data']['uuid'] ?? $body['uuid'] ?? null;
+                Log::info('Agora Chat user registered', ['username' => $username, 'uuid' => $uuid]);
+                return $uuid;
+            }
+
+            // 409 = user already exists on Agora → look up their UUID
+            if ($response->status() === 409) {
+                $getRes = Http::withBasicAuth($appId, $appCertificate)
+                    ->timeout(10)
+                    ->acceptJson()
+                    ->get($baseUrl . '/users', ['username' => $username]);
+
+                if ($getRes->successful()) {
+                    $body = $getRes->json();
+                    $users = $body['data'] ?? $body ?? [];
+                    if (is_array($users) && count($users) > 0) {
+                        $existing = $users[0];
+                        $uuid = $existing['uuid'] ?? $username;
+                        Log::info('Agora Chat user already exists', ['username' => $username, 'uuid' => $uuid]);
+                        return $uuid;
+                    }
+                }
+                // If lookup fails, return username as fallback identifier
+                return $username;
+            }
+
+            Log::warning('Agora Chat registration unexpected response', [
+                'username' => $username,
+                'status'   => $response->status(),
+                'body'     => $response->body(),
+            ]);
+            return null;
+
+        } catch (\Throwable $e) {
+            Log::error('Agora Chat REST API exception', [
+                'username' => $username,
+                'error'    => $e->getMessage(),
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Full-flow credentials for Agora Chat:
+     *   1. Register user on Agora Chat (if not already registered)
+     *   2. Generate an RTM token for that user
+     *   3. Return everything the mobile app needs: token, uid, channel
+     *
+     * Call this BEFORE the session starts so the mobile app can obtain
+     * chat credentials independently of RTC.
+     *
+     * @param int    $sessionId
+     * @param int    $userId       The user's internal ID
+     * @param string $userType     'teacher' or 'student'
+     * @param int|null $expireSeconds
+     * @return array|null
+     */
+    public function generateChatCredentials(int $sessionId, int $userId, string $userType, $expireSeconds = null): ?array
+    {
+        $username = $userType . '_' . $userId;
+        $channel  = 'session_' . $sessionId;
+
+        // 1. Register user on Agora Chat (idempotent)
+        $agoraUid = $this->registerChatUser($username);
+
+        // 2. Generate RTM token (works even if registration failed — token generation is local)
+        $rtmToken = $this->generateRtmTokenForAccount($username, $expireSeconds);
+
+        if (! $rtmToken || empty($rtmToken['token'])) {
+            Log::error('AgoraService::generateChatCredentials — failed to generate RTM token', [
+                'username' => $username,
+                'session_id' => $sessionId,
+            ]);
+            return null;
+        }
+
+        return [
+            'agora_uid'   => $agoraUid ?? $username,
+            'token'       => $rtmToken['token'],
+            'uid'         => $username,
+            'channel'     => $channel,
+            'expires_in'  => $rtmToken['expires_in'],
+            'app_id'      => config('services.agora.app_id'),
         ];
     }
 }

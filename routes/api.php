@@ -71,17 +71,13 @@ use App\Http\Controllers\API\Admin\SessionsAdminController;
 */
 
 Route::get('/getteachers', [UsersController::class, 'teachers']);
-
 Route::get('/users', [UsersController::class, 'index']);
 Route::get('/dashboard', [DashboardController::class, 'dashboard']); // Comprehensive admin dashboard
-
 Route::get('settings', [SettingController::class, 'index']);
 Route::get('settings/{group}', [SettingController::class, 'byGroup']);
-
 // App Configuration Routes (for mobile apps)
 Route::get('app-config', [AppConfigController::class, 'getConfig']);
 Route::get('app-settings', [AppConfigController::class, 'getAppSettings']);
-
 // Notification route
 Route::post('/send-notification', [FCMTokenController::class, 'sendToToken']);
 Route::middleware('auth:sanctum')->group(function () {
@@ -91,6 +87,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/notifications/mark-all-as-read', [FCMTokenController::class, 'markAllAsRead']);
     Route::delete('/notifications/{id}/delete', [FCMTokenController::class, 'deleteNotification']);
     Route::post('/notifications/send', [NotificationController::class, 'sendToToken']);
+    // Delete attachment (file + DB record)
+    Route::delete('/attachments/{id}', [UserController::class, 'deleteAttachment']);
 
     // Session Reviews (Accessible by both student and teacher)
     Route::get('/sessions/{session_id}/review', [ReviewController::class, 'getSessionReview']);
@@ -120,6 +118,10 @@ Route::get('/teachers/{id}/students', [BookingController::class, 'getTeacherStud
 Route::get('/education-levels', [EducationLevelController::class, 'levelsWithClassesAndSubjects']);
 Route::get('/classes/{education_level_id}', [EducationLevelController::class, 'classes']);
 Route::get('subjectsClasses/{class_id}', [EducationLevelController::class, 'getSubjectsByClass']);
+// Terms and Conditions privacy policy
+Route::get('teacher-terms' , [TermsConditionsAdminController::class, 'teacherTerms']);
+Route::get('/teacher-policy', [TermsConditionsAdminController::class, 'teachersPrivacyPolicy']);
+Route::get('/student-policy', [TermsConditionsAdminController::class, 'studentsPrivacyPolicy']);
 
 // ========================================================================
 // PAYMENT ENDPOINTS - PCI-DSS Compliant (Copy & Pay)
@@ -247,6 +249,8 @@ Route::prefix('teacher')->middleware(['auth:sanctum', 'role:teacher'])->group(fu
     Route::get('/sessions/{id}', [SessionsController::class, 'show']);
     Route::post('/sessions/{id}/start', [SessionsController::class, 'start']);
     Route::post('/sessions/{id}/end', [SessionsController::class, 'end']);
+    Route::post('/sessions/{id}/chat-token', [SessionsController::class, 'getChatToken']);
+    // terms and conditions
 });
 
 Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(function () {

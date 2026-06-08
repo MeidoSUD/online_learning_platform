@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use App\Services\AgoraService;
 use App\Services\TeacherWalletService;
 use Illuminate\Support\Facades\Log;
+use App\Models\User;
 
 
 class SessionsController extends Controller
@@ -297,6 +298,68 @@ class SessionsController extends Controller
     }
 
     /**
+     * Get Agora Chat credentials for a session.
+     * Can be called BEFORE the session starts (unlike join() which requires live status).
+     * Mobile app calls this to register the user on Agora Chat and get an RTM token + channel.
+     *
+     * POST /api/sessions/{id}/chat-token
+     */
+    public function getChatToken(Request $request, $sessionId): JsonResponse
+    {
+        $user = $request->user();
+
+        $session = Sessions::with(['teacher', 'student'])
+            ->where('id', $sessionId)
+            ->where(function ($q) use ($user) {
+                $q->where('student_id', $user->id)->orWhere('teacher_id', $user->id);
+            })
+            ->first();
+
+        if (! $session) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Session not found or you are not a participant'
+            ], 404);
+        }
+
+        $userType = ($user->id == $session->teacher_id) ? 'teacher' : 'student';
+
+        $agora = new AgoraService();
+
+        $chatCredentials = $agora->generateChatCredentials(
+            (int) $session->id,
+            (int) $user->id,
+            $userType
+        );
+
+        if (! $chatCredentials) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate Agora Chat credentials'
+            ], 500);
+        }
+
+        // Persist the Agora Chat UUID on the user record (one-time)
+        if ($user->agora_chat_uid !== $chatCredentials['agora_uid']) {
+            User::where('id', $user->id)->update(['agora_chat_uid' => $chatCredentials['agora_uid']]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'chat' => [
+                    'token'      => $chatCredentials['token'],
+                    'uid'        => $chatCredentials['uid'],
+                    'channel'    => $chatCredentials['channel'],
+                    'expires_in' => $chatCredentials['expires_in'],
+                    'app_id'     => $chatCredentials['app_id'],
+                    'agora_uid'  => $chatCredentials['agora_uid'],
+                ],
+            ],
+        ]);
+    }
+
+    /**
      * Teacher starts a session and receives host token/urls
      * POST /api/teacher/sessions/{id}/start
      */
@@ -321,7 +384,7 @@ class SessionsController extends Controller
             // return response()->json(['success'=>false,'message'=>'Session cannot be started yet'], 422);
         }
 
-        $agora = new AgoraService();
+    $agora = new AgoraService();
 
         // Build stable channel and account strings
         $channel = 'session_' . $session->id;
@@ -352,6 +415,18 @@ class SessionsController extends Controller
         // mark session as started (this sets status -> in_progress and started_at)
         $started = $session->start();
 
+    // Register teacher on Agora Chat (one-time) and get full chat credentials
+    $chatCredentials = $agora->generateChatCredentials(
+        (int) $session->id,
+        (int) $user->id,
+        'teacher'
+    );
+
+    // Persist the Agora Chat UUID on the teacher record
+    if ($chatCredentials && $user->agora_chat_uid !== $chatCredentials['agora_uid']) {
+        User::where('id', $user->id)->update(['agora_chat_uid' => $chatCredentials['agora_uid']]);
+    }
+
         return response()->json([
             'success' => true,
             'message' => 'Session started',
@@ -362,6 +437,13 @@ class SessionsController extends Controller
                     'uid' => $host['uid'],
                     'role' => 'host',
                     'expires_in' => $host['expires_in'],
+                    // RTC and RTM share the same channel name
+                    'chat_channel' => $host['channel'],
+                    'app_id' => $chatCredentials['app_id'] ?? config('services.agora.app_id'),
+                    'chat_token' => $chatCredentials['token'] ?? null,
+                    'chat_uid' => $chatCredentials['uid'] ?? null,
+                    'chat_expires_in' => $chatCredentials['expires_in'] ?? null,
+                    'chat_agora_uid' => $chatCredentials['agora_uid'] ?? null,
                 ],
                 'session_status' => 'live'
             ],
@@ -424,6 +506,18 @@ class SessionsController extends Controller
             return response()->json(['success' => false, 'message' => 'Failed to generate Agora token for participant. Check Agora credentials.'], 500);
         }
 
+    // Register user on Agora Chat (one-time) and get full chat credentials
+    $chatCredentials = $agora->generateChatCredentials(
+        (int) $session->id,
+        (int) $user->id,
+        $isTeacher ? 'teacher' : 'student'
+    );
+
+    // Persist the Agora Chat UUID on the user record
+    if ($chatCredentials && $user->agora_chat_uid !== $chatCredentials['agora_uid']) {
+        User::where('id', $user->id)->update(['agora_chat_uid' => $chatCredentials['agora_uid']]);
+    }
+
         return response()->json([
             'success' => true,
             'message' => 'You can now join the session',
@@ -434,6 +528,12 @@ class SessionsController extends Controller
                     'uid' => $tokenInfo['uid'],
                     'role' => $roleName,
                     'expires_in' => $tokenInfo['expires_in'],
+                    'chat_channel' => $tokenInfo['channel'],
+                    'app_id' => $chatCredentials['app_id'] ?? config('services.agora.app_id'),
+                    'chat_token' => $chatCredentials['token'] ?? null,
+                    'chat_uid' => $chatCredentials['uid'] ?? null,
+                    'chat_expires_in' => $chatCredentials['expires_in'] ?? null,
+                    'chat_agora_uid' => $chatCredentials['agora_uid'] ?? null,
                 ]
             ],
             'errors' => null,
