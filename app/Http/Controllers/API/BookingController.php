@@ -1918,7 +1918,7 @@ class BookingController extends Controller
     {
         $perPage = $request->get('per_page', 10);
 
-        $teacherIds = Booking::where('student_id', $studentId)
+        $teacherIds = Sessions::where('student_id', $studentId)
             ->where('status', '!=', 'cancelled')
             ->distinct()
             ->pluck('teacher_id');
@@ -1926,7 +1926,7 @@ class BookingController extends Controller
         $teachers = \App\Models\User::whereIn('id', $teacherIds)->paginate($perPage);
 
         $teachersData = collect($teachers->items())->map(function ($teacher) use ($studentId) {
-            $bookingsCount = Booking::where('student_id', $studentId)
+            $bookingsCount = Sessions::where('student_id', $studentId)
                 ->where('teacher_id', $teacher->id)
                 ->where('status', '!=', 'cancelled')
                 ->count();
