@@ -115,6 +115,7 @@ Route::get('language-study/teachers/filter', [LanguageStudyController::class, 'f
 Route::get('/teachers', [UserController::class, 'listTeachers']);
 Route::get('/teachers/{id}', [UserController::class, 'teacherDetails']);
 Route::get('/teachers/{id}/students', [BookingController::class, 'getTeacherStudentsPublic']);
+Route::get('/students/{id}/teachers', [BookingController::class, 'getStudentTeachersPublic']);
 Route::get('/education-levels', [EducationLevelController::class, 'levelsWithClassesAndSubjects']);
 Route::get('/classes/{education_level_id}', [EducationLevelController::class, 'classes']);
 Route::get('subjectsClasses/{class_id}', [EducationLevelController::class, 'getSubjectsByClass']);
