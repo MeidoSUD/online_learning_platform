@@ -668,7 +668,7 @@ class UserController extends Controller
      */
     private function saveUserAttachment(Request $request, $fieldName, $path, User $user, $attachmentType)
     {
-        if (! $request->hasFile($fieldName)) {
+        if (!$request->hasFile($fieldName)) {
             return;
         }
 
@@ -719,12 +719,12 @@ class UserController extends Controller
         $user = $request->user();
 
         $attachment = Attachment::where('id', $id)->first();
-        if (! $attachment) {
+        if (!$attachment) {
             return response()->json(['success' => false, 'message' => 'Attachment not found'], 404);
         }
 
         // Only allow owner or admins to delete
-        if ($attachment->user_id != $user->id && ! optional($user->role)->name_key === 'admin') {
+        if ($attachment->user_id != $user->id && !optional($user->role)->name_key === 'admin') {
             return response()->json(['success' => false, 'message' => 'Not authorized to delete this attachment'], 403);
         }
 
@@ -858,6 +858,28 @@ class UserController extends Controller
          | Pagination & Ordering
          ======================= */
 
+        // Get authenticated user's favorited teacher IDs (if student)
+        $favoritedIds = [];
+        $authUser = null;
+        if ($token = $request->bearerToken()) {
+            $accessToken = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
+            if ($accessToken) {
+                $authUser = $accessToken->tokenable;
+            }
+        }
+        if ($authUser && $authUser->role_id == 4) {
+            $favoritedIds = $authUser
+                ->favorites()
+                ->where('favoriteable_type', User::class)
+                ->pluck('favoriteable_id')
+                ->toArray();
+        }
+
+        $addHasFavorited = function ($teacherData, $teacherId) use ($favoritedIds) {
+            $teacherData['has_favorited'] = in_array($teacherId, $favoritedIds);
+            return $teacherData;
+        };
+
         // Check if user wants all teachers (all=true or all=1)
         $getAll = $request->boolean('all') || $request->get('all') === '1';
 
@@ -865,8 +887,9 @@ class UserController extends Controller
             // Return all teachers without pagination
             $teachers = $query->orderByDesc('id')->get();
 
-            $transformedTeachers = $teachers->map(function ($teacher) {
-                return $this->getFullTeacherData($teacher);
+            $transformedTeachers = $teachers->map(function ($teacher) use ($addHasFavorited) {
+                $data = $this->getFullTeacherData($teacher);
+                return $addHasFavorited($data, $teacher->id);
             });
 
             return response()->json([
@@ -883,8 +906,9 @@ class UserController extends Controller
         $perPage = $request->get('per_page', 10);
         $teachers = $query->orderByDesc('id')->paginate($perPage);
 
-        $teachers->getCollection()->transform(function ($teacher) {
-            return $this->getFullTeacherData($teacher);
+        $teachers->getCollection()->transform(function ($teacher) use ($addHasFavorited) {
+            $data = $this->getFullTeacherData($teacher);
+            return $addHasFavorited($data, $teacher->id);
         });
 
         return response()->json([
@@ -1081,7 +1105,7 @@ class UserController extends Controller
 
             // Create new service records
             foreach ($servicesInput as $service_id) {
-                $service_id = (int)$service_id; // Ensure it's an integer
+                $service_id = (int) $service_id; // Ensure it's an integer
 
                 // Validate service exists
                 $serviceExists = DB::table('services')->where('id', $service_id)->exists();

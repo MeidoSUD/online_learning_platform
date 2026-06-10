@@ -16,6 +16,7 @@ use App\Http\Controllers\API\SessionsController;
 use App\Http\Controllers\FCMTokenController;
 use App\Http\Controllers\API\Admin\TermsConditionsAdminController;
 use App\Http\Controllers\API\BookingCourseController;
+use App\Http\Controllers\API\FavoriteController;
 
 // Student routes with 'student' role middleware
 Route::prefix('student')->middleware(['auth:sanctum', 'role:student'])->group(function () {
@@ -100,4 +101,9 @@ Route::prefix('student')->middleware(['auth:sanctum', 'role:student'])->group(fu
     Route::get('/certificates', [UserController::class, 'listCertificates']);
     // by ab
     Route::post('/booking/course', [BookingCourseController::class, 'createBooking']); // create booking
+
+    // Favorites
+    Route::post('/favorites/{teacher}/toggle', [FavoriteController::class, 'toggle']);
+    Route::get('/favorites', [FavoriteController::class, 'index']);
+    Route::get('/favorites/{teacher}/status', [FavoriteController::class, 'status']);
 });
