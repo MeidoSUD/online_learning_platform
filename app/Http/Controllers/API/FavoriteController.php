@@ -32,16 +32,31 @@ class FavoriteController extends Controller
         ]);
     }
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         $user = Auth::user();
-        $favoriteTeachers = $user->getFavoriteItems(User::class)
+        $perPage = $request->get('per_page', 10);
+        $teachers = $user->getFavoriteItems(User::class)
             ->where('role_id', 3)
-            ->get();
+            ->paginate($perPage);
+
+        $userController = new UserController();
+
+        $transformed = $teachers->getCollection()->map(function ($teacher) use ($userController) {
+            $teacherData = $userController->getFullTeacherData($teacher);
+            $teacherData['has_favorited'] = true;
+            return $teacherData;
+        });
 
         return response()->json([
             'success' => true,
-            'data' => $favoriteTeachers,
+            'data' => $transformed->values(),
+            'pagination' => [
+                'current_page' => $teachers->currentPage(),
+                'last_page' => $teachers->lastPage(),
+                'per_page' => $teachers->perPage(),
+                'total' => $teachers->total(),
+            ],
         ]);
     }
 
