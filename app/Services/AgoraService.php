@@ -134,7 +134,7 @@ class AgoraService
                 \App\Agora\RtmTokenBuilder::RoleRtmUser,
                 $privilegeExpireTs
             );
-
+    Log::debug('RTM token generated', ['account' => $account, 'token_prefix' => substr($token, 0, 20) . '...']);
             return [
                 'token' => $token,
                 'uid' => $account,
