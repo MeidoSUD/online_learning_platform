@@ -31,7 +31,7 @@ class SessionsController extends Controller
     {
         $user = $request->user();
         $this->autoUpdateOverdueSessions($user);
-        
+
         $status = $request->get('status', null); // optional: filter by status
         $perPage = $request->get('per_page', 15);
 
@@ -343,6 +343,27 @@ class SessionsController extends Controller
         if ($user->agora_chat_uid !== $chatCredentials['agora_uid']) {
             User::where('id', $user->id)->update(['agora_chat_uid' => $chatCredentials['agora_uid']]);
         }
+        Log::info('Generated Agora Chat credentials', [
+            'chat credentials' => $chatCredentials,
+        ]);
+        // Ensure a chat room exists for this session. createChatRoom will
+        // return an Agora chat room id when successful. Persist it once.
+        $chatRoomId = $session->chat_room_id ?? null;
+        if (! $chatRoomId) {
+            try {
+                $createdId = $agora->createChatRoom('session_' . $session->id, 'teacher_' . $session->teacher_id);
+                if ($createdId) {
+                    $session->chat_room_id = $createdId;
+                    $session->save();
+                    $chatRoomId = $createdId;
+                    Log::info('Persisted chat_room_id to session', ['session_id' => $session->id, 'chat_room_id' => $chatRoomId]);
+                } else {
+                    Log::warning('createChatRoom returned null or room already exists', ['session_id' => $session->id]);
+                }
+            } catch (\Throwable $e) {
+                Log::error('Failed to create or persist chat_room_id', ['session_id' => $session->id, 'error' => $e->getMessage()]);
+            }
+        }
 
         return response()->json([
             'success' => true,
@@ -354,192 +375,184 @@ class SessionsController extends Controller
                     'expires_in' => $chatCredentials['expires_in'],
                     'app_id'     => $chatCredentials['app_id'],
                     'agora_uid'  => $chatCredentials['agora_uid'],
+                    'chat_room_id' => $chatRoomId,
                 ],
             ],
         ]);
     }
 
-    /**
-     * Teacher starts a session and receives host token/urls
-     * POST /api/teacher/sessions/{id}/start
-     */
     public function start(Request $request, $sessionId): JsonResponse
-    {
-        $user = $request->user();
+{
+    $user = $request->user();
 
-        if ($user->role_id != 3) { // teacher
-            return response()->json(['success' => false, 'message' => 'Only teachers can start sessions'], 403);
-        }
+    if ($user->role_id != 3) {
+        return response()->json(['success' => false, 'message' => 'Only teachers can start sessions'], 403);
+    }
 
-        $session = Sessions::with(['teacher', 'student', 'booking'])->where('id', $sessionId)->where('teacher_id', $user->id)->first();
+    $session = Sessions::with(['teacher', 'student', 'booking'])
+        ->where('id', $sessionId)
+        ->where('teacher_id', $user->id)
+        ->first();
 
-        if (!$session) {
-            return response()->json(['success' => false, 'message' => 'Session not found or you are not the teacher'], 404);
-        }
+    if (!$session) {
+        return response()->json(['success' => false, 'message' => 'Session not found or you are not the teacher'], 404);
+    }
 
-        // Optional: enforce time window
-        if (!$session->can_start) {
-            // Allow override for testing, but inform the client
-            Log::info('Teacher tried to start session outside allowed window', ['session_id' => $session->id]);
-            // return response()->json(['success'=>false,'message'=>'Session cannot be started yet'], 422);
-        }
+    if (!$session->can_start) {
+        Log::info('Teacher tried to start session outside allowed window', ['session_id' => $session->id]);
+    }
 
-    $agora = new AgoraService();
+    $agora          = new AgoraService();
+    $channel        = 'session_' . $session->id;
+    $teacherAccount = 'teacher_' . $session->teacher_id;
 
-        // Build stable channel and account strings
-        $channel = 'session_' . $session->id;
-        $teacherAccount = 'teacher_' . $session->teacher_id;
+    // 1. Generate RTC host token
+    $host = $agora->generateTokenForAccount($channel, $teacherAccount, \App\Agora\RtcTokenBuilder::RolePublisher);
 
-        // Generate host token ONLY when teacher starts
-        $host = $agora->generateTokenForAccount($channel, $teacherAccount, \App\Agora\RtcTokenBuilder::RolePublisher);
+    if (!$host || empty($host['token'])) {
+        Log::error('Failed to generate Agora host token', [
+            'channel' => $channel,
+            'account' => $teacherAccount,
+        ]);
+        return response()->json(['success' => false, 'message' => 'Failed to generate Agora host token. Check Agora credentials.'], 500);
+    }
 
-        if (!$host || empty($host['token'])) {
-            Log::error('Failed to generate Agora host token', [
-                'channel' => $channel,
-                'account' => $teacherAccount,
-                'role' => \App\Agora\RtcTokenBuilder::RolePublisher,
-                'token' => $host['token'] ?? null,
-            ]);
-            return response()->json(['success' => false, 'message' => 'Failed to generate Agora host token. Check Agora credentials.'], 500);
-        }
+    // 2. Persist meeting_id and mark session live
+    try {
+        $session->meeting_id = $channel;
+        $session->status     = Sessions::STATUS_LIVE;
+        $session->save();
+    } catch (\Throwable $e) {
+        Log::warning('Failed to persist meeting id to session: ' . $e->getMessage());
+    }
 
-        // persist meeting/channel id for reference (no URLs)
-        try {
-            $session->meeting_id = $channel;
-            $session->status = Sessions::STATUS_LIVE;
-            $session->save();
-        } catch (\Throwable $e) {
-            Log::warning('Failed to persist meeting id to session: ' . $e->getMessage());
-        }
+    $session->start();
 
-        // mark session as started (this sets status -> in_progress and started_at)
-        $started = $session->start();
-
-    // Register teacher on Agora Chat (one-time) and get full chat credentials
+    // 3. Register teacher on Agora Chat + generate Chat USER token
     $chatCredentials = $agora->generateChatCredentials(
         (int) $session->id,
         (int) $user->id,
         'teacher'
     );
 
-    // Persist the Agora Chat UUID on the teacher record
     if ($chatCredentials && $user->agora_chat_uid !== $chatCredentials['agora_uid']) {
         User::where('id', $user->id)->update(['agora_chat_uid' => $chatCredentials['agora_uid']]);
     }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Session started',
-            'data' => [
-                'agora' => [
-                    'channel' => $host['channel'],
-                    'token' => $host['token'],
-                    'uid' => $host['uid'],
-                    'role' => 'host',
-                    'expires_in' => $host['expires_in'],
-                    // RTC and RTM share the same channel name
-                    'chat_channel' => $host['channel'],
-                    'app_id' => $chatCredentials['app_id'] ?? config('services.agora.app_id'),
-                    'chat_token' => $chatCredentials['token'] ?? null,
-                    'chat_uid' => $chatCredentials['uid'] ?? null,
-                    'chat_expires_in' => $chatCredentials['expires_in'] ?? null,
-                    'chat_agora_uid' => $chatCredentials['agora_uid'] ?? null,
-                ],
-                'session_status' => 'live'
+    // 4. Get or create the chat room — single source of truth, persists the ID
+    $chatRoomId = $agora->getOrCreateChatRoomForSession($session);
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Session started',
+        'data'    => [
+            'agora' => [
+                'channel'        => $host['channel'],
+                'token'          => $host['token'],
+                'uid'            => $host['uid'],
+                'role'           => 'host',
+                'expires_in'     => $host['expires_in'],
+                'chat_channel'   => $host['channel'],
+                'app_id'         => $chatCredentials['app_id'] ?? config('services.agora.app_id'),
+                'chat_token'     => $chatCredentials['token'] ?? null,
+                'chat_uid'       => $chatCredentials['uid'] ?? null,
+                'chat_expires_in'=> $chatCredentials['expires_in'] ?? null,
+                'chat_agora_uid' => $chatCredentials['agora_uid'] ?? null,
+                'chat_room_id'   => $chatRoomId,
             ],
-            'errors' => null,
-            'meta' => null
-        ]);
+            'session_status' => 'live',
+        ],
+        'errors' => null,
+        'meta'   => null,
+    ]);
+}
+
+/**
+ * Student (or participant) joins a session and receives join token/urls
+ * POST /api/student/sessions/{id}/join
+ */
+public function join(Request $request, $sessionId): JsonResponse
+{
+    $user = $request->user();
+
+    $session = Sessions::with(['teacher', 'student', 'booking'])
+        ->where('id', $sessionId)
+        ->where(function ($q) use ($user) {
+            $q->where('student_id', $user->id)->orWhere('teacher_id', $user->id);
+        })
+        ->first();
+
+    if (!$session) {
+        return response()->json(['success' => false, 'message' => 'Session not found or you are not a participant'], 404);
     }
 
-    /**
-     * Student (or participant) joins a session and receives join token/urls
-     * POST /api/student/sessions/{id}/join
-     */
-    public function join(Request $request, $sessionId): JsonResponse
-    {
-        $user = $request->user();
+    if ($session->status !== Sessions::STATUS_LIVE) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Waiting for teacher to start the session',
+            'data'    => ['session_status' => 'waiting_for_teacher'],
+            'errors'  => null,
+            'meta'    => null,
+        ], 423);
+    }
 
-        // allow both student and teacher to call join — role determines token
-        $session = Sessions::with(['teacher', 'student', 'booking'])->where('id', $sessionId)->where(function ($q) use ($user) {
-            $q->where('student_id', $user->id)->orWhere('teacher_id', $user->id);
-        })->first();
+    $agora     = new AgoraService();
+    $channel   = 'session_' . $session->id;
+    $isTeacher = $user->id == $session->teacher_id;
 
-        if (!$session) {
-            return response()->json(['success' => false, 'message' => 'Session not found or you are not a participant'], 404);
-        }
+    $account   = $isTeacher ? 'teacher_' . $user->id : 'student_' . $user->id;
+    $roleConst = $isTeacher ? \App\Agora\RtcTokenBuilder::RolePublisher : \App\Agora\RtcTokenBuilder::RoleSubscriber;
+    $roleName  = $isTeacher ? 'host' : 'participant';
 
-        // Students may only receive a token when the session is live (in_progress)
-        if ($session->status !== Sessions::STATUS_LIVE) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Waiting for teacher to start the session',
-                'data' => ['session_status' => 'waiting_for_teacher'],
-                'errors' => null,
-                'meta' => null
-            ], 423);
-        }
+    // 1. Generate RTC token for this participant
+    $tokenInfo = $agora->generateTokenForAccount($channel, $account, $roleConst);
 
-        // Now generate a participant token for the caller (student or teacher)
-        $agora = new AgoraService();
-        $channel = 'session_' . $session->id;
+    if (!$tokenInfo || empty($tokenInfo['token'])) {
+        Log::error('Failed to generate Agora token for participant', [
+            'channel' => $channel,
+            'account' => $account,
+            'role'    => $roleName,
+        ]);
+        return response()->json(['success' => false, 'message' => 'Failed to generate Agora token for participant. Check Agora credentials.'], 500);
+    }
 
-        $isTeacher = $user->id == $session->teacher_id;
-        if ($isTeacher) {
-            $account = 'teacher_' . $user->id;
-            $roleConst = \App\Agora\RtcTokenBuilder::RolePublisher;
-            $roleName = 'host';
-        } else {
-            $account = 'student_' . $user->id;
-            $roleConst = \App\Agora\RtcTokenBuilder::RoleSubscriber;
-            $roleName = 'participant';
-        }
-
-        $tokenInfo = $agora->generateTokenForAccount($channel, $account, $roleConst);
-        if (!$tokenInfo || empty($tokenInfo['token'])) {
-            Log::error('Failed to generate Agora token for participant', [
-                'channel' => $channel,
-                'account' => $account,
-                'role' => $roleName,
-                'token_info' => $tokenInfo,
-            ]);
-            return response()->json(['success' => false, 'message' => 'Failed to generate Agora token for participant. Check Agora credentials.'], 500);
-        }
-
-    // Register user on Agora Chat (one-time) and get full chat credentials
+    // 2. Register user on Agora Chat + generate Chat USER token
     $chatCredentials = $agora->generateChatCredentials(
         (int) $session->id,
         (int) $user->id,
         $isTeacher ? 'teacher' : 'student'
     );
 
-    // Persist the Agora Chat UUID on the user record
     if ($chatCredentials && $user->agora_chat_uid !== $chatCredentials['agora_uid']) {
         User::where('id', $user->id)->update(['agora_chat_uid' => $chatCredentials['agora_uid']]);
     }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'You can now join the session',
-            'data' => [
-                'agora' => [
-                    'channel' => $tokenInfo['channel'],
-                    'token' => $tokenInfo['token'],
-                    'uid' => $tokenInfo['uid'],
-                    'role' => $roleName,
-                    'expires_in' => $tokenInfo['expires_in'],
-                    'chat_channel' => $tokenInfo['channel'],
-                    'app_id' => $chatCredentials['app_id'] ?? config('services.agora.app_id'),
-                    'chat_token' => $chatCredentials['token'] ?? null,
-                    'chat_uid' => $chatCredentials['uid'] ?? null,
-                    'chat_expires_in' => $chatCredentials['expires_in'] ?? null,
-                    'chat_agora_uid' => $chatCredentials['agora_uid'] ?? null,
-                ]
+    // 3. Get or create the chat room — returns the SAME room ID the teacher already created
+    $chatRoomId = $agora->getOrCreateChatRoomForSession($session);
+
+    return response()->json([
+        'success' => true,
+        'message' => 'You can now join the session',
+        'data'    => [
+            'agora' => [
+                'channel'        => $tokenInfo['channel'],
+                'token'          => $tokenInfo['token'],
+                'uid'            => $tokenInfo['uid'],
+                'role'           => $roleName,
+                'expires_in'     => $tokenInfo['expires_in'],
+                'chat_channel'   => $tokenInfo['channel'],
+                'app_id'         => $chatCredentials['app_id'] ?? config('services.agora.app_id'),
+                'chat_token'     => $chatCredentials['token'] ?? null,
+                'chat_uid'       => $chatCredentials['uid'] ?? null,
+                'chat_expires_in'=> $chatCredentials['expires_in'] ?? null,
+                'chat_agora_uid' => $chatCredentials['agora_uid'] ?? null,
+                'chat_room_id'   => $chatRoomId,
             ],
-            'errors' => null,
-            'meta' => null
-        ]);
-    }
+        ],
+        'errors' => null,
+        'meta'   => null,
+    ]);
+}
 
     public function end(Request $request, $sessionId): JsonResponse
     {
@@ -592,7 +605,7 @@ class SessionsController extends Controller
     {
         try {
             $today = \Carbon\Carbon::today()->format('Y-m-d');
-            
+
             $query = Sessions::whereIn('status', [Sessions::STATUS_SCHEDULED, Sessions::STATUS_LIVE])
                 ->where('session_date', '<', $today);
 
@@ -604,7 +617,7 @@ class SessionsController extends Controller
             }
 
             $affected = $query->update(['status' => Sessions::STATUS_ENDED]);
-            
+
             if ($affected > 0) {
                 Log::info("Auto-updated {$affected} overdue sessions to 'ended' for user {$user->id}");
             }

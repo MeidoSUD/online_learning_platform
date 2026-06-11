@@ -32,6 +32,7 @@ class Sessions extends Model
         'join_url',
         'host_url',
         'meeting_id',
+        'chat_room_id',
         'started_at',
         'ended_at',
         'teacher_notes',
@@ -582,7 +583,7 @@ class Sessions extends Model
                     'duration' => $duration,
                     'status' => self::STATUS_SCHEDULED,
                 ]);
-                if ($session) {
+                if ($booking) {
                     Helpers::updateAvailabilitySlot($booking->availability_slot_id);
                 }
                 Log::info("Group course session {$sessionNumber} created", [
