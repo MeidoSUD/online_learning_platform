@@ -11,6 +11,7 @@ use App\Http\Controllers\API\ServicesController;
 use App\Http\Controllers\API\UserController;
 use App\Http\Controllers\API\OrdersController;
 use App\Http\Controllers\API\DisputeController;
+use App\Http\Controllers\API\ComplaintController;
 use App\Http\Controllers\API\UserPaymentMethodController;
 use App\Http\Controllers\API\SessionsController;
 use App\Http\Controllers\FCMTokenController;
@@ -95,7 +96,13 @@ Route::prefix('student')->middleware(['auth:sanctum', 'role:student'])->group(fu
     Route::post('/disputes', [DisputeController::class, 'store']); // Create new dispute      
     Route::get('/disputes/my', [DisputeController::class, 'index']); // List my disputes
     Route::get('/disputes/{id}', [DisputeController::class, 'show']); // View specific dispute
+    Route::put('/disputes/{id}', [DisputeController::class, 'update']); // Update specific dispute
     Route::delete('/disputes/{id}', [DisputeController::class, 'destroy']); // Delete specific dispute
+
+    //complaints
+    Route::post('/complaints', [ComplaintController::class, 'store']);
+    Route::get('/complaints/my', [ComplaintController::class, 'index']);
+    Route::get('/complaints/by-session/{sessionId}', [ComplaintController::class, 'bySession']);
 
     // certificates
     Route::get('/certificates', [UserController::class, 'listCertificates']);
