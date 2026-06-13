@@ -17,13 +17,27 @@ class TeacherInfo extends Model
         'teach_group',
         'group_hour_price',
         'max_group_size',
-        'min_group_size'
+        'min_group_size',
+        'code'
     ];
 
     protected $casts = [
     'group_hour_price' => 'float',
     'individual_hour_price' => 'float',
 ];
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::created(function ($teacherInfo) {
+            if (empty($teacherInfo->code)) {
+                $chars = substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 0, 3);
+                $teacherInfo->code = $chars . $teacherInfo->id;
+                $teacherInfo->save();
+            }
+        });
+    }
 
     public function teacher()
     {
