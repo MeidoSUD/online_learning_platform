@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Helpers\TeacherProfileHelper;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\AvailabilitySlot;
@@ -87,6 +88,7 @@ class AvailabilityController extends Controller
                 'time_slots' => $timeSlots,
             ];
         })->values();
+        TeacherProfileHelper::checkAndUpdateProfileCompleted($teacherId);
 
         return response()->json([
             'success' => true,
@@ -222,6 +224,7 @@ class AvailabilityController extends Controller
                 ? 'Some duplicate time slots were skipped'
                 : 'All time slots were duplicates and were skipped';
         }
+        TeacherProfileHelper::checkAndUpdateProfileCompleted($teacherId);
 
         return response()->json($response);
     }
@@ -359,6 +362,7 @@ class AvailabilityController extends Controller
                 if (!empty($failedDuplicates)) {
                     $response['skipped'] = $failedDuplicates;
                 }
+                TeacherProfileHelper::checkAndUpdateProfileCompleted($teacherId);
 
                 return response()->json($response);
             });
@@ -430,6 +434,7 @@ class AvailabilityController extends Controller
         }
 
         $slot->update($data);
+        TeacherProfileHelper::checkAndUpdateProfileCompleted($teacherId);
 
         return response()->json([
             'success' => true,
@@ -451,6 +456,7 @@ class AvailabilityController extends Controller
 
         // Prevent deletion of booked slots (handled in model boot)
         $slot->delete();
+        TeacherProfileHelper::checkAndUpdateProfileCompleted($teacherId);
 
         return response()->json([
             'success' => true,
