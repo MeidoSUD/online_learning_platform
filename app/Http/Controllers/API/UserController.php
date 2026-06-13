@@ -843,15 +843,23 @@ class UserController extends Controller
         }
 
         /* =======================
-         | Search Filter (by name or email)
+         | Search Filter (by name, email, or code)
          ======================= */
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('first_name', 'like', "%{$search}%")
-                    ->orWhere('last_name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
-            });
+
+            // Detect if search is a teacher code (3 letters followed by numbers, no spaces)
+            if (preg_match('/^[A-Za-z]{3}\d+$/', $search)) {
+                $query->whereHas('teacherInfo', function ($q) use ($search) {
+                    $q->where('code', strtoupper($search));
+                });
+            } else {
+                $query->where(function ($q) use ($search) {
+                    $q->where('first_name', 'like', "%{$search}%")
+                        ->orWhere('last_name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
+                });
+            }
         }
 
         /* =======================
@@ -1452,6 +1460,7 @@ class UserController extends Controller
                 'group_hour_price' => (float) ((optional($teacher->teacherInfo)->group_hour_price ?? 0) * (1 + $percentageValue)),
                 'max_group_size' => (int) (optional($teacher->teacherInfo)->max_group_size ?? 0),
                 'min_group_size' => (int) (optional($teacher->teacherInfo)->min_group_size ?? 0),
+                'code' => optional($teacher->teacherInfo)->code,
                 'teacher_subjects' => $teacherSubjects,
             ]
         ];
