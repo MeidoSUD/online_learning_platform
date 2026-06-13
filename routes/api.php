@@ -198,6 +198,7 @@ Route::prefix('teacher')->middleware(['auth:sanctum', 'role:teacher'])->group(fu
     Route::get('/classes/{education_level_id}', [EducationLevelController::class, 'classes']);
     Route::get('subjectsClasses/{class_id}', [EducationLevelController::class, 'getSubjectsByClass']);
     Route::get('banks', [PaymentMethodController::class, 'banks']);
+    Route::get('profile/status', [TeacherController::class, 'profileCompletionStatus']);
     Route::get('get-services', [ServicesController::class, 'teacherServices']);
     Route::post('teacher-service', [ServicesController::class, 'addTeacherService']);
     Route::post('teacher-upload-certificate', [ServicesController::class, 'uploadTeacherCertificate']);
