@@ -11,12 +11,21 @@ class Notification extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id', 'type', 'title', 'message', 'data', 'read_at'
+        'user_id',
+        'type',
+        'title',
+        'message',
+        'data',
+        'read_at',
+        'is_read',
+        'sent_at'
     ];
 
     protected $casts = [
         'data' => 'array',
         'read_at' => 'datetime',
+        'sent_at' => 'datetime',
+        'is_read' => 'boolean',
     ];
 
     public function user(): BelongsTo

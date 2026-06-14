@@ -6,6 +6,7 @@ use App\Models\Notification;
 use App\Models\DeviceToken;
 use App\Models\NotificationSetting;
 use App\Models\User;
+use App\Services\FirebaseNotificationService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
@@ -35,8 +36,8 @@ class NotificationService
 
                 $settings = $this->getUserSettings($user->id);
 
-                if ($settings->push_enabled) {
-                    $this->sendPushNotification($user->id, $title, $message, $data);
+                if ($settings->push_enabled && $this->isNotificationTypeEnabled($settings, $type)) {
+                    $this->sendPushNotification($user, $title, $message, $data);
                 }
 
                 if ($settings->email_enabled && $user->email) {
@@ -114,47 +115,51 @@ class NotificationService
             'title' => $title,
             'message' => $message,
             'data' => $data,
-            'send_at' => now(),
+            'sent_at' => now(),
         ]);
     }
 
     /**
      * Send push notification via FCM (Firebase Cloud Messaging)
      */
-    protected function sendPushNotification(int $userId, string $title, string $message, array $data): void
+    protected function sendPushNotification(User $user, string $title, string $message, array $data): void
     {
         try {
-            $tokens = DeviceToken::where('user_id', $userId)
+            // Check device_tokens table first (multi-device support)
+            $tokens = DeviceToken::where('user_id', $user->id)
                 ->where('is_active', true)
                 ->pluck('device_token')
                 ->toArray();
 
+            // Fallback to users.fcm_token if no device_tokens found
+            if (empty($tokens) && !empty($user->fcm_token)) {
+                $tokens = [$user->fcm_token];
+            }
+
             if (empty($tokens)) {
+                Log::warning('No FCM tokens found for user', ['user_id' => $user->id]);
                 return;
             }
 
-            $messaging = app('firebase.messaging');
-
             $formattedData = [];
             foreach ($data as $key => $value) {
-                $formattedData[(string)$key] = (string)$value;
+                $formattedData[(string) $key] = (string) $value;
             }
 
-            $messageObject = \Kreait\Firebase\Messaging\CloudMessage::new()
-                ->withNotification(\Kreait\Firebase\Messaging\Notification::create($title, $message))
-                ->withData($formattedData);
+            $firebaseService = app(FirebaseNotificationService::class);
 
-            $messaging->sendMulticast($messageObject, $tokens);
-            Log::info('Push notification sent successfully to user', [
-                'user_id' => $userId,
+            $result = $firebaseService->sendToTokens($tokens, $title, $message, $formattedData);
 
+            Log::info('Push notification sent to user', [
+                'user_id' => $user->id,
                 'tokens_count' => count($tokens),
-            ]);
-            Log::info('messageObject', [
-                'messageObject' => $messageObject,
+                'success' => $result['success'],
+                'failure' => $result['failure'],
             ]);
         } catch (\Exception $e) {
-            Log::error('Push notification error: ' . $e->getMessage());
+            Log::error('Push notification error: ' . $e->getMessage(), [
+                'user_id' => $user->id,
+            ]);
         }
     }
 
@@ -192,11 +197,11 @@ class NotificationService
         $client = new \GuzzleHttp\Client();
         $response = $client->post('https://www.dreams.sa/index.php/api/sendsms/', [
             'form_params' => [
-                'user'       => config('services.sms.user'),
+                'user' => config('services.sms.user'),
                 'secret_key' => config('services.sms.secret_key'),
-                'sender'     => config('services.sms.sender'),
-                'to'         => $phone,
-                'message'   => $message
+                'sender' => config('services.sms.sender'),
+                'to' => $phone,
+                'message' => $message
             ]
         ]);
     }
@@ -253,16 +258,16 @@ class NotificationService
             $client = new \GuzzleHttp\Client();
             $response = $client->post('https://www.dreams.sa/index.php/api/sendsms/', [
                 'form_params' => [
-                    'user'       => config('services.sms.user'),
+                    'user' => config('services.sms.user'),
                     'secret_key' => config('services.sms.secret_key'),
-                    'sender'     => config('services.sms.sender'),
-                    'to'         => $normalizedPhone,
-                    'message'    => $message
+                    'sender' => config('services.sms.sender'),
+                    'to' => $normalizedPhone,
+                    'message' => $message
                 ]
             ]);
 
             $responseData = json_decode($response->getBody(), true);
-            
+
             // Ensure response is always an array - dreams.sa might return int (1) for success
             if (!is_array($responseData)) {
                 $responseData = ['status' => $responseData, 'success' => true];
