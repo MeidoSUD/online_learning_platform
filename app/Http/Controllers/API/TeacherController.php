@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Helpers\TeacherProfileHelper;
 use App\Http\Controllers\Controller;
+use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
 use App\Models\TeacherTeachClasses;
 use App\Models\TeacherSubject;
@@ -12,6 +13,26 @@ use Illuminate\Support\Facades\Log;
 
 class TeacherController extends Controller
 {
+    use ApiResponse;
+
+    /** 
+     * Get teacher profile completion status with detailed reasons
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function profileCompletionStatus(Request $request)
+    {
+        try {
+            $teacherId = $request->user()->id;
+            $result = TeacherProfileHelper::isProfileComplete($teacherId, true);
+
+            return $this->success($result, 'Profile status retrieved successfully');
+        } catch (\Exception $e) {
+            return $this->serverError($e, 'Failed to retrieve profile status');
+        }
+    }
+
     /**
      * Display a listing of the resource.
      *

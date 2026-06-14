@@ -115,6 +115,7 @@ Route::prefix('teacher')->middleware(['auth:sanctum', 'role:teacher'])->group(fu
     Route::get('/sessions/{id}', [SessionsController::class, 'show']);
     Route::post('/sessions/{id}/start', [SessionsController::class, 'start']);
     Route::post('/sessions/{id}/end', [SessionsController::class, 'end']);
+    Route::post('/sessions/{id}/chat-token', [SessionsController::class, 'getChatToken']);
 
     Route::get('/teachers', [UserController::class, 'listTeachers']);
     Route::get('/teachers/{id}', [UserController::class, 'teacherDetails']);

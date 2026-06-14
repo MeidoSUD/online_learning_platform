@@ -10,7 +10,7 @@ class TermsConditions extends Model
 {
     use HasFactory, SoftDeletes;
     protected $table = 'terms_conditions';
-    protected $fillable = ['role_id', 'title', 'type', 'content', 'title_en', 'title_ar', 'content_en', 'content_ar', 'version', 'status'];
+    protected $fillable = ['role_id', 'type',  'title_en', 'title_ar', 'content_en', 'content_ar', 'version', 'status'];
 
     protected $casts = [
         'status' => 'boolean',

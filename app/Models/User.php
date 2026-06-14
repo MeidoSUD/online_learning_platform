@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Traits\Favoriter;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -12,7 +14,7 @@ use PhpParser\Node\Expr\AssignOp\Mod;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable, Favoriter;
 
     /**
      * The attributes that are mass assignable.
@@ -33,6 +35,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'verified',
         'verification_code',
         'profile_completed',
+        'agora_chat_uid',
     ];
 
     /**
@@ -202,5 +205,18 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasOne(TeacherInstitute::class, 'user_id');
     }
 
-    
+    public function favoriters(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            User::class,
+            'favorites',
+            'favoriteable_id',
+            'user_id'
+        )->where('favoriteable_type', static::class);
+    }
+
+    public function hasBeenFavoritedBy(User $user): bool
+    {
+        return $this->favoriters()->where('user_id', $user->getKey())->exists();
+    }
 }

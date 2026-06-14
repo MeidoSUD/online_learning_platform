@@ -32,6 +32,7 @@ class Sessions extends Model
         'join_url',
         'host_url',
         'meeting_id',
+        'chat_room_id',
         'started_at',
         'ended_at',
         'teacher_notes',
@@ -410,8 +411,8 @@ class Sessions extends Model
             return true;
         } catch (\Exception $e) {
             Log::error('Failed to create Agora meeting for session ' . $this->id . ': ' . $e->getMessage(), [
-                'session_date' => (string)$this->session_date,
-                'start_time' => (string)$this->start_time,
+                'session_date' => (string) $this->session_date,
+                'start_time' => (string) $this->start_time,
                 'trace' => $e->getTraceAsString()
             ]);
             return false;
@@ -426,7 +427,8 @@ class Sessions extends Model
     // Add this accessor to get host URL from teacher_notes
     public function getHostUrlAttribute(): ?string
     {
-        if (!$this->teacher_notes) return null;
+        if (!$this->teacher_notes)
+            return null;
 
         preg_match('/Host URL: (.+)/', $this->teacher_notes, $matches);
         return $matches[1] ?? null;
@@ -547,8 +549,9 @@ class Sessions extends Model
             $carbonDays = [$startDate->dayOfWeek];
         } else {
             $carbonDays = array_map(function ($appDay) {
-                $appDay = (int)$appDay;
-                if ($appDay === 1) return 6;
+                $appDay = (int) $appDay;
+                if ($appDay === 1)
+                    return 6;
                 return $appDay - 2;
             }, $appDays);
         }
@@ -580,7 +583,7 @@ class Sessions extends Model
                     'duration' => $duration,
                     'status' => self::STATUS_SCHEDULED,
                 ]);
-                if ($session) {
+                if ($booking) {
                     Helpers::updateAvailabilitySlot($booking->availability_slot_id);
                 }
                 Log::info("Group course session {$sessionNumber} created", [
@@ -612,26 +615,35 @@ class Sessions extends Model
     {
         // If course booking, use course name
         if ($booking->course) {
-            return $booking->course->name ?? 'Session';
+            Log::info("Group course session ", [
+                'course_name' => $booking->course,
+                'booking_id' => $booking->id,
+            ]);
+
+            return $booking->course->name ?? 'Session2';
         }
 
         // Service booking - check service type via subject
         if ($booking->subject && $booking->subject->service) {
-            $serviceName = $booking->subject->service->name ?? 'Service';
-
+            $serviceName = ($booking->service->name_en . " " . $booking->subject->name_en) ?? 'Service';
+            // successfully  work 10-june
             // Check if language_study service
-            if ($booking->subject->service->key_name === 'language_study') {
-                // Include language name for language study service
-                $languageName = $booking->subject->name_en ?? 'Language';
-                return "{$serviceName} - {$languageName}";
-            }
-
+            // if ($booking->subject->service->key_name === 'language_study') {
+            //     // Include language name for language study service
+            //     $languageName = $booking->subject->name_en ?? 'Language';
+            //     return "{$serviceName} - {$languageName}";
+            // }
+            Log::info("Group course session ", [
+                'service_name' => $serviceName,
+                'booking_id' => $booking->id,
+                'booking' => $booking,
+            ]);
             // Other services - just service name
             return $serviceName;
         }
 
         // Fallback
-        return 'Session';
+        return 'Session55';
     }
 
     public static function getStatuses(): array

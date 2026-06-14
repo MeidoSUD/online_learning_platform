@@ -526,6 +526,15 @@ class UserController extends Controller
         }
 
         Log::info('Individual teacher profile updated', ['user_id' => $user->id]);
+        // Allow individual teachers to upload a cover image or intro video similar to institute flow
+        if ($request->hasFile('cover_image')) {
+            // Use the attachments table and store under teachers/covers
+            $this->saveUserAttachment($request, 'cover_image', 'teachers/covers', $user, 'cover_image');
+        }
+
+        if ($request->hasFile('intro_video')) {
+            $this->saveUserAttachment($request, 'intro_video', 'teachers/videos', $user, 'intro_video');
+        }
     }
 
     /**
@@ -653,6 +662,91 @@ class UserController extends Controller
         }
     }
 
+    /**
+     * Save an attachment for a user (individual teacher flows)
+     * Mirrors the institute attachment logic but attaches to the user record.
+     */
+    private function saveUserAttachment(Request $request, $fieldName, $path, User $user, $attachmentType)
+    {
+        if (!$request->hasFile($fieldName)) {
+            return;
+        }
+
+        try {
+            // Delete old attachment if exists for this user and type
+            $oldAttachment = Attachment::where('user_id', $user->id)
+                ->where('attached_to_type', $attachmentType)
+                ->first();
+
+            if ($oldAttachment && Storage::exists($oldAttachment->file_path)) {
+                Storage::delete($oldAttachment->file_path);
+            }
+
+            $file = $request->file($fieldName);
+            $filePath = $file->store($path, 'public');
+
+            Attachment::updateOrCreate(
+                [
+                    'user_id' => $user->id,
+                    'attached_to_type' => $attachmentType,
+                    'attached_to_id' => $user->id,
+                ],
+                [
+                    'file_path' => $filePath,
+                    'file_name' => $file->getClientOriginalName(),
+                    'file_type' => $file->getClientMimeType(),
+                    'file_size' => $file->getSize(),
+                    'created_by' => $user->id,
+                ]
+            );
+
+            Log::info("User $attachmentType uploaded", [
+                'user_id' => $user->id,
+                'path' => $filePath
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Failed to upload user $attachmentType: " . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
+     * Delete an attachment by id. Removes file from storage and DB record.
+     * DELETE /api/attachments/{id}
+     */
+    public function deleteAttachment(Request $request, $id)
+    {
+        $user = $request->user();
+
+        $attachment = Attachment::where('id', $id)->first();
+        if (!$attachment) {
+            return response()->json(['success' => false, 'message' => 'Attachment not found'], 404);
+        }
+
+        // Only allow owner or admins to delete
+        if ($attachment->user_id != $user->id && !optional($user->role)->name_key === 'admin') {
+            return response()->json(['success' => false, 'message' => 'Not authorized to delete this attachment'], 403);
+        }
+
+        try {
+            if (Storage::exists($attachment->file_path)) {
+                Storage::delete($attachment->file_path);
+            }
+        } catch (\Exception $e) {
+            // Log and continue to delete db record
+            Log::warning('Failed to delete attachment file from storage: ' . $e->getMessage());
+        }
+
+        try {
+            $attachment->delete();
+        } catch (\Exception $e) {
+            Log::error('Failed to delete attachment record: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to delete attachment record'], 500);
+        }
+
+        return response()->json(['success' => true, 'message' => 'Attachment deleted']);
+    }
+
     // List all teachers with optional filters
     public function listTeachers(Request $request)
     {
@@ -749,20 +843,50 @@ class UserController extends Controller
         }
 
         /* =======================
-         | Search Filter (by name or email)
+         | Search Filter (by name, email, or code)
          ======================= */
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('first_name', 'like', "%{$search}%")
-                    ->orWhere('last_name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
-            });
+
+            // Detect if search is a teacher code (3 letters followed by numbers, no spaces)
+            if (preg_match('/^[A-Za-z]{3}\d+$/', $search)) {
+                $query->whereHas('teacherInfo', function ($q) use ($search) {
+                    $q->where('code', strtoupper($search));
+                });
+            } else {
+                $query->where(function ($q) use ($search) {
+                    $q->where('first_name', 'like', "%{$search}%")
+                        ->orWhere('last_name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
+                });
+            }
         }
 
         /* =======================
          | Pagination & Ordering
          ======================= */
+
+        // Get authenticated user's favorited teacher IDs (if student)
+        $favoritedIds = [];
+        $authUser = null;
+        if ($token = $request->bearerToken()) {
+            $accessToken = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
+            if ($accessToken) {
+                $authUser = $accessToken->tokenable;
+            }
+        }
+        if ($authUser && $authUser->role_id == 4) {
+            $favoritedIds = $authUser
+                ->favorites()
+                ->where('favoriteable_type', User::class)
+                ->pluck('favoriteable_id')
+                ->toArray();
+        }
+
+        $addHasFavorited = function ($teacherData, $teacherId) use ($favoritedIds) {
+            $teacherData['has_favorited'] = in_array($teacherId, $favoritedIds);
+            return $teacherData;
+        };
 
         // Check if user wants all teachers (all=true or all=1)
         $getAll = $request->boolean('all') || $request->get('all') === '1';
@@ -771,8 +895,9 @@ class UserController extends Controller
             // Return all teachers without pagination
             $teachers = $query->orderByDesc('id')->get();
 
-            $transformedTeachers = $teachers->map(function ($teacher) {
-                return $this->getFullTeacherData($teacher);
+            $transformedTeachers = $teachers->map(function ($teacher) use ($addHasFavorited) {
+                $data = $this->getFullTeacherData($teacher);
+                return $addHasFavorited($data, $teacher->id);
             });
 
             return response()->json([
@@ -789,8 +914,9 @@ class UserController extends Controller
         $perPage = $request->get('per_page', 10);
         $teachers = $query->orderByDesc('id')->paginate($perPage);
 
-        $teachers->getCollection()->transform(function ($teacher) {
-            return $this->getFullTeacherData($teacher);
+        $teachers->getCollection()->transform(function ($teacher) use ($addHasFavorited) {
+            $data = $this->getFullTeacherData($teacher);
+            return $addHasFavorited($data, $teacher->id);
         });
 
         return response()->json([
@@ -987,7 +1113,7 @@ class UserController extends Controller
 
             // Create new service records
             foreach ($servicesInput as $service_id) {
-                $service_id = (int)$service_id; // Ensure it's an integer
+                $service_id = (int) $service_id; // Ensure it's an integer
 
                 // Validate service exists
                 $serviceExists = DB::table('services')->where('id', $service_id)->exists();
@@ -1334,6 +1460,7 @@ class UserController extends Controller
                 'group_hour_price' => (float) ((optional($teacher->teacherInfo)->group_hour_price ?? 0) * (1 + $percentageValue)),
                 'max_group_size' => (int) (optional($teacher->teacherInfo)->max_group_size ?? 0),
                 'min_group_size' => (int) (optional($teacher->teacherInfo)->min_group_size ?? 0),
+                'code' => optional($teacher->teacherInfo)->code,
                 'teacher_subjects' => $teacherSubjects,
             ]
         ];

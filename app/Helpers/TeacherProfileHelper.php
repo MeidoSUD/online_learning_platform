@@ -47,45 +47,79 @@ class TeacherProfileHelper
      * Check if a teacher's profile is complete without updating the database
      * 
      * @param int $teacher_id
-     * @return bool - true if profile meets all service requirements
+     * @param bool $returnReasons - When true, returns detailed array with reasons instead of just bool
+     * @return bool|array - true/false by default, or ['is_complete', 'reasons', 'services'] when $returnReasons=true
      */
-    public static function isProfileComplete($teacher_id): bool
+    public static function isProfileComplete($teacher_id, $returnReasons = false): bool|array
     {
         $user = User::find($teacher_id);
         if (!$user) {
             Log::warning("TeacherProfileHelper: Teacher not found", ['teacher_id' => $teacher_id]);
+            if ($returnReasons) {
+                return [
+                    'is_complete' => false,
+                    'reasons' => [
+                        ['key' => 'teacher_not_found'],
+                    ],
+                    'services' => [],
+                ];
+            }
             return false;
         }
 
         $serviceKeys = self::getTeacherServiceKeys($teacher_id);
+        $allReasons = [];
 
         // If no services selected, profile is incomplete
         if (empty($serviceKeys)) {
             Log::warning("TeacherProfileHelper: No services selected", ['teacher_id' => $teacher_id]);
+            if ($returnReasons) {
+                return [
+                    'is_complete' => false,
+                    'reasons' => [
+                        ['key' => 'no_services'],
+                    ],
+                    'services' => [],
+                ];
+            }
             return false;
         }
 
-        // Check if each service has complete data
+        // Check each service for completeness and collect all reasons
         foreach ($serviceKeys as $serviceKey) {
             if (!self::isServiceComplete($user, $serviceKey)) {
-                $reason = self::getServiceIncompleteReason($user, $serviceKey);
+                $details = self::getServiceIncompleteDetails($user, $serviceKey);
+                if ($details) {
+                    $allReasons[] = $details;
+                }
                 Log::warning("TeacherProfileHelper: Service incomplete", [
                     'teacher_id' => $teacher_id,
                     'teacher_name' => $user->first_name . ' ' . $user->last_name,
                     'service' => $serviceKey,
-                    'reason' => $reason
+                    'reason_key' => $details['key'] ?? null,
                 ]);
-                return false;
             }
         }
 
-        Log::info("TeacherProfileHelper: Profile complete", [
-            'teacher_id' => $teacher_id,
-            'teacher_name' => $user->first_name . ' ' . $user->last_name,
-            'services' => $serviceKeys
-        ]);
+        $isComplete = empty($allReasons);
 
-        return true;
+        if ($isComplete) {
+            Log::info("TeacherProfileHelper: Profile complete", [
+                'teacher_id' => $teacher_id,
+                'teacher_name' => $user->first_name . ' ' . $user->last_name,
+                'services' => $serviceKeys
+            ]);
+        }
+
+        if ($returnReasons) {
+            return [
+                'is_complete' => $isComplete,
+                'reasons' => $allReasons,
+                'services' => self::getTeacherServicesStatus($teacher_id),
+            ];
+        }
+
+        return $isComplete;
     }
 
     /**
@@ -274,20 +308,21 @@ class TeacherProfileHelper
     }
 
     /**
-     * Get the reason why a specific service is incomplete
+     * Get the reason key of why a specific service is incomplete
+     * Returns only a machine-readable key; Flutter handles localization
      * 
      * @param User $user
      * @param string $serviceKey
-     * @return string|null - Reason message or null if complete
+     * @return array|null - ['key' => '...'] or null if complete
      */
-    public static function getServiceIncompleteReason(User $user, string $serviceKey): ?string
+    public static function getServiceIncompleteDetails(User $user, string $serviceKey): ?array
     {
         $serviceKey = strtolower($serviceKey);
 
         switch ($serviceKey) {
             case self::SERVICE_COURSES:
                 if (!Course::where('teacher_id', $user->id)->exists()) {
-                    return 'Courses Service: You must create at least one course.';
+                    return ['key' => 'no_courses'];
                 }
                 return null;
 
@@ -295,16 +330,16 @@ class TeacherProfileHelper
             case 'language_study':
                 $teacherInfo = $user->teacherInfo()->first();
                 if (!$teacherInfo) {
-                    return 'Language Learning Service: Please complete your teacher profile information.';
+                    return ['key' => 'no_teacher_info'];
                 }
                 if (!$teacherInfo->individual_hour_price || $teacherInfo->individual_hour_price <= 0) {
-                    return 'Language Learning Service: Please set your hourly rate.';
+                    return ['key' => 'no_hour_price'];
                 }
                 if (!$user->availableSlots()->exists()) {
-                    return 'Language Learning Service: You must add at least one available time slot.';
+                    return ['key' => 'no_available_slots'];
                 }
                 if (!$user->teacherLanguages()->exists()) {
-                    return 'Language Learning Service: You must add at least one language.';
+                    return ['key' => 'no_languages'];
                 }
                 return null;
 
@@ -312,22 +347,48 @@ class TeacherProfileHelper
             case 'private_lessons':
                 $teacherInfo = $user->teacherInfo()->first();
                 if (!$teacherInfo) {
-                    return 'Private Lesson Service: Please complete your teacher profile information.';
+                    return ['key' => 'no_teacher_info'];
                 }
                 if (!$teacherInfo->individual_hour_price || $teacherInfo->individual_hour_price <= 0) {
-                    return 'Private Lesson Service: Please set your hourly rate.';
+                    return ['key' => 'no_hour_price'];
                 }
                 if (!$user->availableSlots()->exists()) {
-                    return 'Private Lesson Service: You must add at least one available time slot.';
+                    return ['key' => 'no_available_slots'];
                 }
                 if (!$user->subjects()->exists()) {
-                    return 'Private Lesson Service: You must add at least one subject.';
+                    return ['key' => 'no_subjects'];
                 }
                 return null;
 
             default:
                 return null;
         }
+    }
+
+    /**
+     * Get the reason why a specific service is incomplete (plain text)
+     * 
+     * @param User $user
+     * @param string $serviceKey
+     * @return string|null - Reason message or null if complete
+     */
+    public static function getServiceIncompleteReason(User $user, string $serviceKey): ?string
+    {
+        $details = self::getServiceIncompleteDetails($user, $serviceKey);
+        if (!$details) {
+            return null;
+        }
+
+        // Fallback English descriptions for backward compatibility
+        return match ($details['key']) {
+            'no_courses' => 'Courses Service: You must create at least one course.',
+            'no_teacher_info' => 'Please complete your teacher profile information.',
+            'no_hour_price' => 'Please set your hourly rate.',
+            'no_available_slots' => 'You must add at least one available time slot.',
+            'no_languages' => 'You must add at least one language.',
+            'no_subjects' => 'You must add at least one subject.',
+            default => null,
+        };
     }
 
     /**
@@ -373,14 +434,14 @@ class TeacherProfileHelper
         return $services->map(function ($teacherService) use ($user) {
             $serviceKey = $teacherService->service->key_name;
             $isComplete = self::isServiceComplete($user, $serviceKey);
-            $reason = !$isComplete ? self::getServiceIncompleteReason($user, $serviceKey) : null;
+            $details = !$isComplete ? self::getServiceIncompleteDetails($user, $serviceKey) : null;
 
             return [
                 'service_id' => $teacherService->service->id,
                 'service_name' => $teacherService->service->name_en ?? $teacherService->service->key_name,
                 'service_key' => $serviceKey,
                 'is_complete' => $isComplete,
-                'incomplete_reason' => $reason,
+                'incomplete_details' => $details,
             ];
         })->toArray();
     }

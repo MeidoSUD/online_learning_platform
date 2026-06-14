@@ -55,6 +55,155 @@ class TermsConditionsAdminController extends Controller
     /**
      * Get all terms and conditions with optional filtering
      */
+
+    public function teacherTerms(Request $request)  
+    {
+        try {
+            $query = TermsConditions::query();
+
+            // Filter by status
+            if ($request->has('status')) {
+                $query->where('status', $request->boolean('status'));
+            }
+
+            // Filter by type
+                $query->where('type', 'terms');
+
+            // Filter by role_id
+           
+            $query->where('role_id', 3);
+            
+
+            // Filter by version
+            if ($request->has('version')) {
+                $query->where('version', $request->version);
+            }
+
+            // Sort by latest first
+            $terms = $query->latest('created_at')
+                ->get()
+                ->map(function ($term) {
+                    return $this->formatTermsResponse($term);
+                });
+
+            return response()->json([
+                'success' => true,
+                'data' => $terms,
+                'total' => count($terms),
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching terms and conditions', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch terms and conditions',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function teachersPrivacyPolicy(Request $request): JsonResponse
+    {
+        try {
+            $query = TermsConditions::query();
+
+            // Filter by status
+            if ($request->has('status')) {
+                $query->where('status', $request->boolean('status'));
+            }
+
+            // Filter by type
+                $query->where('type', 'privacy_policy');
+
+            // Filter by role_id
+           
+            $query->where('role_id', 3);
+            
+
+            // Filter by version
+            if ($request->has('version')) {
+                $query->where('version', $request->version);
+            }
+
+            // Sort by latest first
+            $terms = $query->latest('created_at')
+                ->get()
+                ->map(function ($term) {
+                    return $this->formatTermsResponse($term);
+                });
+
+            return response()->json([
+                'success' => true,
+                'data' => $terms,
+                'total' => count($terms),
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching terms and conditions', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch terms and conditions',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function studentsPrivacyPolicy(Request $request): JsonResponse
+    {
+        try {
+            $query = TermsConditions::query();
+
+            // Filter by status
+            if ($request->has('status')) {
+                $query->where('status', $request->boolean('status'));
+            }
+
+                $query->where('type', 'privacy_policy');
+            // Filter by role_id
+           
+            $query->where('role_id', 4);
+            
+
+            // Filter by version
+            if ($request->has('version')) {
+                $query->where('version', $request->version);
+            }
+
+            // Sort by latest first
+            $terms = $query->latest('created_at')
+                ->get()
+                ->map(function ($term) {
+                    return $this->formatTermsResponse($term);
+                });
+
+            return response()->json([
+                'success' => true,
+                'data' => $terms,
+                'total' => count($terms),
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching terms and conditions', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch terms and conditions',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function index(Request $request): JsonResponse
     {
         try {

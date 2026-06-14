@@ -1913,4 +1913,50 @@ class BookingController extends Controller
             'data' => $studentsData
         ]);
     }
+
+    public function getStudentTeachersPublic(Request $request, $studentId): JsonResponse
+    {
+        $perPage = $request->get('per_page', 10);
+
+        $teacherIds = Sessions::where('student_id', $studentId)
+            ->where('status', '!=', 'cancelled')
+            ->distinct()
+            ->pluck('teacher_id');
+
+        $teachers = \App\Models\User::whereIn('id', $teacherIds)->paginate($perPage);
+
+        $teachersData = collect($teachers->items())->map(function ($teacher) use ($studentId) {
+            $bookingsCount = Sessions::where('student_id', $studentId)
+                ->where('teacher_id', $teacher->id)
+                ->where('status', '!=', 'cancelled')
+                ->count();
+
+            $profilePhoto = $teacher->attachments()
+                ->where('attached_to_type', 'profile_picture')
+                ->latest()
+                ->value('file_path');
+
+            return [
+                'id' => $teacher->id,
+                'name' => $teacher->first_name . ' ' . $teacher->last_name,
+                'first_name' => $teacher->first_name,
+                'last_name' => $teacher->last_name,
+                'email' => $teacher->email,
+                'phone_number' => $teacher->phone_number,
+                'image' => $profilePhoto,
+                'bookings_count' => $bookingsCount,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $teachersData,
+            'pagination' => [
+                'current_page' => $teachers->currentPage(),
+                'last_page' => $teachers->lastPage(),
+                'per_page' => $teachers->perPage(),
+                'total' => $teachers->total(),
+            ],
+        ]);
+    }
 }

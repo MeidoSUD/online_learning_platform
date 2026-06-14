@@ -2,62 +2,22 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\API\AuthController;
-use App\Http\Controllers\API\AvailabilityController;
 use App\Http\Controllers\API\CourseController;
 use App\Http\Controllers\API\LessonController;
 use App\Http\Controllers\API\BookingController;
 use App\Http\Controllers\API\PaymentController;
-use App\Http\Controllers\API\WalletController;
 use App\Http\Controllers\API\ReviewController;
 use App\Http\Controllers\API\ServicesController;
-use App\Http\Controllers\Auth\ConfirmablePasswordController;
-use App\Http\Controllers\API\EducationLevelController;
 use App\Http\Controllers\API\UserController;
 use App\Http\Controllers\API\OrdersController;
-use App\Http\Controllers\API\TeacherApplicationController;
 use App\Http\Controllers\API\DisputeController;
-use App\Http\Controllers\API\TeacherController;
-use App\Http\Controllers\API\PaymentMethodController;
+use App\Http\Controllers\API\ComplaintController;
 use App\Http\Controllers\API\UserPaymentMethodController;
-use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\API\SessionsController;
-use App\Http\Controllers\API\LanguageStudyController;
-use App\Http\Controllers\API\LanguageController;
 use App\Http\Controllers\FCMTokenController;
-use App\Http\Controllers\API\Admin\DashboardController;
-use App\Http\Controllers\API\Admin\UsersController;
-use App\Http\Controllers\API\Admin\PayoutAdminController;
-use App\Http\Controllers\API\Admin\SystemController;
-use App\Http\Controllers\API\Admin\ServiceController;
-use App\Http\Controllers\API\Admin\ServiceAdminController;
-use App\Http\Controllers\API\Admin\GalleryController;
-use App\Http\Controllers\API\Admin\DisputeAdminController;
-use App\Http\Controllers\API\Admin\BookingAdminController;
-use App\Http\Controllers\API\Admin\PaymentAdminController;
-use App\Http\Controllers\API\Admin\ClassesAdminController;
-use App\Http\Controllers\API\Admin\SubjectAdminController;
-use App\Http\Controllers\API\Admin\EducationLevelAdminController;
-use App\Http\Controllers\API\Admin\CourseAdminController;
-use App\Http\Controllers\API\Admin\SupportTicketController;
-use App\Http\Controllers\API\Admin\SettingController;
-use App\Http\Controllers\API\Admin\RevenuePercentageController;
-use App\Http\Controllers\API\Admin\OrderAdminController;
-
-
-use App\Http\Controllers\API\Admin\InstituteController;
-use App\Models\Payment;
-use App\Models\User;
-// Agora token route for sessions
-use App\Services\AgoraService;
-use Illuminate\Support\Facades\Lang;
-
+use App\Http\Controllers\API\Admin\TermsConditionsAdminController;
 use App\Http\Controllers\API\BookingCourseController;
-use App\Http\Controllers\API\AppVersionController;
-use App\Http\Controllers\API\AppConfigController;
-use App\Http\Controllers\API\AdsController;
-use App\Http\Controllers\API\Admin\AdsAdminController;
-use App\Http\Controllers\API\Admin\SessionsAdminController;
+use App\Http\Controllers\API\FavoriteController;
 
 // Student routes with 'student' role middleware
 Route::prefix('student')->middleware(['auth:sanctum', 'role:student'])->group(function () {
@@ -120,6 +80,7 @@ Route::prefix('student')->middleware(['auth:sanctum', 'role:student'])->group(fu
     Route::get('/sessions/grouped', [SessionsController::class, 'groupedSessions']); // teacher: grouped sessions by time
     Route::get('/sessions/{id}', [SessionsController::class, 'show']); // session details
     Route::post('/sessions/{id}/join', [SessionsController::class, 'join']); // join session
+    Route::post('/sessions/{id}/chat-token', [SessionsController::class, 'getChatToken']); // get chat token
     // add payment method
     Route::get('payment-methods', [UserPaymentMethodController::class, 'index']);
     Route::post('payment-methods', [UserPaymentMethodController::class, 'store']);
@@ -135,12 +96,21 @@ Route::prefix('student')->middleware(['auth:sanctum', 'role:student'])->group(fu
     Route::post('/disputes', [DisputeController::class, 'store']); // Create new dispute      
     Route::get('/disputes/my', [DisputeController::class, 'index']); // List my disputes
     Route::get('/disputes/{id}', [DisputeController::class, 'show']); // View specific dispute
+    Route::put('/disputes/{id}', [DisputeController::class, 'update']); // Update specific dispute
     Route::delete('/disputes/{id}', [DisputeController::class, 'destroy']); // Delete specific dispute
+
+    //complaints
+    Route::post('/complaints', [ComplaintController::class, 'store']);
+    Route::get('/complaints/my', [ComplaintController::class, 'index']);
+    Route::get('/complaints/by-session/{sessionId}', [ComplaintController::class, 'bySession']);
 
     // certificates
     Route::get('/certificates', [UserController::class, 'listCertificates']);
     // by ab
     Route::post('/booking/course', [BookingCourseController::class, 'createBooking']); // create booking
 
-
+    // Favorites
+    Route::post('/favorites/{teacher}/toggle', [FavoriteController::class, 'toggle']);
+    Route::get('/favorites', [FavoriteController::class, 'index']);
+    Route::get('/favorites/{teacher}/status', [FavoriteController::class, 'status']);
 });

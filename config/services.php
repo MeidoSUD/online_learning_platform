@@ -61,6 +61,14 @@ return [
         'app_id' => env('AGORA_APP_ID'),
         'app_certificate' => env('AGORA_APP_CERTIFICATE'),
         'token_ttl' => env('AGORA_TOKEN_TTL', 3600),
+        // Optional: server-side Agora Chat App Token used for REST API calls
+        // This is a Bearer token generated using Agora Server SDK and is different
+        // from the per-user RTM tokens generated locally.
+        'chat_app_token' => env('AGORA_CHAT_APP_TOKEN'),
+        // Base URL for Agora Chat REST API. Defaults to the official project endpoint
+        // which will be combined with the appId when used. You may set this to the
+        // org/app specific host from your console (e.g. https://a61.chat.agora.io/611424244/1624895)
+        'chat_base_url' => env('AGORA_CHAT_BASE_URL', 'https://api.agora.io/dev/v1/project'),
     ],
 
 ];
