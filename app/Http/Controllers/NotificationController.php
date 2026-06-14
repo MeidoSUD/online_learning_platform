@@ -5,11 +5,41 @@ use App\Http\Controllers\Controller;
 use App\Models\Notification;
 use App\Models\DeviceToken;
 use App\Models\NotificationSetting;
+use App\Services\FirebaseNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class NotificationController extends Controller
 {
+    protected $firebaseNotificationService;
+
+    public function __construct(FirebaseNotificationService $firebaseNotificationService)
+    {
+        $this->firebaseNotificationService = $firebaseNotificationService;
+    }
+
+    public function sendToToken(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'token' => 'required|string',
+            'title' => 'required|string',
+            'body'  => 'required|string',
+        ]);
+
+        $sent = $this->firebaseNotificationService->sendToToken(
+            $validated['token'],
+            $validated['title'],
+            $validated['body'],
+            $request->input('data', [])
+        );
+
+        return response()->json([
+            'success' => $sent,
+            'message' => $sent ? 'Notification sent successfully' : 'Failed to send notification',
+        ]);
+    }
+
     // Get user notifications
     public function index(Request $request): JsonResponse
     {

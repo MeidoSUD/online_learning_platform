@@ -131,37 +131,52 @@ Route::get('/test-notification', function () {
 Route::get('/test-push-notification', function (Request $request) {
     $userId = $request->query('user_id');
     $title = $request->query('title', 'Test Push Notification');
-    $message = $request->query('message', 'This is a test push notification');
-    $data = ['booking_id' => 1, "type" => "booking_received",];
+    $message = $request->query('message', 'This is a test push notification from Ewan');
 
     if (!$userId) {
         return response()->json([
-            'error' => 'user_id query parameter is required. Example: /test-push-notification?user_id=1',
+            'error' => 'user_id is required. Usage: /test-push-notification?user_id=1',
         ], 400);
     }
 
-    $service = app(\App\Services\NotificationService::class);
-    $method = new \ReflectionMethod($service, 'sendPushNotification');
-    $method->setAccessible(true);
-
-    try {
-        $method->invoke($service, (int) $userId, $title, $message, (array) $data);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Push notification sent',
-            'user_id' => (int) $userId,
-            'title' => $title,
-            'body' => $message,
-            'data' => (array) $data,
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString(),
-        ], 500);
+    $user = User::find($userId);
+    if (!$user) {
+        return response()->json(['error' => "User #{$userId} not found"], 404);
     }
+
+    if (empty($user->fcm_token)) {
+        return response()->json(['error' => "User #{$userId} has no FCM token", 'user' => $user->name ?? $user->email], 400);
+    }
+
+    $firebaseService = app(\App\Services\FirebaseNotificationService::class);
+
+    $sent = $firebaseService->sendToToken(
+        $user->fcm_token,
+        $title,
+        $message,
+        ['type' => 'test', 'user_id' => (string) $userId]
+    );
+
+    if ($sent) {
+        \App\Models\Notification::create([
+            'user_id' => $user->id,
+            'type' => 'test',
+            'title' => $title,
+            'message' => $message,
+            'data' => ['type' => 'test', 'user_id' => $userId],
+            'is_read' => false,
+            'sent_at' => now(),
+        ]);
+    }
+
+    return response()->json([
+        'success' => $sent,
+        'message' => $sent ? 'Notification sent successfully' : 'Failed to send notification',
+        'user_id' => (int) $userId,
+        'fcm_token' => substr($user->fcm_token, 0, 20) . '...',
+        'title' => $title,
+        'body' => $message,
+    ]);
 });
 Route::get('/lang/{locale}', function ($locale) {
     $supportedLocales = ['en', 'ar'];
