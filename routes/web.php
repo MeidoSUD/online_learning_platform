@@ -144,20 +144,43 @@ Route::get('/test-push-notification', function (Request $request) {
         return response()->json(['error' => "User #{$userId} not found"], 404);
     }
 
-    if (empty($user->fcm_token)) {
-        return response()->json(['error' => "User #{$userId} has no FCM token", 'user' => $user->name ?? $user->email], 400);
+    $tokens = \App\Models\DeviceToken::where('user_id', $userId)
+        ->where('is_active', true)
+        ->pluck('device_token')
+        ->toArray();
+
+    if (empty($tokens) && !empty($user->fcm_token)) {
+        $tokens = [$user->fcm_token];
+    }
+
+    if (empty($tokens)) {
+        return response()->json(['error' => "User #{$userId} has no active device tokens", 'user' => $user->name ?? $user->email], 400);
     }
 
     $firebaseService = app(\App\Services\FirebaseNotificationService::class);
 
-    $sent = $firebaseService->sendToToken(
-        $user->fcm_token,
-        $title,
-        $message,
-        ['type' => 'test', 'user_id' => (string) $userId]
-    );
+    $results = [];
+    $successCount = 0;
 
-    if ($sent) {
+    foreach ($tokens as $token) {
+        $sent = $firebaseService->sendToToken(
+            $token,
+            $title,
+            $message,
+            ['type' => 'test', 'user_id' => (string) $userId]
+        );
+
+        $results[] = [
+            'token' => substr($token, 0, 20) . '...',
+            'success' => $sent,
+        ];
+
+        if ($sent) {
+            $successCount++;
+        }
+    }
+
+    if ($successCount > 0) {
         \App\Models\Notification::create([
             'user_id' => $user->id,
             'type' => 'test',
@@ -170,12 +193,14 @@ Route::get('/test-push-notification', function (Request $request) {
     }
 
     return response()->json([
-        'success' => $sent,
-        'message' => $sent ? 'Notification sent successfully' : 'Failed to send notification',
+        'success' => $successCount > 0,
+        'message' => "تم الإرسال لـ {$successCount} من أصل " . count($tokens) . " جهاز",
         'user_id' => (int) $userId,
-        'fcm_token' => substr($user->fcm_token, 0, 20) . '...',
+        'total_tokens' => count($tokens),
+        'success_count' => $successCount,
         'title' => $title,
         'body' => $message,
+        'results' => $results,
     ]);
 });
 Route::get('/lang/{locale}', function ($locale) {

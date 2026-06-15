@@ -4,8 +4,9 @@ namespace App\Services;
 
 use Kreait\Firebase\Factory;
 use Kreait\Firebase\Messaging\CloudMessage;
-use Kreait\Firebase\Messaging\Notification;
+use Kreait\Firebase\Messaging\Notification as FirebaseNotification;
 use Illuminate\Support\Facades\Log;
+use App\Models\DeviceToken;
 
 class FirebaseService
 {
@@ -13,48 +14,39 @@ class FirebaseService
 
     public function __construct()
     {
-        // Read credentials from the package config. The kreait/laravel-firebase
-        // package stores credentials under `projects.{default}.credentials`.
-        $defaultProject = config('firebase.default', 'app');
-        $credentials = config('firebase.projects.' . $defaultProject . '.credentials');
-
-        if (empty($credentials)) {
-            throw new \RuntimeException('Firebase credentials are not configured. Please set FIREBASE_CREDENTIALS in your .env or update config/firebase.php');
+        try {
+            $defaultProject = config('firebase.default', 'app');
+            $credentials = config('firebase.projects.' . $defaultProject . '.credentials');
+            if ($credentials && file_exists($credentials)) {
+                $factory = (new Factory)->withServiceAccount($credentials);
+                $this->messaging = $factory->createMessaging();
+            }
+        } catch (\Exception $e) {
+            Log::error('Firebase service initialization failed: ' . $e->getMessage());
         }
-
-        $firebase = (new Factory)
-            ->withServiceAccount($credentials);
-        $this->messaging = $firebase->createMessaging();
     }
 
-    /**
-     * Send push notification to a single device token.
-     */
     public function sendToToken(string $token, string $title, string $body, array $data = []): bool
     {
         try {
-            $notification = Notification::create($title, $body);
+            if (!$this->messaging) {
+                Log::error('Firebase messaging not initialized');
+                return false;
+            }
 
+            $notification = FirebaseNotification::create($title, $body);
             $message = CloudMessage::withTarget('token', $token)
                 ->withNotification($notification)
                 ->withData($data);
 
             $this->messaging->send($message);
-
-            Log::info('Push notification sent successfully.', [
-                'token' => substr($token, 0, 20) . '...', // Don't log full token
-                'title' => $title,
-            ]);
-
             return true;
         } catch (\Kreait\Firebase\Exception\Messaging\NotFound $e) {
             Log::warning('FCM token not found or expired', ['token' => substr($token, 0, 20)]);
+            DeviceToken::where('device_token', $token)->update(['is_active' => false]);
             return false;
-        } catch (\Throwable $e) {
-            Log::error('Failed to send FCM push notification', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
+        } catch (\Exception $e) {
+            Log::error('Firebase notification failed: ' . $e->getMessage());
             return false;
         }
     }
