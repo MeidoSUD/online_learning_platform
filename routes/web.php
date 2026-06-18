@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Inertia\PageController;
 use App\Http\Controllers\Student\StudentController;
 use App\Http\Controllers\Student\StudentCourseController;
 use App\Http\Controllers\Student\StudentBookingController;
@@ -188,12 +189,22 @@ Route::get('/lang/{locale}', function ($locale) {
 })->name('lang.switch');
 
 
+// ==========================================
+// Inertia SPA Routes (public website pages)
+// ==========================================
+Route::get('/', [PageController::class, 'home'])->name('home');
+Route::get('/services', [PageController::class, 'services'])->name('services');
+Route::get('/about', [PageController::class, 'about'])->name('about');
+Route::get('/contact', [PageController::class, 'contact'])->name('contact');
+Route::get('/e-profile', [PageController::class, 'eProfile'])->name('e-profile');
+Route::get('/ecosystem', [PageController::class, 'ecosystem'])->name('ecosystem');
+Route::get('/ewan-landing', [PageController::class, 'ewanLanding'])->name('ewan-landing');
+
 Route::middleware('LocaleMiddleware')->group(function () {
     require __DIR__ . '/auth.php';
 
-    Route::get('/', function () {
-        return redirect()->route('login');
-    });
+    Route::get('/login', [PageController::class, 'login'])->name('login.page');
+    Route::get('/register', [PageController::class, 'register'])->name('register.page');
 
     Route::get('/check-role', function () {
         // This will never render, always redirects
@@ -201,6 +212,9 @@ Route::middleware('LocaleMiddleware')->group(function () {
 
     // 🔒 All routes require login
     Route::middleware(['auth'])->group(function () {
+        // Dashboard (Inertia - all roles)
+        Route::get('/dashboard', [PageController::class, 'dashboard'])->name('dashboard');
+
         // Generic FCM token endpoint for all authenticated users
         Route::post('/save-fcm-token', [FCMTokenController::class, 'save']);
 

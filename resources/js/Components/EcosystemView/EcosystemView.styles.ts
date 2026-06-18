@@ -1,0 +1,20 @@
+export const ecosystemStyles = {
+  hero: "min-h-screen pt-20 overflow-hidden flex items-center bg-white relative",
+  heroTitle: "text-6xl md:text-8xl font-cairo font-black text-slate-900 leading-tight mb-4 text-right",
+  container: "container mx-auto px-6 relative z-10",
+  section: "py-24 relative overflow-hidden",
+  sectionDark: "py-24 bg-slate-900 text-white relative overflow-hidden",
+  sectionLight: "py-24 bg-slate-50 relative overflow-hidden",
+  heading: "text-5xl md:text-6xl font-black font-cairo text-slate-900 mb-6 text-right",
+  subHeading: "text-2xl md:text-3xl font-bold font-cairo text-brand-blue mb-12 text-right",
+  badge: "flex items-center gap-3 mb-8 bg-brand-blue/5 border border-brand-blue/10 p-3 rounded-full w-fit pr-6 ml-auto",
+  card: "bg-white p-10 rounded-[3.5rem] shadow-xl border border-slate-100 h-full",
+  blueCard: "bg-brand-blue p-12 rounded-[3.5rem] text-white shadow-2xl relative overflow-hidden",
+  greenCard: "bg-brand-green p-12 rounded-[3.5rem] text-white shadow-2xl relative overflow-hidden",
+  moduleCard: "p-10 rounded-[3rem] text-white shadow-xl hover:scale-105 transition-all min-h-[320px] flex flex-col items-end text-right",
+  statCard: "bg-white p-12 rounded-[3rem] shadow-xl flex flex-col items-center text-center border-b-8 border-brand-blue",
+  moduleBadge: "px-6 py-2 rounded-full font-black text-lg mb-6",
+  input: "w-full bg-slate-100 border-none rounded-2xl px-6 py-4 text-lg focus:ring-2 focus:ring-brand-blue/50 outline-none transition-all",
+  primaryButton: "bg-brand-blue text-white px-10 py-5 rounded-2xl text-xl font-black shadow-xl hover:scale-105 active:scale-95 transition-all text-center",
+  secondaryButton: "bg-slate-900 text-white px-10 py-5 rounded-2xl text-xl font-black shadow-xl hover:scale-105 active:scale-95 transition-all text-center"
+};
