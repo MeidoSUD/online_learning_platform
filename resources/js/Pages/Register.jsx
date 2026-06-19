@@ -4,11 +4,8 @@ import { tokenService } from '../Services/api';
 import { router } from '@inertiajs/react';
 
 export default function Register() {
-  useEffect(() => {
-    if (tokenService.isAuthenticated()) {
-      router.visit('/dashboard');
-    }
-  }, []);
+  // Removed automatic redirect on mount to prevent immediate navigation/refresh
+  // which can interfere with form interactions during development.
 
   const handleSwitchToLogin = () => {
     router.visit('/login');

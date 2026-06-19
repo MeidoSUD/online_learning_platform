@@ -5,6 +5,8 @@ namespace App\Http\Middleware;
 use App\Models\Role;
 use Closure;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\URL;
 
 class RoleMiddleware
 {
@@ -12,7 +14,10 @@ class RoleMiddleware
     {
         $user = Auth::user();
         if (!$user) {
-            return redirect()->route('login');
+            if (Route::has('login')) {
+                return redirect()->route('login');
+            }
+            return redirect(URL::to('/login'));
         }
 
         // Get the role from the database by name

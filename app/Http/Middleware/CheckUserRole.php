@@ -4,6 +4,8 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\URL;
 
 class CheckUserRole
 {
@@ -13,7 +15,10 @@ class CheckUserRole
 
         // ✅ 1. Force profile completion first
         if ($user->role_id == 2) { // visitor
-            return redirect()->route('profile.complete');
+            if (Route::has('profile.complete')) {
+                return redirect()->route('profile.complete');
+            }
+            return redirect(URL::to('/profile/complete'));
         }
 
         // ✅ 2. Redirect based on role
@@ -27,7 +32,10 @@ class CheckUserRole
             default:
                 // If role not recognized → logout or error
                 Auth::logout();
-                return redirect()->route('login')->withErrors('Invalid user Role.');
+                if (Route::has('login')) {
+                    return redirect()->route('login')->withErrors('Invalid user Role.');
+                }
+                return redirect(URL::to('/login'))->withErrors('Invalid user Role.');
         }
 
         return $next($request);

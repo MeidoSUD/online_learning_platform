@@ -139,8 +139,28 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSwitch, onLoginSucce
         )}
 
         <div className="space-y-4">
-          <Input label={t.email} type="text" placeholder={t.phEmail} icon={<Mail size={18} />} value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} error={errors.email} />
-          <Input label={t.password} type="password" placeholder={t.phPassword} icon={<Lock size={18} />} value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} error={errors.password} />
+          <Input
+            label={t.email}
+            name="email"
+            type="text"
+            placeholder={t.phEmail}
+            icon={<Mail size={18} />}
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            error={errors.email}
+            autoComplete="email"
+          />
+          <Input
+            label={t.password}
+            name="password"
+            type="password"
+            placeholder={t.phPassword}
+            icon={<Lock size={18} />}
+            value={formData.password}
+            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+            error={errors.password}
+            autoComplete="current-password"
+          />
         </div>
 
         <div className="flex items-center justify-between">
