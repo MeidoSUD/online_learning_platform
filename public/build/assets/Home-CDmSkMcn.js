@@ -1,1 +1,0 @@
-import{n as e,t}from"./jsx-runtime-BseJUIpC.js";e();var n=t();function r(){return(0,n.jsx)(`div`,{style:{padding:`40px`,textAlign:`center`,background:`#f0f0f0`,minHeight:`100vh`},children:(0,n.jsx)(`h1`,{children:`Hello from Inertia React!`})})}export{r as default};

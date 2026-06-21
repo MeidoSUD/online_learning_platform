@@ -1,6 +1,7 @@
 import React from 'react';
+import { Link } from '@inertiajs/react';
 import { useLanguage } from '../../Contexts/LanguageContext';
-import { Hexagon, Mail, Phone, MapPin, Globe, Link, Camera } from 'lucide-react';
+import { Hexagon, Mail, Phone, MapPin, Globe, Link2, Camera } from 'lucide-react';
 
 export const Footer: React.FC = () => {
     const { t, language } = useLanguage();
@@ -11,10 +12,10 @@ export const Footer: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
                     {/* Brand */}
                     <div>
-                        <div className="flex items-center gap-2 text-white mb-6">
+                        <Link href="/" className="flex items-center gap-2 text-white mb-6">
                             <Hexagon className="text-primary fill-primary" size={32} />
                             <span className="text-xl font-bold tracking-tight">Ewan</span>
-                        </div>
+                        </Link>
                         <p className="text-sm leading-relaxed text-slate-400 mb-6">
                             {language === 'ar'
                                 ? 'شركة تقنية رائدة متخصصة في تقديم حلول تعليمية مبتكرة للأفراد والمؤسسات.'
@@ -23,7 +24,7 @@ export const Footer: React.FC = () => {
                         <div className="flex gap-4">
                             <a href="#" className="p-2 bg-slate-800 rounded-full hover:bg-primary hover:text-white transition-colors"><Globe size={18} /></a>
                             <a href="#" className="p-2 bg-slate-800 rounded-full hover:bg-primary hover:text-white transition-colors"><Camera size={18} /></a>
-                            <a href="#" className="p-2 bg-slate-800 rounded-full hover:bg-primary hover:text-white transition-colors"><Link size={18} /></a>
+                            <a href="#" className="p-2 bg-slate-800 rounded-full hover:bg-primary hover:text-white transition-colors"><Link2 size={18} /></a>
                         </div>
                     </div>
 
@@ -31,10 +32,10 @@ export const Footer: React.FC = () => {
                     <div>
                         <h3 className="text-white font-bold mb-6">{language === 'ar' ? 'روابط سريعة' : 'Quick Links'}</h3>
                         <ul className="space-y-3 text-sm">
-                            <li><a href="#" className="hover:text-primary transition-colors">{language === 'ar' ? 'الرئيسية' : 'Home'}</a></li>
-                            <li><a href="#" className="hover:text-primary transition-colors">{language === 'ar' ? 'الخدمات' : 'Services'}</a></li>
-                            <li><a href="#" className="hover:text-primary transition-colors">{language === 'ar' ? 'من نحن' : 'About Us'}</a></li>
-                            <li><a href="#" className="hover:text-primary transition-colors">{language === 'ar' ? 'اتصل بنا' : 'Contact'}</a></li>
+                            <li><Link href="/" className="hover:text-primary transition-colors">{language === 'ar' ? 'الرئيسية' : 'Home'}</Link></li>
+                            <li><Link href="/services" className="hover:text-primary transition-colors">{language === 'ar' ? 'الخدمات' : 'Services'}</Link></li>
+                            <li><Link href="/about" className="hover:text-primary transition-colors">{language === 'ar' ? 'من نحن' : 'About Us'}</Link></li>
+                            <li><Link href="/contact" className="hover:text-primary transition-colors">{language === 'ar' ? 'اتصل بنا' : 'Contact'}</Link></li>
                         </ul>
                     </div>
 
@@ -42,8 +43,9 @@ export const Footer: React.FC = () => {
                     <div>
                         <h3 className="text-white font-bold mb-6">{language === 'ar' ? 'منتجاتنا' : 'Our Products'}</h3>
                         <ul className="space-y-3 text-sm">
-                            <li><a href="#" className="hover:text-primary transition-colors">{language === 'ar' ? 'تطبيق Ewan' : 'Ewan App'}</a></li>
-                            <li><a href="#" className="hover:text-primary transition-colors">{language === 'ar' ? 'نظام المدرسة الذكية' : 'Smart School System'}</a></li>
+                            <li><Link href="/e-profile" className="hover:text-primary transition-colors">{language === 'ar' ? 'تطبيق Ewan' : 'Ewan App'}</Link></li>
+                            <li><Link href="/ecosystem" className="hover:text-primary transition-colors">{language === 'ar' ? 'نظام المدرسة الذكية' : 'Smart School System'}</Link></li>
+                            <li><Link href="/ewan-landing" className="hover:text-primary transition-colors">{language === 'ar' ? 'منصة Ewan' : 'Ewan Platform'}</Link></li>
                         </ul>
                     </div>
 

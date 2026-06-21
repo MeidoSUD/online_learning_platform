@@ -36,6 +36,7 @@ export const WebsiteNavbar: React.FC = () => {
   const products = [
     { id: 'eprofile', label: language === 'ar' ? 'تطبيق Ewan' : 'Ewan App', href: '/e-profile', desc: language === 'ar' ? 'للطلاب والمعلمين' : 'For Students & Teachers' },
     { id: 'school', label: language === 'ar' ? 'المدرسة الذكية' : 'Smart School', href: '/ecosystem', desc: language === 'ar' ? 'للمؤسسات التعليمية' : 'For Schools & Institutes' },
+    { id: 'landing', label: language === 'ar' ? 'منصة Ewan' : 'Ewan Platform', href: '/ewan-landing', desc: language === 'ar' ? 'منصة التعلم' : 'Learning Platform' },
   ];
 
   const pageLinks = [
@@ -63,7 +64,7 @@ export const WebsiteNavbar: React.FC = () => {
                 onMouseEnter={() => setOpenDropdown('products')}
                 onClick={() => setOpenDropdown(openDropdown === 'products' ? null : 'products')}
                 className={`flex items-center gap-1 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-                  openDropdown === 'products' || isActive('/e-profile') || isActive('/ecosystem')
+                  openDropdown === 'products' || isActive('/e-profile') || isActive('/ecosystem') || isActive('/ewan-landing')
                     ? 'text-primary bg-blue-50' 
                     : 'text-slate-600 hover:text-primary hover:bg-slate-50'
                 }`}

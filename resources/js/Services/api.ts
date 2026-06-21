@@ -4,8 +4,7 @@
 // =====================================================
 
 
-// const PRODUCTION_URL = "http://localhost:8000/api";
-const PRODUCTION_URL = "https://portal.ewan-geniuses.com/api";
+const PRODUCTION_URL = `${window.location.origin}/api`;
 
 const URL_STORAGE_KEY = 'api_base_url';
 

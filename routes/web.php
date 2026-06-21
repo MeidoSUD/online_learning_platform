@@ -210,11 +210,11 @@ Route::middleware('LocaleMiddleware')->group(function () {
         // This will never render, always redirects
     })->middleware(['auth', 'check.role'])->name('check.role');
 
+    // Dashboard (Inertia - all roles) — client-side auth via token
+    Route::get('/dashboard', [PageController::class, 'dashboard'])->name('dashboard');
+
     // 🔒 All routes require login
     Route::middleware(['auth'])->group(function () {
-        // Dashboard (Inertia - all roles)
-        Route::get('/dashboard', [PageController::class, 'dashboard'])->name('dashboard');
-
         // Generic FCM token endpoint for all authenticated users
         Route::post('/save-fcm-token', [FCMTokenController::class, 'save']);
 
