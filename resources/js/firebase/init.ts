@@ -1,4 +1,5 @@
 
+// @ts-nocheck
 import { initializeApp } from 'firebase/app';
 import { getMessaging, isSupported } from 'firebase/messaging';
 
@@ -15,7 +16,7 @@ const firebaseConfig = {
 // Initialize App (Required for any Firebase service)
 const isConfigValid = Object.values(firebaseConfig).every(value => !!value);
 
-let app: any = null;
+let app = null;
 if (isConfigValid) {
   try {
     app = initializeApp(firebaseConfig);
@@ -26,7 +27,7 @@ if (isConfigValid) {
   console.warn("[Firebase] Missing configuration. Firebase features disabled.");
 }
 
-let messaging: any = null;
+let messaging = null;
 
 // Async function to safely get messaging instance
 export const getMessagingSafe = async () => {

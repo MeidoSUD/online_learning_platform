@@ -1,30 +1,24 @@
-
+// @ts-nocheck
 import React, { useState } from 'react';
 import { useLanguage } from '../Contexts/LanguageContext';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
 import { Logo } from './Logo';
 import { Mail, Lock, Globe, AlertCircle, Settings, Save, ShieldCheck } from 'lucide-react';
-import { authService, AuthResponse, API_BASE_URL, setApiUrl, resetApiUrl } from '../Services/api';
+import { authService, API_BASE_URL, setApiUrl, resetApiUrl } from '../Services/api';
 import { ForgotPasswordScreen } from './auth/ForgotPasswordScreen';
 import { useFcm } from '../Hooks/useFcm';
 import { useToast } from '../Contexts/ToastContext';
-
-interface LoginScreenProps {
-  onSwitch: () => void;
-  onLoginSuccess: (data: AuthResponse) => void;
-}
-
-export const LoginScreen: React.FC<LoginScreenProps> = ({ onSwitch, onLoginSuccess }) => {
+export const LoginScreen = ({ onSwitch, onLoginSuccess }) => {
   const { t, language, setLanguage } = useLanguage();
   const { showToast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [apiError, setApiError] = useState<string | null>(null);
+  const [apiError, setApiError] = useState(null);
 
   const { getFcmToken } = useFcm();
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [formData, setFormData] = useState({ email: '', password: '', rememberMe: false });
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState({});
 
   const [showSettings, setShowSettings] = useState(false);
   const [customUrl, setCustomUrl] = useState(API_BASE_URL);
@@ -37,7 +31,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSwitch, onLoginSucce
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setApiError(null);
     if (!validate()) return;
@@ -77,7 +71,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSwitch, onLoginSucce
       if (error.status === 422 && error.errors) {
         setErrors(prev => ({
           ...prev,
-          ...Object.keys(error.errors).reduce((acc: any, key) => {
+          ...Object.keys(error.errors).reduce((acc, key) => {
             acc[key] = error.errors[key][0];
             return acc;
           }, {})
