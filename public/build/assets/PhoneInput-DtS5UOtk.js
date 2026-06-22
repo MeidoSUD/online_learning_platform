@@ -1,7 +1,0 @@
-import{M as e,i as t,t as n}from"./app-DUAgarww.js";e();var r=t(),i=({label:e,error:t,value:i,onChangeText:a,className:o=``,...s})=>{let{direction:c}=n(),l=e=>{let t=e.target.value.replace(/\D/g,``);t.startsWith(`9665`)&&t.length>=12?t=t.substring(3):t.startsWith(`05`)&&t.length===10?t=t.substring(1):t.startsWith(`5`)&&t.length>9&&(t=t.substring(0,9)),a(t.substring(0,9))};return(0,r.jsxs)(`div`,{className:`mb-4 w-full`,children:[(0,r.jsx)(`label`,{className:`block text-sm font-medium text-text mb-1`,children:e}),(0,r.jsxs)(`div`,{className:`relative flex`,dir:`ltr`,children:[(0,r.jsxs)(`div`,{className:`flex items-center justify-center rounded-l-lg border border-r-0 border-slate-200 bg-slate-100 px-3 text-slate-600 font-semibold`,children:[(0,r.jsx)(`span`,{className:`mr-1`,children:`🇸🇦`}),` +966`]}),(0,r.jsx)(`input`,{...s,value:i,onChange:l,type:`tel`,maxLength:9,placeholder:`5xxxxxxxx`,className:`
-            flex-1 rounded-r-lg border bg-white py-3 px-4 text-text shadow-sm transition-all
-            focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none
-            disabled:cursor-not-allowed disabled:bg-slate-50
-            ${t?`border-error`:`border-slate-200`}
-            ${o}
-          `})]}),t&&(0,r.jsx)(`p`,{className:`mt-1 text-xs text-error ${c===`rtl`?`text-right`:`text-left`}`,children:t})]})};export{i as t};

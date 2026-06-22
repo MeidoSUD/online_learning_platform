@@ -88,7 +88,7 @@ import {
   AdminUser, AdminTeacher, AdminBooking, AdminDispute, PayoutRequest, Service,
   Ad, AdPayload, AdminService, AdminOrder, TeacherApplication, PlatformPercentage,
   RevenueAnalytics, CalculatorResults, AppConfig, AppVersion, MaintenanceMode,
-  TermsConditions, TermsConditionsPayload
+  TermsConditions, TermsConditionsPayload, SessionsPackage, AdminTeacherPackageApproval
 } from '../Utils/types';
 
 export type {
@@ -99,7 +99,7 @@ export type {
   AdminUser, AdminTeacher, AdminBooking, AdminDispute, PayoutRequest, Service,
   Ad, AdPayload, AdminService, AdminOrder, TeacherApplication, PlatformPercentage,
   RevenueAnalytics, CalculatorResults, AppConfig, AppVersion, MaintenanceMode,
-  TermsConditions, TermsConditionsPayload
+  TermsConditions, TermsConditionsPayload, SessionsPackage, AdminTeacherPackageApproval
 };
 
 export const AUTH_SESSION_EXPIRED = 'auth:session-expired';
@@ -507,6 +507,16 @@ export const adminService = {
     fetchWithAuth(`/admin/terms-conditions/${id}/restore`, { method: 'POST' }),
   getLatestTermsByType: (type: string) =>
     fetchWithAuth(`/admin/terms-conditions/type/${type}`),
+  getPackages: () => fetchWithAuth('/admin/packages').then(extractArray),
+  createPackage: (data: any) => fetchWithAuth('/admin/packages', { method: 'POST', body: JSON.stringify(data) }),
+  getPackageDetails: (id: number) => fetchWithAuth(`/admin/packages/${id}`),
+  updatePackage: (id: number, data: any) => fetchWithAuth(`/admin/packages/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deletePackage: (id: number) => fetchWithAuth(`/admin/packages/${id}`, { method: 'DELETE' }),
+  togglePackageActive: (id: number) => fetchWithAuth(`/admin/packages/${id}/toggle`, { method: 'PUT' }),
+  getPendingTeacherPackages: () => fetchWithAuth('/admin/teachers/pending-packages').then(extractArray),
+  getApprovedTeacherPackages: () => fetchWithAuth('/admin/teachers/approved-packages').then(extractArray),
+  approveTeacherPackages: (teacherId: number) => fetchWithAuth(`/admin/teachers/${teacherId}/approve-packages`, { method: 'PUT' }),
+  revokeTeacherPackages: (teacherId: number) => fetchWithAuth(`/admin/teachers/${teacherId}/revoke-packages`, { method: 'PUT' }),
 };
 
 export const adsService = {

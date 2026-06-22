@@ -706,3 +706,26 @@ export interface TermsConditionsPayload {
   role_id?: number | null;
   version?: number;
 }
+
+export interface SessionsPackage {
+  id: number;
+  name: string;
+  description: string | null;
+  sessions_count: number;
+  total_price: number;
+  price_per_session: number;
+  is_active: boolean;
+  created_by?: string;
+  created_at?: string;
+  updated_at?: string;
+  total_subscriptions?: number;
+}
+
+export interface AdminTeacherPackageApproval {
+  id: number;
+  name: string;
+  email: string;
+  offer_packages: boolean;
+  packages_approved: boolean;
+}
+

@@ -137,9 +137,9 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
                         <div className="flex items-start justify-between mb-3">
                             <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-bold overflow-hidden">
                                 {teacher.profile_image ? (
-                                    <img src={getStorageUrl(teacher.profile_image)} alt={teacher.first_name} className="h-full w-full object-cover" />
+                                    <img src={getStorageUrl(teacher.profile_image)} alt={teacher.first_name || ''} className="h-full w-full object-cover" />
                                 ) : (
-                                    teacher.first_name.charAt(0)
+                                    (teacher.first_name?.charAt(0) || teacher.name?.charAt(0) || '?').toUpperCase()
                                 )}
                             </div>
                             <div className="flex items-center gap-1 text-amber-400 text-sm font-bold">
