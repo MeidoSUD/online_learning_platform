@@ -59,6 +59,9 @@ use App\Http\Controllers\API\AppConfigController;
 use App\Http\Controllers\API\AdsController;
 use App\Http\Controllers\API\Admin\AdsAdminController;
 use App\Http\Controllers\API\Admin\SessionsAdminController;
+use App\Http\Controllers\API\TeacherPackageController;
+use App\Http\Controllers\API\StudentPackageController;
+use App\Http\Controllers\API\Admin\PackageAdminController;
 /*  
 |--------------------------------------------------------------------------
 | API Routes
@@ -252,8 +255,13 @@ Route::prefix('teacher')->middleware(['auth:sanctum', 'role:teacher'])->group(fu
     Route::post('/sessions/{id}/start', [SessionsController::class, 'start']);
     Route::post('/sessions/{id}/end', [SessionsController::class, 'end']);
     Route::post('/sessions/{id}/chat-token', [SessionsController::class, 'getChatToken']);
-    // terms and conditions
+    // packages
+    Route::get('/packages', [TeacherPackageController::class, 'index']);
+    Route::put('/packages/toggle-offer', [TeacherPackageController::class, 'toggleOfferPackages']);
 });
+
+// Public: teacher packages listing (for students browsing)
+Route::get('/teachers/{teacherId}/packages', [StudentPackageController::class, 'teacherPackages']);
 
 Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(function () {
     // Admin language management routes
@@ -264,6 +272,18 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     Route::put('settings/bulk', [SettingController::class, 'bulkUpdate']);
     Route::put('settings/{id}', [SettingController::class, 'update']);
     Route::post('settings', [SettingController::class, 'store']);
+
+    // Packages Management (Admin)
+    Route::get('/packages', [PackageAdminController::class, 'index']);
+    Route::post('/packages', [PackageAdminController::class, 'store']);
+    Route::get('/packages/{id}', [PackageAdminController::class, 'show']);
+    Route::put('/packages/{id}', [PackageAdminController::class, 'update']);
+    Route::delete('/packages/{id}', [PackageAdminController::class, 'destroy']);
+    Route::put('/packages/{id}/toggle', [PackageAdminController::class, 'toggleActive']);
+    Route::get('/teachers/pending-packages', [PackageAdminController::class, 'pendingTeachers']);
+    Route::get('/teachers/approved-packages', [PackageAdminController::class, 'approvedTeachers']);
+    Route::put('/teachers/{teacherId}/approve-packages', [PackageAdminController::class, 'approveTeacher']);
+    Route::put('/teachers/{teacherId}/revoke-packages', [PackageAdminController::class, 'revokeTeacherApproval']);
 
     // App Configuration Management (Admin)
     Route::get('app-config/settings', [AppConfigController::class, 'getAppSettings']);

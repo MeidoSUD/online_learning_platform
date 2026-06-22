@@ -219,4 +219,31 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->favoriters()->where('user_id', $user->getKey())->exists();
     }
+
+    // Package & Subscription relationships
+
+    public function packages(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(SessionsPackages::class, 'teacher_id');
+    }
+
+    public function activePackages(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->packages()->where('is_active', true);
+    }
+
+    public function subscriptionsAsStudent(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Subscription::class, 'student_id');
+    }
+
+    public function subscriptionsAsTeacher(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Subscription::class, 'teacher_id');
+    }
+
+    public function activeSubscriptionsAsStudent(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->subscriptionsAsStudent()->where('status', Subscription::STATUS_ACTIVE);
+    }
 }

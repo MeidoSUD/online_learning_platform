@@ -18,13 +18,17 @@ class TeacherInfo extends Model
         'group_hour_price',
         'max_group_size',
         'min_group_size',
-        'code'
+        'code',
+        'offer_packages',
+        'packages_approved',
     ];
 
     protected $casts = [
-    'group_hour_price' => 'float',
-    'individual_hour_price' => 'float',
-];
+        'group_hour_price' => 'float',
+        'individual_hour_price' => 'float',
+        'offer_packages' => 'boolean',
+        'packages_approved' => 'boolean',
+    ];
 
     protected static function boot()
     {
