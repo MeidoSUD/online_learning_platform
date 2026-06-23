@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
-import { Users, BookOpen, DollarSign, CheckSquare, Loader2, TrendingUp, UserCheck, Calendar, Activity, Wallet } from 'lucide-react';
+import { Users, BookOpen, DollarSign, CheckSquare, Loader2, TrendingUp, UserCheck, Calendar, Activity, Wallet, Package, CreditCard } from 'lucide-react';
 import { adminService } from '../../Services/api';
 import { AdminDashboardData, RevenueAnalytics } from '../../Utils/types';
 
@@ -96,6 +96,57 @@ export const AdminOverviewTab: React.FC = () => {
                     </div>
                 ))}
             </div>
+
+            {/* Packages & Subscriptions Stats */}
+            {data?.packages && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm transition-all hover:shadow-md">
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="p-2 rounded-xl bg-indigo-500 text-white">
+                                <Package size={20} />
+                            </div>
+                        </div>
+                        <p className="text-slate-500 text-xs font-medium mb-1">{t.totalPackages || 'Total Packages'}</p>
+                        <p className="text-xl font-bold text-slate-900">{data.packages.total_packages}</p>
+                    </div>
+                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm transition-all hover:shadow-md">
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="p-2 rounded-xl bg-green-500 text-white">
+                                <Package size={20} />
+                            </div>
+                        </div>
+                        <p className="text-slate-500 text-xs font-medium mb-1">{t.activePackages || 'Active Packages'}</p>
+                        <p className="text-xl font-bold text-slate-900">{data.packages.active_packages}</p>
+                    </div>
+                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm transition-all hover:shadow-md">
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="p-2 rounded-xl bg-blue-500 text-white">
+                                <CreditCard size={20} />
+                            </div>
+                        </div>
+                        <p className="text-slate-500 text-xs font-medium mb-1">{t.totalSubscriptions || 'Total Subscriptions'}</p>
+                        <p className="text-xl font-bold text-slate-900">{data.packages.total_subscriptions}</p>
+                    </div>
+                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm transition-all hover:shadow-md">
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="p-2 rounded-xl bg-teal-500 text-white">
+                                <CreditCard size={20} />
+                            </div>
+                        </div>
+                        <p className="text-slate-500 text-xs font-medium mb-1">{t.activeSubscriptions || 'Active Subscriptions'}</p>
+                        <p className="text-xl font-bold text-slate-900">{data.packages.active_subscriptions}</p>
+                    </div>
+                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm transition-all hover:shadow-md">
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="p-2 rounded-xl bg-orange-500 text-white">
+                                <DollarSign size={20} />
+                            </div>
+                        </div>
+                        <p className="text-slate-500 text-xs font-medium mb-1">{t.packageRevenue || 'Package Revenue'}</p>
+                        <p className="text-xl font-bold text-slate-900">{data.packages.total_revenue.toLocaleString()} {t.sar}</p>
+                    </div>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* User Distribution */}

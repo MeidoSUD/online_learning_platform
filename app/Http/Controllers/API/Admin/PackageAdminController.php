@@ -5,8 +5,7 @@ namespace App\Http\Controllers\API\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\SessionsPackages;
-use App\Models\TeacherInfo;
-use App\Models\User;
+use App\Models\Subscription;
 use Illuminate\Support\Facades\Validator;
 
 class PackageAdminController extends Controller
@@ -19,77 +18,74 @@ class PackageAdminController extends Controller
 
     public function index()
     {
-        $packages = SessionsPackages::with('creator')
-            ->orderBy('sessions_count')
-            ->get();
+        $packages = SessionsPackages::orderBy('sessions_count')->get()->map(function ($p) {
+            return [
+                'id' => $p->id,
+                'name_ar' => $p->name_ar,
+                'name_en' => $p->name_en,
+                'description_ar' => $p->description_ar,
+                'description_en' => $p->description_en,
+                'sessions_count' => $p->sessions_count,
+                'price' => $p->price,
+                'price_per_session' => $p->price_per_session,
+                'is_active' => $p->is_active,
+                'created_at' => $p->created_at,
+                'total_subscriptions' => $p->subscriptions()->count(),
+                'active_subscriptions' => $p->subscriptions()->where('status', 'active')->count(),
+            ];
+        });
 
-        return response()->json([
-            'status' => true,
-            'data' => $packages->map(function ($p) {
-                return [
-                    'id' => $p->id,
-                    'name' => $p->name,
-                    'description' => $p->description,
-                    'sessions_count' => $p->sessions_count,
-                    'total_price' => $p->total_price,
-                    'price_per_session' => $p->price_per_session,
-                    'is_active' => $p->is_active,
-                    'created_by' => $p->creator ? $p->creator->name : 'System',
-                    'created_at' => $p->created_at,
-                    'total_subscriptions' => $p->subscriptions()->count(),
-                ];
-            }),
-        ]);
+        return response()->json(['status' => true, 'data' => $packages]);
     }
 
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
+            'name_ar' => 'required|string|max:255',
+            'name_en' => 'required|string|max:255',
+            'description_ar' => 'nullable|string',
+            'description_en' => 'nullable|string',
             'sessions_count' => 'required|integer|min:1|max:100',
-            'total_price' => 'required|numeric|min:0',
-            'is_active' => 'sometimes|boolean',
+            'price' => 'required|numeric|min:0',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['status' => false, 'errors' => $validator->errors()], 422);
         }
 
-        $pricePerSession = round($request->total_price / $request->sessions_count, 2);
-
         $package = SessionsPackages::create([
-            'created_by' => $request->user()->id,
-            'name' => $request->name,
-            'description' => $request->description,
+            'name_ar' => $request->name_ar,
+            'name_en' => $request->name_en,
+            'description_ar' => $request->description_ar,
+            'description_en' => $request->description_en,
             'sessions_count' => $request->sessions_count,
-            'total_price' => $request->total_price,
-            'price_per_session' => $pricePerSession,
+            'price' => $request->price,
             'is_active' => $request->is_active ?? true,
         ]);
 
         return response()->json([
             'status' => true,
             'message' => 'Package created successfully',
-            'data' => $package,
+            'data' => $package->fresh(),
         ], 201);
     }
 
     public function show($id)
     {
-        $package = SessionsPackages::with('creator')->findOrFail($id);
+        $package = SessionsPackages::findOrFail($id);
 
         return response()->json([
             'status' => true,
             'data' => [
                 'id' => $package->id,
-                'name' => $package->name,
-                'description' => $package->description,
+                'name_ar' => $package->name_ar,
+                'name_en' => $package->name_en,
+                'description_ar' => $package->description_ar,
+                'description_en' => $package->description_en,
                 'sessions_count' => $package->sessions_count,
-                'total_price' => $package->total_price,
+                'price' => $package->price,
                 'price_per_session' => $package->price_per_session,
                 'is_active' => $package->is_active,
-                'created_by' => $package->creator ? $package->creator->name : 'System',
                 'created_at' => $package->created_at,
                 'updated_at' => $package->updated_at,
                 'total_subscriptions' => $package->subscriptions()->count(),
@@ -102,10 +98,12 @@ class PackageAdminController extends Controller
         $package = SessionsPackages::findOrFail($id);
 
         $validator = Validator::make($request->all(), [
-            'name' => 'sometimes|string|max:255',
-            'description' => 'nullable|string',
+            'name_ar' => 'sometimes|string|max:255',
+            'name_en' => 'sometimes|string|max:255',
+            'description_ar' => 'nullable|string',
+            'description_en' => 'nullable|string',
             'sessions_count' => 'sometimes|integer|min:1|max:100',
-            'total_price' => 'sometimes|numeric|min:0',
+            'price' => 'sometimes|numeric|min:0',
             'is_active' => 'sometimes|boolean',
         ]);
 
@@ -113,15 +111,10 @@ class PackageAdminController extends Controller
             return response()->json(['status' => false, 'errors' => $validator->errors()], 422);
         }
 
-        $data = $request->only(['name', 'description', 'sessions_count', 'total_price', 'is_active']);
-
-        if ($request->has('total_price') || $request->has('sessions_count')) {
-            $sessionsCount = $request->sessions_count ?? $package->sessions_count;
-            $totalPrice = $request->total_price ?? $package->total_price;
-            $data['price_per_session'] = round($totalPrice / $sessionsCount, 2);
-        }
-
-        $package->update($data);
+        $package->update($request->only([
+            'name_ar', 'name_en', 'description_ar', 'description_en',
+            'sessions_count', 'price', 'is_active',
+        ]));
 
         return response()->json([
             'status' => true,
@@ -134,7 +127,7 @@ class PackageAdminController extends Controller
     {
         $package = SessionsPackages::findOrFail($id);
 
-        if ($package->subscriptions()->whereIn('status', ['active'])->exists()) {
+        if ($package->subscriptions()->where('status', 'active')->exists()) {
             return response()->json([
                 'status' => false,
                 'message' => 'Cannot delete package with active subscriptions',
@@ -152,7 +145,6 @@ class PackageAdminController extends Controller
     public function toggleActive($id)
     {
         $package = SessionsPackages::findOrFail($id);
-
         $package->update(['is_active' => !$package->is_active]);
 
         return response()->json([
@@ -162,76 +154,20 @@ class PackageAdminController extends Controller
         ]);
     }
 
-    public function pendingTeachers()
+    public function stats()
     {
-        $teachers = User::whereHas('teacherInfo', function ($q) {
-                $q->where('packages_approved', false);
-            })
-            ->with('teacherInfo')
-            ->get()
-            ->map(function ($teacher) {
-                return [
-                    'id' => $teacher->id,
-                    'name' => $teacher->name,
-                    'email' => $teacher->email,
-                    'offer_packages' => $teacher->teacherInfo->offer_packages ?? false,
-                    'packages_approved' => $teacher->teacherInfo->packages_approved ?? false,
-                ];
-            });
-
         return response()->json([
             'status' => true,
-            'data' => $teachers,
-        ]);
-    }
-
-    public function approvedTeachers()
-    {
-        $teachers = User::whereHas('teacherInfo', function ($q) {
-                $q->where('packages_approved', true);
-            })
-            ->with('teacherInfo')
-            ->get()
-            ->map(function ($teacher) {
-                return [
-                    'id' => $teacher->id,
-                    'name' => $teacher->name,
-                    'email' => $teacher->email,
-                    'offer_packages' => $teacher->teacherInfo->offer_packages ?? false,
-                    'packages_approved' => $teacher->teacherInfo->packages_approved ?? false,
-                ];
-            });
-
-        return response()->json([
-            'status' => true,
-            'data' => $teachers,
-        ]);
-    }
-
-    public function approveTeacher($teacherId)
-    {
-        $teacherInfo = TeacherInfo::where('teacher_id', $teacherId)->firstOrFail();
-
-        $teacherInfo->update(['packages_approved' => true]);
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Teacher approved for offering packages',
-        ]);
-    }
-
-    public function revokeTeacherApproval($teacherId)
-    {
-        $teacherInfo = TeacherInfo::where('teacher_id', $teacherId)->firstOrFail();
-
-        $teacherInfo->update([
-            'packages_approved' => false,
-            'offer_packages' => false,
-        ]);
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Teacher package approval revoked',
+            'data' => [
+                'total_packages' => SessionsPackages::count(),
+                'active_packages' => SessionsPackages::where('is_active', true)->count(),
+                'total_subscriptions' => Subscription::count(),
+                'active_subscriptions' => Subscription::where('status', 'active')->count(),
+                'completed_subscriptions' => Subscription::where('status', 'completed')->count(),
+                'total_revenue' => Subscription::sum('total_paid'),
+                'total_sessions_used' => Subscription::sum('sessions_used'),
+                'total_sessions_remaining' => Subscription::sum('sessions_remaining'),
+            ],
         ]);
     }
 }

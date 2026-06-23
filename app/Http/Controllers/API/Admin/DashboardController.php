@@ -10,6 +10,8 @@ use App\Models\User;
 use App\Models\Booking;
 use App\Models\Payment;
 use App\Models\Wallet;
+use App\Models\SessionsPackages;
+use App\Models\Subscription;
 
 class DashboardController extends Controller
 {
@@ -181,6 +183,13 @@ class DashboardController extends Controller
                     'wallet_info' => [
                         'total_teachers_wallet' => (float) $teachersWalletTotal,
                         'average_per_teacher' => $totalTeachers > 0 ? round((float) $teachersWalletTotal / $totalTeachers, 2) : 0,
+                    ],
+                    'packages' => [
+                        'total_packages' => SessionsPackages::count(),
+                        'active_packages' => SessionsPackages::where('is_active', true)->count(),
+                        'total_subscriptions' => Subscription::count(),
+                        'active_subscriptions' => Subscription::where('status', 'active')->count(),
+                        'total_revenue' => (float) Subscription::sum('total_paid'),
                     ],
                 ],
             ], 200);

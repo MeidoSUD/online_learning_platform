@@ -116,7 +116,6 @@ Route::prefix('student')->middleware(['auth:sanctum', 'role:student'])->group(fu
     Route::get('/favorites/{teacher}/status', [FavoriteController::class, 'status']);
 
     // Packages & Subscriptions
-    Route::get('/packages/teacher/{teacherId}', [StudentPackageController::class, 'teacherPackages']);
     Route::post('/packages/purchase', [StudentPackageController::class, 'purchase']);
     Route::get('/subscriptions', [StudentPackageController::class, 'mySubscriptions']);
     Route::get('/subscriptions/{id}', [StudentPackageController::class, 'subscriptionDetails']);

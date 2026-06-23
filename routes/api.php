@@ -59,7 +59,6 @@ use App\Http\Controllers\API\AppConfigController;
 use App\Http\Controllers\API\AdsController;
 use App\Http\Controllers\API\Admin\AdsAdminController;
 use App\Http\Controllers\API\Admin\SessionsAdminController;
-use App\Http\Controllers\API\TeacherPackageController;
 use App\Http\Controllers\API\StudentPackageController;
 use App\Http\Controllers\API\Admin\PackageAdminController;
 /*  
@@ -122,6 +121,8 @@ Route::get('/students/{id}/teachers', [BookingController::class, 'getStudentTeac
 Route::get('/education-levels', [EducationLevelController::class, 'levelsWithClassesAndSubjects']);
 Route::get('/classes/{education_level_id}', [EducationLevelController::class, 'classes']);
 Route::get('subjectsClasses/{class_id}', [EducationLevelController::class, 'getSubjectsByClass']);
+// Public: list all available packages
+Route::get('/packages', [StudentPackageController::class, 'index']);
 // Terms and Conditions privacy policy
 Route::get('teacher-terms' , [TermsConditionsAdminController::class, 'teacherTerms']);
 Route::get('/teacher-policy', [TermsConditionsAdminController::class, 'teachersPrivacyPolicy']);
@@ -255,13 +256,8 @@ Route::prefix('teacher')->middleware(['auth:sanctum', 'role:teacher'])->group(fu
     Route::post('/sessions/{id}/start', [SessionsController::class, 'start']);
     Route::post('/sessions/{id}/end', [SessionsController::class, 'end']);
     Route::post('/sessions/{id}/chat-token', [SessionsController::class, 'getChatToken']);
-    // packages
-    Route::get('/packages', [TeacherPackageController::class, 'index']);
-    Route::put('/packages/toggle-offer', [TeacherPackageController::class, 'toggleOfferPackages']);
 });
 
-// Public: teacher packages listing (for students browsing)
-Route::get('/teachers/{teacherId}/packages', [StudentPackageController::class, 'teacherPackages']);
 
 Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(function () {
     // Admin language management routes
@@ -280,10 +276,7 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     Route::put('/packages/{id}', [PackageAdminController::class, 'update']);
     Route::delete('/packages/{id}', [PackageAdminController::class, 'destroy']);
     Route::put('/packages/{id}/toggle', [PackageAdminController::class, 'toggleActive']);
-    Route::get('/teachers/pending-packages', [PackageAdminController::class, 'pendingTeachers']);
-    Route::get('/teachers/approved-packages', [PackageAdminController::class, 'approvedTeachers']);
-    Route::put('/teachers/{teacherId}/approve-packages', [PackageAdminController::class, 'approveTeacher']);
-    Route::put('/teachers/{teacherId}/revoke-packages', [PackageAdminController::class, 'revokeTeacherApproval']);
+    Route::get('/packages/stats', [PackageAdminController::class, 'stats']);
 
     // App Configuration Management (Admin)
     Route::get('app-config/settings', [AppConfigController::class, 'getAppSettings']);

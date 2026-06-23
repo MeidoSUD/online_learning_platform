@@ -557,6 +557,7 @@ export interface AdminDashboardData {
     total_teachers_wallet: number;
     average_per_teacher: number;
   };
+  packages?: PackagesStats;
 }
 
 export interface AdminService extends Service {
@@ -709,23 +710,24 @@ export interface TermsConditionsPayload {
 
 export interface SessionsPackage {
   id: number;
-  name: string;
-  description: string | null;
+  name_ar: string;
+  name_en: string;
+  description_ar: string | null;
+  description_en: string | null;
   sessions_count: number;
-  total_price: number;
+  price: number;
   price_per_session: number;
   is_active: boolean;
-  created_by?: string;
   created_at?: string;
   updated_at?: string;
   total_subscriptions?: number;
 }
 
-export interface AdminTeacherPackageApproval {
-  id: number;
-  name: string;
-  email: string;
-  offer_packages: boolean;
-  packages_approved: boolean;
+export interface PackagesStats {
+  total_packages: number;
+  active_packages: number;
+  total_subscriptions: number;
+  active_subscriptions: number;
+  total_revenue: number;
 }
 

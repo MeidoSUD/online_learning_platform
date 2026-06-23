@@ -13,7 +13,6 @@ class Subscription extends Model
 
     protected $fillable = [
         'student_id',
-        'teacher_id',
         'package_id',
         'sessions_remaining',
         'sessions_used',
@@ -45,11 +44,6 @@ class Subscription extends Model
         return $this->belongsTo(User::class, 'student_id');
     }
 
-    public function teacher(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'teacher_id');
-    }
-
     public function package(): BelongsTo
     {
         return $this->belongsTo(SessionsPackages::class, 'package_id');
@@ -73,11 +67,6 @@ class Subscription extends Model
     public function scopeForStudent($query, $studentId)
     {
         return $query->where('student_id', $studentId);
-    }
-
-    public function scopeForTeacher($query, $teacherId)
-    {
-        return $query->where('teacher_id', $teacherId);
     }
 
     public function getRemainingSessionsAttribute(): int

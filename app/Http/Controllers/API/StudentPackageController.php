@@ -10,41 +10,27 @@ use App\Models\Booking;
 use App\Models\AvailabilitySlot;
 use App\Models\Sessions;
 use App\Models\Payment;
-use App\Models\TeacherInfo;
-use App\Helpers\Helpers;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
 
 class StudentPackageController extends Controller
 {
-    public function teacherPackages($teacherId)
+    public function index()
     {
-        $teacherInfo = TeacherInfo::where('teacher_id', $teacherId)->first();
-
-        if (!$teacherInfo || !$teacherInfo->offer_packages || !$teacherInfo->packages_approved) {
-            return response()->json([
-                'status' => true,
-                'data' => [],
-                'message' => 'Teacher does not offer packages',
-            ]);
-        }
-
-        $teacherHourlyRate = $teacherInfo->individual_hour_price;
-
         $packages = SessionsPackages::where('is_active', true)
             ->orderBy('sessions_count')
             ->get()
-            ->map(function ($package) use ($teacherHourlyRate) {
-                $savingsPerSession = $teacherHourlyRate ? round($teacherHourlyRate - $package->price_per_session, 2) : null;
+            ->map(function ($package) {
                 return [
                     'id' => $package->id,
-                    'name' => $package->name,
-                    'description' => $package->description,
+                    'name_ar' => $package->name_ar,
+                    'name_en' => $package->name_en,
+                    'description_ar' => $package->description_ar,
+                    'description_en' => $package->description_en,
                     'sessions_count' => $package->sessions_count,
-                    'total_price' => $package->total_price,
+                    'price' => $package->price,
+                    'discount' => $package->discount,
                     'price_per_session' => $package->price_per_session,
-                    'savings_per_session' => $savingsPerSession > 0 ? $savingsPerSession : null,
                 ];
             });
 
@@ -60,7 +46,6 @@ class StudentPackageController extends Controller
 
         $validator = Validator::make($request->all(), [
             'package_id' => 'required|exists:sessions_packages,id',
-            'teacher_id' => 'required|exists:users,id',
             'payment_method' => 'required|string|in:card,wallet,bank_transfer,apple_pay,stc_pay',
         ]);
 
@@ -74,37 +59,41 @@ class StudentPackageController extends Controller
             return response()->json(['status' => false, 'message' => 'Package is not available'], 400);
         }
 
-        $validator->after(function ($v) use ($request) {
-            $teacherInfo = TeacherInfo::where('teacher_id', $request->teacher_id)->first();
-            if (!$teacherInfo || !$teacherInfo->offer_packages || !$teacherInfo->packages_approved) {
-                $v->errors()->add('teacher_id', 'This teacher does not offer packages');
-            }
-        });
-
-        if ($validator->fails()) {
-            return response()->json(['status' => false, 'errors' => $validator->errors()], 422);
-        }
-
         return DB::transaction(function () use ($request, $studentId, $package) {
-            $payment = Payment::create([
+            $booking = Booking::create([
                 'student_id' => $studentId,
-                'teacher_id' => $request->teacher_id,
-                'amount' => $package->total_price,
+                'session_type' => Booking::TYPE_PACKAGE,
+                'sessions_count' => $package->sessions_count,
+                'sessions_completed' => 0,
+                'session_duration' => 0,
+                'price_per_session' => $package->price_per_session,
+                'subtotal' => $package->price,
+                'total_amount' => $package->price,
+                'currency' => 'SAR',
+                'status' => Booking::STATUS_PENDING_PAYMENT,
+                'booking_date' => now(),
+            ]);
+
+            $payment = Payment::create([
+                'booking_id' => $booking->id,
+                'student_id' => $studentId,
+                'amount' => $package->price,
                 'currency' => 'SAR',
                 'payment_method' => $request->payment_method,
                 'status' => Payment::STATUS_COMPLETED,
                 'paid_at' => now(),
             ]);
 
+            $booking->update(['status' => Booking::STATUS_CONFIRMED]);
+
             $subscription = Subscription::create([
                 'student_id' => $studentId,
-                'teacher_id' => $request->teacher_id,
                 'package_id' => $package->id,
                 'sessions_remaining' => $package->sessions_count,
                 'sessions_used' => 0,
                 'status' => Subscription::STATUS_ACTIVE,
                 'start_date' => now(),
-                'total_paid' => $package->total_price,
+                'total_paid' => $package->price,
                 'currency' => 'SAR',
                 'payment_id' => $payment->id,
             ]);
@@ -113,7 +102,8 @@ class StudentPackageController extends Controller
                 'status' => true,
                 'message' => 'Package purchased successfully',
                 'data' => [
-                    'subscription' => $subscription->load('package', 'teacher', 'payment'),
+                    'subscription' => $subscription->load('package'),
+                    'booking' => $booking,
                     'payment' => $payment,
                 ],
             ], 201);
@@ -125,15 +115,14 @@ class StudentPackageController extends Controller
         $studentId = $request->user()->id;
 
         $subscriptions = Subscription::where('student_id', $studentId)
-            ->with(['package', 'teacher'])
+            ->with('package')
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($sub) {
                 return [
                     'id' => $sub->id,
-                    'package_name' => $sub->package->name ?? 'Package',
-                    'teacher_name' => $sub->teacher->name ?? 'Teacher',
-                    'teacher_id' => $sub->teacher_id,
+                    'package_name_ar' => $sub->package->name_ar ?? '',
+                    'package_name_en' => $sub->package->name_en ?? '',
                     'sessions_remaining' => $sub->sessions_remaining,
                     'sessions_used' => $sub->sessions_used,
                     'total_sessions' => $sub->total_sessions,
@@ -157,7 +146,7 @@ class StudentPackageController extends Controller
         $studentId = $request->user()->id;
 
         $subscription = Subscription::where('student_id', $studentId)
-            ->with(['package', 'teacher', 'bookings.sessions'])
+            ->with(['package', 'bookings.sessions'])
             ->findOrFail($id);
 
         return response()->json([
@@ -165,7 +154,6 @@ class StudentPackageController extends Controller
             'data' => [
                 'id' => $subscription->id,
                 'package' => $subscription->package,
-                'teacher' => $subscription->teacher,
                 'sessions_remaining' => $subscription->sessions_remaining,
                 'sessions_used' => $subscription->sessions_used,
                 'total_sessions' => $subscription->total_sessions,
@@ -177,6 +165,7 @@ class StudentPackageController extends Controller
                     return [
                         'id' => $booking->id,
                         'booking_reference' => $booking->booking_reference,
+                        'teacher_id' => $booking->teacher_id,
                         'session_date' => $booking->first_session_date,
                         'start_time' => $booking->first_session_start_time,
                         'end_time' => $booking->first_session_end_time,
@@ -193,6 +182,7 @@ class StudentPackageController extends Controller
 
         $validator = Validator::make($request->all(), [
             'availability_slot_id' => 'required|exists:availability_slots,id',
+            'teacher_id' => 'required|exists:users,id',
         ]);
 
         if ($validator->fails()) {
@@ -214,7 +204,7 @@ class StudentPackageController extends Controller
 
         return DB::transaction(function () use ($request, $studentId, $subscription) {
             $slot = AvailabilitySlot::where('id', $request->availability_slot_id)
-                ->where('teacher_id', $subscription->teacher_id)
+                ->where('teacher_id', $request->teacher_id)
                 ->where('is_available', true)
                 ->where('is_booked', false)
                 ->lockForUpdate()
@@ -230,10 +220,9 @@ class StudentPackageController extends Controller
 
             $booking = Booking::create([
                 'student_id' => $studentId,
-                'teacher_id' => $subscription->teacher_id,
+                'teacher_id' => $request->teacher_id,
                 'availability_slot_id' => $slot->id,
                 'subscription_id' => $subscription->id,
-                'service_id' => null,
                 'session_type' => Booking::TYPE_SINGLE,
                 'sessions_count' => 1,
                 'sessions_completed' => 0,
@@ -266,7 +255,7 @@ class StudentPackageController extends Controller
                 'status' => true,
                 'message' => 'Session booked successfully from your package',
                 'data' => [
-                    'booking' => $booking->load('sessions'),
+                    'booking' => $booking->load('sessions', 'teacher'),
                     'sessions_remaining' => $subscription->fresh()->sessions_remaining,
                 ],
             ], 201);
