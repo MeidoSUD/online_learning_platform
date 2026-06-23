@@ -1439,6 +1439,8 @@ class UserController extends Controller
                 'reviews' => $reviews,
                 'rating' => $rating,
                 'bio' => optional($teacher->profile)->bio,
+                'offer_packages' => $teacher->teacherInfo ? (bool) $teacher->teacherInfo->offer_packages : false,
+                'packages_approved' => $teacher->teacherInfo ? (bool) $teacher->teacherInfo->packages_approved : false,
                 'total_students' => (int) (optional($teacher->teacherInfo)->total_students ?? 0),
                 'verified' => (bool) optional($teacher->profile)->verified,
                 'service' => $primaryServiceId,
