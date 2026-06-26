@@ -117,6 +117,7 @@ Route::prefix('student')->middleware(['auth:sanctum', 'role:student'])->group(fu
 
     // Packages & Subscriptions
     Route::post('/packages/purchase', [StudentPackageController::class, 'purchase']);
+    Route::post('/packages/purchase/confirm', [StudentPackageController::class, 'confirmPurchase']);
     Route::get('/subscriptions', [StudentPackageController::class, 'mySubscriptions']);
     Route::get('/subscriptions/{id}', [StudentPackageController::class, 'subscriptionDetails']);
     Route::post('/subscriptions/{id}/book', [StudentPackageController::class, 'bookSession']);

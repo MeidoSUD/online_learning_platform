@@ -7,57 +7,20 @@ use App\Http\Controllers\API\AvailabilityController;
 use App\Http\Controllers\API\CourseController;
 use App\Http\Controllers\API\LessonController;
 use App\Http\Controllers\API\BookingController;
-use App\Http\Controllers\API\PaymentController;
 use App\Http\Controllers\API\WalletController;
 use App\Http\Controllers\API\ReviewController;
 use App\Http\Controllers\API\ServicesController;
-use App\Http\Controllers\Auth\ConfirmablePasswordController;
 use App\Http\Controllers\API\EducationLevelController;
 use App\Http\Controllers\API\UserController;
-use App\Http\Controllers\API\OrdersController;
 use App\Http\Controllers\API\TeacherApplicationController;
 use App\Http\Controllers\API\DisputeController;
 use App\Http\Controllers\API\TeacherController;
 use App\Http\Controllers\API\PaymentMethodController;
 use App\Http\Controllers\API\UserPaymentMethodController;
-use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\API\SessionsController;
 use App\Http\Controllers\API\LanguageStudyController;
-use App\Http\Controllers\API\LanguageController;
 use App\Http\Controllers\FCMTokenController;
-use App\Http\Controllers\API\Admin\DashboardController;
-use App\Http\Controllers\API\Admin\UsersController;
-use App\Http\Controllers\API\Admin\PayoutAdminController;
-use App\Http\Controllers\API\Admin\SystemController;
-use App\Http\Controllers\API\Admin\ServiceController;
-use App\Http\Controllers\API\Admin\ServiceAdminController;
-use App\Http\Controllers\API\Admin\GalleryController;
-use App\Http\Controllers\API\Admin\DisputeAdminController;
-use App\Http\Controllers\API\Admin\BookingAdminController;
-use App\Http\Controllers\API\Admin\PaymentAdminController;
-use App\Http\Controllers\API\Admin\ClassesAdminController;
-use App\Http\Controllers\API\Admin\SubjectAdminController;
-use App\Http\Controllers\API\Admin\EducationLevelAdminController;
-use App\Http\Controllers\API\Admin\CourseAdminController;
-use App\Http\Controllers\API\Admin\SupportTicketController;
-use App\Http\Controllers\API\Admin\SettingController;
-use App\Http\Controllers\API\Admin\RevenuePercentageController;
-use App\Http\Controllers\API\Admin\OrderAdminController;
-
-
-use App\Http\Controllers\API\Admin\InstituteController;
-use App\Models\Payment;
-use App\Models\User;
-// Agora token route for sessions
-use App\Services\AgoraService;
-use Illuminate\Support\Facades\Lang;
-
-use App\Http\Controllers\API\BookingCourseController;
-use App\Http\Controllers\API\AppVersionController;
-use App\Http\Controllers\API\AppConfigController;
-use App\Http\Controllers\API\AdsController;
-use App\Http\Controllers\API\Admin\AdsAdminController;
-use App\Http\Controllers\API\Admin\SessionsAdminController;
+use App\Http\Controllers\API\TeacherPackageController;
 
 Route::prefix('teacher')->middleware(['auth:sanctum', 'role:teacher'])->group(function () {
     Route::get('/education-levels', [EducationLevelController::class, 'levelsWithClassesAndSubjects']);
@@ -144,4 +107,7 @@ Route::prefix('teacher')->middleware(['auth:sanctum', 'role:teacher'])->group(fu
     Route::post('/language-study/languages', [LanguageStudyController::class, 'addTeacherLanguages']);
     Route::put('/language-study/languages', [LanguageStudyController::class, 'updateTeacherLanguages']);
     Route::delete('/language-study/{languageId}', [LanguageStudyController::class, 'deleteTeacherLanguage']);
+
+    // switch on/off package availability
+    Route::put('/packages/on-off', [TeacherPackageController::class, 'switchPackageOnOff']);
 });

@@ -10,11 +10,20 @@ use App\Models\Booking;
 use App\Models\AvailabilitySlot;
 use App\Models\Sessions;
 use App\Models\Payment;
+use App\Services\MoyasarPay;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class StudentPackageController extends Controller
 {
+    protected MoyasarPay $moyasar;
+
+    public function __construct(MoyasarPay $moyasar)
+    {
+        $this->moyasar = $moyasar;
+    }
+
     public function index()
     {
         $packages = SessionsPackages::where('is_active', true)
@@ -59,32 +68,134 @@ class StudentPackageController extends Controller
             return response()->json(['status' => false, 'message' => 'Package is not available'], 400);
         }
 
-        return DB::transaction(function () use ($request, $studentId, $package) {
-            $booking = Booking::create([
-                'student_id' => $studentId,
-                'session_type' => Booking::TYPE_PACKAGE,
-                'sessions_count' => $package->sessions_count,
-                'sessions_completed' => 0,
-                'session_duration' => 0,
-                'price_per_session' => $package->price_per_session,
-                'subtotal' => $package->price,
-                'total_amount' => $package->price,
-                'currency' => 'SAR',
-                'status' => Booking::STATUS_PENDING_PAYMENT,
-                'booking_date' => now(),
-            ]);
+        try {
+            $amount = (int) ($package->price * 100);
+            $currency = 'SAR';
+            $callbackUrl = route('api.payment.callback');
+
+            $payload = [
+                'amount' => $amount,
+                'currency' => $currency,
+                'description' => "Package: {$package->name_en} ({$package->sessions_count} sessions)",
+                'callback_url' => $callbackUrl,
+                'metadata' => [
+                    'user_id' => $studentId,
+                    'package_id' => $package->id,
+                    'type' => 'package_purchase',
+                ],
+            ];
+
+            $gatewayResponse = $this->moyasar->createInvoice($payload);
 
             $payment = Payment::create([
-                'booking_id' => $booking->id,
                 'student_id' => $studentId,
                 'amount' => $package->price,
-                'currency' => 'SAR',
-                'payment_method' => $request->payment_method,
+                'currency' => $currency,
+                'payment_method' => 'MOYASAR_' . strtoupper($request->payment_method),
+                'status' => $gatewayResponse['status'],
+                'transaction_reference' => $gatewayResponse['id'],
+                'gateway_reference' => $gatewayResponse['id'],
+                'gateway_response' => json_encode($gatewayResponse),
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Payment checkout created',
+                'data' => [
+                    'payment_id' => $payment->id,
+                    'checkout_id' => $gatewayResponse['id'],
+                    'redirect_url' => $gatewayResponse['url'] ?? '',
+                    'amount' => $package->price,
+                    'currency' => $currency,
+                ],
+            ], 201);
+        } catch (\Exception $e) {
+            Log::error('Package purchase checkout failed', [
+                'student_id' => $studentId,
+                'package_id' => $package->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to initiate payment: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function confirmPurchase(Request $request)
+    {
+        $studentId = $request->user()->id;
+
+        $validator = Validator::make($request->all(), [
+            'payment_id' => 'required|integer|exists:payments,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $payment = Payment::where('id', $request->payment_id)
+            ->where('student_id', $studentId)
+            ->first();
+
+        if (!$payment) {
+            return response()->json(['status' => false, 'message' => 'Payment not found'], 404);
+        }
+
+        if ($payment->status === Payment::STATUS_COMPLETED) {
+            $subscription = Subscription::where('payment_id', $payment->id)->first();
+            if ($subscription) {
+                return response()->json([
+                    'status' => true,
+                    'message' => 'Already confirmed',
+                    'data' => [
+                        'subscription' => $subscription->load('package'),
+                        'payment' => $payment,
+                    ],
+                ]);
+            }
+        }
+
+        try {
+            $invoice = $this->moyasar->fetchInvoice($payment->gateway_reference);
+
+            $isPaid = $invoice['status'] === 'paid' && !empty($invoice['payments']);
+            $gatewayStatus = $invoice['status'];
+
+            if (!$isPaid) {
+                $payment->update([
+                    'status' => $gatewayStatus,
+                    'gateway_response' => json_encode($invoice),
+                ]);
+
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Payment not completed yet',
+                    'data' => [
+                        'payment_status' => $gatewayStatus,
+                        'payment_id' => $payment->id,
+                    ],
+                ], 400);
+            }
+
+            $payment->update([
                 'status' => Payment::STATUS_COMPLETED,
+                'gateway_response' => json_encode($invoice),
                 'paid_at' => now(),
             ]);
 
-            $booking->update(['status' => Booking::STATUS_CONFIRMED]);
+            $metadata = $invoice['metadata'] ?? [];
+            $packageId = $metadata['package_id'] ?? null;
+
+            if (!$packageId) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Could not determine package from payment',
+                ], 400);
+            }
+
+            $package = SessionsPackages::findOrFail($packageId);
 
             $subscription = Subscription::create([
                 'student_id' => $studentId,
@@ -93,7 +204,7 @@ class StudentPackageController extends Controller
                 'sessions_used' => 0,
                 'status' => Subscription::STATUS_ACTIVE,
                 'start_date' => now(),
-                'total_paid' => $package->price,
+                'total_paid' => $payment->amount,
                 'currency' => 'SAR',
                 'payment_id' => $payment->id,
             ]);
@@ -103,11 +214,20 @@ class StudentPackageController extends Controller
                 'message' => 'Package purchased successfully',
                 'data' => [
                     'subscription' => $subscription->load('package'),
-                    'booking' => $booking,
-                    'payment' => $payment,
+                    'payment' => $payment->fresh(),
                 ],
             ], 201);
-        });
+        } catch (\Exception $e) {
+            Log::error('Package purchase confirmation failed', [
+                'payment_id' => $payment->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to confirm payment: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     public function mySubscriptions(Request $request)

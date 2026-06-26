@@ -12,6 +12,7 @@ class TeacherInfo extends Model
     protected $fillable = [
         'teacher_id',
         'bio',
+        'package_on_off',
         'teach_individual',
         'individual_hour_price',
         'teach_group',

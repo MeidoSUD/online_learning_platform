@@ -10,6 +10,7 @@ return new class extends Migration
     {
         Schema::table('teacher_info', function (Blueprint $table) {
             $table->string('code', 20)->unique()->nullable()->after('id');
+            $table->boolean('package_on_off')->default(false)->after('code');
         });
     }
 
@@ -17,6 +18,7 @@ return new class extends Migration
     {
         Schema::table('teacher_info', function (Blueprint $table) {
             $table->dropColumn('code');
+            $table->dropColumn('package_on_off');
         });
     }
 };

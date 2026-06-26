@@ -8,8 +8,8 @@ Admin creates package (price + sessions)
 Student views all available packages (PUBLIC)
 
 Student purchases a package:
-  → Booking created (package purchase record)
-  → Payment created
+  → Payment checkout created via Moyasar
+  → Student completes payment on Moyasar hosted page
   → On payment success → Subscription created (session credits)
               ↓
 Student uses session credits to book individual sessions
@@ -176,7 +176,7 @@ GET /api/admin/packages/stats
 
 Base: `/api/student` — Requires `auth:sanctum` + `role:student`
 
-### 3.1 Purchase a Package
+### 3.1 Purchase a Package (Create Checkout)
 
 ```
 POST /api/student/packages/purchase
@@ -193,12 +193,43 @@ POST /api/student/packages/purchase
 `payment_method` options: `card`, `wallet`, `bank_transfer`, `apple_pay`, `stc_pay`
 
 **What happens internally:**
-1. Creates a `Booking` (type=package, sessions_count=X, total_amount=price) → status: `pending_payment`
-2. Creates a `Payment` record → status: `completed`
-3. Booking updated to `confirmed`
-4. Creates a `Subscription` with `sessions_remaining = package.sessions_count`
+1. Creates a `Payment` record → status: `initiated`
+2. Creates a Moyasar checkout (hosted invoice)
+3. Returns the redirect URL for the user to complete payment
 
 **Response (201):**
+```json
+{
+  "status": true,
+  "message": "Payment checkout created",
+  "data": {
+    "payment_id": 5,
+    "checkout_id": "inv_abc123",
+    "redirect_url": "https://api.moyasar.com/v1/invoices/inv_abc123",
+    "amount": 100.00,
+    "currency": "SAR"
+  }
+}
+```
+
+**Flow after purchase:**
+1. Open `redirect_url` in WebView/in-app browser → user pays via Moyasar
+2. After payment, call `POST /api/student/packages/purchase/confirm` with the `payment_id`
+
+### 3.2 Confirm Package Purchase
+
+```
+POST /api/student/packages/purchase/confirm
+```
+
+**Request:**
+```json
+{
+  "payment_id": 5
+}
+```
+
+**Response (201) — Success:**
 ```json
 {
   "status": true,
@@ -216,13 +247,24 @@ POST /api/student/packages/purchase
       "currency": "SAR",
       "package": { ... }
     },
-    "booking": { ... },
     "payment": { ... }
   }
 }
 ```
 
-### 3.2 View My Subscriptions
+**Response (400) — Payment not yet completed:**
+```json
+{
+  "status": false,
+  "message": "Payment not completed yet",
+  "data": {
+    "payment_status": "initiated",
+    "payment_id": 5
+  }
+}
+```
+
+### 3.3 View My Subscriptions
 
 ```
 GET /api/student/subscriptions
@@ -253,7 +295,7 @@ GET /api/student/subscriptions
 
 Status values: `active`, `completed`, `cancelled`, `expired`
 
-### 3.3 Subscription Details
+### 3.4 Subscription Details
 
 ```
 GET /api/student/subscriptions/{id}
@@ -288,7 +330,7 @@ GET /api/student/subscriptions/{id}
 }
 ```
 
-### 3.4 Book a Session from Subscription
+### 3.5 Book a Session from Subscription
 
 ```
 POST /api/student/subscriptions/{id}/book
@@ -432,10 +474,12 @@ Headers:    Accept: application/json
 
 **Student app:**
 1. `GET /api/packages` — browse available packages (public)
-2. `POST /api/student/packages/purchase` — buy package
-3. `GET /api/student/subscriptions` — my session credits
-4. `GET /api/student/subscriptions/{id}` — details + booking history
-5. `POST /api/student/subscriptions/{id}/book` — book 1 session using credit
+2. `POST /api/student/packages/purchase` — create payment checkout
+3. Open `redirect_url` in WebView → user pays on Moyasar
+4. `POST /api/student/packages/purchase/confirm` — confirm payment & create subscription
+5. `GET /api/student/subscriptions` — my session credits
+6. `GET /api/student/subscriptions/{id}` — details + booking history
+7. `POST /api/student/subscriptions/{id}/book` — book 1 session using credit
 
 **Teacher app:**
 No changes needed. Teachers just provide availability slots as before.
