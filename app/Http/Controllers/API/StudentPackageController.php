@@ -303,11 +303,14 @@ class StudentPackageController extends Controller
         $validator = Validator::make($request->all(), [
             'availability_slot_id' => 'required|exists:availability_slots,id',
             'teacher_id' => 'required|exists:users,id',
+            'sessions_count' => 'nullable|integer|min:1',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['status' => false, 'errors' => $validator->errors()], 422);
         }
+
+        $sessionsCount = $request->input('sessions_count', 1);
 
         $subscription = Subscription::where('student_id', $studentId)
             ->where('id', $subscriptionId)
@@ -318,11 +321,11 @@ class StudentPackageController extends Controller
             return response()->json(['status' => false, 'message' => 'Subscription not found or not active'], 404);
         }
 
-        if ($subscription->sessions_remaining <= 0) {
+        if ($subscription->sessions_remaining < $sessionsCount) {
             return response()->json(['status' => false, 'message' => 'No remaining sessions in this subscription'], 400);
         }
 
-        return DB::transaction(function () use ($request, $studentId, $subscription) {
+        return DB::transaction(function () use ($request, $studentId, $subscription, $sessionsCount) {
             $slot = AvailabilitySlot::where('id', $request->availability_slot_id)
                 ->where('teacher_id', $request->teacher_id)
                 ->where('is_available', true)
@@ -334,7 +337,38 @@ class StudentPackageController extends Controller
                 return response()->json(['status' => false, 'message' => 'Slot not available or already booked'], 400);
             }
 
-            if (!$slot->is_bookable) {
+            $slotDate = null;
+            if ($slot->date && trim((string) $slot->date) !== '') {
+                $slotDate = $slot->date instanceof \Carbon\Carbon ? $slot->date->format('Y-m-d') : (string) $slot->date;
+            } elseif ($slot->day_number !== null) {
+                $today = \Carbon\Carbon::today();
+                $dayNumberFromApp = (int) $slot->day_number;
+                $carbonDayOfWeek = ($dayNumberFromApp === 1) ? 6 : ($dayNumberFromApp - 2);
+                $todayDow = $today->dayOfWeek;
+                $delta = ($carbonDayOfWeek - $todayDow + 7) % 7;
+                $candidate = $today->copy()->addDays($delta);
+                $slotStart = $this->extractTimeOnly($slot->start_time);
+                $candidateDateTime = \Carbon\Carbon::parse($candidate->format('Y-m-d') . ' ' . $slotStart);
+
+                if ($candidateDateTime->lessThanOrEqualTo(now())) {
+                    $candidate->addDays(7);
+                }
+                $slotDate = $candidate->format('Y-m-d');
+            } else {
+                $slotDate = \Carbon\Carbon::today()->format('Y-m-d');
+            }
+
+            $startTime = $this->extractTimeOnly($slot->start_time);
+            $endTime = $this->extractTimeOnly($slot->end_time);
+
+            try {
+                $slotDateTime = \Carbon\Carbon::parse($slotDate . ' ' . $startTime);
+                $slotEndDateTime = \Carbon\Carbon::parse($slotDate . ' ' . $endTime);
+            } catch (\Exception $e) {
+                return response()->json(['status' => false, 'message' => 'Failed to parse slot datetime'], 500);
+            }
+
+            if ($slotDateTime->copy()->subHours(2)->isPast()) {
                 return response()->json(['status' => false, 'message' => 'Slot must be at least 2 hours in the future'], 400);
             }
 
@@ -344,11 +378,11 @@ class StudentPackageController extends Controller
                 'availability_slot_id' => $slot->id,
                 'subscription_id' => $subscription->id,
                 'session_type' => Booking::TYPE_SINGLE,
-                'sessions_count' => 1,
+                'sessions_count' => $sessionsCount,
                 'sessions_completed' => 0,
-                'first_session_date' => $slot->date,
-                'first_session_start_time' => $slot->start_time,
-                'first_session_end_time' => $slot->end_time,
+                'first_session_date' => $slotDateTime,
+                'first_session_start_time' => $slotDateTime->format('H:i:s'),
+                'first_session_end_time' => $slotEndDateTime->format('H:i:s'),
                 'session_duration' => $slot->duration,
                 'price_per_session' => 0,
                 'teacher_rate_per_session' => 0,
@@ -359,7 +393,9 @@ class StudentPackageController extends Controller
                 'booking_date' => now(),
             ]);
 
-            $subscription->useSession();
+            for ($i = 0; $i < $sessionsCount; $i++) {
+                $subscription->useSession();
+            }
 
             $slot->update([
                 'is_booked' => true,
@@ -380,5 +416,28 @@ class StudentPackageController extends Controller
                 ],
             ], 201);
         });
+    }
+
+    private function extractTimeOnly($timeValue): string
+    {
+        if ($timeValue instanceof \Carbon\Carbon) {
+            return $timeValue->format('H:i:s');
+        }
+        
+        if (is_string($timeValue)) {
+            // Check if it's a full datetime string like "2024-01-01 14:30:00"
+            if (strpos($timeValue, ' ') !== false) {
+                $parts = explode(' ', $timeValue);
+                return $parts[1]; // Return just the time part
+            }
+            // Check if it has milliseconds like "14:30:00.000000"
+            if (strpos($timeValue, '.') !== false) {
+                $parts = explode('.', $timeValue);
+                return $parts[0];
+            }
+            return $timeValue;
+        }
+        
+        return '00:00:00';
     }
 }

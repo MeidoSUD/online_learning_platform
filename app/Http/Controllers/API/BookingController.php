@@ -24,6 +24,7 @@ use App\Models\Payment;
 use App\Models\Sessions;
 use App\Models\Subject;
 use App\Models\PlatformPercentage;
+use App\Helpers\PackageBookingHelper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -65,7 +66,7 @@ class BookingController extends Controller
      */
     public function createBooking(Request $request): JsonResponse
     {
-        // Unified booking handler: supports course bookings (existing flow) and service bookings.
+        // Unified booking handler: supports course bookings, service bookings, and package-from-subscription bookings.
         $request->validate([
             // Either course_id OR service_id must be provided
             'course_id' => 'nullable|exists:courses,id',
@@ -74,6 +75,9 @@ class BookingController extends Controller
             'subject_id' => 'nullable|integer',
             'availability_slot_id' => 'nullable|exists:availability_slots,id',
             'timeslot_id' => 'nullable|exists:availability_slots,id',
+            'timeslot_ids' => 'nullable|array|min:1',
+            'timeslot_ids.*' => 'integer|exists:availability_slots,id',
+            'subscription_id' => 'nullable|integer|exists:subscriptions,id',
             'type' => 'required|in:single,package',
             'sessions_count' => 'nullable|integer|min:1|max:50',
             'total_sessions' => 'nullable|integer|min:1|max:50',
@@ -83,6 +87,7 @@ class BookingController extends Controller
         // Determine mode
         $isCourse = $request->filled('course_id');
         $isService = $request->filled('service_id');
+        $isPackageBooking = $request->filled('subscription_id') && $request->filled('timeslot_ids');
 
         if (!$isCourse && !$isService) {
             return response()->json([
@@ -91,83 +96,107 @@ class BookingController extends Controller
             ], 422);
         }
         $service_id = $request->service_id ?? 0;
-        $course = null;  // ✅ Initialize course variable
+        $course = null;
 
         DB::beginTransaction();
         try {
             $studentId = auth()->id();
 
-            if ($isCourse) {
-                // Existing course booking flow
-                $course = Course::with('teacher')->findOrFail($request->course_id);
-                $slotId = $request->availability_slot_id;
-                // lock the slot row to avoid race conditions
-                $slot = AvailabilitySlot::where('id', $slotId)->lockForUpdate()->firstOrFail();
+            // ── Package booking from subscription: validate subscription + lock slots ──
+            $subscription = null;
+            if ($isPackageBooking) {
+                $subscription = PackageBookingHelper::validateSubscription(
+                    $studentId,
+                    (int) $request->subscription_id,
+                    count($request->timeslot_ids)
+                );
+                $slots = PackageBookingHelper::validateAndLockSlots(
+                    $request->timeslot_ids,
+                    (int) $request->teacher_id
+                );
+                $slot = $slots[0]; // first slot as primary
+            }
+
+            // ── Course / Service slot logic (skip for package bookings — slots already handled) ──
+            if (!$isPackageBooking) {
+                if ($isCourse) {
+                    // Existing course booking flow
+                    $course = Course::with('teacher')->findOrFail($request->course_id);
+                    $slotId = $request->availability_slot_id;
+                    // lock the slot row to avoid race conditions
+                    $slot = AvailabilitySlot::where('id', $slotId)->lockForUpdate()->firstOrFail();
 
 
-                $service_id = $course->service_id;
+                    $service_id = $course->service_id;
 
-                // Validate slot ownership and state with detailed reasons
-                $reasons = [];
-                if (!$slot->is_available)
-                    $reasons[] = 'slot_not_available';
-                if ($slot->is_booked)
-                    $reasons[] = 'slot_already_booked';
-                if ($slot->teacher_id !== $course->teacher_id)
-                    $reasons[] = 'slot_teacher_mismatch';
-                if ($slot->course_id !== $course->id)
-                    $reasons[] = 'slot_course_mismatch';
-                if (count($reasons) > 0) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Cannot book unavailable slot',
-                        'reasons' => $reasons,
-                        'slot' => [
-                            'id' => $slot->id,
-                            'is_available' => (bool) $slot->is_available,
-                            'is_booked' => (bool) $slot->is_booked,
-                            'teacher_id' => $slot->teacher_id,
-                            'course_id' => $slot->course_id,
-                        ]
-                    ], 400);
+                    // Validate slot ownership and state with detailed reasons
+                    $reasons = [];
+                    if (!$slot->is_available)
+                        $reasons[] = 'slot_not_available';
+                    if ($slot->is_booked)
+                        $reasons[] = 'slot_already_booked';
+                    if ($slot->teacher_id !== $course->teacher_id)
+                        $reasons[] = 'slot_teacher_mismatch';
+                    if ($slot->course_id !== $course->id)
+                        $reasons[] = 'slot_course_mismatch';
+                    if (count($reasons) > 0) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Cannot book unavailable slot',
+                            'reasons' => $reasons,
+                            'slot' => [
+                                'id' => $slot->id,
+                                'is_available' => (bool) $slot->is_available,
+                                'is_booked' => (bool) $slot->is_booked,
+                                'teacher_id' => $slot->teacher_id,
+                                'course_id' => $slot->course_id,
+                            ]
+                        ], 400);
+                    }
+
+                    $teacherId = $course->teacher_id;
+                    $sessionDuration = $course->session_duration ?? ($slot->duration ?? 60);
+                    $basePrice = $course->price_per_hour ?? 0;
+                    $currency = $course->currency ?? 'SAR';
+                } else {
+                    // Service booking flow (no course record)
+                    $teacherId = $request->teacher_id;
+                    $slotId = $request->timeslot_id;
+                    // lock slot to avoid race conditions
+                    $slot = AvailabilitySlot::where('id', $slotId)->lockForUpdate()->firstOrFail();
+
+                    $reasons = [];
+                    if (!$slot->is_available)
+                        $reasons[] = 'slot_not_available';
+                    if ($slot->is_booked)
+                        $reasons[] = 'slot_already_booked';
+                    if ($slot->teacher_id != $teacherId)
+                        $reasons[] = 'slot_teacher_mismatch';
+                    if (count($reasons) > 0) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Cannot book unavailable slot',
+                            'reasons' => $reasons,
+                            'slot' => [
+                                'id' => $slot->id,
+                                'is_available' => (bool) $slot->is_available,
+                                'is_booked' => (bool) $slot->is_booked,
+                                'teacher_id' => $slot->teacher_id,
+                            ]
+                        ], 400);
+                    }
+
+                    // Grab teacher pricing from TeacherInfo
+                    $teacherInfo = \App\Models\TeacherInfo::where('teacher_id', $teacherId)->first();
+                    $sessionDuration = $slot->duration ?? 60;
+                    $basePrice = ($request->type === 'single') ? ($teacherInfo->individual_hour_price ?? 0) : ($teacherInfo->group_hour_price ?? 0);
+                    $currency = 'SAR';
                 }
-
-                $teacherId = $course->teacher_id;
-                $sessionDuration = $course->session_duration ?? ($slot->duration ?? 60);
-                $basePrice = $course->price_per_hour ?? 0;
-                $currency = $course->currency ?? 'SAR';
             } else {
-                // Service booking flow (no course record)
-                $teacherId = $request->teacher_id;
-                $slotId = $request->timeslot_id;
-                // lock slot to avoid race conditions
-                $slot = AvailabilitySlot::where('id', $slotId)->lockForUpdate()->firstOrFail();
-
-                $reasons = [];
-                if (!$slot->is_available)
-                    $reasons[] = 'slot_not_available';
-                if ($slot->is_booked)
-                    $reasons[] = 'slot_already_booked';
-                if ($slot->teacher_id != $teacherId)
-                    $reasons[] = 'slot_teacher_mismatch';
-                if (count($reasons) > 0) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Cannot book unavailable slot',
-                        'reasons' => $reasons,
-                        'slot' => [
-                            'id' => $slot->id,
-                            'is_available' => (bool) $slot->is_available,
-                            'is_booked' => (bool) $slot->is_booked,
-                            'teacher_id' => $slot->teacher_id,
-                        ]
-                    ], 400);
-                }
-
-                // Grab teacher pricing from TeacherInfo
-                $teacherInfo = \App\Models\TeacherInfo::where('teacher_id', $teacherId)->first();
+                // Package booking: set variables from the first validated slot
+                $teacherId = (int) $request->teacher_id;
                 $sessionDuration = $slot->duration ?? 60;
-                $basePrice = ($request->type === 'single') ? ($teacherInfo->individual_hour_price ?? 0) : ($teacherInfo->group_hour_price ?? 0);
+                $basePrice = 0;
                 $currency = 'SAR';
             }
 
@@ -236,22 +265,34 @@ class BookingController extends Controller
 
             // Force package type and pricing logic if multiple sessions
             $sessionType = $sessionsCount > 1 ? 'package' : $request->type;
-            // Get current platform percentage
-            $platformPercentage = PlatformPercentage::getActive();
-            $percentageValue = $platformPercentage ? ($platformPercentage->value / 100) : 0;
 
-            // Price calculations
-            // Teacher gets: basePrice (their rate)
-            // Student pays: basePrice * (1 + platformPercentage/100)
-            $teacherRatePerSession = ($basePrice * ($sessionDuration ?? 60)) / 60;
-            $pricePerSession = $teacherRatePerSession * (1 + $percentageValue); // Apply platform percentage
+            // ── Package booking: price = 0 (paid via subscription) ──
+            if ($isPackageBooking) {
+                $teacherRatePerSession = 0;
+                $pricePerSession = 0;
+                $platformPercentageValue = 0;
+                $discount = 0;
+                $subtotal = 0;
+                $discountAmount = 0;
+                $total = 0;
+                $sessionType = Booking::TYPE_PACKAGE;
+            } else {
+                // Get current platform percentage
+                $platformPercentage = PlatformPercentage::getActive();
+                $percentageValue = $platformPercentage ? ($platformPercentage->value / 100) : 0;
+                $platformPercentageValue = $platformPercentage ? $platformPercentage->value : 0;
 
-            $discount = $sessionsCount > 1 ? $this->calculatePackageDiscount($sessionsCount) : 0;
-            $subtotal = $pricePerSession * $sessionsCount;
-            $discountAmount = $subtotal * ($discount / 100);
-            $total = $subtotal - $discountAmount;
+                // Price calculations
+                $teacherRatePerSession = ($basePrice * ($sessionDuration ?? 60)) / 60;
+                $pricePerSession = $teacherRatePerSession * (1 + $percentageValue);
 
-            if ($request->subject_id) {
+                $discount = $sessionsCount > 1 ? $this->calculatePackageDiscount($sessionsCount) : 0;
+                $subtotal = $pricePerSession * $sessionsCount;
+                $discountAmount = $subtotal * ($discount / 100);
+                $total = $subtotal - $discountAmount;
+            }
+
+            if ($request->subject_id && $request->subject_id > 0) {
                 $subject = Subject::find($request->subject_id);
                 $service_id = $subject->service_id;
             }
@@ -260,44 +301,53 @@ class BookingController extends Controller
             $booking = Booking::create([
                 'student_id' => $studentId,
                 'teacher_id' => $teacherId,
-                'availability_slot_id' => $slotId,
+                'availability_slot_id' => $slot->id,
                 'service_id' => $service_id,
                 'course_id' => $isCourse ? $course->id : null,
-                'subject_id' => !$isCourse ? $request->subject_id : null,
+                'subject_id' => (!$isCourse && $request->subject_id && $request->subject_id > 0) ? $request->subject_id : null,
                 'language_id' => !$isCourse && $request->filled('language_id') ? $request->language_id : null,
+                'subscription_id' => $isPackageBooking ? (int) $request->subscription_id : null,
                 'booking_reference' => $this->generateBookingReference(),
                 'session_type' => $sessionType,
                 'sessions_count' => $sessionsCount,
                 'sessions_completed' => 0,
-                // store concrete datetimes/strings so Sessions::createForBooking gets valid values
                 'first_session_date' => $slotDateTime,
                 'first_session_start_time' => $slotDateTime->format('H:i:s'),
                 'first_session_end_time' => $slotEndDateTime->format('H:i:s'),
                 'session_duration' => $sessionDuration,
-                'teacher_rate_per_session' => $teacherRatePerSession, // Teacher's original rate (without percentage)
-                'platform_percentage' => $platformPercentage ? $platformPercentage->value : 0, // Store percentage used
-                'price_per_session' => $pricePerSession, // Student pays this (teacher rate + percentage)
+                'teacher_rate_per_session' => $teacherRatePerSession,
+                'platform_percentage' => $platformPercentageValue ?? 0,
+                'price_per_session' => $pricePerSession,
                 'subtotal' => $subtotal,
                 'discount_percentage' => $discount,
                 'discount_amount' => $discountAmount,
                 'total_amount' => $total,
                 'currency' => $currency,
                 'special_requests' => $request->special_requests,
-                'status' => Booking::STATUS_PENDING_PAYMENT,
+                'status' => $isPackageBooking ? Booking::STATUS_CONFIRMED : Booking::STATUS_PENDING_PAYMENT,
                 'booking_date' => now(),
             ]);
 
-            // NOTE: Slot is NOT marked as booked here
+            // ── Package booking: attach slots, deduct sessions, create sessions ──
+            if ($isPackageBooking) {
+                PackageBookingHelper::attachSlotsToBooking($slots, $booking);
+                PackageBookingHelper::deductSubscriptionSessions($subscription, $sessionsCount);
+                PackageBookingHelper::markSlotsAsBooked($slots, $booking->id);
+
+                Sessions::createForBooking($booking);
+                $booking->refresh();
+                $booking->createMeetingsForSessions();
+            }
+
+            // NOTE: For non-package bookings, Slot is NOT marked as booked here
             // IMPORTANT: Slot will ONLY be marked booked (is_booked=true, is_available=false) AFTER successful payment
             // Sessions will ONLY be created AFTER payment succeeds
-            // This ensures slot remains available if payment fails, preventing customer confusion
-            // Slot locking happens in PaymentController.paymentStatus() when payment is confirmed
             DB::commit();
-            Log::info('Booking created (pending payment, slot still available)', [
+            Log::info('Booking created', [
                 'booking_id' => $booking->id,
-                'slot_id' => $slotId,
-                'slot_status' => 'still_available',
-                'next_step' => 'payment_via_PaymentController'
+                'is_package' => $isPackageBooking,
+                'slot_id' => $slot->id,
+                'next_step' => $isPackageBooking ? 'completed' : 'payment_via_PaymentController',
             ]);
 
             // Let frontend know whether student has saved payment methods
@@ -307,17 +357,15 @@ class BookingController extends Controller
             $teacher = $isCourse ? $course->teacher : \App\Models\User::find($teacherId);
             $teacherData = $this->getFullTeacherData($teacher);
 
-            // Get subject data: from course name if course booking, or from Subject model if service booking
+            // Get subject data
             $subjectData = null;
             if ($isCourse && $booking->course) {
-                // Course booking: return course name info (no subjects in courses)
                 $subjectData = [
                     'id' => $booking->course->id,
                     'name' => $booking->course->name ?? null,
                     'name_en' => $booking->course->name ?? null,
                 ];
-            } elseif (!$isCourse && $request->filled('subject_id')) {
-                // Service booking: fetch from Subject model
+            } elseif ($request->filled('subject_id') && $request->subject_id > 0) {
                 $subject = Subject::find($request->subject_id);
                 $subjectData = $subject ? [
                     'id' => $subject->id,
@@ -326,18 +374,18 @@ class BookingController extends Controller
                 ] : null;
             }
 
-            // Get service data if service booking
+            // Get service data
             $serviceData = null;
-            if ($isService) {
-                $service = \App\Models\Services::find($request->service_id);
-                $serviceData = $service ? [
-                    'id' => $service->id,
-                    'name' => $service->name,
-                    'description' => $service->description ?? null,
-                ] : null;
+            $serviceModel = \App\Models\Services::find($service_id);
+            if ($serviceModel) {
+                $serviceData = [
+                    'id' => $serviceModel->id,
+                    'name' => $serviceModel->name,
+                    'description' => $serviceModel->description ?? null,
+                ];
             }
 
-            // Get timeslot with day and time info
+            // Get timeslot data
             $timeslotData = [
                 'id' => $slot->id,
                 'day_number' => $slot->day_number,
@@ -347,11 +395,10 @@ class BookingController extends Controller
                 'duration' => $slot->duration,
             ];
 
-            // Build response object for frontend (no payment created here)
+            // Build response
             $responseData = [
                 'booking' => [
                     'id' => $booking->id,
-
                     'reference' => $booking->booking_reference,
                     'status' => $booking->status,
                     'total_amount' => $booking->total_amount,
@@ -363,13 +410,41 @@ class BookingController extends Controller
                     'session_type' => $booking->session_type,
                     'sessions_count' => $booking->sessions_count,
                 ],
-                'requires_payment_method' => !$hasSavedMethods,
+                'requires_payment_method' => $isPackageBooking ? false : !$hasSavedMethods,
                 'meta' => [
                     'service' => $serviceData,
                     'subject' => $subjectData,
                     'timeslot' => $timeslotData,
-                ]
+                ],
             ];
+
+            // ── Package booking: add extra data to response ──
+            if ($isPackageBooking) {
+                $responseData['sessions'] = $booking->sessions->map(function ($session) {
+                    return [
+                        'id' => $session->id,
+                        'session_number' => $session->session_number,
+                        'session_date' => $session->session_date,
+                        'start_time' => $session->start_time,
+                        'end_time' => $session->end_time,
+                        'status' => $session->status,
+                    ];
+                });
+                $responseData['subscription'] = [
+                    'id' => $subscription->id,
+                    'sessions_remaining' => $subscription->fresh()->sessions_remaining,
+                ];
+                $responseData['meta']['timeslots'] = array_map(function ($s) {
+                    return [
+                        'id' => $s->id,
+                        'day_number' => $s->day_number,
+                        'date' => $s->date,
+                        'start_time' => $s->start_time instanceof \Carbon\Carbon ? $s->start_time->format('H:i:s') : $s->start_time,
+                        'end_time' => $s->end_time instanceof \Carbon\Carbon ? $s->end_time->format('H:i:s') : $s->end_time,
+                        'duration' => $s->duration,
+                    ];
+                }, $slots);
+            }
 
             return response()->json(['success' => true, 'message' => 'Booking created successfully', 'data' => $responseData]);
         } catch (\Exception $e) {

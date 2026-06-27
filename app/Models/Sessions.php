@@ -461,6 +461,47 @@ class Sessions extends Model
                 return;
             }
 
+            // Package booking with multiple different timeslots
+            // When availabilitySlots relationship is loaded with multiple entries,
+            // create one session per slot with its own date/time
+            $booking->load('availabilitySlots');
+            if ($booking->availabilitySlots->count() > 1) {
+                foreach ($booking->availabilitySlots as $index => $slot) {
+                    $slotDate = $slot->date && trim((string) $slot->date) !== ''
+                        ? ($slot->date instanceof Carbon ? $slot->date->format('Y-m-d') : (string) $slot->date)
+                        : self::resolveSlotDate($slot);
+
+                    $startTime = self::extractTimeFromValue($slot->start_time);
+                    $endTime = self::extractTimeFromValue($slot->end_time);
+
+                    $session = self::create([
+                        'booking_id' => $booking->id,
+                        'availability_slot_id' => $slot->id,
+                        'student_id' => $booking->student_id,
+                        'teacher_id' => $booking->teacher_id,
+                        'session_number' => $index + 1,
+                        'session_title' => $sessionTitle,
+                        'session_date' => $slotDate,
+                        'start_time' => $startTime,
+                        'end_time' => $endTime,
+                        'duration' => $slot->duration ?? $booking->session_duration,
+                        'status' => self::STATUS_SCHEDULED,
+                    ]);
+
+                    if ($session) {
+                        Helpers::updateAvailabilitySlot($session->availability_slot_id);
+                    }
+
+                    Log::info("Multi-slot session {$session->session_number} created", [
+                        'session_id' => $session->id,
+                        'booking_id' => $booking->id,
+                        'slot_id' => $slot->id,
+                        'session_date' => $slotDate,
+                    ]);
+                }
+                return;
+            }
+
             if ($booking->session_type === Booking::TYPE_SINGLE) {
                 $session = self::create([
                     'booking_id' => $booking->id,
@@ -611,7 +652,7 @@ class Sessions extends Model
      * @param Booking $booking
      * @return string
      */
-    private static function buildSessionTitle(Booking $booking): string
+    public static function buildSessionTitle(Booking $booking): string
     {
         // If course booking, use course name
         if ($booking->course) {
@@ -675,5 +716,54 @@ class Sessions extends Model
                 $session->update(['status' => self::STATUS_WAIT_TEACHER]);
             }
         });
+    }
+
+    /**
+     * Resolve slot date from date field or day_number.
+     */
+    private static function resolveSlotDate($slot): string
+    {
+        if ($slot->day_number !== null) {
+            $today = Carbon::today();
+            $dayNumberFromApp = (int) $slot->day_number;
+            $carbonDayOfWeek = ($dayNumberFromApp === 1) ? 6 : ($dayNumberFromApp - 2);
+            $todayDow = $today->dayOfWeek;
+            $delta = ($carbonDayOfWeek - $todayDow + 7) % 7;
+            $candidate = $today->copy()->addDays($delta);
+            $slotStart = self::extractTimeFromValue($slot->start_time);
+            $candidateDateTime = Carbon::parse($candidate->format('Y-m-d') . ' ' . $slotStart);
+
+            if ($candidateDateTime->lessThanOrEqualTo(now())) {
+                $candidate->addDays(7);
+            }
+
+            return $candidate->format('Y-m-d');
+        }
+
+        return Carbon::today()->format('Y-m-d');
+    }
+
+    /**
+     * Extract time portion (HH:MM:SS) from various formats.
+     */
+    private static function extractTimeFromValue($timeValue): string
+    {
+        if ($timeValue instanceof Carbon) {
+            return $timeValue->format('H:i:s');
+        }
+
+        $timeStr = (string) $timeValue;
+
+        if (strpos($timeStr, ' ') !== false) {
+            $parts = explode(' ', $timeStr);
+            return end($parts);
+        }
+
+        if (strpos($timeStr, '.') !== false) {
+            $parts = explode('.', $timeStr);
+            return $parts[0];
+        }
+
+        return $timeStr ?: '00:00:00';
     }
 }
