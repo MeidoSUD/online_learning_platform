@@ -34,7 +34,7 @@ class AppConfigController extends Controller
             // Get platform from request - defaults to android if not specified
             $platform = strtolower($request->get('platform', 'android'));
             $currentVersion = $request->get('version', null); // Current app version on user's device
-            
+
             // Validate platform
             if (!in_array($platform, ['ios', 'android'])) {
                 return response()->json([
@@ -54,11 +54,11 @@ class AppConfigController extends Controller
 
             // Check if maintenance mode is enabled
             $maintenanceEnabled = Setting::getValue('maintenance_enabled', false);
-            
+
             // Get the required app version for this platform
             $versionKey = 'app_version_' . $platform;
             $requiredVersion = Setting::getValue($versionKey, '1.0.0');
-            
+
             // Get force update flag for this platform
             $forceUpdateKey = 'force_update_' . $platform;
             $forceUpdate = Setting::getValue($forceUpdateKey, false);
@@ -81,12 +81,12 @@ class AppConfigController extends Controller
             // Add update information if version is different or force update is enabled
             if ($currentVersion && $this->isVersionLower($currentVersion, $requiredVersion)) {
                 $data['update_available'] = true;
-                $data['update_message'] = $forceUpdate 
+                $data['update_message'] = $forceUpdate
                     ? 'A critical update is required. Please update immediately.'
                     : 'A new version is available. Please update when convenient.';
                 $data['action'] = $forceUpdate ? 'FORCE_UPDATE' : 'OPTIONAL_UPDATE';
                 $data['status'] = $forceUpdate ? 'FORCE_UPDATE_REQUIRED' : 'UPDATE_AVAILABLE';
-                
+
                 if ($forceUpdate) {
                     $data['retry_in_seconds'] = 30; // Retry after 30 seconds if user dismisses
                 }
@@ -154,6 +154,7 @@ class AppConfigController extends Controller
                 'app_version_android' => Setting::getValue('app_version_android', '1.0.0'),
                 'force_update_ios' => Setting::getValue('force_update_ios', false),
                 'force_update_android' => Setting::getValue('force_update_android', false),
+                'package_enable' => Setting::getValue('package_enable', false),
             ];
 
             return response()->json([
