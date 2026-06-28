@@ -14,7 +14,7 @@ class SettingsSeeder extends Seeder
         $settings = [
             [
                 'key' => 'app_name',
-                'value' =>'ewan',
+                'value' => 'ewan',
                 'type' => 'string',
                 'group' => 'app',
                 'description' => 'Application name',
@@ -47,7 +47,8 @@ class SettingsSeeder extends Seeder
                 'description' => 'Mobile android version',
                 'created_at' => $now,
                 'updated_at' => $now
-            ],   [
+            ],
+            [
                 'key' => 'force_update_android',
                 'value' => '0',
                 'type' => 'bool',
@@ -56,7 +57,7 @@ class SettingsSeeder extends Seeder
                 'created_at' => $now,
                 'updated_at' => $now
             ],
-             [
+            [
                 'key' => 'force_update_ios',
                 'value' => '0',
                 'type' => 'bool',
@@ -65,8 +66,8 @@ class SettingsSeeder extends Seeder
                 'created_at' => $now,
                 'updated_at' => $now
             ],
-         
-           
+
+
             [
                 'key' => 'terms_and_conditions',
                 'value' => 'Terms and conditions text goes here...',
@@ -118,6 +119,16 @@ class SettingsSeeder extends Seeder
                 'type' => 'select',
                 'group' => 'app',
                 'description' => 'Default currency',
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]
+            ,
+            [
+                'key' => 'package_enable',
+                'value' => '1',
+                'type' => 'bool',
+                'group' => 'app',
+                'description' => 'packages enable or disable',
                 'created_at' => $now,
                 'updated_at' => $now,
             ]
