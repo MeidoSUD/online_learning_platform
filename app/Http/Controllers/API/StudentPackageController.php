@@ -38,7 +38,7 @@ class StudentPackageController extends Controller
                     'description_en' => $package->description_en,
                     'sessions_count' => $package->sessions_count,
                     'price' => $package->price,
-                    'discount' => $package->discount,
+                    'discount_percentage' => $package->discount_percentage,
                     'price_per_session' => $package->price_per_session,
                 ];
             });
@@ -423,7 +423,7 @@ class StudentPackageController extends Controller
         if ($timeValue instanceof \Carbon\Carbon) {
             return $timeValue->format('H:i:s');
         }
-        
+
         if (is_string($timeValue)) {
             // Check if it's a full datetime string like "2024-01-01 14:30:00"
             if (strpos($timeValue, ' ') !== false) {
@@ -437,7 +437,7 @@ class StudentPackageController extends Controller
             }
             return $timeValue;
         }
-        
+
         return '00:00:00';
     }
 }

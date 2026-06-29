@@ -70,6 +70,7 @@ class AppConfigController extends Controller
                 'current_version' => $currentVersion,
                 'force_update' => (bool) $forceUpdate,
                 'maintenance_mode' => (bool) $maintenanceEnabled,
+                'package_enable' => (bool) Setting::getValue('package_enable', false),
             ];
 
             // Add maintenance message if enabled
