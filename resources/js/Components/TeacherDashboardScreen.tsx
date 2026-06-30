@@ -5,6 +5,7 @@ import { Navbar } from './Navbar';
 import { OverviewTab } from './dashboard/OverviewTab';
 import { ScheduleTab } from './dashboard/ScheduleTab';
 import { WalletTab } from './dashboard/WalletTab';
+import { BankAccountsPage } from './dashboard/BankAccountsPage';
 import { SubjectsTab } from './dashboard/SubjectsTab';
 import { ProfileTab } from './dashboard/ProfileTab';
 import { TeacherServicesTab } from './teacher/TeacherServicesTab';
@@ -141,7 +142,9 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
       case 'languages':
         return <TeacherLanguagesTab user={user} />;
       case 'wallet':
-        return <WalletTab user={user} />;
+        return <WalletTab user={user} onNavigate={setActiveTab} />;
+      case 'bank-accounts':
+        return <BankAccountsPage user={user} onNavigate={setActiveTab} />;
       case 'profile':
         return <ProfileTab />;
       case 'services':

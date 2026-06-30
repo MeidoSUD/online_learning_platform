@@ -1,40 +1,28 @@
 
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
-import { Wallet, ArrowDownLeft, ArrowUpRight, Plus, Trash2, Building, CheckCircle, Loader } from 'lucide-react';
+import { Wallet, ArrowUpRight, Trash2, Building, CheckCircle } from 'lucide-react';
 import { Button } from '../ui/Button';
-import { Input } from '../ui/Input';
 import { Modal } from '../ui/Modal';
-import { Select } from '../ui/Select';
-import { BankAccount, BankReference, WalletResponse, Withdrawal } from '../../Utils/types';
-import { teacherService, referenceService, UserData } from '../../Services/api';
+import { BankAccount, WalletResponse, Withdrawal } from '../../Utils/types';
+import { teacherService, UserData } from '../../Services/api';
 
 interface WalletTabProps {
   user?: UserData;
+  onNavigate?: (tab: string) => void;
 }
 
-export const WalletTab: React.FC<WalletTabProps> = ({ user }) => {
+export const WalletTab: React.FC<WalletTabProps> = ({ user, onNavigate }) => {
   const { t, language } = useLanguage();
-  const [showAddBank, setShowAddBank] = useState(false);
   const [showWithdraw, setShowWithdraw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [initLoading, setInitLoading] = useState(true);
   
   // Data
   const [myBankAccounts, setMyBankAccounts] = useState<BankAccount[]>([]);
-  const [availableBanks, setAvailableBanks] = useState<BankReference[]>([]);
   const [walletData, setWalletData] = useState<WalletResponse | null>(null);
   
   // Forms
-  const [bankForm, setBankForm] = useState({ 
-    bank_id: '', 
-    account_number: '', 
-    iban: '', 
-    swift_code: '', 
-    account_holder_name: '',
-    is_default: false
-  });
-  
   const [withdrawForm, setWithdrawForm] = useState({ amount: '', bankId: '' });
 
   useEffect(() => {
@@ -45,11 +33,7 @@ export const WalletTab: React.FC<WalletTabProps> = ({ user }) => {
       setInitLoading(true);
       
       try {
-          // 1. Fetch Banks List (Reference)
-          const banksList = await referenceService.getBanks().catch(() => []);
-          setAvailableBanks(banksList);
-
-          // 2. Fetch Wallet Data (Balance + Payouts)
+          // 1. Fetch Wallet Data (Balance + Payouts)
           // api.ts now returns unwrapped data: { balance: ..., withdrawals: { data: [...] } }
           const wallet = await teacherService.getWallet();
           setWalletData(wallet);
@@ -66,39 +50,6 @@ export const WalletTab: React.FC<WalletTabProps> = ({ user }) => {
           console.error("Failed to load wallet data:", e);
       } finally {
           setInitLoading(false);
-      }
-  };
-
-  const handleAddBank = async () => {
-      if (!bankForm.bank_id || !bankForm.account_number || !bankForm.iban || !bankForm.account_holder_name) {
-          alert(language === 'ar' ? "يرجى ملء جميع الحقول المطلوبة" : "Please fill all required fields");
-          return;
-      }
-
-      setLoading(true);
-      try {
-          await teacherService.addPaymentMethod({
-              ...bankForm,
-              is_default: bankForm.is_default ? 1 : 0
-          });
-          
-          await loadData(); 
-          
-          setShowAddBank(false);
-          setBankForm({ 
-            bank_id: '', 
-            account_number: '', 
-            iban: '', 
-            swift_code: '', 
-            account_holder_name: '',
-            is_default: false 
-          });
-          alert(language === 'ar' ? "تم إضافة الحساب بنجاح" : "Bank account added successfully");
-      } catch (e: any) {
-          console.error("Add Bank Error:", e);
-          alert(e.message || "Failed to add bank account");
-      } finally {
-          setLoading(false);
       }
   };
 
@@ -207,14 +158,16 @@ export const WalletTab: React.FC<WalletTabProps> = ({ user }) => {
       <div>
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-bold text-slate-900">{t.bankAccounts}</h3>
-          <Button variant="outline" onClick={() => setShowAddBank(true)}>
-            <Plus size={16} className="mr-2" /> {t.addBank}
-          </Button>
+          {onNavigate && (
+            <Button variant="outline" onClick={() => onNavigate('bank-accounts')}>
+              <Building size={16} className="mr-2" /> {language === 'ar' ? 'إدارة الحسابات' : 'Manage Accounts'}
+            </Button>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {myBankAccounts.map((acc) => {
-             const bankName = acc.bank_name || (language === 'ar' ? (acc.banks?.name_ar || "Bank") : (acc.banks?.name_en || "Bank"));
+             const bankName = language === 'ar' ? (acc.banks?.name_ar || "بنك") : (acc.banks?.name_en || "Bank");
              
              return (
               <div key={acc.id} className={`p-5 rounded-xl border transition-all relative group ${acc.is_default ? 'bg-blue-50 border-blue-200' : 'bg-white border-slate-200'}`}>
@@ -230,16 +183,14 @@ export const WalletTab: React.FC<WalletTabProps> = ({ user }) => {
                     </div>
                   </div>
                   {acc.is_default ? (
-                    <span className="text-blue-600">
-                      <CheckCircle size={20} />
-                    </span>
+                    <span className="text-blue-600"><CheckCircle size={20} /></span>
                   ) : (
                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                        <button 
                           onClick={() => handleSetDefault(acc.id)}
                           className="text-xs px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-slate-600"
                        >
-                          Set Default
+                          {language === 'ar' ? 'تعيين افتراضي' : 'Set Default'}
                        </button>
                        <button onClick={() => handleDeleteBank(acc.id)} className="text-red-500 hover:text-red-700">
                           <Trash2 size={18} />
@@ -253,7 +204,7 @@ export const WalletTab: React.FC<WalletTabProps> = ({ user }) => {
           
           {myBankAccounts.length === 0 && (
               <div className="col-span-full text-center py-8 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-slate-500">
-                  No bank accounts added yet.
+                  {language === 'ar' ? 'لا توجد حسابات بنكية' : 'No bank accounts yet.'}
               </div>
           )}
         </div>
@@ -319,67 +270,7 @@ export const WalletTab: React.FC<WalletTabProps> = ({ user }) => {
         </div>
       </div>
 
-      <Modal isOpen={showAddBank} onClose={() => setShowAddBank(false)} title={t.addBank}>
-        <div className="space-y-4">
-          <Select
-            label={t.bankName}
-            value={bankForm.bank_id}
-            onChange={(e) => setBankForm({...bankForm, bank_id: e.target.value})}
-            options={[
-                { value: '', label: language === 'ar' ? '-- اختر البنك --' : '-- Select Bank --' },
-                ...availableBanks.map(bank => ({
-                    value: String(bank.id),
-                    label: language === 'ar' ? bank.name_ar : bank.name_en
-                }))
-            ]}
-          />
-          
-          <Input 
-            label={t.cardHolder}
-            placeholder="Full Name as in Bank"
-            value={bankForm.account_holder_name}
-            onChange={(e) => setBankForm({...bankForm, account_holder_name: e.target.value})}
-          />
 
-          <Input 
-            label={t.accountNumber}
-            placeholder="1234567890"
-            value={bankForm.account_number}
-            onChange={(e) => setBankForm({...bankForm, account_number: e.target.value})}
-          />
-          
-          <Input 
-            label={t.iban}
-            placeholder={t.phIBAN}
-            value={bankForm.iban}
-            onChange={(e) => setBankForm({...bankForm, iban: e.target.value})}
-          />
-          
-          <Input 
-            label={t.swift}
-            placeholder="SWIFTCODE"
-            value={bankForm.swift_code}
-            onChange={(e) => setBankForm({...bankForm, swift_code: e.target.value})}
-          />
-
-          <div className="flex items-center">
-            <input 
-                type="checkbox" 
-                id="isDefault" 
-                className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                checked={bankForm.is_default}
-                onChange={(e) => setBankForm({...bankForm, is_default: e.target.checked})}
-            />
-            <label htmlFor="isDefault" className="ml-2 block text-sm text-slate-900">Set as default payment method</label>
-          </div>
-
-          <div className="pt-2">
-            <Button className="w-full" onClick={handleAddBank} isLoading={loading}>
-              {t.addBank}
-            </Button>
-          </div>
-        </div>
-      </Modal>
 
       <Modal isOpen={showWithdraw} onClose={() => setShowWithdraw(false)} title={t.requestPayout}>
         <div className="space-y-4">

@@ -155,12 +155,12 @@ class User extends Authenticatable implements MustVerifyEmail
 
     /**
      * Teacher bank account stored in user_payment_methods table.
-     * We consider a bank account entry when bank_name is present.
+     * We consider a bank account entry when bank_id is present.
      */
     public function teacherBankAccount()
     {
         return $this->hasOne(\App\Models\UserPaymentMethod::class, 'user_id')
-            ->whereNotNull('bank_name');
+            ->whereNotNull('bank_id');
     }
 
 
