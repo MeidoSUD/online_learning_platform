@@ -731,3 +731,68 @@ export interface PackagesStats {
   total_revenue: number;
 }
 
+// --- User Full Profile ---
+
+export interface UserFullProfile {
+  user: {
+    id: number;
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone_number: string;
+    gender?: string;
+    nationality?: string;
+    role_id: number;
+    is_active: boolean;
+    created_at: string;
+    profile?: any;
+    attachments?: any[];
+    teacherInfo?: any;
+    wallet?: any;
+    teacherServices?: any[];
+    teacherSubjects?: any[];
+    supportTickets?: any[];
+  };
+  bookings_as_student: any[];
+  bookings_as_teacher: any[];
+  sessions_as_student: any[];
+  sessions_as_teacher: any[];
+  payments: any[];
+  subscriptions: any[];
+  orders: any[];
+  courses: any[];
+  wallet: any;
+  wallet_transactions: any[];
+  payouts: any[];
+  reviews_given: any[];
+  reviews_received: any[];
+  complaints_as_student: any[];
+  complaints_as_teacher: any[];
+  disputes: any[];
+  enrollments: any[];
+  support_tickets: any[];
+}
+
+export interface AdminPayment {
+  id: number;
+  user_id: number;
+  booking_id: number | null;
+  amount: string;
+  status: string;
+  payment_method: string;
+  transaction_id: string | null;
+  reconciled: boolean;
+  created_at: string;
+  updated_at: string;
+  user?: {
+    id: number;
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
+  booking?: {
+    id: number;
+    reference: string;
+  };
+}
+

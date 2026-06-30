@@ -8,6 +8,18 @@ use App\Models\Role;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\UserProfile;
+use App\Models\Booking;
+use App\Models\Sessions;
+use App\Models\Payment;
+use App\Models\Subscription;
+use App\Models\Orders;
+use App\Models\Course;
+use App\Models\WalletTransaction;
+use App\Models\Payout;
+use App\Models\Review;
+use App\Models\Complaint;
+use App\Models\Dispute;
+use App\Models\Enrollment;
 use Illuminate\Support\Facades\Hash;
 
 class UsersController extends Controller
@@ -161,6 +173,77 @@ class UsersController extends Controller
     {
         $user = User::with('profile')->findOrFail($id);
         return response()->json(['success' => true, 'data' => $user]);
+    }
+
+    public function profile(Request $request, $id)
+    {
+        $user = User::with([
+            'profile',
+            'attachments',
+            'teacherInfo',
+            'wallet',
+            'teacherServices.service',
+            'teacherSubjects.subject',
+            'teacherLanguages.language',
+            'teacherBankAccount',
+            'supportTickets',
+        ])->findOrFail($id);
+
+        $bookingsAsStudent = Booking::where('student_id', $id)->with(['teacher', 'subject', 'service', 'sessions'])->orderByDesc('id')->get();
+        $bookingsAsTeacher = Booking::where('teacher_id', $id)->with(['student', 'subject', 'service', 'sessions'])->orderByDesc('id')->get();
+
+        $sessionsAsStudent = Sessions::where('student_id', $id)->with(['teacher', 'subject', 'booking'])->orderByDesc('id')->get();
+        $sessionsAsTeacher = Sessions::where('teacher_id', $id)->with(['student', 'subject', 'booking'])->orderByDesc('id')->get();
+
+        $payments = Payment::where('user_id', $id)->with(['booking'])->orderByDesc('id')->get();
+
+        $subscriptions = Subscription::where('student_id', $id)->with(['package', 'payment'])->orderByDesc('id')->get();
+
+        $orders = Orders::where('user_id', $id)->with(['subject', 'applications'])->orderByDesc('id')->get();
+
+        $courses = Course::where('teacher_id', $id)->with(['category'])->orderByDesc('id')->get();
+
+        $walletTransactions = [];
+        if ($user->wallet) {
+            $walletTransactions = WalletTransaction::where('wallet_id', $user->wallet->id)->orderByDesc('id')->get();
+        }
+
+        $payouts = Payout::where('teacher_id', $id)->with(['paymentMethod'])->orderByDesc('id')->get();
+
+        $reviewsGiven = Review::where('reviewer_id', $id)->with(['reviewedUser', 'course'])->orderByDesc('id')->get();
+        $reviewsReceived = Review::where('reviewed_id', $id)->with(['reviewer', 'course'])->orderByDesc('id')->get();
+
+        $complaintsAsStudent = Complaint::where('student_id', $id)->with(['session', 'teacher'])->orderByDesc('id')->get();
+        $complaintsAsTeacher = Complaint::where('teacher_id', $id)->with(['session', 'student'])->orderByDesc('id')->get();
+
+        $disputes = Dispute::where('raised_by', $id)->orWhere('against_user_id', $id)->with(['booking', 'payment'])->orderByDesc('id')->get();
+
+        $enrollments = Enrollment::where('student_id', $id)->with(['course'])->orderByDesc('id')->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'user' => $user,
+                'bookings_as_student' => $bookingsAsStudent,
+                'bookings_as_teacher' => $bookingsAsTeacher,
+                'sessions_as_student' => $sessionsAsStudent,
+                'sessions_as_teacher' => $sessionsAsTeacher,
+                'payments' => $payments,
+                'subscriptions' => $subscriptions,
+                'orders' => $orders,
+                'courses' => $courses,
+                'wallet' => $user->wallet,
+                'wallet_transactions' => $walletTransactions,
+                'payouts' => $payouts,
+                'reviews_given' => $reviewsGiven,
+                'reviews_received' => $reviewsReceived,
+                'complaints_as_student' => $complaintsAsStudent,
+                'complaints_as_teacher' => $complaintsAsTeacher,
+                'disputes' => $disputes,
+                'enrollments' => $enrollments,
+                'support_tickets' => $user->supportTickets,
+            ]
+        ]);
     }
 
     public function store(Request $request)

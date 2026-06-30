@@ -10,6 +10,7 @@ import { Modal } from '../ui/Modal';
 import { Pagination } from '../ui/Pagination';
 import { adminService, AdminUser } from '../../Services/api';
 import { useToast } from '../../Contexts/ToastContext';
+import { UserProfileModal } from './UserProfileModal';
 
 export const UsersTab: React.FC = () => {
     const { t, direction, language } = useLanguage();
@@ -46,6 +47,7 @@ export const UsersTab: React.FC = () => {
     });
 
     const [tempPassword, setTempPassword] = useState('');
+    const [profileModalUserId, setProfileModalUserId] = useState<number | null>(null);
 
     useEffect(() => {
         fetchUsers();
@@ -279,7 +281,7 @@ export const UsersTab: React.FC = () => {
                                 </tr>
                             ) : (
                                 paginatedUsers.map(user => (
-                                    <tr key={user.id} className="hover:bg-slate-50 cursor-pointer" onClick={() => setSelectedUser(user)}>
+                                    <tr key={user.id} className="hover:bg-slate-50 cursor-pointer" onClick={() => setProfileModalUserId(user.id)}>
                                         <td className="px-6 py-4">
                                             <div>
                                                 <div className="font-bold text-slate-900">{user.first_name} {user.last_name}</div>
@@ -318,7 +320,7 @@ export const UsersTab: React.FC = () => {
 
                                             {openMenuId === user.id && (
                                                 <div className={`absolute z-20 w-48 bg-white rounded-xl shadow-lg ring-1 ring-black ring-opacity-5 py-1 ${direction === 'rtl' ? 'left-8' : 'right-8'} top-8`}>
-                                                    <button onClick={(e) => { e.stopPropagation(); setSelectedUser(user); }} className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center gap-2 text-slate-700">
+                                                    <button onClick={(e) => { e.stopPropagation(); setProfileModalUserId(user.id); setOpenMenuId(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center gap-2 text-slate-700">
                                                         <Eye size={16} /> {t.viewDetails}
                                                     </button>
 
@@ -577,6 +579,12 @@ export const UsersTab: React.FC = () => {
                     </div>
                 )}
             </Modal>
+
+            <UserProfileModal
+                isOpen={!!profileModalUserId}
+                onClose={() => setProfileModalUserId(null)}
+                userId={profileModalUserId || 0}
+            />
         </div>
     );
 };

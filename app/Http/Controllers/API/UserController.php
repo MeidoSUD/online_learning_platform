@@ -1368,6 +1368,8 @@ class UserController extends Controller
                     'id' => $teacherSubject->id,
                     'teacher_id' => $teacherSubject->teacher_id,
                     'subject_id' => optional($teacherSubject->subject)->id ?? $teacherSubject->subject_id,
+                    'name_en' => $teacherSubject->subject->name_en ?? null,
+                    'name_ar' => $teacherSubject->subject->name_ar ?? null,
                     'title' => $teacherSubject->subject->name_ar ?? $teacherSubject->subject->name_en,
                     'class_id' => $teacherSubject->subject->class_id,
                     'class_level_id' => $teacherSubject->subject->education_level_id,

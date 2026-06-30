@@ -88,7 +88,7 @@ import {
   AdminUser, AdminTeacher, AdminBooking, AdminDispute, PayoutRequest, Service,
   Ad, AdPayload, AdminService, AdminOrder, TeacherApplication, PlatformPercentage,
   RevenueAnalytics, CalculatorResults, AppConfig, AppVersion, MaintenanceMode,
-   TermsConditions, TermsConditionsPayload, SessionsPackage
+   TermsConditions, TermsConditionsPayload, SessionsPackage, UserFullProfile, AdminPayment
 } from '../Utils/types';
 
 export type {
@@ -99,7 +99,7 @@ export type {
   AdminUser, AdminTeacher, AdminBooking, AdminDispute, PayoutRequest, Service,
   Ad, AdPayload, AdminService, AdminOrder, TeacherApplication, PlatformPercentage,
   RevenueAnalytics, CalculatorResults, AppConfig, AppVersion, MaintenanceMode,
-  TermsConditions, TermsConditionsPayload, SessionsPackage
+  TermsConditions, TermsConditionsPayload, SessionsPackage, UserFullProfile, AdminPayment
 };
 
 export const AUTH_SESSION_EXPIRED = 'auth:session-expired';
@@ -513,6 +513,17 @@ export const adminService = {
   updatePackage: (id: number, data: any) => fetchWithAuth(`/admin/packages/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deletePackage: (id: number) => fetchWithAuth(`/admin/packages/${id}`, { method: 'DELETE' }),
   togglePackageActive: (id: number) => fetchWithAuth(`/admin/packages/${id}/toggle`, { method: 'PUT' }),
+
+  // User Profile
+  getUserFullProfile: (id: number) => fetchWithAuth(`/admin/users/${id}/profile`).then(res => res.data),
+
+  // Payments Management
+  getPayments: (filters: any = {}) => {
+    const query = new URLSearchParams(filters).toString();
+    return fetchWithAuth(`/admin/payments${query ? `?${query}` : ''}`).then(res => res.data?.data || res.data || []);
+  },
+  getPaymentDetails: (id: number) => fetchWithAuth(`/admin/payments/${id}`).then(res => res.data),
+  reconcilePayment: (id: number) => fetchWithAuth(`/admin/payments/${id}/reconcile`, { method: 'POST' }),
 };
 
 export const adsService = {

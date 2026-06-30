@@ -4,7 +4,7 @@ import {
   AdminSidebar, UsersTab, EducationTab, PayoutsTab, VerificationsTab, 
   BookingsTab, AdminDisputesTab, CoursesTab, AdminOverviewTab, 
   AdsTab, AdminSettingsTab, AdminServicesTab, AdminOrdersTab, AdminPercentageTab, AdminAppConfigTab, AdminSessionsTab,
-  TermsTab, PackagesTab
+  TermsTab, PackagesTab, AdminPaymentsTab
 } from './admin';
 import { Menu } from 'lucide-react';
 
@@ -56,6 +56,8 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ data
         return <AdminSettingsTab />;
       case 'packages':
         return <PackagesTab />;
+      case 'payments':
+        return <AdminPaymentsTab />;
       default:
         return <AdminOverviewTab />;
     }

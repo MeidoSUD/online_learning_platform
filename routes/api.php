@@ -379,6 +379,7 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     // Users management
     Route::get('/users', [UsersController::class, 'index']);
     Route::get('/users/{id}', [UsersController::class, 'show']);
+    Route::get('/users/{id}/profile', [UsersController::class, 'profile']);
     Route::post('/users', [UsersController::class, 'store']); // create admin user or seed
     Route::put('/users/{id}', [UsersController::class, 'update']);
     Route::delete('/users/{id}', [UsersController::class, 'destroy']);
