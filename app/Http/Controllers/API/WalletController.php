@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\Wallet;
 use App\Models\Payout;
 use App\Models\UserPaymentMethod;
+use App\Helpers\Helpers;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
@@ -53,6 +54,10 @@ class WalletController extends Controller
             'balance' => 0
         ]);
 
+        // Recalculate pending balance and save to field
+        Helpers::getPendingBalance($teacher->id);
+        $wallet->refresh();
+
         // Get withdrawal requests (pending, completed, failed, rejected)
         $withdrawals = Payout::where('teacher_id', $teacher->id)
             ->with('paymentMethod')
@@ -63,6 +68,8 @@ class WalletController extends Controller
             'success' => true,
             'data' => [
                 'balance' => (float) $wallet->balance,
+                'pending_balance' => (float) $wallet->pending_balance,
+                'total_balance' => (float) ($wallet->balance + $wallet->pending_balance),
                 'withdrawals' => $withdrawals
             ]
         ]);

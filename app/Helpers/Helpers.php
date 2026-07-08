@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\App;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Config;
 use App\Models\AvailabilitySlot;
+use App\Models\Booking;
+use App\Models\Wallet;
 
 class Helpers
 {
@@ -156,6 +158,25 @@ class Helpers
                 }
             }
         }
+    }
+
+    public static function getPendingBalance($teacherId)
+    {
+        $pending = Booking::where('teacher_id', $teacherId)
+            ->whereIn('status', [Booking::STATUS_CONFIRMED, Booking::STATUS_IN_PROGRESS])
+            ->get()
+            ->sum(function ($booking) {
+                return $booking->price_per_session * ($booking->sessions_count - $booking->sessions_completed);
+            });
+
+        $wallet = Wallet::firstOrCreate(
+            ['user_id' => $teacherId],
+            ['balance' => 0, 'pending_balance' => 0]
+        );
+        $wallet->pending_balance = $pending;
+        $wallet->save();
+
+        return $pending;
     }
 }
 

@@ -17,7 +17,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Exception;
-use  App\Models\Booking;
+use App\Models\Booking;
 /**
  * ============================================================================
  * PaymentController - PCI-DSS Compliant

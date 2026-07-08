@@ -74,6 +74,29 @@ class Booking extends Model
         'session_duration' => 'integer',
     ];
 
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saved(function ($booking) {
+            if ($booking->teacher_id) {
+                \App\Helpers\Helpers::getPendingBalance($booking->teacher_id);
+            }
+            if ($booking->isDirty('teacher_id')) {
+                $oldTeacherId = $booking->getOriginal('teacher_id');
+                if ($oldTeacherId) {
+                    \App\Helpers\Helpers::getPendingBalance($oldTeacherId);
+                }
+            }
+        });
+
+        static::deleted(function ($booking) {
+            if ($booking->teacher_id) {
+                \App\Helpers\Helpers::getPendingBalance($booking->teacher_id);
+            }
+        });
+    }
+
     // Status constants
     const STATUS_PENDING_PAYMENT = 'pending_payment';
     const STATUS_CONFIRMED = 'confirmed';

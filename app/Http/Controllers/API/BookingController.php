@@ -161,30 +161,53 @@ class BookingController extends Controller
                 } else {
                     // Service booking flow (no course record)
                     $teacherId = $request->teacher_id;
-                    $slotId = $request->timeslot_id;
-                    // lock slot to avoid race conditions
-                    $slot = AvailabilitySlot::where('id', $slotId)->lockForUpdate()->firstOrFail();
 
-                    $reasons = [];
-                    if (!$slot->is_available)
-                        $reasons[] = 'slot_not_available';
-                    if ($slot->is_booked)
-                        $reasons[] = 'slot_already_booked';
-                    if ($slot->teacher_id != $teacherId)
-                        $reasons[] = 'slot_teacher_mismatch';
-                    if (count($reasons) > 0) {
+                    // Collect all slot IDs (single or array)
+                    $allSlotIds = [];
+                    if ($request->filled('timeslot_ids')) {
+                        $allSlotIds = $request->timeslot_ids;
+                    } elseif ($request->filled('timeslot_id')) {
+                        $allSlotIds = [$request->timeslot_id];
+                    }
+
+                    if (empty($allSlotIds)) {
                         return response()->json([
                             'success' => false,
-                            'message' => 'Cannot book unavailable slot',
-                            'reasons' => $reasons,
-                            'slot' => [
-                                'id' => $slot->id,
-                                'is_available' => (bool) $slot->is_available,
-                                'is_booked' => (bool) $slot->is_booked,
-                                'teacher_id' => $slot->teacher_id,
-                            ]
-                        ], 400);
+                            'message' => 'timeslot_id or timeslot_ids is required'
+                        ], 422);
                     }
+
+                    // Validate and lock all slots
+                    $slots = [];
+                    foreach ($allSlotIds as $sid) {
+                        $s = AvailabilitySlot::where('id', $sid)->lockForUpdate()->first();
+                        if (!$s) {
+                            return response()->json([
+                                'success' => false,
+                                'message' => "Slot #{$sid} not found"
+                            ], 404);
+                        }
+                        $reasons = [];
+                        if (!$s->is_available) $reasons[] = 'slot_not_available';
+                        if ($s->is_booked) $reasons[] = 'slot_already_booked';
+                        if ($s->teacher_id != $teacherId) $reasons[] = 'slot_teacher_mismatch';
+                        if (count($reasons) > 0) {
+                            return response()->json([
+                                'success' => false,
+                                'message' => "Cannot book slot #{$sid}",
+                                'reasons' => $reasons,
+                                'slot' => [
+                                    'id' => $s->id,
+                                    'is_available' => (bool) $s->is_available,
+                                    'is_booked' => (bool) $s->is_booked,
+                                    'teacher_id' => $s->teacher_id,
+                                ]
+                            ], 400);
+                        }
+                        $slots[] = $s;
+                    }
+
+                    $slot = $slots[0]; // primary slot
 
                     // Grab teacher pricing from TeacherInfo
                     $teacherInfo = \App\Models\TeacherInfo::where('teacher_id', $teacherId)->first();
@@ -339,6 +362,11 @@ class BookingController extends Controller
                 $booking->createMeetingsForSessions();
             }
 
+            // ── Non-package service booking: attach all slots ──
+            if (!$isCourse && !$isPackageBooking && count($slots) > 1) {
+                $booking->availabilitySlots()->saveMany($slots);
+            }
+
             // NOTE: For non-package bookings, Slot is NOT marked as booked here
             // IMPORTANT: Slot will ONLY be marked booked (is_booked=true, is_available=false) AFTER successful payment
             // Sessions will ONLY be created AFTER payment succeeds
@@ -452,6 +480,7 @@ class BookingController extends Controller
             Log::error('Booking creation failed', [
                 'student_id' => auth()->id(),
                 'error' => $e->getMessage(),
+                'request' => $request->all(),
                 'trace' => $e->getTraceAsString(),
             ]);
             return response()->json(['success' => false, 'message' => 'Failed to create booking', 'error' => $e->getMessage()], 500);
