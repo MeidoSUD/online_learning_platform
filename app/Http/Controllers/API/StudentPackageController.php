@@ -407,7 +407,9 @@ class StudentPackageController extends Controller
             $booking->refresh();
             $booking->createMeetingsForSessions();
 
-            // Send notifications same as normal payment
+            // Update teacher pending balance and send notifications
+            \App\Helpers\Helpers::getPendingBalance($booking->teacher_id);
+
             $ns = new \App\Services\NotificationService();
             $booking->loadMissing(['student', 'teacher']);
 

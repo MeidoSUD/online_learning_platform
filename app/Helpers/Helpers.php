@@ -166,7 +166,7 @@ class Helpers
             ->whereIn('status', [Booking::STATUS_CONFIRMED, Booking::STATUS_IN_PROGRESS])
             ->get()
             ->sum(function ($booking) {
-                return $booking->price_per_session * ($booking->sessions_count - $booking->sessions_completed);
+                return $booking->teacher_rate_per_session * ($booking->sessions_count - $booking->sessions_completed);
             });
 
         $wallet = Wallet::firstOrCreate(
