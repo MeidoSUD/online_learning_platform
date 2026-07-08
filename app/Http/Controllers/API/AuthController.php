@@ -1115,7 +1115,7 @@ We are currently in the teacher preparation phase ahead of our official launch. 
             'data' => $user
         ]);
     }
-
+    
     /**
      * Delete user account and all associated data
      * 

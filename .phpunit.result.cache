@@ -1,0 +1,1 @@
+{"version":1,"defects":{"Tests\\Feature\\AppConfigControllerTest::test_it_does_not_force_update_when_current_version_is_already_up_to_date":4},"times":{"Tests\\Feature\\AppConfigControllerTest::test_it_does_not_force_update_when_current_version_is_already_up_to_date":0.562}}

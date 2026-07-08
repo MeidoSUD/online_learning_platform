@@ -63,12 +63,14 @@ class AppConfigController extends Controller
             $forceUpdateKey = 'force_update_' . $platform;
             $forceUpdate = Setting::getValue($forceUpdateKey, false);
 
+            $isCurrentVersionOutdated = $currentVersion && $this->isVersionLower($currentVersion, $requiredVersion);
+
             // Build response data
             $data = [
                 'platform' => $platform,
                 'required_version' => $requiredVersion,
                 'current_version' => $currentVersion,
-                'force_update' => (bool) $forceUpdate,
+                'force_update' => $isCurrentVersionOutdated ? (bool) $forceUpdate : false,
                 'maintenance_mode' => (bool) $maintenanceEnabled,
                 'package_enable' => (bool) Setting::getValue('package_enable', false),
             ];
@@ -79,8 +81,8 @@ class AppConfigController extends Controller
                 $data['status'] = 'MAINTENANCE_MODE';
             }
 
-            // Add update information if version is different or force update is enabled
-            if ($currentVersion && $this->isVersionLower($currentVersion, $requiredVersion)) {
+            // Add update information only when the app version is actually behind the required version
+            if ($isCurrentVersionOutdated) {
                 $data['update_available'] = true;
                 $data['update_message'] = $forceUpdate
                     ? 'A critical update is required. Please update immediately.'

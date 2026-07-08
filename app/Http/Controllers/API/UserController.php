@@ -506,7 +506,7 @@ class UserController extends Controller
     private function updateIndividualTeacherProfile(Request $request, User $user)
     {
         // Update teacher info ONLY if teaching-related fields are provided
-        if ($request->hasAny(['teach_individual', 'teach_group', 'individual_hour_price', 'group_hour_price', 'max_group_size', 'min_group_size'])) {
+        if ($request->hasAny(['teach_individual', 'teach_group', 'individual_hour_price','package_on_off', 'group_hour_price', 'max_group_size', 'min_group_size'])) {
             $this->updateTeacherInfo($request);
         }
 
@@ -962,6 +962,7 @@ class UserController extends Controller
             'bio' => 'nullable|string|max:2000',
             'teach_individual' => 'required|boolean',
             'individual_hour_price' => 'nullable|numeric|min:0',
+            'package_on_off' => 'nullable|boolean',
             'teach_group' => 'required|boolean',
             'group_hour_price' => 'nullable|numeric|min:0',
             'max_group_size' => 'nullable|integer|min:0|max:100',
@@ -980,6 +981,7 @@ class UserController extends Controller
             $request->only([
                 'bio',
                 'teach_individual',
+                'package_on_off',
                 'individual_hour_price',
                 'teach_group',
                 'group_hour_price',
@@ -1028,6 +1030,7 @@ class UserController extends Controller
             $request->validate([
                 'bio' => 'nullable|string|max:2000',
                 'teach_individual' => 'required|boolean',
+                'package_on_off' => 'nullable|boolean',
                 'individual_hour_price' => 'nullable|numeric|min:0',
                 'teach_group' => 'required|boolean',
                 'group_hour_price' => 'nullable|numeric|min:0',
@@ -1041,6 +1044,7 @@ class UserController extends Controller
                 $request->only([
                     'bio',
                     'teach_individual',
+                    'package_on_off',
                     'individual_hour_price',
                     'teach_group',
                     'group_hour_price',
@@ -1442,6 +1446,7 @@ class UserController extends Controller
                 'rating' => $rating,
                 'bio' => optional($teacher->profile)->bio,
                 'offer_packages' => $teacher->teacherInfo ? (bool) $teacher->teacherInfo->offer_packages : false,
+                'package_on_off' => $teacher->teacherInfo ? (bool) $teacher->teacherInfo->package_on_off : false,
                 'packages_approved' => $teacher->teacherInfo ? (bool) $teacher->teacherInfo->packages_approved : false,
                 'total_students' => (int) (optional($teacher->teacherInfo)->total_students ?? 0),
                 'verified' => (bool) optional($teacher->profile)->verified,
@@ -1459,6 +1464,7 @@ class UserController extends Controller
                 'languages_count' => (int) count($languages),
                 'courses_count' => (int) count($courses),
                 'teach_individual' => (bool) optional($teacher->teacherInfo)->teach_individual,
+                'package_on_off' => (bool) optional($teacher->teacherInfo)->package_on_off,
                 'individual_hour_price' => (float) ((optional($teacher->teacherInfo)->individual_hour_price ?? 0) * (1 + $percentageValue)),
                 'teach_group' => (bool) optional($teacher->teacherInfo)->teach_group,
                 'group_hour_price' => (float) ((optional($teacher->teacherInfo)->group_hour_price ?? 0) * (1 + $percentageValue)),
