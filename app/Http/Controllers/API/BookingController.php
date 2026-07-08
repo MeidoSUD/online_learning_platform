@@ -360,6 +360,57 @@ class BookingController extends Controller
                 Sessions::createForBooking($booking);
                 $booking->refresh();
                 $booking->createMeetingsForSessions();
+
+                // Send notifications same as normal payment
+                $ns = new \App\Services\NotificationService();
+                $booking->loadMissing(['student', 'teacher']);
+
+                $firstSessionDate = $booking->first_session_date;
+                $firstSessionTime = $booking->first_session_start_time;
+                if ($firstSessionDate instanceof \DateTime) {
+                    $firstSessionDate = $firstSessionDate->format('Y-m-d');
+                }
+                if ($firstSessionTime instanceof \DateTime) {
+                    $firstSessionTime = $firstSessionTime->format('H:i');
+                }
+                $firstSessionStart = \Carbon\Carbon::parse((string) $firstSessionDate . ' ' . (string) $firstSessionTime)->format('Y-m-d H:i');
+
+                $msgStudent = app()->getLocale() == 'ar'
+                    ? "نجاح! لقد حجزت {$booking->sessions_count} جلسات. تبدأ جلستك الأولى في {$firstSessionStart}."
+                    : "Success! You have booked {$booking->sessions_count} sessions. Your first session starts on {$firstSessionStart}.";
+
+                if ($booking->student) {
+                    $ns->send($booking->student, 'payment_success', 'Payment successful', $msgStudent, [
+                        'booking_id' => $booking->id,
+                        'amount' => $booking->total_amount,
+                    ]);
+
+                    if ($booking->student->phone_number) {
+                        $smsMsgStudent = app()->getLocale() == 'ar'
+                            ? "نجاح! لقد حجزت {$booking->sessions_count} جلسات. الجلسة الأولى في {$firstSessionStart}. / Success! You booked {$booking->sessions_count} sessions. First session is at {$firstSessionStart}."
+                            : "Success! You booked {$booking->sessions_count} sessions. First session is at {$firstSessionStart}. / نجاح! لقد حجزت {$booking->sessions_count} جلسات. الجلسة الأولى في {$firstSessionStart}.";
+                        $ns->sendBilingualSMS($booking->student->phone_number, $smsMsgStudent);
+                    }
+                }
+
+                $titleTeacher = app()->getLocale() == 'ar' ? 'حجز جديد' : 'New booking';
+                $msgTeacher = app()->getLocale() == 'ar'
+                    ? "لديك حجز جديد (#{$booking->booking_reference}) من {$booking->student?->first_name} لعدد {$booking->sessions_count} جلسات. تبدأ يوم {$firstSessionStart}."
+                    : "You have a new booking (#{$booking->booking_reference}) from {$booking->student?->first_name} for {$booking->sessions_count} sessions starting on {$firstSessionStart}.";
+
+                if ($booking->teacher) {
+                    $ns->send($booking->teacher, 'booking_received', $titleTeacher, $msgTeacher, [
+                        'booking_id' => $booking->id,
+                        'student_id' => $booking->student_id,
+                    ]);
+
+                    if ($booking->teacher->phone_number) {
+                        $smsMsgTeacher = app()->getLocale() == 'ar'
+                            ? "لديك حجز جديد من {$booking->student?->first_name} لعدد {$booking->sessions_count} جلسات تبدأ في {$firstSessionStart}. / You have a new booking from {$booking->student?->first_name} for {$booking->sessions_count} sessions starting on {$firstSessionStart}."
+                            : "You have a new booking from {$booking->student?->first_name} for {$booking->sessions_count} sessions starting on {$firstSessionStart}. / لديك حجز جديد من {$booking->student?->first_name} لعدد {$booking->sessions_count} جلسات تبدأ في {$firstSessionStart}.";
+                        $ns->sendBilingualSMS($booking->teacher->phone_number, $smsMsgTeacher);
+                    }
+                }
             }
 
             // ── Non-package service booking: attach all slots ──
