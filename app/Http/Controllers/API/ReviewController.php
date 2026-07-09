@@ -122,6 +122,36 @@ class ReviewController extends Controller
             'comment'     => $request->comment,
         ]);
 
+        // Notify the teacher that a student has reviewed them
+        try {
+            $teacher = \App\Models\User::find($teacher_id);
+
+            if ($teacher) {
+                $ns = new \App\Services\NotificationService();
+
+                $title = app()->getLocale() == 'ar'
+                    ? 'تقييم جديد'
+                    : 'New review';
+                $msg = app()->getLocale() == 'ar'
+                    ? "{$student->first_name} {$student->last_name} قيّم جلستك بـ {$request->rating}/5."
+                    : "{$student->first_name} {$student->last_name} rated your session {$request->rating}/5.";
+
+                $ns->send($teacher, 'review_received', $title, $msg, [
+                    'review_id'   => $review->id,
+                    'session_id'  => $request->session_id,
+                    'student_id'  => $student->id,
+                    'teacher_id'  => $teacher_id,
+                    'rating'      => $request->rating,
+                ]);
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to send review notification', [
+                'review_id' => $review->id,
+                'teacher_id' => $teacher_id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Review added successfully',
