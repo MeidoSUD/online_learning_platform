@@ -91,11 +91,14 @@ class ReviewController extends Controller
             ], 404);
         }
 
-        // Check if session is completed
-        if ($session->status !== \App\Models\Sessions::STATUS_COMPLETED) {
+        // Check if session is completed or ended
+        if (!in_array($session->status, [
+            \App\Models\Sessions::STATUS_COMPLETED,
+            \App\Models\Sessions::STATUS_ENDED,
+        ])) {
             return response()->json([
                 'success' => false,
-                'message' => 'You can only review completed sessions'
+                'message' => 'You can only review completed or ended sessions'
             ], 422);
         }
 
@@ -226,7 +229,10 @@ class ReviewController extends Controller
         return response()->json([
             'success' => true,
             'data' => $review,
-            'can_review' => $session->status === \App\Models\Sessions::STATUS_COMPLETED && 
+            'can_review' => in_array($session->status, [
+                               \App\Models\Sessions::STATUS_COMPLETED,
+                               \App\Models\Sessions::STATUS_ENDED,
+                           ]) && 
                            $user->id === $session->student_id && 
                            !$review
         ]);
