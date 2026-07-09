@@ -118,7 +118,8 @@ class NotificationHelper
 
     public static function sessionStarted($student, $session): void
     {
-        self::getService()->send(
+        $ns = new \App\Services\NotificationService();
+        $ns->send(
             $student,
             'session_started',
             'Session Started',
