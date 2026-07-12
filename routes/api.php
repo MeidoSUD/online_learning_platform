@@ -44,6 +44,7 @@ use App\Http\Controllers\API\Admin\SettingController;
 use App\Http\Controllers\API\Admin\RevenuePercentageController;
 use App\Http\Controllers\API\Admin\OrderAdminController;
 use App\Http\Controllers\API\Admin\TermsConditionsAdminController;
+use App\Http\Controllers\API\Admin\SystemLogController;
 
 
 use App\Http\Controllers\API\Admin\InstituteController;
@@ -443,6 +444,12 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     Route::get('/gallery', [GalleryController::class, 'index']);
     Route::post('/gallery', [GalleryController::class, 'store']);
     Route::delete('/gallery/{id}', [GalleryController::class, 'destroy']);
+
+    // System Logs
+    Route::get('/system-logs', [SystemLogController::class, 'index']);
+    Route::get('/system-logs/{id}', [SystemLogController::class, 'show']);
+    Route::delete('/system-logs/{id}', [SystemLogController::class, 'destroy']);
+    Route::delete('/system-logs', [SystemLogController::class, 'clear']);
 
     // Misc admin tasks
     Route::post('/run-scheduler', [SystemController::class, 'runScheduler']);

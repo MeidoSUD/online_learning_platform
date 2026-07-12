@@ -7,7 +7,6 @@ use Illuminate\Database\QueryException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Exception;
 use Throwable;
 
@@ -128,12 +127,6 @@ trait ApiResponse
      */
     protected function databaseError(Exception $e, $message = 'Database error occurred')
     {
-        Log::error('Database Error: ' . $e->getMessage(), [
-            'exception' => get_class($e),
-            'file' => $e->getFile(),
-            'line' => $e->getLine(),
-        ]);
-
         return response()->json([
             'success' => false,
             'code' => 'DATABASE_ERROR',
@@ -148,13 +141,6 @@ trait ApiResponse
      */
     protected function serverError(Exception $e, $message = 'An error occurred. Please try again later.')
     {
-        Log::error('Server Error: ' . $e->getMessage(), [
-            'exception' => get_class($e),
-            'file' => $e->getFile(),
-            'line' => $e->getLine(),
-            'trace' => $e->getTraceAsString(),
-        ]);
-
         return response()->json([
             'success' => false,
             'code' => 'SERVER_ERROR',
