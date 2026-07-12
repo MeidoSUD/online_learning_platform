@@ -451,6 +451,10 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     Route::delete('/system-logs/{id}', [SystemLogController::class, 'destroy']);
     Route::delete('/system-logs', [SystemLogController::class, 'clear']);
 
+    // API Analytics
+    Route::get('/analytics', [\App\Http\Controllers\API\Admin\ApiAnalyticsController::class, 'index']);
+    Route::get('/analytics/records', [\App\Http\Controllers\API\Admin\ApiAnalyticsController::class, 'records']);
+
     // Misc admin tasks
     Route::post('/run-scheduler', [SystemController::class, 'runScheduler']);
     Route::post('/clear-cache', [SystemController::class, 'clearCache']);
