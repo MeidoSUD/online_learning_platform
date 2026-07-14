@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Payout;
 use App\Models\Sessions;
 use App\Models\Wallet;
 use App\Models\Booking;
@@ -42,6 +43,32 @@ class TeacherWalletService
                 'teacher_id' => $teacherId,
                 'amount' => $amount,
                 'session_id' => $session->id
+            ]);
+
+            return true;
+        });
+    }
+
+    public function debitTeacherForPayout(Payout $payout)
+    {
+        return DB::transaction(function () use ($payout) {
+            $wallet = Wallet::firstOrCreate(
+                ['user_id' => $payout->teacher_id],
+                ['balance' => 0]
+            );
+
+            $reason = 'Payout Approved: ' . $payout->amount;
+            $meta = [
+                'payout_id' => $payout->id,
+                'teacher_id' => $payout->teacher_id,
+            ];
+
+            $wallet->debit($payout->amount, $reason, $meta);
+
+            Log::info('Teacher wallet debited for payout', [
+                'teacher_id' => $payout->teacher_id,
+                'amount' => $payout->amount,
+                'payout_id' => $payout->id,
             ]);
 
             return true;

@@ -4,13 +4,14 @@ namespace App\Http\Controllers\API\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Services\TeacherWalletService;
 use Illuminate\Support\Facades\DB;
 use App\Models\Payout;
 class PayoutAdminController extends Controller
 {
     public function index(Request $request)
     {
-        $payouts = Payout::orderByDesc('id')->with(['paymentMethod','teacher'])->paginate(25);
+        $payouts = Payout::orderByDesc('id')->with(['paymentMethod', 'teacher'])->paginate(25);
         return response()->json(['success' => true, 'data' => $payouts]);
     }
 
@@ -35,41 +36,42 @@ class PayoutAdminController extends Controller
         return response()->json(['success' => true]);
     }
 
-    public function approve(Request $request, $id)
+    public function approve(Request $request, $id, TeacherWalletService $walletService)
     {
         $payout = Payout::findOrFail($id);
         $data = [];
-        
+
         if ($request->hasFile('receipt')) {
             $receipt = $request->file('receipt');
             $filename = 'receipt_' . $id . '_' . time() . '.' . $receipt->getClientOriginalExtension();
             $path = $receipt->storeAs('receipts', $filename, 'public');
             $data['receipt'] = $path;
         }
-        
+
         $data['status'] = 'approved';
         $data['processed_at'] = now();
-        
+
         $payout->update($data);
-        
+        $walletService->debitTeacherForPayout($payout);
+
         return response()->json(['success' => true]);
     }
 
     public function reject(Request $request, $id)
     {
         $payout = Payout::findOrFail($id);
-        
+
         $data = $request->validate([
             'reject_reason' => 'required|string|min:3'
         ]);
-        
+
         $payout->update([
             'status' => 'rejected',
             'reject_reason' => $data['reject_reason'],
             'processed_at' => now()
         ]);
-        
+
         return response()->json(['success' => true]);
     }
-  
+
 }
