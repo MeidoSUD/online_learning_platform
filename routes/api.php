@@ -448,6 +448,7 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
 
     // Activity Records
     Route::get('/activity-records/stats', [ActivityRecordController::class, 'stats']);
+    Route::get('/activity-records/grouped-stats', [ActivityRecordController::class, 'groupedStats']);
     Route::get('/activity-records', [ActivityRecordController::class, 'index']);
     Route::post('/activity-records', [ActivityRecordController::class, 'store']);
     Route::get('/activity-records/{id}', [ActivityRecordController::class, 'show']);

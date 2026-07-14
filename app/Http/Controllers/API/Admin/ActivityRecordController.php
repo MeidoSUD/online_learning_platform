@@ -35,6 +35,108 @@ class ActivityRecordController extends Controller
         ]);
     }
 
+    public function groupedStats()
+    {
+        $users = ActivityRecord::whereNotNull('user_id')
+            ->selectRaw('user_id, count(*) as total')
+            ->with('user:id,first_name,last_name')
+            ->groupBy('user_id')
+            ->orderByDesc('total')
+            ->get()
+            ->map(fn($r) => [
+                'id' => $r->user_id,
+                'name' => $r->user ? $r->user->first_name . ' ' . $r->user->last_name : '—',
+                'total' => (int) $r->total,
+            ]);
+
+        $services = ActivityRecord::whereNotNull('service_id')
+            ->selectRaw('service_id, count(*) as total')
+            ->with('service:id,name_en,name_ar')
+            ->groupBy('service_id')
+            ->orderByDesc('total')
+            ->get()
+            ->map(fn($r) => [
+                'id' => $r->service_id,
+                'name' => $r->service ? ($r->service->name_en ?? '—') : '—',
+                'name_ar' => $r->service ? ($r->service->name_ar ?? '—') : '—',
+                'total' => (int) $r->total,
+            ]);
+
+        $subjects = ActivityRecord::whereNotNull('subject_id')
+            ->selectRaw('subject_id, count(*) as total')
+            ->with('subject:id,name_en,name_ar')
+            ->groupBy('subject_id')
+            ->orderByDesc('total')
+            ->get()
+            ->map(fn($r) => [
+                'id' => $r->subject_id,
+                'name' => $r->subject ? ($r->subject->name_en ?? '—') : '—',
+                'name_ar' => $r->subject ? ($r->subject->name_ar ?? '—') : '—',
+                'total' => (int) $r->total,
+            ]);
+
+        $teachers = ActivityRecord::whereNotNull('teacher_id')
+            ->selectRaw('teacher_id, count(*) as total')
+            ->with('teacher:id,first_name,last_name')
+            ->groupBy('teacher_id')
+            ->orderByDesc('total')
+            ->get()
+            ->map(fn($r) => [
+                'id' => $r->teacher_id,
+                'name' => $r->teacher ? $r->teacher->first_name . ' ' . $r->teacher->last_name : '—',
+                'total' => (int) $r->total,
+            ]);
+
+        $languages = ActivityRecord::whereNotNull('language_id')
+            ->selectRaw('language_id, count(*) as total')
+            ->with('language:id,name_en,name_ar')
+            ->groupBy('language_id')
+            ->orderByDesc('total')
+            ->get()
+            ->map(fn($r) => [
+                'id' => $r->language_id,
+                'name' => $r->language ? ($r->language->name_en ?? '—') : '—',
+                'name_ar' => $r->language ? ($r->language->name_ar ?? '—') : '—',
+                'total' => (int) $r->total,
+            ]);
+
+        $courses = ActivityRecord::whereNotNull('course_id')
+            ->selectRaw('course_id, count(*) as total')
+            ->with('course:id,name_en,name_ar')
+            ->groupBy('course_id')
+            ->orderByDesc('total')
+            ->get()
+            ->map(fn($r) => [
+                'id' => $r->course_id,
+                'name' => $r->course ? ($r->course->name_en ?? '—') : '—',
+                'name_ar' => $r->course ? ($r->course->name_ar ?? '—') : '—',
+                'total' => (int) $r->total,
+            ]);
+
+        $sessionTypes = ActivityRecord::whereNotNull('session_type')
+            ->selectRaw('session_type, count(*) as total')
+            ->groupBy('session_type')
+            ->orderByDesc('total')
+            ->get()
+            ->map(fn($r) => [
+                'name' => $r->session_type,
+                'total' => (int) $r->total,
+            ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'users' => $users,
+                'services' => $services,
+                'subjects' => $subjects,
+                'teachers' => $teachers,
+                'languages' => $languages,
+                'courses' => $courses,
+                'session_types' => $sessionTypes,
+            ],
+        ]);
+    }
+
     public function index(Request $request)
     {
         $query = ActivityRecord::query()
