@@ -482,6 +482,8 @@ class UserController extends Controller
                 'availableSlots',
                 'reviews',
             ]);
+            $teacherId = $user->id;
+            \App\Helpers\TeacherProfileHelper::checkAndUpdateProfileCompleted($teacherId);
 
             return response()->json([
                 'success' => true,
@@ -506,7 +508,7 @@ class UserController extends Controller
     private function updateIndividualTeacherProfile(Request $request, User $user)
     {
         // Update teacher info ONLY if teaching-related fields are provided
-        if ($request->hasAny(['teach_individual', 'teach_group', 'individual_hour_price','package_on_off', 'group_hour_price', 'max_group_size', 'min_group_size'])) {
+        if ($request->hasAny(['teach_individual', 'teach_group', 'individual_hour_price', 'package_on_off', 'group_hour_price', 'max_group_size', 'min_group_size'])) {
             $this->updateTeacherInfo($request);
         }
 
