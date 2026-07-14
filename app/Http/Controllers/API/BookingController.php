@@ -31,9 +31,11 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use Carbon\Carbon;
+use App\Traits\ActivityRecorder;
 
 class BookingController extends Controller
 {
+    use ActivityRecorder;
     /**
      * @OA\Get(
      *     path="/api/",
@@ -188,9 +190,12 @@ class BookingController extends Controller
                             ], 404);
                         }
                         $reasons = [];
-                        if (!$s->is_available) $reasons[] = 'slot_not_available';
-                        if ($s->is_booked) $reasons[] = 'slot_already_booked';
-                        if ($s->teacher_id != $teacherId) $reasons[] = 'slot_teacher_mismatch';
+                        if (!$s->is_available)
+                            $reasons[] = 'slot_not_available';
+                        if ($s->is_booked)
+                            $reasons[] = 'slot_already_booked';
+                        if ($s->teacher_id != $teacherId)
+                            $reasons[] = 'slot_teacher_mismatch';
                         if (count($reasons) > 0) {
                             return response()->json([
                                 'success' => false,
@@ -349,6 +354,22 @@ class BookingController extends Controller
                 'special_requests' => $request->special_requests,
                 'status' => $isPackageBooking ? Booking::STATUS_CONFIRMED : Booking::STATUS_PENDING_PAYMENT,
                 'booking_date' => now(),
+            ]);
+
+            // ── Record activity ──
+            $this->recordActivity('Booking Created', [
+                'booking_id' => $booking->id,
+                'service_id' => $service_id,
+                'subject_id' => $request->subject_id,
+                'teacher_id' => $booking->teacher_id,
+                'user_id' => $studentId,
+                'language_id' => $booking->language_id,
+                'course_id' => $booking->course_id,
+                'session_type' => $booking->session_type,
+                'sessions_count' => $booking->sessions_count,
+                'student_id' => $booking->student_id,
+                'total_amount' => $booking->total_amount,
+                'status' => $booking->status,
             ]);
 
             // ── Package booking: attach slots, deduct sessions, create sessions ──

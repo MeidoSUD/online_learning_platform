@@ -16,9 +16,11 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use App\Traits\ActivityRecorder;
 
 class BookingCourseController extends Controller
 {
+    use ActivityRecorder;
     public function createBooking(Request $request): JsonResponse
     {
         $request->validate([
@@ -225,6 +227,21 @@ class BookingCourseController extends Controller
                 'special_requests' => $request->special_requests,
                 'status' => Booking::STATUS_PENDING_PAYMENT,
                 'booking_date' => now(),
+            ]);
+
+            $this->recordActivity('Booking Created', [
+                'booking_id' => $booking->id,
+                'service_id' => $service_id,
+                'subject_id' => $request->subject_id,
+                'teacher_id' => $booking->teacher_id,
+                'user_id' => $studentId,
+                'language_id' => $booking->language_id,
+                'course_id' => $booking->course_id,
+                'session_type' => $booking->session_type,
+                'sessions_count' => $booking->sessions_count,
+                'student_id' => $booking->student_id,
+                'total_amount' => $booking->total_amount,
+                'status' => $booking->status,
             ]);
 
             $ns = new \App\Services\NotificationService();

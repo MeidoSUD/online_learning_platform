@@ -17,9 +17,11 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Traits\ActivityRecorder;
 
 class OrdersController extends Controller
 {
+    use ActivityRecorder;
     // Student: Create new order
     public function store(Request $request): JsonResponse
     {
@@ -335,6 +337,18 @@ class OrdersController extends Controller
                 'special_requests' => $order->notes,
                 'status' => 'confirmed',
                 'booking_date' => now(),
+            ]);
+
+            // Record activity
+            $this->recordActivity('Booking Created', [
+                'booking_id' => $booking->id,
+                'teacher_id' => $booking->teacher_id,
+                'user_id' => $order->user_id,
+                'session_type' => $booking->session_type,
+                'sessions_count' => $booking->sessions_count,
+                'student_id' => $booking->student_id,
+                'total_amount' => $booking->total_amount,
+                'status' => $booking->status,
             ]);
 
             // Create payment record

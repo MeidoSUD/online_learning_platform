@@ -45,6 +45,7 @@ use App\Http\Controllers\API\Admin\RevenuePercentageController;
 use App\Http\Controllers\API\Admin\OrderAdminController;
 use App\Http\Controllers\API\Admin\TermsConditionsAdminController;
 use App\Http\Controllers\API\Admin\SystemLogController;
+use App\Http\Controllers\API\Admin\ActivityRecordController;
 
 
 use App\Http\Controllers\API\Admin\InstituteController;
@@ -444,6 +445,15 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     Route::get('/gallery', [GalleryController::class, 'index']);
     Route::post('/gallery', [GalleryController::class, 'store']);
     Route::delete('/gallery/{id}', [GalleryController::class, 'destroy']);
+
+    // Activity Records
+    Route::get('/activity-records/stats', [ActivityRecordController::class, 'stats']);
+    Route::get('/activity-records', [ActivityRecordController::class, 'index']);
+    Route::post('/activity-records', [ActivityRecordController::class, 'store']);
+    Route::get('/activity-records/{id}', [ActivityRecordController::class, 'show']);
+    Route::put('/activity-records/{id}', [ActivityRecordController::class, 'update']);
+    Route::delete('/activity-records/{id}', [ActivityRecordController::class, 'destroy']);
+    Route::delete('/activity-records', [ActivityRecordController::class, 'clear']);
 
     // System Logs
     Route::get('/system-logs', [SystemLogController::class, 'index']);

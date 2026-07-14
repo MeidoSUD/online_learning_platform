@@ -14,9 +14,11 @@ use App\Services\MoyasarPay;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Traits\ActivityRecorder;
 
 class StudentPackageController extends Controller
 {
+    use ActivityRecorder;
     protected MoyasarPay $moyasar;
 
     public function __construct(MoyasarPay $moyasar)
@@ -391,6 +393,18 @@ class StudentPackageController extends Controller
                 'currency' => 'SAR',
                 'status' => Booking::STATUS_CONFIRMED,
                 'booking_date' => now(),
+            ]);
+
+            $this->recordActivity('Booking Created', [
+                'booking_id' => $booking->id,
+                'subject_id' => $request->subject_id ?? null,
+                'teacher_id' => $booking->teacher_id,
+                'user_id' => $studentId,
+                'session_type' => $booking->session_type,
+                'sessions_count' => $booking->sessions_count,
+                'student_id' => $booking->student_id,
+                'status' => $booking->status,
+                'subscription_id' => $subscription->id,
             ]);
 
             for ($i = 0; $i < $sessionsCount; $i++) {

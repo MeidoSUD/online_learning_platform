@@ -19,9 +19,11 @@ use App\Services\HyperpayService;
 use App\Services\NotificationService;
 use App\Models\Notification as DbNotification;
 use Illuminate\Support\Facades\Mail;
+use App\Traits\ActivityRecorder;
 
 class BookingWebController extends Controller
 {
+    use ActivityRecorder;
     /**
      * Display student's bookings list
      */
@@ -561,6 +563,19 @@ class BookingWebController extends Controller
                 'currency' => 'SAR',
                 'status' => 'pending_payment',
                 'booking_reference' => 'BK' . now()->format('YmdHis') . '_' . Str::upper(Str::random(6)),
+            ]);
+
+            // record activity
+            $this->recordActivity('Booking Created', [
+                'booking_id' => $booking->id,
+                'subject_id' => $slot->subject_id ?? null,
+                'teacher_id' => $booking->teacher_id,
+                'user_id' => $studentId,
+                'session_type' => $request->lesson_type,
+                'sessions_count' => $booking->sessions_count,
+                'student_id' => $booking->student_id,
+                'total_amount' => $booking->total_amount,
+                'status' => $booking->status,
             ]);
 
             // create payment record
