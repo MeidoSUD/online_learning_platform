@@ -193,7 +193,7 @@ class UsersController extends Controller
         $bookingsAsTeacher = Booking::where('teacher_id', $id)->with(['student', 'subject', 'service', 'sessions'])->orderByDesc('id')->get();
 
         $sessionsAsStudent = Sessions::where('student_id', $id)->with(['teacher', 'booking'])->orderByDesc('id')->get();
-        $sessionsAsTeacher = Sessions::where('teacher_id', $id)->with(['student', 'subject', 'booking'])->orderByDesc('id')->get();
+        $sessionsAsTeacher = Sessions::where('teacher_id', $id)->with(['student', 'booking.subject'])->orderByDesc('id')->get();
 
         $payments = Payment::where('student_id', $id)->with(['booking'])->orderByDesc('id')->get();
 

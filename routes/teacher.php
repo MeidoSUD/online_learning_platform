@@ -92,7 +92,7 @@ Route::prefix('teacher')->middleware(['auth:sanctum', 'role:teacher'])->group(fu
     Route::get('payment-methods', [UserPaymentMethodController::class, 'index']);
     Route::post('payment-methods', [UserPaymentMethodController::class, 'store']);
     Route::put('payment-methods/{id}', [UserPaymentMethodController::class, 'update']);
-    Route::put('payment-methods/set-default/{id}', [UserPaymentMethodController::class, 'setDefault']);
+    Route::match(['PUT', 'POST'], 'payment-methods/set-default/{id}', [UserPaymentMethodController::class, 'setDefault']);
     Route::delete('payment-methods/{id}', [UserPaymentMethodController::class, 'destroy']);
     // reviews
     Route::get('/courses/{course_id}/reviews', [ReviewController::class, 'index']);
@@ -110,5 +110,5 @@ Route::prefix('teacher')->middleware(['auth:sanctum', 'role:teacher'])->group(fu
     Route::delete('/language-study/{languageId}', [LanguageStudyController::class, 'deleteTeacherLanguage']);
 
     // switch on/off package availability
-    Route::put('/packages/on-off', [TeacherPackageController::class, 'switchPackageOnOff']);
+    Route::match(['PUT', 'POST'], '/packages/on-off', [TeacherPackageController::class, 'switchPackageOnOff']);
 });

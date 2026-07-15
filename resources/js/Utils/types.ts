@@ -775,8 +775,8 @@ export interface UserFullProfile {
 
 export interface AdminPayment {
   id: number;
-  user_id: number;
   booking_id: number | null;
+  user_id: number;
   amount: string;
   status: string;
   payment_method: string;
@@ -794,5 +794,132 @@ export interface AdminPayment {
     id: number;
     reference: string;
   };
+}
+
+export interface ApiAnalyticsStats {
+  total_requests: number;
+  today_requests: number;
+  this_week_requests: number;
+  this_month_requests: number;
+  most_popular_endpoint: ApiStatistic | null;
+  least_popular_endpoint: ApiStatistic | null;
+  successful_requests: number;
+  failed_requests: number;
+  client_errors: number;
+  server_errors: number;
+  average_response_time_ms: number | null;
+  fastest_endpoint: ApiStatistic | null;
+  slowest_endpoint: ApiStatistic | null;
+  highest_memory_usage_kb: ApiStatistic | null;
+  android_usage: number;
+  ios_usage: number;
+  web_usage: number;
+  other_platform_usage: number;
+  authenticated_count: number;
+  guest_count: number;
+}
+
+export interface ApiStatistic {
+  id: number;
+  endpoint: string;
+  uri: string;
+  method: string;
+  module: string | null;
+  date: string;
+  hits: number;
+  authenticated_hits: number;
+  guest_hits: number;
+  success_hits: number;
+  client_error_hits: number;
+  server_error_hits: number;
+  total_response_time: number;
+  min_response_time: number;
+  max_response_time: number;
+  total_memory_usage: number;
+  max_memory_usage: number;
+  web_hits: number;
+  android_hits: number;
+  ios_hits: number;
+  other_hits: number;
+  last_status_code: number | null;
+  last_hit_at: string | null;
+  average_response_time: number | null;
+  success_rate: number | null;
+  failure_rate: number | null;
+  average_memory_usage: number | null;
+}
+
+export interface SystemLogEntry {
+  id: number;
+  level: string;
+  type: string | null;
+  title: string;
+  message: string;
+  file: string | null;
+  line: number | null;
+  trace: string | null;
+  url: string | null;
+  method: string | null;
+  ip: string | null;
+  user_agent: string | null;
+  user_id: number | null;
+  context: any;
+  hash: string;
+  occurrences: number;
+  last_occurred_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ActivityRecordGroupedItem {
+  id?: number;
+  name: string;
+  name_ar?: string;
+  total: number;
+}
+
+export interface ActivityRecordGroupedStats {
+  users: ActivityRecordGroupedItem[];
+  services: ActivityRecordGroupedItem[];
+  subjects: ActivityRecordGroupedItem[];
+  teachers: ActivityRecordGroupedItem[];
+  languages: ActivityRecordGroupedItem[];
+  courses: ActivityRecordGroupedItem[];
+  session_types: ActivityRecordGroupedItem[];
+}
+
+export interface ActivityRecordStats {
+  total: number;
+  today: number;
+  this_week: number;
+  this_month: number;
+  unique_users: number;
+  unique_teachers: number;
+  categories: number;
+}
+
+export interface ActivityRecord {
+  id: number;
+  title: string;
+  category: string | null;
+  user_id: number | null;
+  booking_id: number | null;
+  service_id: number | null;
+  subject_id: number | null;
+  teacher_id: number | null;
+  language_id: number | null;
+  course_id: number | null;
+  session_type: string | null;
+  sessions_count: number | null;
+  data: any;
+  user?: { id: number; first_name: string; last_name: string };
+  teacher?: { id: number; first_name: string; last_name: string };
+  booking?: { id: number; booking_reference: string };
+  service?: { id: number; name_en: string; name_ar: string };
+  subject?: { id: number; name_en: string; name_ar: string };
+  language?: { id: number; name_en: string; name_ar: string };
+  course?: { id: number; name_en: string; name_ar: string };
+  created_at: string;
+  updated_at: string;
 }
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use App\Models\Payout;
 use Illuminate\Http\Request;
 use App\Models\UserPaymentMethod;
 use App\Models\PaymentMethod;
@@ -122,6 +123,14 @@ class UserPaymentMethodWebController extends Controller
     {
         $user = $request->user();
         $method = UserPaymentMethod::where('id', $id)->where('user_id', $user->id)->firstOrFail();
+
+        $hasPayouts = Payout::where('payment_method_id', $id)->exists();
+        if ($hasPayouts) {
+            return redirect()->back()->with('error', app()->getLocale() == 'ar'
+                ? 'لا يمكن حذف طريقة الدفع هذه لأنها مرتبطة بعمليات سحب سابقة'
+                : 'Cannot delete this payment method because it is linked to existing payouts');
+        }
+
         $method->delete();
 
         return redirect()->back()->with('success', app()->getLocale() == 'ar' ? 'تم حذف طريقة الدفع بنجاح' : 'Payment method deleted successfully');

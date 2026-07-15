@@ -18,3 +18,6 @@ export * from './TermsTab';
 export * from './PackagesTab';
 export * from './UserProfileModal';
 export * from './AdminPaymentsTab';
+export * from './ApiAnalyticsTab';
+export * from './ActivityRecordsTab';
+export * from './SystemLogsTab';

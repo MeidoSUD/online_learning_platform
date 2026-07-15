@@ -88,7 +88,8 @@ import {
   AdminUser, AdminTeacher, AdminBooking, AdminDispute, PayoutRequest, Service,
   Ad, AdPayload, AdminService, AdminOrder, TeacherApplication, PlatformPercentage,
   RevenueAnalytics, CalculatorResults, AppConfig, AppVersion, MaintenanceMode,
-   TermsConditions, TermsConditionsPayload, SessionsPackage, UserFullProfile, AdminPayment
+   TermsConditions, TermsConditionsPayload, SessionsPackage, UserFullProfile, AdminPayment,
+  ApiAnalyticsStats, ApiStatistic, SystemLogEntry, ActivityRecord, ActivityRecordStats, ActivityRecordGroupedStats
 } from '../Utils/types';
 
 export type {
@@ -99,7 +100,8 @@ export type {
   AdminUser, AdminTeacher, AdminBooking, AdminDispute, PayoutRequest, Service,
   Ad, AdPayload, AdminService, AdminOrder, TeacherApplication, PlatformPercentage,
   RevenueAnalytics, CalculatorResults, AppConfig, AppVersion, MaintenanceMode,
-  TermsConditions, TermsConditionsPayload, SessionsPackage, UserFullProfile, AdminPayment
+  TermsConditions, TermsConditionsPayload, SessionsPackage, UserFullProfile, AdminPayment,
+  ApiAnalyticsStats, ApiStatistic, SystemLogEntry, ActivityRecord, ActivityRecordStats, ActivityRecordGroupedStats
 };
 
 export const AUTH_SESSION_EXPIRED = 'auth:session-expired';
@@ -524,6 +526,38 @@ export const adminService = {
   },
   getPaymentDetails: (id: number) => fetchWithAuth(`/admin/payments/${id}`).then(res => res.data),
   reconcilePayment: (id: number) => fetchWithAuth(`/admin/payments/${id}/reconcile`, { method: 'POST' }),
+
+  // API Analytics
+  getApiAnalytics: (): Promise<{ data: ApiAnalyticsStats }> =>
+    fetchWithAuth('/admin/analytics'),
+  getApiAnalyticsRecords: (params: Record<string, string | number> = {}) => {
+    const query = new URLSearchParams(params as any).toString();
+    return fetchWithAuth(`/admin/analytics/records${query ? `?${query}` : ''}`);
+  },
+
+  // System Logs
+  getSystemLogs: (params: Record<string, string | number> = {}) => {
+    const query = new URLSearchParams(params as any).toString();
+    return fetchWithAuth(`/admin/system-logs${query ? `?${query}` : ''}`);
+  },
+  getSystemLog: (id: number) => fetchWithAuth(`/admin/system-logs/${id}`),
+  deleteSystemLog: (id: number) => fetchWithAuth(`/admin/system-logs/${id}`, { method: 'DELETE' }),
+  clearSystemLogs: () => fetchWithAuth('/admin/system-logs', { method: 'DELETE' }),
+
+  // Activity Records
+  getActivityRecordsStats: () => fetchWithAuth('/admin/activity-records/stats'),
+  getActivityRecordsGroupedStats: () => fetchWithAuth('/admin/activity-records/grouped-stats'),
+  getActivityRecords: (params: Record<string, string | number> = {}) => {
+    const query = new URLSearchParams(params as any).toString();
+    return fetchWithAuth(`/admin/activity-records${query ? `?${query}` : ''}`);
+  },
+  getActivityRecord: (id: number) => fetchWithAuth(`/admin/activity-records/${id}`),
+  createActivityRecord: (data: Record<string, any>) =>
+    fetchWithAuth('/admin/activity-records', { method: 'POST', body: JSON.stringify(data) }),
+  updateActivityRecord: (id: number, data: Record<string, any>) =>
+    fetchWithAuth(`/admin/activity-records/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteActivityRecord: (id: number) => fetchWithAuth(`/admin/activity-records/${id}`, { method: 'DELETE' }),
+  clearActivityRecords: () => fetchWithAuth('/admin/activity-records', { method: 'DELETE' }),
 };
 
 export const adsService = {

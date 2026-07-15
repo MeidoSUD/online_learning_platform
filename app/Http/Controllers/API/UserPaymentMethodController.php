@@ -15,7 +15,7 @@ class UserPaymentMethodController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $methods = UserPaymentMethod::where('user_id', $user->id)->with('paymentMethod' , 'banks')->get();
+        $methods = UserPaymentMethod::where('user_id', $user->id)->with('paymentMethod', 'banks')->get();
         return response()->json(['data' => $methods]);
     }
 
@@ -35,7 +35,12 @@ class UserPaymentMethodController extends Controller
                 'is_default' => 'sometimes|boolean'
             ]);
             $data = $request->only([
-                'payment_method_id', 'bank_id', 'account_number', 'account_holder_name', 'iban', 'is_default'
+                'payment_method_id',
+                'bank_id',
+                'account_number',
+                'account_holder_name',
+                'iban',
+                'is_default'
             ]);
         } elseif ($user->role->name_key === 'student') {
             $request->validate([
@@ -49,13 +54,28 @@ class UserPaymentMethodController extends Controller
                 'is_default' => 'sometimes|boolean'
             ]);
             $data = $request->only([
-                'payment_method_id', 'card_brand', 'card_number', 'card_holder_name', 'card_cvc', 'card_expiry_month', 'card_expiry_year', 'is_default'
+                'payment_method_id',
+                'card_brand',
+                'card_number',
+                'card_holder_name',
+                'card_cvc',
+                'card_expiry_month',
+                'card_expiry_year',
+                'is_default'
             ]);
         } else {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
         $data['user_id'] = $user->id;
+
+        $existingCount = UserPaymentMethod::where('user_id', $user->id)->count();
+        if ($existingCount === 0) {
+            $data['is_default'] = true;
+        } elseif (!empty($data['is_default'])) {
+            UserPaymentMethod::where('user_id', $user->id)->update(['is_default' => false]);
+        }
+
         $method = UserPaymentMethod::create($data);
         Log::info('Payment method added', ['user_id' => $user->id, 'method_id' => $method->id]);
         return response()->json(['data' => $method, 'message' => 'Payment method added']);
@@ -76,7 +96,11 @@ class UserPaymentMethodController extends Controller
                 'is_default' => 'sometimes|boolean'
             ]);
             $data = $request->only([
-                'bank_id', 'account_number', 'account_holder_name', 'iban', 'is_default'
+                'bank_id',
+                'account_number',
+                'account_holder_name',
+                'iban',
+                'is_default'
             ]);
         } elseif ($user->role->name_key === 'student') {
             $request->validate([
@@ -89,7 +113,13 @@ class UserPaymentMethodController extends Controller
                 'is_default' => 'sometimes|boolean'
             ]);
             $data = $request->only([
-                'card_brand', 'card_number', 'card_holder_name', 'card_cvc', 'card_expiry_month', 'card_expiry_year', 'is_default'
+                'card_brand',
+                'card_number',
+                'card_holder_name',
+                'card_cvc',
+                'card_expiry_month',
+                'card_expiry_year',
+                'is_default'
             ]);
         } else {
             return response()->json(['error' => 'Unauthorized'], 403);
@@ -131,6 +161,6 @@ class UserPaymentMethodController extends Controller
         $method->is_default = true;
         $method->save();
 
-        return response()->json(['data' => $method, 'message' => 'success'] );
+        return response()->json(['data' => $method, 'message' => 'success']);
     }
 }

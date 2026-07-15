@@ -182,8 +182,11 @@ class TeacherWalletController extends Controller
         DB::beginTransaction();
 
         try {
+            $existingCount = UserPaymentMethod::where('user_id', $teacher->id)->count();
+            $isDefault = $existingCount === 0 ? true : ($request->is_default ?? false);
+
             // If this is set as default, unset other defaults
-            if ($request->is_default) {
+            if ($isDefault) {
                 UserPaymentMethod::where('user_id', $teacher->id)
                     ->update(['is_default' => false]);
             }
@@ -197,7 +200,7 @@ class TeacherWalletController extends Controller
                 'account_number' => $request->account_number,
                 'iban' => $request->iban,
                 'swift_code' => $request->swift_code,
-                'is_default' => $request->is_default ?? false,
+                'is_default' => $isDefault,
             ]);
 
             DB::commit();
