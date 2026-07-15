@@ -13,7 +13,8 @@ class Review extends Model
         'reviewed_id',
         'course_id',
         'rating',
-        'comment','session_id'
+        'comment',
+        'session_id'
     ];
 
     public function reviewer()

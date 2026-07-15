@@ -25,6 +25,7 @@ class TeacherInfo extends Model
     protected $casts = [
         'group_hour_price' => 'float',
         'individual_hour_price' => 'float',
+        'package_on_off' => 'boolean',
     ];
 
     protected static function boot()

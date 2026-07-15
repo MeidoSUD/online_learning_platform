@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Models\Payout;
 use App\Models\UserPaymentMethod;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -104,9 +105,17 @@ class UserPaymentMethodController extends Controller
     {
         $user = $request->user();
         $method = UserPaymentMethod::where('id', $id)->where('user_id', $user->id)->firstOrFail();
+
+        $hasPayouts = Payout::where('payment_method_id', $method->id)->exists();
+        if ($hasPayouts) {
+            return response()->json([
+                'error' => 'Cannot delete this payment method because it is referenced by payout records.'
+            ], 422);
+        }
+
         $method->delete();
 
-        return response()->json(['message' => 'success'] );
+        return response()->json(['message' => 'success']);
     }
 
     // Set a payment method as default
