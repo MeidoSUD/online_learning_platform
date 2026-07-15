@@ -49,9 +49,13 @@ class TeacherWalletService
         });
     }
 
-    public function debitTeacherForPayout(Payout $payout)
+    public function debitTeacherForPayout(Payout $payout, array $updateData = [])
     {
-        return DB::transaction(function () use ($payout) {
+        return DB::transaction(function () use ($payout, $updateData) {
+            if ($updateData) {
+                $payout->update($updateData);
+            }
+
             $wallet = Wallet::firstOrCreate(
                 ['user_id' => $payout->teacher_id],
                 ['balance' => 0]

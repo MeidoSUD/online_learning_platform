@@ -51,8 +51,14 @@ class PayoutAdminController extends Controller
         $data['status'] = 'approved';
         $data['processed_at'] = now();
 
-        $payout->update($data);
-        $walletService->debitTeacherForPayout($payout);
+        try {
+            $walletService->debitTeacherForPayout($payout, $data);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
 
         return response()->json(['success' => true]);
     }
