@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "fe51131366cc9c0019c33638ce4e3c81",
+    "content-hash": "788eace2a3a8e1a323549745d438a683",
     "packages": [
         {
             "name": "asm89/stack-cors",
@@ -3950,6 +3950,63 @@
                 "source": "https://github.com/jmespath/jmespath.php/tree/2.8.0"
             },
             "time": "2024-09-04T18:46:31+00:00"
+        },
+        {
+            "name": "nelc/laravel-nelc-xapi-integration",
+            "version": "dev-main",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/nelc/laravel-lrs-package.git",
+                "reference": "bf18b90773185286b0cd9467128ff5cddb50ab15"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/nelc/laravel-lrs-package/zipball/bf18b90773185286b0cd9467128ff5cddb50ab15",
+                "reference": "bf18b90773185286b0cd9467128ff5cddb50ab15",
+                "shasum": ""
+            },
+            "require": {
+                "guzzlehttp/guzzle": "^7.2 || ^7.8",
+                "php": "^7.4 || ^8.0"
+            },
+            "default-branch": true,
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Bzzix\\LaravelLrsPackage\\NelcXapiServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Bzzix\\LaravelLrsPackage\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Bzzix Team",
+                    "email": "info@bzzix.com",
+                    "role": "Developer"
+                }
+            ],
+            "description": "xAPI Integration with NELC (National Center for e-Learning) - Laravel Package",
+            "homepage": "https://github.com/bzzix/laravel-lrs-package",
+            "keywords": [
+                "LRS Laravel",
+                "NELC Saudi",
+                "NELC xAPI Integration",
+                "xAPI"
+            ],
+            "support": {
+                "issues": "https://github.com/nelc/laravel-lrs-package/issues",
+                "source": "https://github.com/nelc/laravel-lrs-package/tree/main"
+            },
+            "time": "2026-06-29T09:07:06+00:00"
         },
         {
             "name": "nesbot/carbon",
@@ -10680,7 +10737,9 @@
     ],
     "aliases": [],
     "minimum-stability": "dev",
-    "stability-flags": {},
+    "stability-flags": {
+        "nelc/laravel-nelc-xapi-integration": 20
+    },
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {

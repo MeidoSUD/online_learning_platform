@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Services\NelcXapiService;
 use Illuminate\Http\Request;
 use App\Models\Review;
 use App\Models\User;
@@ -56,6 +57,18 @@ class ReviewController extends Controller
             'rating'      => $request->rating,
             'comment'     => $request->comment,
         ]);
+
+        try {
+            if ($request->course_id) {
+                $course = Course::find($request->course_id);
+                if ($course) {
+                    $scaled = round($request->rating / 5, 2);
+                    app(NelcXapiService::class)->rated($request->user(), $course, $scaled, (float) $request->rating, $request->comment ?? '');
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('NELC xAPI: review hook failed', ['error' => $e->getMessage()]);
+        }
 
         return response()->json([
             'success' => true,

@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Lesson;
 use App\Models\Course;
+use App\Services\NelcXapiService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class LessonController extends Controller
 {
@@ -191,6 +193,28 @@ class LessonController extends Controller
                 'updated_at' => now()
             ]
         );
+
+        try {
+            $course = Course::find($lesson->course_id);
+            if ($course && $course->teacher) {
+                $nelc = app(NelcXapiService::class);
+                $lessonUrl = url('/') . '/lesson/' . $lesson->id;
+                $nelc->completedLesson($user, $course, $lessonUrl, $lesson->title ?? 'Lesson ' . $id, $lesson->duration_minutes ?? null);
+
+                $completedCount = DB::table('lesson_completions')
+                    ->where('user_id', $user->id)
+                    ->whereIn('lesson_id', function ($q) use ($lesson) {
+                        $q->select('id')->from('lessons')->where('course_id', $lesson->course_id);
+                    })->count();
+                $totalLessons = Lesson::where('course_id', $lesson->course_id)->count();
+                if ($totalLessons > 0) {
+                    $progress = round($completedCount / $totalLessons, 2);
+                    $nelc->progressed($user, $course, $progress, $progress >= 1.0);
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('NELC xAPI: lesson complete hook failed', ['error' => $e->getMessage()]);
+        }
 
         return response()->json([
             'success' => true,

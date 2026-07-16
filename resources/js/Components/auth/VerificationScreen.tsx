@@ -43,6 +43,7 @@ export const VerificationScreen: React.FC<VerificationScreenProps> = ({ userId, 
       if (response.token) {
         tokenService.setToken(response.token);
       }
+      localStorage.removeItem('user_session_data');
       showToast("Verification successful!", 'success');
       setTimeout(onSuccess, 1500);
     } catch (err: any) {

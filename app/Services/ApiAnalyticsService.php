@@ -53,7 +53,7 @@ class ApiAnalyticsService
         int $statusCode,
         float $responseTime,
         float $memoryUsage,
-        Platform $platform,
+        string $platform,
         bool $isAuthenticated,
         \Illuminate\Support\Carbon $timestamp,
     ): void {
@@ -87,9 +87,9 @@ class ApiAnalyticsService
         }
 
         $platformField = match ($platform) {
-            Platform::Android => 'android_hits',
+            Platform::ANDROID => 'android_hits',
             Platform::IOS => 'ios_hits',
-            Platform::Web => 'web_hits',
+            Platform::WEB => 'web_hits',
             default => 'other_hits',
         };
         $updates[$platformField] = DB::raw("{$platformField} + 1");
@@ -106,7 +106,7 @@ class ApiAnalyticsService
         int $statusCode,
         float $responseTime,
         float $memoryUsage,
-        Platform $platform,
+        string $platform,
         bool $isAuthenticated,
         \Illuminate\Support\Carbon $timestamp,
     ): void {
@@ -144,9 +144,9 @@ class ApiAnalyticsService
         }
 
         $data[match ($platform) {
-            Platform::Android => 'android_hits',
+            Platform::ANDROID => 'android_hits',
             Platform::IOS => 'ios_hits',
-            Platform::Web => 'web_hits',
+            Platform::WEB => 'web_hits',
             default => 'other_hits',
         }] = 1;
 
@@ -200,25 +200,25 @@ class ApiAnalyticsService
         return $segments[0] ?? null;
     }
 
-    public function detectPlatform(Request $request): Platform
+    public function detectPlatform(Request $request): string
     {
         $userAgent = $request->userAgent();
 
         if ($userAgent === null || $userAgent === '') {
-            return Platform::Other;
+            return Platform::OTHER;
         }
 
         $userAgent = strtolower($userAgent);
 
         if (str_contains($userAgent, 'android')) {
-            return Platform::Android;
+            return Platform::ANDROID;
         }
 
         if (str_contains($userAgent, 'ios') || str_contains($userAgent, 'ipad') || str_contains($userAgent, 'iphone')) {
             return Platform::IOS;
         }
 
-        return Platform::Web;
+        return Platform::WEB;
     }
 
     public function shouldExclude(string $uri): bool
@@ -249,7 +249,7 @@ class ApiAnalyticsService
 
     public function getTodayRequests(): int
     {
-        return (int) ApiStatistic::whereDate('date', today())->sum('hits');
+        return (int) ApiStatistic::where('date', today()->toDateString())->sum('hits');
     }
 
     public function getThisWeekRequests(): int
@@ -259,8 +259,8 @@ class ApiAnalyticsService
 
     public function getThisMonthRequests(): int
     {
-        return (int) ApiStatistic::whereYear('date', now()->year)
-            ->whereMonth('date', now()->month)
+        return (int) ApiStatistic::whereYear('date', (string) now()->year)
+            ->whereMonth('date', (string) now()->month)
             ->sum('hits');
     }
 

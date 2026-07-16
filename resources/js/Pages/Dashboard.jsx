@@ -41,11 +41,12 @@ export default function Dashboard() {
       if (cached) {
         try {
           const cachedData = JSON.parse(cached);
-          if (cachedData && cachedData.user) {
+          if (cachedData && cachedData.user && cachedData.token === token) {
             setUserData(cachedData);
             setIsLoading(false);
             return;
           }
+          localStorage.removeItem(USER_DATA_KEY);
         } catch (e) {
           localStorage.removeItem(USER_DATA_KEY);
         }

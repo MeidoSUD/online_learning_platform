@@ -1,0 +1,7 @@
+﻿{
+  "platform": "https://ewan-geniuses.com",
+  "endpoint": "https://lrs.nelc.gov.sa/lrs-license-stg/xapi/statements",
+  "authentication_type": "Basic",
+  "username": "ewangeniuses_com",
+  "password": "aHR0cHM6Ly9ld2FuLWdlbml1c2VzLmNvbW5lbGNwYXNz"
+}

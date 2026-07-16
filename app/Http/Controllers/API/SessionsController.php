@@ -8,6 +8,7 @@ use App\Models\Sessions;
 use Illuminate\Http\JsonResponse;
 use App\Services\AgoraService;
 use App\Services\TeacherWalletService;
+use App\Services\NelcXapiService;
 use Illuminate\Support\Facades\Log;
 use App\Models\User;
 use App\Helpers\NotificationHelper;
@@ -587,6 +588,35 @@ class SessionsController extends Controller
                     'session_id' => $session->id,
                     'error' => $e->getMessage()
                 ]);
+            }
+
+            try {
+                $student = $session->student;
+                $course = null;
+                if ($session->course_id) {
+                    $course = \App\Models\Course::find($session->course_id);
+                } elseif ($session->booking && $session->booking->course_id) {
+                    $course = \App\Models\Course::find($session->booking->course_id);
+                }
+                if ($student && $course && $course->teacher) {
+                    $nelc = app(NelcXapiService::class);
+                    $sessionUrl = url('/') . '/session/' . $session->id;
+                    $duration = $session->duration ? 'PT' . $session->duration . 'M0S' : 'PT30M0S';
+                    $nelc->attended($student, $course, $sessionUrl, $session->session_title ?? 'Session ' . $session->id, $duration);
+                    $nelc->watched($student, $course, $sessionUrl, $session->session_title ?? 'Session ' . $session->id, true, $duration);
+
+                    $completedSessions = $session->booking ? $session->booking->sessions_completed : 1;
+                    $totalSessions = $session->booking ? $session->booking->sessions_count : 1;
+                    if ($totalSessions > 0) {
+                        $progress = round($completedSessions / $totalSessions, 2);
+                        $nelc->progressed($student, $course, $progress, $progress >= 1.0);
+                        if ($progress >= 1.0) {
+                            $nelc->completedCourse($student, $course);
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::warning('NELC xAPI: session end hook failed', ['error' => $e->getMessage()]);
             }
         }
 

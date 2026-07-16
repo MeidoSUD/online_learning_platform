@@ -557,7 +557,7 @@ export const referenceService = {
 };
 
 export const getStorageUrl = (path: string | null | undefined) => {
-  if (!path) return '';
+  if (!path || typeof path !== 'string') return '';
   if (path.startsWith('http')) return path;
   const baseUrl = API_BASE_URL.replace(/\/api\/?$/, '');
   return `${baseUrl}/storage/${path.replace(/^\//, '')}`;

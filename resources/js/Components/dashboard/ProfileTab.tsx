@@ -119,7 +119,7 @@ export const ProfileTab: React.FC = () => {
   const flag = country?.flag || '🏳️';
   // Use full URL if provided, otherwise construct it
   const rawImage = isTeacher ? user.profile_image : user.profile?.profile_photo;
-  const imageUrl = rawImage?.startsWith('http') ? rawImage : getStorageUrl(rawImage);
+  const imageUrl = typeof rawImage === 'string' && rawImage.startsWith('http') ? rawImage : getStorageUrl(rawImage);
 
   const getRoleName = () => {
       switch(user.role_id) {

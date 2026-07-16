@@ -141,6 +141,7 @@ class AuthController extends Controller
                 'password' => 'required|string|min:8',
                 'gender' => 'nullable|in:male,female,other',
                 'nationality' => 'nullable|string|max:255',
+                'notional_id' => 'nullable|string|max:255',
                 'service_id' => 'nullable|exists:services,id',
                 'bio' => 'nullable|string|max:2000',
                 'certificate' => 'nullable|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:5120', // 5MB
@@ -212,6 +213,7 @@ class AuthController extends Controller
                 'phone_number' => $normalizedPhone,
                 'gender' => $validated['gender'] ?? null,
                 'nationality' => $validated['nationality'] ?? null,
+                'notional_id'=> $validated['notional_id'] ?? null,
                 'password' => Hash::make($validated['password']),
                 'role_id' => 3, // Teacher
                 'verified' => false,
@@ -408,6 +410,7 @@ class AuthController extends Controller
                 'password' => 'required|string|min:8',
                 'gender' => 'nullable|in:male,female,other',
                 'nationality' => 'nullable|string|max:255',
+                'notional_id' => 'nullable|string|max:255',
             ]);
 
             // Check if email already exists
@@ -475,6 +478,7 @@ class AuthController extends Controller
                 'phone_number' => $normalizedPhone,
                 'gender' => $validated['gender'] ?? null,
                 'nationality' => $validated['nationality'] ?? null,
+                'notional_id' => $validated['notional_id'] ?? null,
                 'password' => Hash::make($validated['password']),
                 'role_id' => 4, // Student
                 'verified' => false,
@@ -508,6 +512,7 @@ class AuthController extends Controller
                 "phone_number" => $user->phone_number,
                 "gender" => $user->gender,
                 "role_id" => $user->role_id,
+                "notional_id" => $user->notional_id,
             ];
 
             return response()->json([

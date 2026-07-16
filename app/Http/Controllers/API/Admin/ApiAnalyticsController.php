@@ -9,9 +9,11 @@ use Illuminate\Http\Request;
 
 class ApiAnalyticsController extends Controller
 {
-    public function __construct(
-        private readonly ApiAnalyticsService $analyticsService,
-    ) {
+    private ApiAnalyticsService $analyticsService;
+
+    public function __construct(ApiAnalyticsService $analyticsService)
+    {
+        $this->analyticsService = $analyticsService;
     }
 
     public function index()

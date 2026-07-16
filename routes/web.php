@@ -190,6 +190,61 @@ Route::get('/lang/{locale}', function ($locale) {
 
 
 // ==========================================
+// NELC xAPI Test Route
+// ==========================================
+Route::get('/nelc-test', function () {
+    $endpoint = config('lrs-nelc-xapi.endpoint');
+    $key = config('lrs-nelc-xapi.key');
+    $secret = config('lrs-nelc-xapi.secret');
+
+    if (!$endpoint || !$key || !$secret) {
+        return response()->json([
+            'success' => false,
+            'message' => 'NELC LRS not configured. Set LRS_ENDPOINT, LRS_USERNAME, LRS_PASSWORD in .env',
+            'config' => [
+                'endpoint' => $endpoint ? 'set' : 'missing',
+                'key' => $key ? 'set' : 'missing',
+                'secret' => $secret ? 'set' : 'missing',
+                'platform' => config('lrs-nelc-xapi.platform'),
+            ]
+        ], 200, [], JSON_PRETTY_PRINT);
+    }
+
+    // Try sending a test statement
+    try {
+        $xapi = new \Bzzix\LaravelLrsPackage\XapiIntegration();
+        $response = $xapi->Registered([
+            'name'              => '1234567890',
+            'email'             => 'test@example.com',
+            'courseId'          => url('/') . '/course/test',
+            'courseName'        => 'Test Course',
+            'courseDesc'        => 'Test course for NELC integration',
+            'instructor'        => 'Test Instructor',
+            'inst_email'        => 'instructor@test.com',
+            'learneMobileNo'    => '966501234567',
+            'learnerFullName'   => 'Test Student',
+            'learnerNationality'=> 'Saudi Arabia',
+            'lmsUrl'            => url('/'),
+            'duration'          => 'PT10H00M00S',
+        ]);
+
+        return response()->json([
+            'success' => $response['status'] === 200,
+            'nelc_response' => $response,
+            'config' => [
+                'endpoint' => $endpoint,
+                'platform' => config('lrs-nelc-xapi.platform'),
+            ]
+        ], 200, [], JSON_PRETTY_PRINT);
+    } catch (\Throwable $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage(),
+        ], 500, [], JSON_PRETTY_PRINT);
+    }
+});
+
+// ==========================================
 // Inertia SPA Routes (public website pages)
 // ==========================================
 Route::get('/', [PageController::class, 'home'])->name('home');

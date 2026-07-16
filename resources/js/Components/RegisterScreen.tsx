@@ -38,6 +38,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onSwitch, onVeri
     phone: '',
     password: '',
     confirmPassword: '',
+    notionalId: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -75,14 +76,17 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onSwitch, onVeri
     e.preventDefault();
     if (!validate()) return;
 
-    const apiData = {
+    const apiData: Record<string, any> = {
       first_name: formData.firstName,
       last_name: formData.lastName,
       email: formData.email,
       phone_number: `+966${formData.phone}`,
       password: formData.password,
-      role_id: roleId
+      role_id: roleId,
     };
+    if (formData.notionalId.trim()) {
+      apiData.notional_id = formData.notionalId.trim();
+    }
 
     setIsLoading(true);
     try {
@@ -258,6 +262,15 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onSwitch, onVeri
               value={formData.email}
               onChange={(e) => handleChange('email', e.target.value)}
               error={errors.email}
+            />
+
+            <Input
+              label={t.notionalId}
+              placeholder={t.optional}
+              icon={<User size={18} />}
+              value={formData.notionalId}
+              onChange={(e) => handleChange('notionalId', e.target.value)}
+              error={errors.notionalId}
             />
 
             <PhoneInput

@@ -11,9 +11,11 @@ use Illuminate\Http\Request;
 
 class ApiAnalyticsMiddleware
 {
-    public function __construct(
-        private readonly ApiAnalyticsService $analyticsService,
-    ) {
+    private ApiAnalyticsService $analyticsService;
+
+    public function __construct(ApiAnalyticsService $analyticsService)
+    {
+        $this->analyticsService = $analyticsService;
     }
 
     public function handle(Request $request, Closure $next): mixed
