@@ -296,14 +296,27 @@ export const teacherService = {
 
 export const studentService = {
   saveFcmToken: (token: string) => fetchWithAuth('/student/save-fcm-token', { method: 'POST', body: JSON.stringify({ fcm_token: token }) }),
-  getServices: () => fetchWithAuth('/student/services').then(extractArray),
+  getServices: () => fetchWithAuth('/services').then(extractArray),
   getSubjects: () => fetchWithAuth('/student/subjects').then(extractArray),
   getEducationLevels: () => fetchWithAuth('/education-levels').then(extractArray),
-  getClasses: (levelId: number) => fetchWithAuth(`/classes?education_level_id=${levelId}`).then(extractArray),
-  getReferenceSubjects: (classId: number) => fetchWithAuth(`/subjects?class_id=${classId}`).then(extractArray),
+  getClasses: (levelId: number) => fetchWithAuth(`/classes/${levelId}`).then(extractArray),
+  getReferenceSubjects: (classId: number) => fetchWithAuth(`/subjectsClasses/${classId}`).then(extractArray),
+  getLanguages: () => fetchWithAuth('/language-study').then(res => {
+    const data = Array.isArray(res.data) ? res.data : [];
+    return data.map((item: any) => item.language).filter(Boolean);
+  }),
   getTeachers: (filters: any = {}) => {
     const query = new URLSearchParams(filters).toString();
     return fetchWithAuth(`/student/teachers?${query}`).then(extractArray);
+  },
+  getTeachersPaginated: (filters: any = {}, page: number = 1) => {
+    const params: any = { ...filters, page };
+    Object.keys(params).forEach(k => (params[k] === '' || params[k] === undefined || params[k] === null) && delete params[k]);
+    const query = new URLSearchParams(params).toString();
+    return fetchWithAuth(`/student/teachers?${query}`).then(res => ({
+      teachers: Array.isArray(res.data) ? res.data : [],
+      pagination: res.pagination || { current_page: 1, last_page: 1, per_page: 10, total: 0 },
+    }));
   },
   getCourses: (filters: any = {}) => {
     const query = new URLSearchParams(filters).toString();
