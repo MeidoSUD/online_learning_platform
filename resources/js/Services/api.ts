@@ -318,9 +318,19 @@ export const studentService = {
       pagination: res.pagination || { current_page: 1, last_page: 1, per_page: 10, total: 0 },
     }));
   },
+  getCourseCategories: () => fetchWithAuth('/categories').then(res => res.data || []),
   getCourses: (filters: any = {}) => {
     const query = new URLSearchParams(filters).toString();
     return fetchWithAuth(`/student/courses?${query}`).then(extractArray);
+  },
+  getCoursesPaginated: (filters: any = {}, page: number = 1) => {
+    const params: any = { ...filters, page, per_page: filters.per_page || 10 };
+    Object.keys(params).forEach(k => (params[k] === '' || params[k] === undefined || params[k] === null) && delete params[k]);
+    const query = new URLSearchParams(params).toString();
+    return fetchWithAuth(`/student/courses?${query}`).then(res => ({
+      courses: Array.isArray(res.data) ? res.data : [],
+      pagination: res.pagination || { current_page: 1, last_page: 1, per_page: 10, total: 0 },
+    }));
   },
   createBooking: (data: BookingPayload) => fetchWithAuth('/student/booking', { method: 'POST', body: JSON.stringify(data) }),
   getBookings: () => fetchWithAuth('/student/booking').then(extractArray),

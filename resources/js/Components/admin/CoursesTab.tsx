@@ -221,7 +221,7 @@ export const CoursesTab: React.FC = () => {
                                         {course.category?.name || t.na}
                                     </td>
                                     <td className="px-6 py-4 font-bold text-primary">
-                                        {course.price} {t.sar}
+                                        {Number(course.price).toFixed(2)} {t.sar}
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${course.approval_status === 'approved' ? 'bg-green-100 text-green-700' :

@@ -239,7 +239,7 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({ teacher:
             <div className="w-px h-12 bg-slate-200" />
             <div className="flex flex-col items-center">
               <Clock size={24} className="text-blue-500" />
-              <span className="text-lg font-bold text-slate-900 mt-1">{individualHourPrice}</span>
+              <span className="text-lg font-bold text-slate-900 mt-1">{Number(individualHourPrice).toFixed(2)}</span>
               <span className="text-xs text-slate-500">{t.sar}</span>
             </div>
           </div>
@@ -316,13 +316,13 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({ teacher:
                   {teachIndividual && (
                     <div className="p-4 rounded-xl bg-primary text-white">
                       <p className="text-sm opacity-80">{language === 'ar' ? 'درس فردي' : 'Private Lesson'}</p>
-                      <p className="text-2xl font-bold mt-1">{individualHourPrice} <span className="text-sm font-normal opacity-80">{t.sar}</span></p>
+                      <p className="text-2xl font-bold mt-1">{Number(individualHourPrice).toFixed(2)} <span className="text-sm font-normal opacity-80">{t.sar}</span></p>
                     </div>
                   )}
                   {teachGroup && (
                     <div className="p-4 rounded-xl bg-green-500 text-white">
                       <p className="text-sm opacity-80">{language === 'ar' ? 'درس جماعي' : 'Group Lesson'}</p>
-                      <p className="text-2xl font-bold mt-1">{groupHourPrice} <span className="text-sm font-normal opacity-80">{t.sar}</span></p>
+                      <p className="text-2xl font-bold mt-1">{Number(groupHourPrice).toFixed(2)} <span className="text-sm font-normal opacity-80">{t.sar}</span></p>
                     </div>
                   )}
                 </div>
@@ -591,7 +591,7 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({ teacher:
                 </div>
                 <div>
                   <p className="font-bold text-slate-900">{fullName}</p>
-                  <p className="text-sm text-slate-500">{individualHourPrice} {t.sar}{t.perHour}</p>
+                  <p className="text-sm text-slate-500">{Number(individualHourPrice).toFixed(2)} {t.sar}{t.perHour}</p>
                 </div>
               </div>
 

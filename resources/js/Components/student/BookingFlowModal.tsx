@@ -281,7 +281,7 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
     switch(step) {
       case 1: return "Next: Select Time";
       case 2: return "Next: Payment";
-      case 3: return `Confirm & Pay ${teacher.individual_hour_price} ${t.sar}`;
+      case 3: return `Confirm & Pay ${Number(teacher.individual_hour_price).toFixed(2)} ${t.sar}`;
       default: return "";
     }
   };

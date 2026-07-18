@@ -262,7 +262,7 @@ export const TeacherCoursesTab: React.FC<TeacherCoursesTabProps> = ({ user }) =>
                                         </div>
 
                                         <div className="flex items-center justify-between pt-4 border-t border-slate-50">
-                                            <span className="text-lg font-bold text-primary">{course.price} <span className="text-xs font-normal text-slate-400">{t.sar}</span></span>
+                                            <span className="text-lg font-bold text-primary">{Number(course.price).toFixed(2)} <span className="text-xs font-normal text-slate-400">{t.sar}</span></span>
 
                                             <div className="flex items-center">
                                                 {isConfirming ? (

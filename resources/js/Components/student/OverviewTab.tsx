@@ -167,7 +167,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
                   <p className="text-sm text-slate-500 mb-3 truncate">{subjectTitle}</p>
                   <div className="flex items-center justify-between pt-3 border-t border-slate-50">
                     <span className="text-sm font-semibold text-primary">
-                      {price} {t.sar}<span className="text-slate-400 text-xs font-normal">{t.perHour}</span>
+                      {Number(price).toFixed(2)} {t.sar}<span className="text-slate-400 text-xs font-normal">{t.perHour}</span>
                     </span>
                     <ChevronRight size={18} className={`text-slate-300 group-hover:text-primary transition-colors ${direction === 'rtl' ? 'rotate-180' : ''}`} />
                   </div>
@@ -208,7 +208,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
                     <span>{course.course_type}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-lg font-bold text-primary">{course.price} {t.sar}</span>
+                    <span className="text-lg font-bold text-primary">{Number(course.price).toFixed(2)} {t.sar}</span>
                     <Button variant="outline" className="h-9 text-xs px-3" onClick={() => onNavigate('courses')}>View</Button>
                   </div>
                 </div>
