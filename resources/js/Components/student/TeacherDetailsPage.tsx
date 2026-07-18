@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
 import { Star, Clock, Users, School, Copy, Check, BookOpen, Globe, Award, MessageSquare, Heart, ArrowLeft, Share2, Loader2, Calendar } from 'lucide-react';
-import { studentService, getStorageUrl } from '../../Services/api';
+import { studentService, getStorageUrl, Session } from '../../Services/api';
+import { SessionDetailsModal } from './SessionDetailsModal';
 import { COUNTRIES } from '../../Utils/constants';
 
 interface TeacherDetailsPageProps {
@@ -44,7 +45,26 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({ teacher:
   const [favorited, setFavorited] = useState(teacherProp?.has_favorited ?? false);
   const [copied, setCopied] = useState(false);
   const [showBooking, setShowBooking] = useState(false);
+  const [selectedSession, setSelectedSession] = useState<any>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [joining, setJoining] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const openSessionDetails = (session: any) => {
+    setSelectedSession(session);
+    setModalOpen(true);
+  };
+
+  const handleJoinSession = async (sessionId: number) => {
+    setJoining(true);
+    try {
+      await studentService.joinSession(sessionId);
+    } catch (e: any) {
+      alert(e.message || (language === 'ar' ? 'فشل الانضمام للجلسة' : 'Failed to join session'));
+    } finally {
+      setJoining(false);
+    }
+  };
 
   const profile = teacherProp?.profile || {};
   const profileImage = profile.profile_photo || teacherProp?.profile_image || null;
@@ -420,26 +440,92 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({ teacher:
                 const subjectName = language === 'ar'
                   ? (s.subject?.name_ar || s.subject_name_ar || '')
                   : (s.subject?.name_en || s.subject_name_en || '');
+                const teacherName = s.teacher?.name || (language === 'ar' ? 'غير معروف' : 'Unknown');
+                const durationMs = Date.parse(`1970-01-01T${s.end_time || '00:00'}`) - Date.parse(`1970-01-01T${s.start_time || '00:00'}`);
+                const durationMin = Math.round(durationMs / 60000);
+                const durationStr = durationMin >= 60
+                  ? `${Math.floor(durationMin / 60)}h ${durationMin % 60}m`
+                  : `${durationMin}m`;
+                const statusColors: Record<string, { bg: string, text: string, label: string }> = {
+                  completed: { bg: 'from-green-500 to-emerald-600', text: 'text-green-700', label: language === 'ar' ? 'مكتمل' : 'Completed' },
+                  ended: { bg: 'from-green-500 to-emerald-600', text: 'text-green-700', label: language === 'ar' ? 'منتهي' : 'Ended' },
+                  live: { bg: 'from-red-500 to-rose-600', text: 'text-red-700', label: language === 'ar' ? 'مباشر' : 'Live' },
+                  cancelled: { bg: 'from-gray-400 to-gray-500', text: 'text-gray-500', label: language === 'ar' ? 'ملغي' : 'Cancelled' },
+                };
+                const statusInfo = statusColors[s.status] || { bg: 'from-blue-500 to-indigo-600', text: 'text-blue-700', label: language === 'ar' ? 'مجدول' : 'Scheduled' };
+                const statusLabel = s.status_label || statusInfo.label;
+                const statusColorClass = statusInfo.text;
                 return (
-                  <div key={session.id || idx} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-                    <div className="bg-gradient-to-br from-primary to-blue-600 px-4 py-3 flex items-center gap-3">
-                      <Clock size={16} className="text-white" />
+                  <div key={session.id || idx} onClick={() => openSessionDetails(s)} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow cursor-pointer">
+                    {/* Time Header with Gradient */}
+                    <div className={`bg-gradient-to-br ${statusInfo.bg} px-4 py-3 flex items-center gap-3`}>
+                      <div className="p-1.5 rounded-lg bg-white/20">
+                        <Clock size={16} className="text-white" />
+                      </div>
                       <span className="text-white text-sm font-bold">
                         {formatTime(s.start_time)} - {formatTime(s.end_time)}
                       </span>
-                      <span className="ml-auto text-white/80 text-xs">{formatDate(s.session_date)}</span>
+                      <div className="ml-auto px-2.5 py-1 rounded-xl bg-white/20 border border-white/20 flex items-center gap-1.5">
+                        <Calendar size={12} className="text-white" />
+                        <span className="text-white/90 text-xs font-semibold">{formatDate(s.session_date)}</span>
+                      </div>
                     </div>
+
+                    {/* Content */}
                     <div className="p-4">
-                      <h4 className="font-bold text-slate-900">{subjectName || (language === 'ar' ? 'جلسة' : 'Session')}</h4>
-                      <div className="flex items-center gap-2 mt-2">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          s.status === 'completed' || s.status === 'ended' ? 'bg-green-100 text-green-700' :
-                          s.status === 'live' ? 'bg-red-100 text-red-700' :
-                          s.status === 'cancelled' ? 'bg-red-50 text-red-500' :
-                          'bg-blue-100 text-blue-700'
-                        }`}>
-                          {s.status || (language === 'ar' ? 'مجدول' : 'Scheduled')}
+                      {/* Subject Name + Duration + Status */}
+                      <div className="flex items-center gap-2">
+                        <h4 className="flex-1 font-bold text-lg text-primary truncate">
+                          {subjectName || (language === 'ar' ? 'جلسة' : 'Session')}
+                        </h4>
+                        {/* Duration Badge */}
+                        <span className="px-2.5 py-1 rounded-lg bg-primary/10 border border-primary/20 text-primary text-xs font-bold flex items-center gap-1 whitespace-nowrap">
+                          <Clock size={12} />
+                          {durationStr}
                         </span>
+                        {/* Status Badge */}
+                        <span className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap ${
+                          s.status === 'completed' || s.status === 'ended' ? 'bg-green-50 text-green-700' :
+                          s.status === 'live' ? 'bg-red-50 text-red-700' :
+                          s.status === 'cancelled' ? 'bg-gray-100 text-gray-500' :
+                          'bg-blue-50 text-blue-700'
+                        }`}>
+                          {statusLabel}
+                        </span>
+                      </div>
+
+                      {/* Teacher Info & Action */}
+                      <div className="mt-3 p-3 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-full bg-slate-200 flex items-center justify-center shrink-0">
+                          <svg className="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] text-slate-500">{language === 'ar' ? 'المدرس' : 'Teacher'}</p>
+                          <p className="text-sm font-semibold text-slate-800 truncate">{teacherName}</p>
+                        </div>
+
+                        {/* Action */}
+                        {(s.status === 'completed' || s.status === 'ended') ? (
+                          <span className="px-3 py-1.5 rounded-lg bg-slate-200 text-slate-600 text-xs font-bold flex items-center gap-1 whitespace-nowrap">
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            {language === 'ar' ? 'منتهية' : 'Finished'}
+                          </span>
+                        ) : s.status === 'live' ? (
+                          <button className="px-4 py-1.5 rounded-lg bg-primary text-white text-xs font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors whitespace-nowrap">
+                            {language === 'ar' ? 'انضمام' : 'Join'}
+                          </button>
+                        ) : (
+                          <span className="px-3 py-1.5 rounded-lg bg-orange-50 border border-orange-200 text-orange-700 text-xs font-bold flex items-center gap-1 whitespace-nowrap">
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            {language === 'ar' ? 'قادمة' : 'Upcoming'}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -529,6 +615,15 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({ teacher:
           </div>
         </div>
       )}
+
+      {/* Session Details Modal */}
+      <SessionDetailsModal
+        session={selectedSession}
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onJoinSession={handleJoinSession}
+        joining={joining}
+      />
     </div>
   );
 };

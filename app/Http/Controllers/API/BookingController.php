@@ -2014,6 +2014,57 @@ class BookingController extends Controller
         }
     }
 
+    public function mySessions(Request $request, $teacherId): JsonResponse
+    {
+        $studentId = auth()->id();
+        $perPage = $request->get('per_page', 10);
+        $sessions = Sessions::with(['teacher:id,first_name,last_name,email','student:id,first_name,last_name,email','booking'])
+            ->where('student_id', $studentId)
+            ->where('teacher_id', $teacherId)
+            ->orderByDesc('session_date')
+            ->orderByDesc('start_time')
+            ->paginate($perPage);
+        $transformed = $sessions->through(function ($session) {
+            $subjectData = null;
+            if ($session->booking) {
+                if ($session->booking->course) {
+                    $subjectData = ['id' => $session->booking->course->id, 'name' => $session->booking->course->name, 'course_id' => $session->booking->course->id];
+                } elseif (isset($session->booking->subject_id)) {
+                    $subject = \App\Models\Subject::find($session->booking->subject_id);
+                    if ($subject) $subjectData = ['id' => $subject->id, 'name_en' => $subject->name_en, 'name_ar' => $subject->name_ar];
+                }
+            }
+            $rd = $session->session_date;
+            try {
+                if ($rd instanceof \Carbon\Carbon) { $sf = $rd->format('Y-m-d'); $dn = $rd->dayOfWeek; $dname = $rd->format('l'); }
+                else { $dt = \Carbon\Carbon::parse((string)$rd); $sf = $dt->format('Y-m-d'); $dn = $dt->dayOfWeek; $dname = $dt->format('l'); }
+            } catch (\Exception $e) {
+                $sf = substr((string)$rd, 0, 10);
+                try { $dt = \Carbon\Carbon::parse($sf); $dn = $dt->dayOfWeek; $dname = $dt->format('l'); } catch (\Exception $ex) { $dn = null; $dname = null; }
+            }
+            return [
+                'id' => $session->id, 'booking_id' => $session->booking_id, 'chat_room_id' => $session->chat_room_id,
+                'session_number' => $session->session_number, 'session_title' => $session->session_title,
+                'session_date' => $sf, 'day_name' => $dname, 'day_number' => $dn,
+                'start_time' => $session->start_time instanceof \Carbon\Carbon ? $session->start_time->format('H:i:s') : $session->start_time,
+                'end_time' => $session->end_time instanceof \Carbon\Carbon ? $session->end_time->format('H:i:s') : $session->end_time,
+                'duration' => $session->duration, 'status' => $session->status,
+                'teacher' => ['id' => $session->teacher->id, 'name' => $session->teacher->first_name.' '.$session->teacher->last_name, 'email' => $session->teacher->email],
+                'student' => ['id' => $session->student->id, 'name' => $session->student->first_name.' '.$session->student->last_name, 'email' => $session->student->email],
+                'meeting' => ['meeting_id' => $session->meeting_id, 'join_url' => $session->join_url, 'host_url' => $session->host_url],
+                'subject' => $subjectData,
+                'booking' => $session->booking ? ['id' => $session->booking->id, 'reference' => $session->booking->booking_reference, 'type' => $session->booking->session_type, 'total_sessions' => $session->booking->sessions_count, 'completed_sessions' => $session->booking->sessions_completed] : null,
+                'session_info' => ['started_at' => $session->started_at, 'ended_at' => $session->ended_at, 'teacher_notes' => $session->teacher_notes, 'homework' => $session->homework, 'materials_shared' => $session->materials_shared],
+                'ratings' => ['student_rating' => $session->student_rating, 'teacher_rating' => $session->teacher_rating],
+            ];
+        });
+        return response()->json([
+            'success' => true,
+            'data' => $transformed,
+            'pagination' => ['current_page' => $sessions->currentPage(), 'last_page' => $sessions->lastPage(), 'per_page' => $sessions->perPage(), 'total' => $sessions->total()],
+        ]);
+    }
+
     public function getTeacherStudents(Request $request): JsonResponse
     {
         $teacherId = auth()->id();
