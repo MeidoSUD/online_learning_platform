@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useLanguage } from '../Contexts/LanguageContext';
-import { Bell, LogOut, Settings, User, Globe, Menu, AlertCircle, CreditCard, FileText, Award, Layers } from 'lucide-react';
+import { Bell, LogOut, Settings, User, Globe, Menu, AlertCircle, CreditCard, FileText, Award, Layers, Video } from 'lucide-react';
 import { AuthResponse } from '../Services/api';
 import { Logo } from './Logo';
 
@@ -176,6 +176,9 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
                   {/* Student Specific Menu Items */}
                   {userRole === 'student' && (
                     <>
+                      <button onClick={() => { setActiveTab('sessions'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                        <Video size={16} /> {language === 'ar' ? 'جلساتي' : 'My Sessions'}
+                      </button>
                       <button onClick={() => { setActiveTab('wallet'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
                         <CreditCard size={16} /> {t.paymentMethods}
                       </button>

@@ -312,10 +312,17 @@ export const studentService = {
   processPayment: (data: any) => fetchWithAuth('/student/booking/pay', { method: 'POST', body: JSON.stringify(data) }),
   getSessions: () => fetchWithAuth('/student/sessions').then(extractArray),
   joinSession: (id: number) => fetchWithAuth(`/student/sessions/${id}/join`, { method: 'POST' }),
+  getTeacherSessions: (teacherId: number) => fetchWithAuth(`/student/teachers/${teacherId}/sessions`).then(extractArray),
   getSessionDetails: (id: number) => fetchWithAuth(`/student/sessions/${id}`),
   getPaymentMethods: () => fetchWithAuth('/student/payment-methods').then(extractArray),
   addPaymentMethod: (data: any) => fetchWithAuth('/student/payment-methods', { method: 'POST', body: JSON.stringify(data) }),
   deletePaymentMethod: (id: number) => fetchWithAuth(`/student/payment-methods/${id}`, { method: 'DELETE' }),
+  getSessionReview: (sessionId: number) => fetchWithAuth(`/sessions/${sessionId}/review`),
+  addTeacherReview: (teacherId: number, data: { rating: number; comment?: string; session_id: number }) =>
+    fetchWithAuth(`/teachers/${teacherId}/reviews`, { method: 'POST', body: JSON.stringify(data) }),
+  getSessionComplaint: (sessionId: number) => fetchWithAuth(`/student/complaints/by-session/${sessionId}`),
+  submitComplaint: (data: { session_id: number; teacher_id: number; reason: string }) =>
+    fetchWithAuth('/student/complaints', { method: 'POST', body: JSON.stringify(data) }),
   getCertificates: () => fetchWithAuth('/student/certificates').then(extractArray),
   downloadInvoice: (id: number) => {
     const token = tokenService.getToken();
