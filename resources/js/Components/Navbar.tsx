@@ -1,9 +1,9 @@
 
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useLanguage } from '../Contexts/LanguageContext';
-import { Bell, LogOut, Settings, User, Globe, Menu, AlertCircle, CreditCard, FileText, Award, Layers, Video } from 'lucide-react';
-import { AuthResponse } from '../Services/api';
+import { Bell, LogOut, Settings, User, Globe, Menu, AlertCircle, CreditCard, FileText, Award, Layers, Video, X, Check, School, CreditCard as PaymentIcon, BellRing, Clock, Loader2, Trash2 } from 'lucide-react';
+import { AuthResponse, notificationService, AppNotification } from '../Services/api';
 import { Logo } from './Logo';
 
 interface NavbarProps {
@@ -13,17 +13,96 @@ interface NavbarProps {
   setActiveTab: (tab: string) => void;
 }
 
+const NOTIF_ICONS: Record<string, { icon: any; color: string; bg: string }> = {
+  payment_success: { icon: PaymentIcon, color: 'text-green-600', bg: 'bg-green-50' },
+  payment: { icon: PaymentIcon, color: 'text-green-600', bg: 'bg-green-50' },
+  booking_received: { icon: School, color: 'text-blue-600', bg: 'bg-blue-50' },
+  new_lesson: { icon: Video, color: 'text-purple-600', bg: 'bg-purple-50' },
+  lesson_update: { icon: Video, color: 'text-purple-600', bg: 'bg-purple-50' },
+  reminder: { icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
+  application_received: { icon: User, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  application_accepted: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
+  application_rejected: { icon: X, color: 'text-red-600', bg: 'bg-red-50' },
+  system: { icon: BellRing, color: 'text-slate-600', bg: 'bg-slate-50' },
+};
+const DEFAULT_ICON = { icon: BellRing, color: 'text-slate-600', bg: 'bg-slate-50' };
+
+function getRelativeTime(dateStr: string, language: string): string {
+  const now = Date.now();
+  const d = new Date(dateStr).getTime();
+  const diff = now - d;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return language === 'ar' ? 'الآن' : 'Now';
+  if (mins < 60) return language === 'ar' ? `منذ ${mins} دقائق` : `${mins} min ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return language === 'ar' ? `منذ ${hours} ساعات` : `${hours} hours ago`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return language === 'ar' ? 'أمس' : 'Yesterday';
+  if (days < 7) return language === 'ar' ? `منذ ${days} أيام` : `${days} days ago`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 4) return language === 'ar' ? `منذ ${weeks} أسابيع` : `${weeks} weeks ago`;
+  const months = Math.floor(days / 30);
+  return language === 'ar' ? `منذ ${months} أشهر` : `${months} months ago`;
+}
+
 export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, setActiveTab }) => {
   const { t, language, setLanguage, direction } = useLanguage();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const [notifError, setNotifError] = useState<string | null>(null);
   
   const profileRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
 
   const user = userData.user.data;
   const userRole = userData.user.role;
+
+  const unreadCount = notifications.filter(n => !n.is_read).length;
+
+  const fetchNotifications = useCallback(async () => {
+    setNotifLoading(true);
+    setNotifError(null);
+    try {
+      const res = await notificationService.getAll();
+      const list = Array.isArray(res) ? res : (res.data || []);
+      setNotifications(list);
+    } catch (e: any) {
+      setNotifError(e.message || 'Failed to load');
+    } finally {
+      setNotifLoading(false);
+    }
+  }, []);
+
+  const handleMarkAsRead = async (id: number) => {
+    try {
+      await notificationService.markAsRead(id);
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+    } catch {}
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await notificationService.markAllAsRead();
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    } catch {}
+  };
+
+  const handleDelete = async (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await notificationService.delete(id);
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    } catch {}
+  };
+
+  useEffect(() => {
+    if (showNotifs && notifications.length === 0 && !notifLoading) {
+      fetchNotifications();
+    }
+  }, [showNotifs, fetchNotifications, notifications.length, notifLoading]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -129,19 +208,88 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
                 className="p-2 rounded-full text-slate-500 hover:bg-slate-100 transition-colors relative"
               >
                 <Bell size={20} />
-                <span className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white"></span>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 h-5 min-w-[20px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold border-2 border-white px-1">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
               </button>
 
               {showNotifs && (
-                <div className={`absolute top-12 w-80 bg-white rounded-xl shadow-lg ring-1 ring-black ring-opacity-5 py-1 ${direction === 'rtl' ? 'left-0' : 'right-0'}`}>
+                <div className={`absolute top-12 w-80 sm:w-96 bg-white rounded-xl shadow-lg ring-1 ring-black ring-opacity-5 overflow-hidden ${direction === 'rtl' ? 'left-0' : 'right-0'}`}>
                   <div className="px-4 py-3 border-b border-slate-100 flex justify-between items-center">
-                    <h3 className="text-sm font-semibold text-slate-900">{t.notifications}</h3>
-                    <button className="text-xs text-primary hover:underline">{t.markAllRead}</button>
+                    <h3 className="text-sm font-semibold text-slate-900">
+                      {t.notifications}
+                      {unreadCount > 0 && (
+                        <span className="ml-2 text-[10px] font-normal text-slate-400">
+                          {language === 'ar' ? `${unreadCount} غير مقروء` : `${unreadCount} unread`}
+                        </span>
+                      )}
+                    </h3>
+                    {unreadCount > 0 && (
+                      <button onClick={handleMarkAllAsRead} className="text-xs text-primary hover:underline">
+                        {t.markAllRead}
+                      </button>
+                    )}
                   </div>
-                  <div className="max-h-64 overflow-y-auto">
-                    <div className="px-4 py-8 text-center text-slate-500 text-sm">
-                      {t.noNotifications}
-                    </div>
+                  <div className="max-h-80 overflow-y-auto">
+                    {notifLoading ? (
+                      <div className="flex justify-center py-8">
+                        <Loader2 size={24} className="animate-spin text-primary" />
+                      </div>
+                    ) : notifError ? (
+                      <div className="px-4 py-8 text-center">
+                        <AlertCircle size={32} className="mx-auto text-slate-300 mb-2" />
+                        <p className="text-sm text-slate-500">{notifError}</p>
+                        <button onClick={fetchNotifications} className="mt-2 text-xs text-primary hover:underline">
+                          {language === 'ar' ? 'إعادة المحاولة' : 'Retry'}
+                        </button>
+                      </div>
+                    ) : notifications.length === 0 ? (
+                      <div className="px-4 py-8 text-center">
+                        <BellRing size={36} className="mx-auto text-slate-200 mb-3" />
+                        <p className="text-sm text-slate-500 font-medium">{t.noNotifications}</p>
+                        <p className="text-xs text-slate-400 mt-1">{t.notificationsEmpty}</p>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-slate-50">
+                        {notifications.map(n => {
+                          const iconDef = NOTIF_ICONS[n.type] || DEFAULT_ICON;
+                          const IconComp = iconDef.icon;
+                          return (
+                            <div
+                              key={n.id}
+                              onClick={() => !n.is_read && handleMarkAsRead(n.id)}
+                              className={`px-4 py-3 flex gap-3 cursor-pointer transition-colors hover:bg-slate-50 ${!n.is_read ? 'bg-blue-50/40' : ''}`}
+                            >
+                              <div className={`h-10 w-10 rounded-xl ${iconDef.bg} flex items-center justify-center shrink-0`}>
+                                <IconComp size={18} className={iconDef.color} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between gap-2">
+                                  <p className={`text-sm ${!n.is_read ? 'font-bold text-slate-900' : 'font-medium text-slate-600'}`}>
+                                    {n.title}
+                                  </p>
+                                  {!n.is_read && (
+                                    <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0 mt-1.5"></span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-slate-400 mt-0.5 line-clamp-2">{n.message}</p>
+                                <div className="flex items-center justify-between mt-1.5">
+                                  <span className="text-[10px] text-slate-400">{getRelativeTime(n.created_at, language)}</span>
+                                  <button
+                                    onClick={(e) => handleDelete(n.id, e)}
+                                    className="text-slate-300 hover:text-red-400 transition-colors"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

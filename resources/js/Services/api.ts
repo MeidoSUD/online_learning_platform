@@ -89,7 +89,8 @@ import {
   Ad, AdPayload, AdminService, AdminOrder, TeacherApplication, PlatformPercentage,
   RevenueAnalytics, CalculatorResults, AppConfig, AppVersion, MaintenanceMode,
    TermsConditions, TermsConditionsPayload, SessionsPackage, UserFullProfile, AdminPayment,
-  ApiAnalyticsStats, ApiStatistic, SystemLogEntry, ActivityRecord, ActivityRecordStats, ActivityRecordGroupedStats
+  ApiAnalyticsStats, ApiStatistic, SystemLogEntry, ActivityRecord, ActivityRecordStats, ActivityRecordGroupedStats,
+  AppNotification
 } from '../Utils/types';
 
 export type {
@@ -101,7 +102,8 @@ export type {
   Ad, AdPayload, AdminService, AdminOrder, TeacherApplication, PlatformPercentage,
   RevenueAnalytics, CalculatorResults, AppConfig, AppVersion, MaintenanceMode,
   TermsConditions, TermsConditionsPayload, SessionsPackage, UserFullProfile, AdminPayment,
-  ApiAnalyticsStats, ApiStatistic, SystemLogEntry, ActivityRecord, ActivityRecordStats, ActivityRecordGroupedStats
+  ApiAnalyticsStats, ApiStatistic, SystemLogEntry, ActivityRecord, ActivityRecordStats, ActivityRecordGroupedStats,
+  AppNotification
 };
 
 export const AUTH_SESSION_EXPIRED = 'auth:session-expired';
@@ -595,6 +597,17 @@ export const referenceService = {
   getServices: () => fetchWithAuth('/services').then(extractArray),
   getCategories: () => fetchWithAuth('/categories').then(extractArray),
   getBanks: () => fetchWithAuth('/banks').then(extractArray),
+};
+
+export const notificationService = {
+  getAll: (): Promise<{ data: AppNotification[] }> =>
+    fetchWithAuth('/notifications'),
+  markAsRead: (id: number) =>
+    fetchWithAuth(`/notifications/${id}/mark-as-read`, { method: 'POST' }),
+  markAllAsRead: () =>
+    fetchWithAuth('/notifications/mark-all-as-read', { method: 'POST' }),
+  delete: (id: number) =>
+    fetchWithAuth(`/notifications/${id}/delete`, { method: 'DELETE' }),
 };
 
 export const getStorageUrl = (path: string | null | undefined) => {

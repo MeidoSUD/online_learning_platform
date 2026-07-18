@@ -923,3 +923,14 @@ export interface ActivityRecord {
   updated_at: string;
 }
 
+export interface AppNotification {
+  id: number;
+  title: string;
+  message: string;
+  type: string;
+  is_read: boolean | number;
+  data?: any;
+  created_at: string;
+  read_at?: string | null;
+}
+
