@@ -327,6 +327,7 @@ export const studentService = {
   processPayment: (data: any) => fetchWithAuth('/student/booking/pay', { method: 'POST', body: JSON.stringify(data) }),
   getSessions: () => fetchWithAuth('/student/sessions').then(extractArray),
   joinSession: (id: number) => fetchWithAuth(`/student/sessions/${id}/join`, { method: 'POST' }),
+  toggleFavorite: (teacherId: number) => fetchWithAuth(`/student/favorites/${teacherId}/toggle`, { method: 'POST' }),
   getTeacherSessions: (teacherId: number) => fetchWithAuth(`/student/teachers/${teacherId}/sessions`).then(extractArray),
   getSessionDetails: (id: number) => fetchWithAuth(`/student/sessions/${id}`),
   getPaymentMethods: () => fetchWithAuth('/student/payment-methods').then(extractArray),

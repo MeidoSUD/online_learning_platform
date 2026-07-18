@@ -1,7 +1,7 @@
 import React from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
-import { Star, Clock, Heart, ShieldCheck } from 'lucide-react';
-import { getStorageUrl } from '../../Services/api';
+import { Star, Clock, Heart, ShieldCheck, Loader2 } from 'lucide-react';
+import { getStorageUrl, studentService } from '../../Services/api';
 import { COUNTRIES } from '../../Utils/constants';
 
 interface TeacherCardProps {
@@ -65,6 +65,7 @@ export const TeacherCard: React.FC<TeacherCardProps> = ({
 }) => {
   const { t, language } = useLanguage();
   const [favorited, setFavorited] = React.useState(teacher?.has_favorited ?? false);
+  const [favLoading, setFavLoading] = React.useState(false);
 
   const profile = teacher?.profile || {};
   const profileImage = profile.profile_photo || teacher?.profile_image || null;
@@ -84,11 +85,20 @@ export const TeacherCard: React.FC<TeacherCardProps> = ({
   const serviceCountStr = getServiceCount(teacher, language);
   const flag = getNationalityFlag(nationality);
 
-  const handleFavoriteClick = (e: React.MouseEvent) => {
+  const handleFavoriteClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const newState = !favorited;
-    setFavorited(newState);
-    onFavoriteToggle?.(teacher?.id, newState);
+    if (favLoading) return;
+    const prev = favorited;
+    setFavorited(!prev);
+    setFavLoading(true);
+    try {
+      await studentService.toggleFavorite(teacher?.id);
+      onFavoriteToggle?.(teacher?.id, !prev);
+    } catch {
+      setFavorited(prev);
+    } finally {
+      setFavLoading(false);
+    }
   };
 
   return (
@@ -124,12 +134,17 @@ export const TeacherCard: React.FC<TeacherCardProps> = ({
               )}
               <button
                 onClick={handleFavoriteClick}
-                className="ml-auto shrink-0 p-1 hover:scale-110 transition-transform"
+                disabled={favLoading}
+                className="ml-auto shrink-0 p-1 hover:scale-110 transition-transform disabled:opacity-50"
               >
-                <Heart
-                  size={18}
-                  className={favorited ? 'fill-red-400 text-red-400' : 'text-slate-300'}
-                />
+                {favLoading ? (
+                  <Loader2 size={18} className="animate-spin text-slate-400" />
+                ) : (
+                  <Heart
+                    size={18}
+                    className={favorited ? 'fill-red-400 text-red-400' : 'text-slate-300'}
+                  />
+                )}
               </button>
             </div>
 

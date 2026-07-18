@@ -43,6 +43,7 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({ teacher:
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [sessionsError, setSessionsError] = useState<string | null>(null);
   const [favorited, setFavorited] = useState(teacherProp?.has_favorited ?? false);
+  const [favLoading, setFavLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showBooking, setShowBooking] = useState(false);
   const [selectedSession, setSelectedSession] = useState<any>(null);
@@ -119,8 +120,18 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({ teacher:
     });
   };
 
-  const handleFavoriteClick = () => {
-    setFavorited(!favorited);
+  const handleFavoriteClick = async () => {
+    if (favLoading || !teacherProp?.id) return;
+    const prev = favorited;
+    setFavorited(!prev);
+    setFavLoading(true);
+    try {
+      await studentService.toggleFavorite(teacherProp.id);
+    } catch {
+      setFavorited(prev);
+    } finally {
+      setFavLoading(false);
+    }
   };
 
   const handleBook = () => {
@@ -541,9 +552,14 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({ teacher:
         <div className="max-w-3xl mx-auto flex items-center gap-3">
           <button
             onClick={handleFavoriteClick}
-            className="p-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors"
+            disabled={favLoading}
+            className="p-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors disabled:opacity-50"
           >
-            <Heart size={24} className={favorited ? 'fill-red-400 text-red-400' : 'text-slate-400'} />
+            {favLoading ? (
+              <Loader2 size={24} className="animate-spin text-slate-400" />
+            ) : (
+              <Heart size={24} className={favorited ? 'fill-red-400 text-red-400' : 'text-slate-400'} />
+            )}
           </button>
           <button
             onClick={handleBook}
