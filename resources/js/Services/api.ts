@@ -90,7 +90,8 @@ import {
   RevenueAnalytics, CalculatorResults, AppConfig, AppVersion, MaintenanceMode,
    TermsConditions, TermsConditionsPayload, SessionsPackage, UserFullProfile, AdminPayment,
   ApiAnalyticsStats, ApiStatistic, SystemLogEntry, ActivityRecord, ActivityRecordStats, ActivityRecordGroupedStats,
-  AppNotification
+  AppNotification, BooksModel, SavedCard, StudentSubscription, StudentPackage,
+  CheckoutResponse, PaymentStatusResponse, StudentOrder, BookingDetails
 } from '../Utils/types';
 
 export type {
@@ -103,7 +104,8 @@ export type {
   RevenueAnalytics, CalculatorResults, AppConfig, AppVersion, MaintenanceMode,
   TermsConditions, TermsConditionsPayload, SessionsPackage, UserFullProfile, AdminPayment,
   ApiAnalyticsStats, ApiStatistic, SystemLogEntry, ActivityRecord, ActivityRecordStats, ActivityRecordGroupedStats,
-  AppNotification
+  AppNotification, BooksModel, SavedCard, StudentSubscription, StudentPackage,
+  CheckoutResponse, PaymentStatusResponse, StudentOrder, BookingDetails
 };
 
 export const AUTH_SESSION_EXPIRED = 'auth:session-expired';
@@ -332,14 +334,60 @@ export const studentService = {
       pagination: res.pagination || { current_page: 1, last_page: 1, per_page: 10, total: 0 },
     }));
   },
-  createBooking: (data: BookingPayload) => fetchWithAuth('/student/booking', { method: 'POST', body: JSON.stringify(data) }),
+  // --- Booking API (matching Android app) ---
+  createBooking: (data: any) => fetchWithAuth('/student/booking', { method: 'POST', body: JSON.stringify(data) }),
   getBookings: () => fetchWithAuth('/student/booking').then(extractArray),
+  getBookingsPaginated: (status: string = 'all', page: number = 1, perPage: number = 10) => {
+    const query = new URLSearchParams();
+    if (status && status !== 'all') query.set('status', status);
+    query.set('page', String(page));
+    query.set('per_page', String(perPage));
+    return fetchWithAuth(`/student/booking?${query.toString()}`).then(res => ({
+      bookings: Array.isArray(res.data) ? res.data : [],
+      pagination: res.pagination || { current_page: 1, last_page: 1, per_page: 10, total: 0 },
+    }));
+  },
+  getBookingDetails: (bookingId: number) => fetchWithAuth(`/student/booking/${bookingId}`).then(res => res.data || res),
+  cancelBooking: (bookingId: number) =>
+    fetchWithAuth(`/student/booking/${bookingId}/cancel`, { method: 'PUT' }),
+  // --- Payment API (Moyasar checkout) ---
+  createCheckout: (data: { booking_id: number; currency?: string; payment_brand?: string; saved_card_id?: number; callback_url?: string }) =>
+    fetchWithAuth('/student/payments/checkout', { method: 'POST', body: JSON.stringify(data) }),
+  checkPaymentStatus: (data: { payment_id: string; save_card?: boolean }) =>
+    fetchWithAuth('/student/payments/status', { method: 'POST', body: JSON.stringify(data) }),
+  getSavedCards: () => fetchWithAuth('/student/payments/saved-cards').then(res => res.data?.saved_cards || []),
+  deleteSavedCard: (id: number) => fetchWithAuth(`/student/payments/saved-cards/${id}`, { method: 'DELETE' }),
+  setDefaultSavedCard: (id: number) => fetchWithAuth(`/student/payments/saved-cards/${id}/default`, { method: 'POST' }),
+  // --- Direct card payment (legacy / alternative) ---
   processPayment: (data: any) => fetchWithAuth('/student/booking/pay', { method: 'POST', body: JSON.stringify(data) }),
+  // --- Subscriptions (Packages) ---
+  getSubscriptions: () => fetchWithAuth('/student/subscriptions').then(res => res.data || []),
+  getSubscriptionDetails: (id: number) => fetchWithAuth(`/student/subscriptions/${id}`),
+  bookWithSubscription: (subscriptionId: number, data: { availability_slot_id: number; teacher_id: number; sessions_count: number }) =>
+    fetchWithAuth(`/student/subscriptions/${subscriptionId}/book`, { method: 'POST', body: JSON.stringify(data) }),
+  // --- Orders (Student requests for teachers) ---
+  getOrders: () => fetchWithAuth('/student/orders').then(res => res.data || []),
+  createOrder: (data: any) => fetchWithAuth('/student/orders', { method: 'POST', body: JSON.stringify(data) }),
+  updateOrder: (id: number, data: any) => fetchWithAuth(`/student/orders/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteOrder: (id: number) => fetchWithAuth(`/student/orders/${id}`, { method: 'DELETE' }),
+  getOrderApplications: (orderId: number) => fetchWithAuth(`/student/orders/${orderId}/applications`),
+  acceptApplication: (orderId: number, applicationId: number) =>
+    fetchWithAuth(`/student/orders/${orderId}/applications/${applicationId}/accept`, { method: 'POST' }),
+  // --- Course Enrollment ---
+  enrollCourse: (courseId: number, data: { availability_slot_id?: number; course_group_id?: number; note?: string }) =>
+    fetchWithAuth(`/student/courses/${courseId}/enroll`, { method: 'POST', body: JSON.stringify(data) }),
+  // --- Sessions ---
   getSessions: () => fetchWithAuth('/student/sessions').then(extractArray),
+  getSessionsPaginated: (page: number = 1, perPage: number = 15) =>
+    fetchWithAuth(`/student/sessions?page=${page}&per_page=${perPage}`).then(res => ({
+      sessions: Array.isArray(res.data) ? res.data : [],
+      pagination: res.pagination || { current_page: 1, last_page: 1, per_page: 15, total: 0 },
+    })),
   joinSession: (id: number) => fetchWithAuth(`/student/sessions/${id}/join`, { method: 'POST' }),
+  getChatToken: (sessionId: number) => fetchWithAuth(`/student/sessions/${sessionId}/chat-token`, { method: 'POST' }),
+  getSessionDetails: (id: number) => fetchWithAuth(`/student/sessions/${id}`),
   toggleFavorite: (teacherId: number) => fetchWithAuth(`/student/favorites/${teacherId}/toggle`, { method: 'POST' }),
   getTeacherSessions: (teacherId: number) => fetchWithAuth(`/student/teachers/${teacherId}/sessions`).then(extractArray),
-  getSessionDetails: (id: number) => fetchWithAuth(`/student/sessions/${id}`),
   getPaymentMethods: () => fetchWithAuth('/student/payment-methods').then(extractArray),
   addPaymentMethod: (data: any) => fetchWithAuth('/student/payment-methods', { method: 'POST', body: JSON.stringify(data) }),
   deletePaymentMethod: (id: number) => fetchWithAuth(`/student/payment-methods/${id}`, { method: 'DELETE' }),

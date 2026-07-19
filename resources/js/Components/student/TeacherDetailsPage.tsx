@@ -3,6 +3,7 @@ import { useLanguage } from '../../Contexts/LanguageContext';
 import { Star, Clock, Users, School, Copy, Check, BookOpen, Globe, Award, MessageSquare, Heart, ArrowLeft, Share2, Loader2, Calendar } from 'lucide-react';
 import { studentService, getStorageUrl, Session } from '../../Services/api';
 import { SessionDetailsModal } from './SessionDetailsModal';
+import { BookingFlowModal } from './BookingFlowModal';
 import { COUNTRIES } from '../../Utils/constants';
 
 interface TeacherDetailsPageProps {
@@ -571,66 +572,13 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({ teacher:
         </div>
       </div>
 
-      {/* Simple booking modal overlay */}
-      {showBooking && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center" onClick={() => setShowBooking(false)}>
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="font-bold text-lg">{language === 'ar' ? 'حجز موعد' : 'Book a Session'}</h3>
-              <button onClick={() => setShowBooking(false)} className="text-slate-400 hover:text-slate-600 text-xl">&times;</button>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
-                <div className="h-12 w-12 rounded-xl overflow-hidden bg-slate-100 shrink-0">
-                  {profileImage ? (
-                    <img src={getStorageUrl(profileImage)} alt={fullName} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-lg font-bold text-slate-400">{firstName?.charAt(0) || '?'}</div>
-                  )}
-                </div>
-                <div>
-                  <p className="font-bold text-slate-900">{fullName}</p>
-                  <p className="text-sm text-slate-500">{Number(individualHourPrice).toFixed(2)} {t.sar}{t.perHour}</p>
-                </div>
-              </div>
-
-              {availableTimes.length === 0 ? (
-                <p className="text-center py-8 text-slate-500">{language === 'ar' ? 'لا توجد أوقات متاحة حالياً' : 'No available times'}</p>
-              ) : (
-                availableTimes.map((day: any) => {
-                  const timeItems = day.time_slots || day.times || [];
-                  if (timeItems.length === 0) return null;
-                  return (
-                    <div key={day.id || day.day}>
-                      <p className="text-sm font-semibold text-slate-700 mb-2">{day.day}</p>
-                      <div className="flex flex-wrap gap-2">
-                        {timeItems.map((slot: any) => {
-                          const timeStr = typeof slot === 'string' ? slot : slot.time;
-                          return (
-                            <span key={slot.id || timeStr} className="px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-sm text-slate-600">
-                              {timeStr}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-
-            <div className="p-6 border-t border-slate-100">
-              <button
-                onClick={() => { setShowBooking(false); onBookingComplete(); }}
-                className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-colors"
-              >
-                {language === 'ar' ? 'متابعة الحجز' : 'Continue Booking'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Enhanced Booking Flow Modal */}
+      <BookingFlowModal
+        isOpen={showBooking}
+        onClose={() => setShowBooking(false)}
+        teacher={teacherProp}
+        serviceId={serviceId}
+      />
 
       {/* Session Details Modal */}
       <SessionDetailsModal

@@ -934,3 +934,166 @@ export interface AppNotification {
   read_at?: string | null;
 }
 
+// =====================================================
+// BOOKING SYSTEM - MATCHING ANDROID APP
+// =====================================================
+
+export interface BooksModel {
+  id: number;
+  reference: string;
+  teacher: {
+    id: number;
+    first_name: string;
+    last_name: string;
+    profile?: { profile_photo?: string | null };
+  };
+  subject?: { id: number; name_en: string; name_ar: string } | null;
+  course?: any | null;
+  session_info: {
+    type: string;
+    total_sessions: number;
+    completed_sessions: number;
+    remaining_sessions: number;
+    duration: string;
+  };
+  schedule: {
+    first_session_date: string;
+    first_session_time: string;
+    session_day?: string;
+    next_session_date?: string | null;
+  };
+  pricing: {
+    total_amount: string | number;
+    currency: string;
+    discount_applied?: boolean;
+  };
+  status: string;
+  booking_date: string;
+  can_cancel: boolean;
+  can_reschedule: boolean;
+}
+
+export interface SavedCard {
+  id: number;
+  card_display: string;
+  card_brand: string;
+  last4: string;
+  expiry: string;
+  is_expired: boolean;
+  is_default: boolean;
+  nickname?: string | null;
+  created_at: string;
+}
+
+export interface StudentSubscription {
+  id: number;
+  sessions_remaining: number;
+  sessions_used: number;
+  total_sessions: number;
+  bookings_count: number;
+  package_name_ar: string;
+  package_name_en: string;
+  total_paid: string;
+  status: string;
+  is_active: boolean;
+  start_date?: string;
+  expiry_date?: string;
+  bookings?: any[];
+}
+
+export interface StudentPackage {
+  id: number;
+  sessions_count: number;
+  discount_percentage: number;
+  name_ar: string;
+  name_en: string;
+  description_ar?: string;
+  description_en?: string;
+  price: string;
+  price_per_session: number;
+}
+
+export interface CheckoutResponse {
+  checkout_id: string;
+  payment_id: string;
+  redirect_url: string;
+  amount: number;
+  currency: string;
+}
+
+export interface PaymentStatusResponse {
+  payment_id: string;
+  status: string;
+  amount: number;
+  currency: string;
+  transaction_id: string;
+}
+
+export interface StudentOrder {
+  id: number;
+  subject_id: number;
+  subject?: { id: number; name_en: string; name_ar: string };
+  teacher_id?: number;
+  class_id?: number;
+  education_level_id?: number;
+  type: string;
+  min_price: string;
+  max_price: string;
+  status: string;
+  notes?: string;
+  order_type: string;
+  created_at: string;
+}
+
+export interface BookingDetails {
+  id: number;
+  reference: string;
+  status: string;
+  booking_date: string;
+  teacher: {
+    id: number;
+    name: string;
+    avatar?: string | null;
+    gender?: string;
+    nationality?: string;
+    phone?: string;
+    email?: string;
+  };
+  course?: any | null;
+  session_info: {
+    type: string;
+    total_sessions: number;
+    completed_sessions: number;
+    remaining_sessions: number;
+    session_duration: number;
+    first_session_date: string;
+    first_session_start_time: string;
+    first_session_end_time: string;
+  };
+  pricing: {
+    price_per_session: number;
+    subtotal: number;
+    discount_percentage: number;
+    discount_amount: number;
+    total_amount: number;
+    currency: string;
+  };
+  payment?: {
+    id: number;
+    status: string;
+    method: string;
+    transaction_reference: string;
+    paid_at?: string;
+  } | null;
+  sessions: any[];
+  special_requests?: string;
+  cancellation_reason?: string;
+  cancelled_at?: string;
+  actions: {
+    can_cancel: boolean;
+    can_reschedule: boolean;
+    can_review: boolean;
+    can_join_session: boolean;
+  };
+}
+
