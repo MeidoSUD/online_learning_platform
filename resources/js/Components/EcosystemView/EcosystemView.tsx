@@ -721,9 +721,9 @@ export const EcosystemView: React.FC<EcosystemViewProps> = ({ onSwitchToProfile 
                       transition={{ delay: i * 0.1 }}
                       className="flex flex-col items-end gap-1 md:gap-2 group/item"
                     >
-                      <p className="text-base md:text-xl lg:text-2xl font-bold flex items-center gap-2 md:gap-4 transition-all group-hover/item:text-brand-blue group-hover/item:translate-x-[-10px]">
-                          {language === 'ar' ? impact.ar : impact.en} <div className="w-3 h-0.5 md:w-4 md:h-0.5 bg-brand-green"/>
-                      </p>
+                      <div className="text-base md:text-xl lg:text-2xl font-bold flex items-center gap-2 md:gap-4 transition-all group-hover/item:text-brand-blue group-hover/item:translate-x-[-10px]">
+                          {language === 'ar' ? impact.ar : impact.en} <span className="inline-block w-3 h-0.5 md:w-4 md:h-0.5 bg-brand-green"/>
+                      </div>
                     </motion.div>
                   ))}
                 </div>

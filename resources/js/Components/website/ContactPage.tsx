@@ -24,9 +24,14 @@ export const ContactPage: React.FC = () => {
     <div className="min-h-screen bg-white" dir={direction}>
       <section className="pt-32 pb-20 bg-gradient-to-br from-slate-50 to-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h1 className="text-4xl font-bold text-slate-900 mb-4">{language === 'ar' ? 'اتصل بنا' : 'Contact Us'}</h1>
-            <p className="text-slate-500 text-lg">{language === 'ar' ? 'تواصل معنا لأي استفسار حول منتجاتنا وخدماتنا' : 'Get in touch with us for any inquiries about our products and services'}</p>
+          <div className="flex flex-col lg:flex-row items-center gap-12 mb-16">
+            <div className="flex-1 text-center lg:text-start">
+              <h1 className="text-4xl font-bold text-slate-900 mb-4">{language === 'ar' ? 'اتصل بنا' : 'Contact Us'}</h1>
+              <p className="text-slate-500 text-lg">{language === 'ar' ? 'تواصل معنا لأي استفسار حول منتجاتنا وخدماتنا' : 'Get in touch with us for any inquiries about our products and services'}</p>
+            </div>
+            <div className="flex-1">
+              <img src="/heros/contact_us_2.jpg" alt="Contact us" className="w-full max-w-md mx-auto rounded-3xl shadow-2xl" />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">

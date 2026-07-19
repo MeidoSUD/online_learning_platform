@@ -40,17 +40,24 @@ export const AboutPage: React.FC = () => {
     <div className="min-h-screen bg-white" dir={direction}>
       {/* Hero */}
       <section className="pt-32 pb-16 bg-gradient-to-br from-slate-50 to-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-sm font-semibold mb-6">
-            <Users size={14} />
-            {language === 'ar' ? 'فريق عمل إيوان' : 'Ewan Team'}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col lg:flex-row items-center gap-12">
+            <div className="flex-1 text-center lg:text-start">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-sm font-semibold mb-6">
+                <Users size={14} />
+                {language === 'ar' ? 'فريق عمل إيوان' : 'Ewan Team'}
+              </div>
+              <h1 className="text-4xl lg:text-5xl font-bold text-slate-900 mb-4">{language === 'ar' ? 'من نحن' : 'About Us'}</h1>
+              <p className="text-slate-500 max-w-3xl mx-auto lg:mx-0 text-lg leading-relaxed">
+                {language === 'ar'
+                  ? 'إيوان للتقنية المعلومات والتعليم هي شركة سعودية ناشئة متخصصة في تطوير حلول تعليمية رقمية مبتكرة. نؤمن بأن التعليم الجيد يجب أن يكون متاحاً للجميع.'
+                  : 'Ewan for Information Technology & Education is a Saudi startup specialized in developing innovative digital education solutions. We believe quality education should be accessible to all.'}
+              </p>
+            </div>
+            <div className="flex-1">
+              <img src="/heros/about_us.png" alt="About Ewan" className="w-full rounded-3xl shadow-2xl" />
+            </div>
           </div>
-          <h1 className="text-4xl lg:text-5xl font-bold text-slate-900 mb-4">{language === 'ar' ? 'من نحن' : 'About Us'}</h1>
-          <p className="text-slate-500 max-w-3xl mx-auto text-lg leading-relaxed">
-            {language === 'ar'
-              ? 'إيوان للتقنية المعلومات والتعليم هي شركة سعودية ناشئة متخصصة في تطوير حلول تعليمية رقمية مبتكرة. نؤمن بأن التعليم الجيد يجب أن يكون متاحاً للجميع.'
-              : 'Ewan for Information Technology & Education is a Saudi startup specialized in developing innovative digital education solutions. We believe quality education should be accessible to all.'}
-          </p>
         </div>
       </section>
 

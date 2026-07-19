@@ -50,7 +50,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onRegisterClic
                             <div className="absolute -inset-4 bg-gradient-to-r from-primary to-purple-600 rounded-full blur-3xl opacity-20"></div>
                             <div className="relative bg-white rounded-2xl shadow-2xl border border-slate-100 p-2">
                                 <img
-                                    src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&q=80&w=1200"
+                                    src="/heros/hero1.png"
                                     alt="Ewan learning"
                                     className="rounded-xl w-full object-cover h-[400px]"
                                 />

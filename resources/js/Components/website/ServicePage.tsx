@@ -55,17 +55,24 @@ export const ServicePage: React.FC = () => {
     <div className="min-h-screen bg-white" dir={direction}>
       {/* Hero */}
       <section className="pt-32 pb-20 bg-gradient-to-br from-slate-50 to-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-sm font-semibold mb-6">
-            <Sparkles size={14} />
-            {language === 'ar' ? 'كل ما تحتاج في مكان واحد' : 'Everything you need in one place'}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col lg:flex-row items-center gap-12">
+            <div className="flex-1 text-center lg:text-start">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-sm font-semibold mb-6">
+                <Sparkles size={14} />
+                {language === 'ar' ? 'كل ما تحتاج في مكان واحد' : 'Everything you need in one place'}
+              </div>
+              <h1 className="text-4xl lg:text-5xl font-bold text-slate-900 mb-4">{language === 'ar' ? 'خدماتنا' : 'Our Services'}</h1>
+              <p className="text-slate-500 max-w-3xl mx-auto lg:mx-0 text-lg">
+                {language === 'ar'
+                  ? 'نقدم مجموعة متكاملة من الخدمات التعليمية والتقنية المصممة لتلبية احتياجات الأفراد والمؤسسات على حد سواء.'
+                  : 'We offer a comprehensive suite of educational and technical services designed to meet the needs of both individuals and institutions.'}
+              </p>
+            </div>
+            <div className="flex-1">
+              <img src="/heros/teacher.png" alt="Our Services" className="w-full max-w-md mx-auto rounded-3xl shadow-2xl" />
+            </div>
           </div>
-          <h1 className="text-4xl lg:text-5xl font-bold text-slate-900 mb-4">{language === 'ar' ? 'خدماتنا' : 'Our Services'}</h1>
-          <p className="text-slate-500 max-w-3xl mx-auto text-lg">
-            {language === 'ar'
-              ? 'نقدم مجموعة متكاملة من الخدمات التعليمية والتقنية المصممة لتلبية احتياجات الأفراد والمؤسسات على حد سواء.'
-              : 'We offer a comprehensive suite of educational and technical services designed to meet the needs of both individuals and institutions.'}
-          </p>
         </div>
       </section>
 
