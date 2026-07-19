@@ -30,9 +30,7 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
 
   // Step 3: Preview
   const [sessionCount, setSessionCount] = useState(1);
-  const [usePackage, setUsePackage] = useState(false);
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
-  const [selectedSubscription, setSelectedSubscription] = useState<any>(null);
   const [savedCards, setSavedCards] = useState<any[]>([]);
   const [showCardForm, setShowCardForm] = useState(false);
   const [newCard, setNewCard] = useState({
@@ -71,8 +69,6 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
       setSelectedLanguage(null);
       setSelectedTimeSlots([]);
       setSessionCount(1);
-      setUsePackage(false);
-      setSelectedSubscription(null);
       setSelectedSavedCard(null);
       setShowCardForm(false);
       setError(null);
@@ -87,8 +83,11 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
   const loadSubscriptions = async () => {
     try {
       const subs = await studentService.getSubscriptions();
+      console.log('Subscriptions loaded:', subs);
       setSubscriptions(Array.isArray(subs) ? subs.filter((s: any) => s.is_active) : []);
-    } catch (e) { /* ignore */ }
+    } catch (e) {
+      console.warn('Failed to load subscriptions', e);
+    }
   };
 
   const loadSavedCards = async () => {
@@ -108,7 +107,7 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
     );
   };
 
-  const handleCreateBooking = async () => {
+  const handleCreateBooking = async (subscription?: any) => {
     setLoading(true);
     setError(null);
     try {
@@ -127,8 +126,8 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
       payload.timeslot_ids = selectedTimeSlots;
       payload.total_sessions = totalSessions;
 
-      if (usePackage && selectedSubscription) {
-        payload.subscription_id = selectedSubscription.id;
+      if (subscription) {
+        payload.subscription_id = subscription.id;
       }
 
       const res = await studentService.createBooking(payload);
@@ -140,11 +139,12 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
     }
   };
 
-  const handlePayWithPackage = async () => {
+  const handlePayWithPackage = async (subscription: any) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await handleCreateBooking();
+      const res = await handleCreateBooking(subscription);
+      loadSubscriptions();
       setStep(4);
       setPaymentResult({ success: true, method: 'package', data: res });
     } catch (e: any) {
@@ -223,7 +223,7 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
     switch (step) {
       case 0: return isLanguageService ? !!selectedLanguage : !!selectedSubject;
       case 1: return selectedTimeSlots.length > 0;
-      case 2: return usePackage ? !!selectedSubscription : true;
+      case 2: return true;
       case 3: return true;
       default: return false;
     }
@@ -340,7 +340,6 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
 
   const renderPreviewStep = () => {
     const requiredSessions = totalSessions;
-    const activeSub = subscriptions.find((s: any) => s.is_active && s.sessions_remaining >= requiredSessions);
 
     return (
       <div className="space-y-4 max-h-80 overflow-y-auto pr-2">
@@ -386,31 +385,33 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
           </div>
         </div>
 
-        {/* Pay from Package */}
-        {activeSub && (
-          <div className={`p-3 rounded-lg border cursor-pointer transition-all ${
-            usePackage ? 'bg-green-50 border-green-400' : 'hover:bg-slate-50 border-slate-200'
-          }`} onClick={() => { setUsePackage(!usePackage); setSelectedSubscription(usePackage ? null : activeSub); }}>
-            <div className="flex items-center gap-2">
-              <Package size={18} className="text-green-600" />
-              <div>
-                <p className="font-semibold text-sm">
-                  {language === 'ar' ? 'الدفع من الباقة' : 'Pay from Package'}
-                </p>
-                <p className="text-xs text-slate-500">
-                  {language === 'ar'
-                    ? `لديك ${activeSub.sessions_remaining} جلسات متبقية`
-                    : `${activeSub.sessions_remaining} sessions remaining`}
-                </p>
-              </div>
-              {usePackage && <CheckCircle size={16} className="text-green-600 ml-auto" />}
+        {/* Pay from Package - Direct action button (matching Android) */}
+        {subscriptions.filter((s: any) => s.is_active && s.sessions_remaining > 0).map((sub: any) => (
+          <button key={sub.id} onClick={() => handlePayWithPackage(sub)}
+            disabled={loading}
+            className="w-full p-3 rounded-lg border border-green-200 bg-green-50 hover:bg-green-100 transition-all flex items-center gap-3 disabled:opacity-60"
+          >
+            <Package size={20} className="text-green-600 shrink-0" />
+            <div className="text-left flex-1">
+              <p className="font-semibold text-sm text-green-800">
+                {language === 'ar' ? 'الدفع من الباقة' : 'Pay from Package'}
+              </p>
+              <p className="text-xs text-green-600">
+                {language === 'ar'
+                  ? `${sub.sessions_remaining} جلسات متبقية`
+                  : `${sub.sessions_remaining} sessions remaining`}
+              </p>
             </div>
-          </div>
-        )}
+            {loading ? (
+              <Loader2 size={16} className="animate-spin text-green-600 shrink-0" />
+            ) : (
+              <Package size={16} className="text-green-600 shrink-0" />
+            )}
+          </button>
+        ))}
 
-        {/* Payment Methods */}
-        {!usePackage && (
-          <div className="space-y-2">
+        {/* Card Payment - shown when no package or as alternative */}
+        <div className="space-y-2">
             <p className="font-medium text-sm text-slate-700">
               {language === 'ar' ? 'طريقة الدفع' : 'Payment Method'}
             </p>
@@ -448,7 +449,10 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
                   <option value="MADA">Mada</option>
                 </select>
                 <input placeholder={language === 'ar' ? 'رقم البطاقة' : 'Card Number'}
-                  value={newCard.card_number} onChange={e => setNewCard({...newCard, card_number: e.target.value.replace(/\D/g, '')})}
+                  value={newCard.card_number} onChange={e => {
+                    const val = e.target.value.replace(/[^0-9]/g, '');
+                    setNewCard({...newCard, card_number: val});
+                  }}
                   className="w-full p-2 border border-slate-300 rounded-lg text-sm" />
                 <input placeholder={language === 'ar' ? 'اسم حامل البطاقة' : 'Card Holder'}
                   value={newCard.card_holder} onChange={e => setNewCard({...newCard, card_holder: e.target.value})}
@@ -464,8 +468,7 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
               </div>
             )}
           </div>
-        )}
-      </div>
+        </div>
     );
   };
 
@@ -565,21 +568,14 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
     switch (step) {
       case 0: return language === 'ar' ? 'التالي: المواعيد' : 'Next: Times';
       case 1: return language === 'ar' ? 'التالي: المراجعة' : 'Next: Review';
-      case 2: {
-        if (usePackage) return language === 'ar' ? 'حجز من الباقة' : `Book from Package`;
-        return language === 'ar' ? `دفع ${totalPrice.toFixed(2)} ${t.sar || 'SAR'}` : `Pay ${totalPrice.toFixed(2)} ${t.sar || 'SAR'}`;
-      }
+      case 2: return language === 'ar' ? `دفع ${totalPrice.toFixed(2)} ${t.sar || 'SAR'}` : `Pay ${totalPrice.toFixed(2)} ${t.sar || 'SAR'}`;
       default: return '';
     }
   };
 
   const handleNext = async () => {
     if (step === 2) {
-      if (usePackage) {
-        await handlePayWithPackage();
-      } else {
         await handlePayWithCard();
-      }
     } else {
       setStep(s => Math.min(s + 1, 3));
     }
