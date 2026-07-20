@@ -160,7 +160,14 @@ class AvailabilityController extends Controller
                 }
 
                 $startTime = $parsed->format('H:i');
-                $endTime = $parsed->copy()->addHour()->format('H:i');
+                $endParsed = $parsed->copy()->addHour();
+                if ($endParsed->lessThanOrEqualTo($parsed)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Invalid time slot '{$timeStr}': slot would end after midnight."
+                    ], 422);
+                }
+                $endTime = $endParsed->format('H:i');
 
                 // Check for duplicate: same teacher + day + start_time
                 // If course_id or order_id is provided, also check those
@@ -196,17 +203,25 @@ class AvailabilityController extends Controller
                     continue; // Skip this time
                 }
 
-                $slot = AvailabilitySlot::create([
-                    'teacher_id' => $teacherId,
-                    'course_id' => $request->course_id,
-                    'order_id' => $request->order_id,
-                    'day_number' => (int) $day,
-                    'start_time' => $startTime,
-                    'end_time' => $endTime,
-                    'is_available' => true,
-                    'is_booked' => false,
-                    'repeat_type' => $request->repeat_type ?? AvailabilitySlot::REPEAT_NONE,
-                ]);
+                try {
+                    $slot = AvailabilitySlot::create([
+                        'teacher_id' => $teacherId,
+                        'course_id' => $request->course_id,
+                        'order_id' => $request->order_id,
+                        'day_number' => (int) $day,
+                        'start_time' => $startTime,
+                        'end_time' => $endTime,
+                        'is_available' => true,
+                        'is_booked' => false,
+                        'repeat_type' => $request->repeat_type ?? AvailabilitySlot::REPEAT_NONE,
+                    ]);
+                } catch (\InvalidArgumentException $e) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $e->getMessage(),
+                        'errors' => ['start_time' => [$e->getMessage()]]
+                    ], 422);
+                }
                 $createdSlots[] = $slot;
             }
         }
@@ -308,7 +323,14 @@ class AvailabilityController extends Controller
                             continue;
 
                         $startTime = $parsed->format('H:i');
-                        $endTime = $parsed->copy()->addHour()->format('H:i');
+                        $endParsed = $parsed->copy()->addHour();
+                        if ($endParsed->lessThanOrEqualTo($parsed)) {
+                            return response()->json([
+                                'success' => false,
+                                'message' => "Invalid time slot '{$timeStr}': slot would end after midnight."
+                            ], 422);
+                        }
+                        $endTime = $endParsed->format('H:i');
 
                         // Check for duplicate within the same scope (same teacher, day, start_time)
                         // considering course_id and order_id
@@ -338,17 +360,25 @@ class AvailabilityController extends Controller
                             continue;
                         }
 
-                        $slot = AvailabilitySlot::create([
-                            'teacher_id' => $teacherId,
-                            'course_id' => $request->course_id,
-                            'order_id' => $request->order_id,
-                            'day_number' => (int) $day,
-                            'start_time' => $startTime,
-                            'end_time' => $endTime,
-                            'is_available' => true,
-                            'is_booked' => false,
-                            'repeat_type' => $request->repeat_type ?? AvailabilitySlot::REPEAT_NONE,
-                        ]);
+                        try {
+                            $slot = AvailabilitySlot::create([
+                                'teacher_id' => $teacherId,
+                                'course_id' => $request->course_id,
+                                'order_id' => $request->order_id,
+                                'day_number' => (int) $day,
+                                'start_time' => $startTime,
+                                'end_time' => $endTime,
+                                'is_available' => true,
+                                'is_booked' => false,
+                                'repeat_type' => $request->repeat_type ?? AvailabilitySlot::REPEAT_NONE,
+                            ]);
+                        } catch (\InvalidArgumentException $e) {
+                            return response()->json([
+                                'success' => false,
+                                'message' => $e->getMessage(),
+                                'errors' => ['start_time' => [$e->getMessage()]]
+                            ], 422);
+                        }
                         $created[] = $slot;
                     }
                 }
@@ -395,7 +425,14 @@ class AvailabilityController extends Controller
             }
             if ($parsed) {
                 $data['start_time'] = $parsed->format('H:i');
-                $data['end_time'] = $parsed->copy()->addHour()->format('H:i');
+                $endParsed = $parsed->copy()->addHour();
+                if ($endParsed->lessThanOrEqualTo($parsed)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Invalid time slot '{$data['start_time']}': slot would end after midnight."
+                    ], 422);
+                }
+                $data['end_time'] = $endParsed->format('H:i');
             } else {
                 return response()->json(['success' => false, 'message' => 'Invalid start_time format'], 422);
             }
@@ -433,7 +470,15 @@ class AvailabilityController extends Controller
             }
         }
 
-        $slot->update($data);
+        try {
+            $slot->update($data);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'errors' => ['start_time' => [$e->getMessage()]]
+            ], 422);
+        }
         TeacherProfileHelper::checkAndUpdateProfileCompleted($teacherId);
 
         return response()->json([
@@ -454,8 +499,15 @@ class AvailabilityController extends Controller
         $teacherId = $request->user()->id;
         $slot = AvailabilitySlot::where('id', $id)->where('teacher_id', $teacherId)->firstOrFail();
 
-        // Prevent deletion of booked slots (handled in model boot)
-        $slot->delete();
+        try {
+            $slot->delete();
+        } catch (\InvalidArgumentException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'errors' => ['id' => [$e->getMessage()]]
+            ], 422);
+        }
         TeacherProfileHelper::checkAndUpdateProfileCompleted($teacherId);
 
         return response()->json([

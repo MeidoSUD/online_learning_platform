@@ -147,6 +147,28 @@ class WalletController extends Controller
             ], 422);
         }
 
+        // Check that total pending withdrawals don't exceed available balance
+        $pendingTotal = Payout::where('teacher_id', $teacher->id)
+            ->where('status', Payout::STATUS_PENDING)
+            ->sum('amount');
+
+        if (($pendingTotal + $amount) > $wallet->balance) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Total pending withdrawal requests exceed available balance',
+                'errors' => [
+                    'amount' => [
+                        "Total pending withdrawals ({$pendingTotal}) plus this request ({$amount}) exceeds available balance ({$wallet->balance})"
+                    ]
+                ],
+                'data' => [
+                    'available_balance' => (float) $wallet->balance,
+                    'pending_withdrawals_total' => (float) $pendingTotal,
+                    'requested_amount' => $amount
+                ]
+            ], 422);
+        }
+
         // Verify payment method belongs to teacher
         $paymentMethod = UserPaymentMethod::where('id', $validated['payment_method_id'])
             ->where('user_id', $teacher->id)
