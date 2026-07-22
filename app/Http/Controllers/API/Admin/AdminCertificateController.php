@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Certificate;
 use App\Models\User;
 use App\Models\Course;
+use App\Models\Booking;
 use App\Services\NelcXapiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -26,71 +27,97 @@ class AdminCertificateController extends Controller
             });
         }
 
+        if ($request->filled('type')) {
+            if ($request->type === 'course') {
+                $query->whereNotNull('course_id');
+            } elseif ($request->type === 'private') {
+                $query->whereNull('course_id');
+            }
+        }
+
         $certificates = $query->orderByDesc('issued_at')->paginate($request->get('per_page', 20));
         return response()->json(['success' => true, 'data' => $certificates]);
     }
 
     public function eligible(Request $request)
     {
-        $sub = DB::table('subscriptions')
-            ->select('user_id', 'course_id', DB::raw('MAX(sessions_completed) as sessions_done'), DB::raw('MAX(sessions_count) as total_sessions'))
-            ->groupBy('user_id', 'course_id')
-            ->havingRaw('MAX(sessions_completed) >= MAX(sessions_count)')
-            ->havingRaw('MAX(sessions_count) > 0');
+        $existing = DB::table('certificates')->select('student_id', 'booking_id');
 
-        $existing = DB::table('certificates')->select('student_id', 'course_id');
-
-        $results = DB::table('subscriptions as s')
-            ->join('users as u', 'u.id', '=', 's.user_id')
-            ->join('courses as c', 'c.id', '=', 's.course_id')
+        $completedBookings = Booking::where('status', 'completed')
+            ->whereColumn('sessions_completed', '>=', 'sessions_count')
+            ->where('sessions_count', '>', 0)
             ->leftJoinSub($existing, 'certs', function ($join) {
-                $join->on('certs.student_id', '=', 's.user_id')
-                     ->on('certs.course_id', '=', 's.course_id');
+                $join->on('certs.student_id', '=', 'bookings.student_id')
+                     ->on('certs.booking_id', '=', 'bookings.id');
             })
             ->whereNull('certs.student_id')
-            ->select('u.id as user_id', 'u.first_name', 'u.last_name', 'u.notional_id',
-                     'c.id as course_id', 'c.name as course_name',
-                     's.sessions_done', 's.total_sessions')
-            ->distinct()
-            ->get();
+            ->with('student:id,first_name,last_name,notional_id', 'course:id,name', 'teacher:id,first_name,last_name')
+            ->get()
+            ->map(function ($booking) {
+                $isPrivate = $booking->course_id === null;
+                $student = $booking->student;
+                $teacher = $booking->teacher;
+                return [
+                    'booking_id' => $booking->id,
+                    'student_id' => $student->id,
+                    'first_name' => $student->first_name,
+                    'last_name' => $student->last_name,
+                    'notional_id' => $student->notional_id,
+                    'course_id' => $booking->course_id,
+                    'course_name' => $booking->course ? $booking->course->name : ($teacher->first_name . ' ' . $teacher->last_name . ' - Private Lessons'),
+                    'teacher_name' => $teacher->first_name . ' ' . $teacher->last_name,
+                    'type' => $isPrivate ? 'private' : 'course',
+                    'sessions_done' => $booking->sessions_completed,
+                    'total_sessions' => $booking->sessions_count,
+                ];
+            });
 
-        return response()->json(['success' => true, 'data' => $results]);
+        return response()->json(['success' => true, 'data' => $completedBookings]);
     }
 
     public function issue(Request $request)
     {
         $request->validate([
             'student_id' => 'required|integer|exists:users,id',
-            'course_id' => 'required|integer|exists:courses,id',
+            'course_id' => 'nullable|integer|exists:courses,id',
+            'booking_id' => 'required|integer|exists:bookings,id',
             'notes' => 'nullable|string',
         ]);
 
+        $booking = Booking::with('student', 'course', 'teacher')->findOrFail($request->booking_id);
+
         $existing = Certificate::where('student_id', $request->student_id)
-            ->where('course_id', $request->course_id)
+            ->where('booking_id', $request->booking_id)
             ->first();
 
         if ($existing) {
-            return response()->json(['success' => false, 'message' => 'Certificate already issued for this student and course.'], 409);
+            return response()->json(['success' => false, 'message' => 'Certificate already issued for this session.'], 409);
         }
 
-        $student = User::findOrFail($request->student_id);
-        $course = Course::findOrFail($request->course_id);
+        $student = $booking->student;
         $admin = $request->user();
+
+        $courseName = $booking->course
+            ? $booking->course->name
+            : $booking->teacher->first_name . ' ' . $booking->teacher->last_name . ' - Private Lessons';
 
         $certificate = Certificate::create([
             'student_id' => $student->id,
-            'course_id' => $course->id,
+            'course_id' => $booking->course_id,
+            'booking_id' => $booking->id,
             'issued_by' => $admin->id,
             'student_name' => $student->first_name . ' ' . $student->last_name,
-            'course_name' => $course->name,
+            'course_name' => $courseName,
             'completion_date' => now()->toDateString(),
             'notes' => $request->notes,
         ]);
 
         try {
-            $nelc = app(NelcXapiService::class);
-            $certUrl = url('/') . '/certificate/' . $certificate->certificate_number;
-            $nelc->earned($student, $course, $certUrl, $certificate->certificate_number);
+            if ($booking->course) {
+                $nelc = app(NelcXapiService::class);
+                $certUrl = url('/') . '/certificate/' . $certificate->certificate_number;
+                $nelc->earned($student, $booking->course, $certUrl, $certificate->certificate_number);
+            }
         } catch (\Throwable $e) {
             Log::warning('NELC xAPI: earned certificate hook failed', ['error' => $e->getMessage()]);
         }
@@ -104,7 +131,7 @@ class AdminCertificateController extends Controller
 
     public function show($id)
     {
-        $certificate = Certificate::with(['student:id,first_name,last_name,notional_id,email', 'course:id,name,description', 'issuer:id,first_name,last_name'])
+        $certificate = Certificate::with(['student:id,first_name,last_name,notional_id,email', 'course:id,name,description', 'booking:id,booking_reference,teacher_id,sessions_count,sessions_completed', 'issuer:id,first_name,last_name'])
             ->findOrFail($id);
         return response()->json(['success' => true, 'data' => $certificate]);
     }

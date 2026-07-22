@@ -9,6 +9,7 @@ class Certificate extends Model
     protected $fillable = [
         'student_id',
         'course_id',
+        'booking_id',
         'issued_by',
         'certificate_number',
         'student_name',
@@ -31,6 +32,11 @@ class Certificate extends Model
     public function course()
     {
         return $this->belongsTo(Course::class, 'course_id');
+    }
+
+    public function booking()
+    {
+        return $this->belongsTo(Booking::class, 'booking_id');
     }
 
     public function issuer()

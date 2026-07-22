@@ -634,7 +634,7 @@ export const adminService = {
   },
   getCertificateDetails: (id: number) => fetchWithAuth(`/admin/certificates/${id}`).then(res => res.data),
   getEligibleStudents: () => fetchWithAuth('/admin/certificates/eligible').then(res => res.data?.data || res.data || []),
-  issueCertificate: (data: { student_id: number; course_id: number; notes?: string }) =>
+  issueCertificate: (data: { student_id: number; course_id?: number | null; booking_id: number; notes?: string }) =>
     fetchWithAuth('/admin/certificates/issue', { method: 'POST', body: JSON.stringify(data) }),
   revokeCertificate: (id: number) => fetchWithAuth(`/admin/certificates/${id}`, { method: 'DELETE' }),
 
