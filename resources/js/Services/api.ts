@@ -273,7 +273,7 @@ export const teacherService = {
   getClassesByLevel: (levelId: number) => fetchWithAuth(`/teacher/classes/${levelId}`).then(extractArray),
   getSubjectsByClass: (classId: number) => fetchWithAuth(`/teacher/subjectsClasses/${classId}`).then(extractArray),
   getServicesList: () => fetchWithAuth('/teacher/services').then(extractArray),
-  updateInfo: (data: any) => fetchWithAuth('/teacher/info', { method: 'POST', body: JSON.stringify(data) }),
+  updateInfo: (data: any) => fetchWithAuth('/profile/teacher/info', { method: 'POST', body: JSON.stringify(data) }),
   addSubjects: (subject_ids: number[]) => fetchWithAuth('/teacher/subjects', { method: 'POST', body: JSON.stringify({ subjects_id: subject_ids }) }),
   getSubjects: () => fetchWithAuth('/teacher/subjects').then(extractArray),
   deleteSubject: (id: number) => fetchWithAuth(`/teacher/subjects/${id}`, { method: 'DELETE' }),
@@ -292,6 +292,7 @@ export const teacherService = {
   withdraw: (data: { amount: number, payment_method_id?: number }) => fetchWithAuth('/teacher/wallet/withdraw', { method: 'POST', body: JSON.stringify(data) }),
   cancelWithdrawal: (id: number) => fetchWithAuth(`/teacher/wallet/withdrawals/${id}`, { method: 'DELETE' }),
   addPaymentMethod: (data: any) => fetchWithAuth('/teacher/payment-methods', { method: 'POST', body: JSON.stringify(data) }),
+  updatePaymentMethod: (id: number, data: any) => fetchWithAuth(`/teacher/payment-methods/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deletePaymentMethod: (id: number) => fetchWithAuth(`/teacher/payment-methods/${id}`, { method: 'DELETE' }),
   setDefaultPaymentMethod: (id: number) => fetchWithAuth(`/teacher/payment-methods/set-default/${id}`, { method: 'PUT' }),
 };

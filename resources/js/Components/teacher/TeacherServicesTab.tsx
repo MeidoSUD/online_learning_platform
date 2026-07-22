@@ -1,11 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
-import { Settings, CheckCircle, AlertTriangle, Upload, Save, Loader2, BookOpen, Clock, Globe, Video, Layers, ArrowRight, Lock, Eye, AlertCircle as AlertCircleIcon } from 'lucide-react';
+import { School, Save, Loader2, Building, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { Button } from '../ui/Button';
-import { Input } from '../ui/Input';
-import { Modal } from '../ui/Modal';
-import { teacherService, authService, profileService, UserData, getStorageUrl, Service } from '../../Services/api';
+import { teacherService, authService, UserData } from '../../Services/api';
 import { useToast } from '../../Contexts/ToastContext';
 
 interface TeacherServicesTabProps {
@@ -13,23 +11,13 @@ interface TeacherServicesTabProps {
 }
 
 export const TeacherServicesTab: React.FC<TeacherServicesTabProps> = ({ onNavigate }) => {
-    const { t, language } = useLanguage();
+    const { t, language, direction } = useLanguage();
     const { showToast } = useToast();
     const [loading, setLoading] = useState(true);
-    const [user, setUser] = useState<UserData | null>(null);
-    const [servicesList, setServicesList] = useState<Service[]>([]);
-
-    const [uploadModalOpen, setUploadModalOpen] = useState(false);
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
-    const [targetServiceId, setTargetServiceId] = useState<number | null>(null);
-
-    const [lessonPrefs, setLessonPrefs] = useState({
-        teach_individual: false,
-        individual_hour_price: 0,
-        teach_group: false,
-        group_hour_price: 0,
-        max_group_size: 1
-    });
+    const [isSaving, setIsSaving] = useState(false);
+    const [teachSingleLesson, setTeachSingleLesson] = useState(false);
+    const [singleLessonPrice, setSingleLessonPrice] = useState('');
+    const [priceError, setPriceError] = useState('');
 
     useEffect(() => {
         loadData();
@@ -39,195 +27,172 @@ export const TeacherServicesTab: React.FC<TeacherServicesTabProps> = ({ onNaviga
         setLoading(true);
         try {
             const res = await authService.getUserDetails();
-            const userData = res.user?.data || res.data || res;
-            setUser(userData);
-
-            const servicesData = await teacherService.getServicesList();
-            setServicesList(Array.isArray(servicesData) ? servicesData : []);
-
+            const userData: UserData = res.user?.data || res.data || res;
             const profile = userData?.profile;
             if (profile) {
-                setLessonPrefs({
-                    teach_individual: !!profile.teach_individual,
-                    individual_hour_price: profile.individual_hour_price || 0,
-                    teach_group: !!profile.teach_group,
-                    group_hour_price: profile.group_hour_price || 0,
-                    max_group_size: profile.max_group_size || 1
-                });
+                setTeachSingleLesson(!!profile.teach_individual);
+                setSingleLessonPrice(
+                    profile.individual_hour_price && profile.individual_hour_price > 0
+                        ? String(profile.individual_hour_price)
+                        : ''
+                );
             }
         } catch (e) {
-            console.error("Failed to load profile or services", e);
+            console.error("Failed to load profile", e);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleSaveLessonPrefs = async () => {
-        setLoading(true);
+    const handleSavePreferences = async () => {
+        if (teachSingleLesson) {
+            const price = singleLessonPrice.trim();
+            if (!price) {
+                setPriceError(t.priceRequired);
+                return;
+            }
+            const numPrice = Number(price);
+            if (numPrice > 500) {
+                setPriceError(t.priceMax500);
+                return;
+            }
+        }
+        setPriceError('');
+        setIsSaving(true);
         try {
             await teacherService.updateInfo({
-                ...lessonPrefs,
-                teach_individual: lessonPrefs.teach_individual ? 1 : 0,
-                teach_group: lessonPrefs.teach_group ? 1 : 0
+                teach_individual: teachSingleLesson ? 1 : 0,
+                individual_hour_price: teachSingleLesson ? Number(singleLessonPrice) : 0,
+                teach_group: 0,
+                group_hour_price: 0,
+                max_group_size: 0
             });
-            showToast(language === 'ar' ? 'تم حفظ التفضيلات بنجاح' : 'Preferences saved successfully', 'success');
-            await loadData();
+            showToast(language === 'ar' ? 'تم الحفظ بنجاح' : 'Saved successfully', 'success');
         } catch (e: any) {
-            showToast(e.message || "Failed to save settings", 'error');
+            showToast(e.message || (language === 'ar' ? 'فشل الحفظ' : 'Save failed'), 'error');
         } finally {
-            setLoading(false);
+            setIsSaving(false);
         }
     };
 
-    const handleFileUpload = async () => {
-        if (!selectedFile || !targetServiceId) return;
-        setLoading(true);
-        try {
-            const formData = new FormData();
-            formData.append('certificate', selectedFile);
-            formData.append('service_id', String(targetServiceId));
-            await profileService.updateProfileFull(formData);
-            setUploadModalOpen(false);
-            showToast(language === 'ar' ? "تم رفع الشهادة بنجاح" : "Certificate uploaded successfully.", 'success');
-            await loadData();
-        } catch (e: any) {
-            showToast(e.message || "Failed to upload certificate.", 'error');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const getServiceIcon = (name: string) => {
-        const lower = name.toLowerCase();
-        if (lower.includes('course')) return <Video size={24} />;
-        if (lower.includes('language')) return <Globe size={24} />;
-        return <BookOpen size={24} />;
-    };
-
-    if (loading && !user) return <div className="p-8 text-center"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary" /></div>;
-
-    const isVerified = user?.verified === 1 || user?.verified === true || String(user?.verified) === '1';
-    const chosenServiceId = user?.profile?.service;
-
-    // Filter logic: If verified, only show the one verified service card.
-    const displayServices = (isVerified && chosenServiceId)
-        ? servicesList.filter(s => s.id === chosenServiceId)
-        : servicesList;
+    if (loading) {
+        return <div className="p-8 text-center"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary" /></div>;
+    }
 
     return (
-        <div className="space-y-8 animate-fade-in">
-            <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                <Settings className="text-primary" />
-                {isVerified ? (language === 'ar' ? 'إعدادات خدمتك' : 'Your Service Settings') : (language === 'ar' ? 'الخدمات والتفضيلات' : 'Services & Preferences')}
-            </h2>
-
-            {!isVerified && !chosenServiceId && (
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-blue-800 text-sm mb-6 flex items-start gap-3">
-                    <AlertCircleIcon className="flex-shrink-0 mt-0.5" size={18} />
-                    <span>Choose a service to specialize in and upload your certificate for verification.</span>
-                </div>
-            )}
-
-            <div className="grid grid-cols-1 gap-8">
-                {displayServices.map((service) => {
-                    const serviceName = language === 'ar' ? service.name_ar : service.name_en;
-                    const isMyService = chosenServiceId === service.id;
-
-                    return (
-                        <div key={service.id} className="rounded-2xl border shadow-sm overflow-hidden bg-white border-slate-200">
-                            <div className={`p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50`}>
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                                        {getServiceIcon(serviceName)}
-                                    </div>
-                                    <div>
-                                        <h3 className="text-lg font-bold text-slate-900">{serviceName}</h3>
-                                        <p className="text-sm text-slate-500">{language === 'ar' ? service.description_ar : service.description_en}</p>
-                                    </div>
-                                </div>
-                                {isMyService && (
-                                    <span className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${isVerified ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                                        {isVerified ? <CheckCircle size={12} /> : <Clock size={12} />}
-                                        {isVerified ? 'Verified & Active' : 'Pending Verification'}
-                                    </span>
-                                )}
-                            </div>
-
-                            <div className="p-6">
-                                {isVerified && isMyService ? (
-                                    <>
-                                        {serviceName.toLowerCase().includes('private') && (
-                                            <div className="space-y-6">
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                    <Button variant="outline" onClick={() => onNavigate?.('private-lessons')} className="justify-between group">
-                                                        <span className="flex items-center gap-2"><Layers size={18} /> Manage Subjects</span>
-                                                        <ArrowRight size={16} />
-                                                    </Button>
-                                                    <Button variant="outline" onClick={() => onNavigate?.('schedule')} className="justify-between group">
-                                                        <span className="flex items-center gap-2"><Clock size={18} /> Manage Availability</span>
-                                                        <ArrowRight size={16} />
-                                                    </Button>
-                                                </div>
-                                                <div className="border-t border-slate-100 pt-6">
-                                                    <h4 className="font-bold text-slate-800 mb-4">Pricing</h4>
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                        <div className="p-4 bg-slate-50 rounded-xl border">
-                                                            <label className="flex items-center justify-between mb-4">
-                                                                <span className="font-semibold">Individual Sessions</span>
-                                                                <input type="checkbox" checked={lessonPrefs.teach_individual} onChange={(e) => setLessonPrefs({ ...lessonPrefs, teach_individual: e.target.checked })} />
-                                                            </label>
-                                                            {lessonPrefs.teach_individual && <Input label="Price (SAR)" type="number" value={lessonPrefs.individual_hour_price} onChange={(e) => setLessonPrefs({ ...lessonPrefs, individual_hour_price: Number(e.target.value) })} />}
-                                                        </div>
-                                                        <div className="p-4 bg-slate-50 rounded-xl border">
-                                                            <label className="flex items-center justify-between mb-4">
-                                                                <span className="font-semibold">Group Sessions</span>
-                                                                <input type="checkbox" checked={lessonPrefs.teach_group} onChange={(e) => setLessonPrefs({ ...lessonPrefs, teach_group: e.target.checked })} />
-                                                            </label>
-                                                            {lessonPrefs.teach_group && <Input label="Price (SAR)" type="number" value={lessonPrefs.group_hour_price} onChange={(e) => setLessonPrefs({ ...lessonPrefs, group_hour_price: Number(e.target.value) })} />}
-                                                        </div>
-                                                    </div>
-                                                    <div className="mt-4 flex justify-end">
-                                                        <Button onClick={handleSaveLessonPrefs}>Save Preferences</Button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-                                        {serviceName.toLowerCase().includes('course') && (
-                                            <Button onClick={() => onNavigate?.('courses')}>Manage Courses catalog</Button>
-                                        )}
-                                        {serviceName.toLowerCase().includes('language') && (
-                                            <Button onClick={() => onNavigate?.('languages')}>Manage Languages</Button>
-                                        )}
-                                    </>
-                                ) : isMyService && !isVerified ? (
-                                    <div className="text-center py-6">
-                                        <Clock size={40} className="mx-auto text-amber-500 mb-3" />
-                                        <h4 className="font-bold">Verification in Progress</h4>
-                                        <p className="text-sm text-slate-500 mt-2">Your documents are being reviewed. You will have access once approved.</p>
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-4">
-                                        <Button onClick={() => { setTargetServiceId(service.id); setUploadModalOpen(true); }}>
-                                            <Upload size={18} className="mr-2" /> Specialize in this Service
-                                        </Button>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    );
-                })}
+        <div className="space-y-6 animate-fade-in">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-slate-900">{t.servicesProvided}</h2>
+                {isSaving ? (
+                    <Loader2 className="animate-spin text-primary" size={20} />
+                ) : (
+                    <Button onClick={handleSavePreferences} variant="ghost" className="flex items-center gap-1.5 text-primary">
+                        <Save size={18} />
+                        <span>{t.saveButton}</span>
+                    </Button>
+                )}
             </div>
 
-            <Modal isOpen={uploadModalOpen} onClose={() => setUploadModalOpen(false)} title="Upload Certificate">
-                <div className="space-y-4">
-                    <div className="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer relative hover:bg-slate-50">
-                        <input type="file" className="absolute inset-0 opacity-0" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
-                        <Upload className="mx-auto mb-2 text-slate-400" />
-                        <p className="text-sm font-medium">{selectedFile ? selectedFile.name : "Select academic document"}</p>
-                    </div>
-                    <Button className="w-full" disabled={!selectedFile} onClick={handleFileUpload} isLoading={loading}>Submit Verification</Button>
+            {/* Lesson Preferences Form */}
+            <div className="bg-[#F0F5FF] rounded-xl border border-primary/20 p-5">
+                <div className="flex items-center gap-2 mb-4">
+                    <School size={22} className="text-primary" />
+                    <h3 className="font-bold text-primary text-base">{t.lessonTypes}</h3>
                 </div>
-            </Modal>
+
+                {/* Individual Lessons Toggle */}
+                <div
+                    onClick={() => {
+                        setTeachSingleLesson(!teachSingleLesson);
+                        if (teachSingleLesson) {
+                            setSingleLessonPrice('');
+                            setPriceError('');
+                        }
+                    }}
+                    className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                        teachSingleLesson
+                            ? 'bg-primary/10 border-primary'
+                            : 'bg-white border-slate-300'
+                    }`}
+                >
+                    <div
+                        className={`w-6 h-6 rounded-md flex items-center justify-center border-2 transition-all ${
+                            teachSingleLesson
+                                ? 'bg-primary border-primary'
+                                : 'border-slate-400 bg-transparent'
+                        }`}
+                    >
+                        {teachSingleLesson && <Check size={14} className="text-white" />}
+                    </div>
+                    <div className="flex-1">
+                        <p className="font-bold text-slate-900 text-sm">{t.individualLessons}</p>
+                        <p className="text-xs text-slate-500">{t.individualLessonsDesc}</p>
+                    </div>
+                    <div className="text-primary">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                            <circle cx="12" cy="7" r="4" />
+                        </svg>
+                    </div>
+                </div>
+
+                {/* Price Field (animated) */}
+                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                    teachSingleLesson ? 'max-h-20 opacity-100 mt-3' : 'max-h-0 opacity-0'
+                }`}>
+                    <div className="relative">
+                        <div className={`absolute inset-y-0 ${
+                            direction === 'rtl' ? 'right-0 pr-3' : 'left-0 pl-3'
+                        } flex items-center pointer-events-none text-primary`}>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                            </svg>
+                        </div>
+                        <input
+                            type="number"
+                            value={singleLessonPrice}
+                            onChange={(e) => {
+                                setSingleLessonPrice(e.target.value);
+                                setPriceError('');
+                            }}
+                            placeholder="0"
+                            className={`w-full rounded-xl border bg-white py-3 ${
+                                direction === 'rtl' ? 'pr-10 pl-4' : 'pl-10 pr-4'
+                            } text-slate-900 shadow-sm transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none ${
+                                priceError ? 'border-red-400' : 'border-slate-300'
+                            }`}
+                        />
+                        <div className={`absolute inset-y-0 ${
+                            direction === 'rtl' ? 'left-0 pl-3' : 'right-0 pr-3'
+                        } flex items-center pointer-events-none text-slate-400 text-sm`}>
+                            {t.sar}
+                        </div>
+                    </div>
+                    {priceError && <p className="mt-1 text-xs text-red-500">{priceError}</p>}
+                </div>
+            </div>
+
+            {/* Bank Account Shortcut */}
+            <div
+                onClick={() => onNavigate?.('wallet')}
+                className="bg-white rounded-xl border border-primary/20 p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+            >
+                <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                        <Building size={22} />
+                    </div>
+                    <div className="flex-1">
+                        <p className="font-bold text-slate-900 text-sm">{t.manageBankAccount}</p>
+                        <p className="text-xs text-slate-500">{t.forReceivingEarnings}</p>
+                    </div>
+                    {direction === 'rtl' ? (
+                        <ChevronLeft size={16} className="text-slate-400" />
+                    ) : (
+                        <ChevronRight size={16} className="text-slate-400" />
+                    )}
+                </div>
+            </div>
         </div>
     );
 };

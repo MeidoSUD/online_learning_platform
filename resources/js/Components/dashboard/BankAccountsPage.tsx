@@ -79,8 +79,7 @@ export const BankAccountsPage: React.FC<BankAccountsPageProps> = ({ user, onNavi
         try {
             const payload = { ...form, is_default: form.is_default ? 1 : 0 };
             if (editingId) {
-                // update
-                await teacherService.addPaymentMethod({ ...payload, id: editingId, _method: 'PUT' });
+                await teacherService.updatePaymentMethod(editingId, payload);
             } else {
                 await teacherService.addPaymentMethod(payload);
             }

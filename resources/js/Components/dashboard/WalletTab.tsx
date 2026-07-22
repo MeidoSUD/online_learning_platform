@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
 import { Wallet, ArrowUpRight, Trash2, Building, CheckCircle } from 'lucide-react';
 import { Button } from '../ui/Button';
+import { Input } from '../ui/Input';
+import { Select } from '../ui/Select';
 import { Modal } from '../ui/Modal';
 import { BankAccount, WalletResponse, Withdrawal } from '../../Utils/types';
 import { teacherService, UserData } from '../../Services/api';
