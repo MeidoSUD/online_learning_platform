@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
-import { School, Save, Loader2, Building, ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { School, Save, Loader2, Building, ChevronLeft, ChevronRight, Check, Package } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { teacherService, authService, UserData } from '../../Services/api';
 import { useToast } from '../../Contexts/ToastContext';
@@ -18,6 +18,8 @@ export const TeacherServicesTab: React.FC<TeacherServicesTabProps> = ({ onNaviga
     const [teachSingleLesson, setTeachSingleLesson] = useState(false);
     const [singleLessonPrice, setSingleLessonPrice] = useState('');
     const [priceError, setPriceError] = useState('');
+    const [offerPackages, setOfferPackages] = useState(false);
+    const [togglingPackages, setTogglingPackages] = useState(false);
 
     useEffect(() => {
         loadData();
@@ -36,6 +38,7 @@ export const TeacherServicesTab: React.FC<TeacherServicesTabProps> = ({ onNaviga
                         ? String(profile.individual_hour_price)
                         : ''
                 );
+                setOfferPackages(!!profile.package_on_off);
             }
         } catch (e) {
             console.error("Failed to load profile", e);
@@ -72,6 +75,21 @@ export const TeacherServicesTab: React.FC<TeacherServicesTabProps> = ({ onNaviga
             showToast(e.message || (language === 'ar' ? 'فشل الحفظ' : 'Save failed'), 'error');
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handleTogglePackages = async () => {
+        const newVal = !offerPackages;
+        setOfferPackages(newVal);
+        setTogglingPackages(true);
+        try {
+            await teacherService.togglePackageOnOff(newVal);
+            showToast(language === 'ar' ? 'تم التحديث بنجاح' : 'Updated successfully', 'success');
+        } catch (e: any) {
+            setOfferPackages(!newVal);
+            showToast(e.message || t.errorTogglingOffer, 'error');
+        } finally {
+            setTogglingPackages(false);
         }
     };
 
@@ -170,6 +188,31 @@ export const TeacherServicesTab: React.FC<TeacherServicesTabProps> = ({ onNaviga
                         </div>
                     </div>
                     {priceError && <p className="mt-1 text-xs text-red-500">{priceError}</p>}
+                </div>
+            </div>
+
+            {/* Packages Toggle */}
+            <div className="bg-white rounded-xl border border-primary/20 p-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                        <Package size={22} />
+                    </div>
+                    <div className="flex-1">
+                        <p className="font-bold text-slate-900 text-sm">{t.offerPackages}</p>
+                    </div>
+                    {togglingPackages ? (
+                        <Loader2 className="animate-spin text-primary" size={20} />
+                    ) : (
+                        <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={offerPackages}
+                                onChange={handleTogglePackages}
+                                className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/30 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                        </label>
+                    )}
                 </div>
             </div>
 

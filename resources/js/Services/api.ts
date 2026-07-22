@@ -295,6 +295,7 @@ export const teacherService = {
   updatePaymentMethod: (id: number, data: any) => fetchWithAuth(`/teacher/payment-methods/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deletePaymentMethod: (id: number) => fetchWithAuth(`/teacher/payment-methods/${id}`, { method: 'DELETE' }),
   setDefaultPaymentMethod: (id: number) => fetchWithAuth(`/teacher/payment-methods/set-default/${id}`, { method: 'PUT' }),
+  togglePackageOnOff: (value: boolean) => fetchWithAuth('/teacher/packages/on-off', { method: 'PUT', body: JSON.stringify({ package_on_off: value ? '1' : '0' }) }),
 };
 
 export const studentService = {
