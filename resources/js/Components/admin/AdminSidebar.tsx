@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
-import { LayoutDashboard, Users, Layers, DollarSign, CheckSquare, AlertCircle, LogOut, Globe, Calendar, BookOpen, Settings, Package, Box, ShoppingBag, Percent, Cog, ChevronDown, ChevronRight, Video, Monitor, FileText, CreditCard, Activity, BarChart3, Terminal } from 'lucide-react';
+import { LayoutDashboard, Users, Layers, DollarSign, CheckSquare, AlertCircle, LogOut, Globe, Calendar, BookOpen, Settings, Package, Box, ShoppingBag, Percent, Cog, ChevronDown, ChevronRight, Video, Monitor, FileText, CreditCard, Activity, BarChart3, Terminal, Award } from 'lucide-react';
 import { Logo } from '../Logo';
 
 interface AdminSidebarProps {
@@ -55,6 +55,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ activeTab, setActive
                 { id: 'education', label: t.academicStructure, icon: Layers },
                 { id: 'courses', label: t.courses, icon: BookOpen },
                 { id: 'packages', label: t.packagesManagement, icon: Box },
+                { id: 'certificates', label: language === 'ar' ? 'الشهادات' : 'Certificates', icon: Award },
             ]
         },
         {

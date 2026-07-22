@@ -63,6 +63,7 @@ use App\Http\Controllers\API\Admin\AdsAdminController;
 use App\Http\Controllers\API\Admin\SessionsAdminController;
 use App\Http\Controllers\API\StudentPackageController;
 use App\Http\Controllers\API\Admin\PackageAdminController;
+use App\Http\Controllers\API\Admin\AdminCertificateController;
 /*  
 |--------------------------------------------------------------------------
 | API Routes
@@ -492,4 +493,11 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     Route::delete('/terms-conditions/{id}/force', [TermsConditionsAdminController::class, 'forceDelete']); // Permanently delete terms and conditions
     Route::post('/terms-conditions/{id}/restore', [TermsConditionsAdminController::class, 'restore']); // Restore soft-deleted terms and conditions
     Route::get('/terms-conditions/type/{type}', [TermsConditionsAdminController::class, 'getByType']); // Get latest active terms and conditions by type
+
+    // Certificates
+    Route::get('/certificates', [AdminCertificateController::class, 'index']);
+    Route::get('/certificates/eligible', [AdminCertificateController::class, 'eligible']);
+    Route::post('/certificates/issue', [AdminCertificateController::class, 'issue']);
+    Route::get('/certificates/{id}', [AdminCertificateController::class, 'show']);
+    Route::delete('/certificates/{id}', [AdminCertificateController::class, 'revoke']);
 });

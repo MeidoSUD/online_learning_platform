@@ -21,3 +21,4 @@ export * from './AdminPaymentsTab';
 export * from './ApiAnalyticsTab';
 export * from './ActivityRecordsTab';
 export * from './SystemLogsTab';
+export * from './CertificatesTab';

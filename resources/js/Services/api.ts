@@ -625,6 +625,17 @@ export const adminService = {
   deleteSystemLog: (id: number) => fetchWithAuth(`/admin/system-logs/${id}`, { method: 'DELETE' }),
   clearSystemLogs: () => fetchWithAuth('/admin/system-logs', { method: 'DELETE' }),
 
+  // Certificates
+  getCertificates: (filters: any = {}) => {
+    const query = new URLSearchParams(filters).toString();
+    return fetchWithAuth(`/admin/certificates${query ? `?${query}  ` : ''}`).then(res => res.data?.data || res.data || []);
+  },
+  getCertificateDetails: (id: number) => fetchWithAuth(`/admin/certificates/${id}`).then(res => res.data),
+  getEligibleStudents: () => fetchWithAuth('/admin/certificates/eligible').then(res => res.data?.data || res.data || []),
+  issueCertificate: (data: { student_id: number; course_id: number; notes?: string }) =>
+    fetchWithAuth('/admin/certificates/issue', { method: 'POST', body: JSON.stringify(data) }),
+  revokeCertificate: (id: number) => fetchWithAuth(`/admin/certificates/${id}`, { method: 'DELETE' }),
+
   // Activity Records
   getActivityRecordsStats: () => fetchWithAuth('/admin/activity-records/stats'),
   getActivityRecordsGroupedStats: () => fetchWithAuth('/admin/activity-records/grouped-stats'),
