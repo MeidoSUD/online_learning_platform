@@ -122,6 +122,7 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
     // Base links always visible
     const links = [
         { id: 'overview', label: t.overview },
+        { id: 'my-lessons', label: language === 'ar' ? 'دروسي' : 'My Lessons' },
         { id: 'schedule', label: t.schedule },
         { id: 'wallet', label: t.wallet },
     ];

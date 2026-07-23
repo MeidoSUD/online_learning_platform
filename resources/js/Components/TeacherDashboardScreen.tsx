@@ -11,6 +11,7 @@ import { ProfileTab } from './dashboard/ProfileTab';
 import { TeacherServicesTab } from './teacher/TeacherServicesTab';
 import { TeacherCoursesTab } from './teacher/TeacherCoursesTab';
 import { TeacherLanguagesTab } from './teacher/TeacherLanguagesTab';
+import { TeacherLessonsTab } from './teacher/TeacherLessonsTab';
 import { DisputesTab } from './student/DisputesTab';
 import { SettingsTab } from './dashboard/SettingsTab';
 import { Bug, User, Briefcase, ArrowRight, Loader2, AlertTriangle } from 'lucide-react';
@@ -139,6 +140,8 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
         return <SubjectsTab user={user} />;
       case 'courses':
         return <TeacherCoursesTab user={user} />;
+      case 'my-lessons':
+        return <TeacherLessonsTab user={user} />;
       case 'languages':
         return <TeacherLanguagesTab user={user} />;
       case 'wallet':
