@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useLanguage } from '../Contexts/LanguageContext';
-import { Bell, LogOut, Settings, User, Globe, Menu, AlertCircle, CreditCard, FileText, Award, Layers, Video, X, Check, School, CreditCard as PaymentIcon, BellRing, Clock, Loader2, Trash2 } from 'lucide-react';
+import { Bell, LogOut, Settings, User, Globe, Menu, AlertCircle, CreditCard, FileText, Award, Layers, Video, X, Check, School, CreditCard as PaymentIcon, BellRing, Clock, Loader2, Trash2, Headphones } from 'lucide-react';
 import { AuthResponse, notificationService, AppNotification } from '../Services/api';
 import { Logo } from './Logo';
 
@@ -347,6 +347,9 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
                       </button>
                   )}
 
+                  <button onClick={() => { setActiveTab('support'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                    <Headphones size={16} /> {t.technicalSupport}
+                  </button>
                   <button className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
                     <Settings size={16} /> {t.settings}
                   </button>

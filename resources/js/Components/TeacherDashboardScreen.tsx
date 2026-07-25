@@ -14,6 +14,7 @@ import { TeacherLanguagesTab } from './teacher/TeacherLanguagesTab';
 import { TeacherLessonsTab } from './teacher/TeacherLessonsTab';
 import { DisputesTab } from './student/DisputesTab';
 import { SettingsTab } from './dashboard/SettingsTab';
+import { SupportTab } from './dashboard/SupportTab';
 import { Bug, User, Briefcase, ArrowRight, Loader2, AlertTriangle } from 'lucide-react';
 import { useLanguage } from '../Contexts/LanguageContext';
 import { useToast } from '../Contexts/ToastContext';
@@ -152,6 +153,8 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
         return <ProfileTab />;
       case 'services':
         return <TeacherServicesTab onNavigate={setActiveTab} />;
+      case 'support':
+        return <SupportTab />;
       case 'disputes':
         return <DisputesTab />;
       case 'settings':

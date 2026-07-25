@@ -17,6 +17,7 @@ import { MyTransactions } from './student/MyTransactions';
 import { MyCertificates } from './student/MyCertificates';
 import { SettingsTab } from './dashboard/SettingsTab';
 import { MySessionsTab } from './student/MySessionsTab';
+import { SupportTab } from './dashboard/SupportTab';
 import { useLanguage } from '../Contexts/LanguageContext';
 import { AdsBanner } from './dashboard/AdsBanner';
 
@@ -75,6 +76,8 @@ export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ 
         return <MyCertificates />;
       case 'profile':
         return <ProfileTab />;
+      case 'support':
+        return <SupportTab />;
       case 'settings':
         return <SettingsTab />;
       default:
