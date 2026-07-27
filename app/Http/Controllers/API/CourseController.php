@@ -3,7 +3,6 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\Course;
-use App\Services\NelcXapiService;
 use App\Models\Attachment;
 use App\Models\PlatformPercentage;
 use Illuminate\Http\JsonResponse;
@@ -234,12 +233,6 @@ class CourseController extends Controller
             Log::error('Failed to send enrollment request notification', ['error' => $e->getMessage()]);
         }
 
-        try {
-            app(NelcXapiService::class)->registered($user, $course);
-        } catch (\Throwable $e) {
-            Log::warning('NELC xAPI: request enrollment hook failed', ['error' => $e->getMessage()]);
-        }
-
         return response()->json([
             'success' => true,
             'message' => 'Enrollment request submitted successfully',
@@ -287,13 +280,6 @@ class CourseController extends Controller
                 'enrollment_date' => now(),
                 'status' => 'active',
             ]);
-
-            try {
-                app(NelcXapiService::class)->registered($user, $course);
-                app(NelcXapiService::class)->initialized($user, $course);
-            } catch (\Throwable $e) {
-                Log::warning('NELC xAPI: enrollment hook failed', ['error' => $e->getMessage()]);
-            }
 
             return response()->json(['success' => true, 'message' => 'Enrolled in group course', 'data' => ['enrollment_id' => $enrollment->id, 'course_id' => $id]]);
         }
@@ -356,13 +342,6 @@ class CourseController extends Controller
             if (Schema::hasColumn('sessions', 'enrollment_id')) {
                 $session->enrollment_id = $enrollment->id;
                 $session->save();
-            }
-
-            try {
-                app(NelcXapiService::class)->registered($user, $course);
-                app(NelcXapiService::class)->initialized($user, $course);
-            } catch (\Throwable $e) {
-                Log::warning('NELC xAPI: private enrollment hook failed', ['error' => $e->getMessage()]);
             }
 
             return response()->json(['success' => true, 'message' => 'Private session requested', 'data' => ['enrollment_id' => $enrollment->id, 'session_id' => $session->id]]);

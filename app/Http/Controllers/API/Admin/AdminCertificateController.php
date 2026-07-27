@@ -113,11 +113,9 @@ class AdminCertificateController extends Controller
         ]);
 
         try {
-            if ($booking->course) {
-                $nelc = app(NelcXapiService::class);
-                $certUrl = url('/') . '/certificate/' . $certificate->certificate_number;
-                $nelc->earned($student, $booking->course, $certUrl, $certificate->certificate_number);
-            }
+            $nelc = app(NelcXapiService::class);
+            $certUrl = url('/') . '/certificate/' . $certificate->certificate_number;
+            $nelc->earned($student, $booking, $certUrl, $certificate->certificate_number);
         } catch (\Throwable $e) {
             Log::warning('NELC xAPI: earned certificate hook failed', ['error' => $e->getMessage()]);
         }

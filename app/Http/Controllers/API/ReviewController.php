@@ -135,6 +135,15 @@ class ReviewController extends Controller
             'comment'     => $request->comment,
         ]);
 
+        try {
+            if ($session->booking) {
+                $scaled = round($request->rating / 5, 2);
+                app(NelcXapiService::class)->rated($student, $session->booking, $scaled, (float) $request->rating, $request->comment ?? '');
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('NELC xAPI: review hook failed', ['error' => $e->getMessage()]);
+        }
+
         // Notify the teacher that a student has reviewed them
         try {
             $teacher = \App\Models\User::find($teacher_id);

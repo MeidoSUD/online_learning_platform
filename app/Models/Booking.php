@@ -88,6 +88,17 @@ class Booking extends Model
                     \App\Helpers\Helpers::getPendingBalance($oldTeacherId);
                 }
             }
+
+            if ($booking->wasChanged('status') && $booking->status === self::STATUS_CONFIRMED) {
+                try {
+                    $student = $booking->student;
+                    if ($student) {
+                        app(\App\Services\NelcXapiService::class)->registered($student, $booking);
+                    }
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('NELC xAPI: registered hook failed on booking confirmation', ['error' => $e->getMessage()]);
+                }
+            }
         });
 
         static::deleted(function ($booking) {

@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
-use App\Models\Course;
+use App\Models\Booking;
 use App\Models\SystemLog;
 use Bzzix\LaravelLrsPackage\XapiIntegration;
 use Illuminate\Support\Facades\Log;
@@ -17,26 +17,57 @@ class NelcXapiService
         $this->xapi = new XapiIntegration();
     }
 
-    protected function baseData(User $student, Course $course): array
+    /**
+     * Build xAPI actor from student — National ID is the NELC identity.
+     */
+    protected function actorData(User $student): array
     {
-        $teacher = $course->teacher;
         return [
-            'name'              => $student->notional_id ?? $student->phone_number,
-            'email'             => $student->email ?? 'student@example.com',
-            'courseId'          => url('/') . '/course/' . $course->id,
-            'courseName'        => $course->name,
-            'courseDesc'        => strip_tags($course->description ?? ''),
-            'instructor'        => $teacher->name ?? 'Instructor',
-            'inst_email'        => $teacher->email ?? 'instructor@example.com',
-            'learneMobileNo'    => $student->phone_number ?? '',
-            'learnerFullName'   => $student->name,
-            'learnerNationality'=> $student->nationality ?? '',
-            'lmsUrl'            => url('/'),
-            'duration'          => $course->duration_hours ? 'PT' . $course->duration_hours . 'H00M00S' : '',
+            'name'           => $student->notional_id ?? $student->phone_number,
+            'email'          => $student->email ?? 'student@example.com',
+            'learnerFullName'=> $student->first_name . ' ' . $student->last_name,
+            'learneMobileNo' => $student->phone_number ?? '',
+            'learnerNationality' => $student->nationality ?? '',
         ];
     }
 
-    protected function logToSystem(string $verb, int $studentId, ?int $courseId, array $data, array $response): void
+    /**
+     * Build the xAPI "object" — represents the private lesson learning experience.
+     * For NELC, the object is the teacher + subject, not a course.
+     */
+    protected function lessonObjectData(Booking $booking): array
+    {
+        $teacher = $booking->teacher;
+        $subject = $booking->subject;
+        $service = $booking->service;
+
+        $teacherName = $teacher ? ($teacher->first_name . ' ' . $teacher->last_name) : 'Instructor';
+        $subjectName = $subject ? ($subject->name_en ?? $subject->name_ar ?? '') : '';
+        $serviceName = $service ? ($service->name_en ?? $service->name_ar ?? '') : '';
+
+        $objectName = $teacherName;
+        if ($subjectName) $objectName .= ' - ' . $subjectName;
+        elseif ($serviceName) $objectName .= ' - ' . $serviceName;
+
+        return [
+            'courseId'   => url('/') . '/booking/' . $booking->booking_reference,
+            'courseName' => $objectName,
+            'courseDesc' => "Private lesson with {$teacherName}" . ($subjectName ? " — {$subjectName}" : ''),
+            'instructor' => $teacherName,
+            'inst_email' => $teacher->email ?? 'instructor@example.com',
+            'lmsUrl'     => url('/'),
+        ];
+    }
+
+    protected function baseData(User $student, Booking $booking): array
+    {
+        return array_merge($this->actorData($student), $this->lessonObjectData($booking));
+    }
+
+    /**
+     * Write a successful xAPI response to the system_logs table.
+     */
+    protected function logToSystem(string $verb, int $studentId, ?int $bookingId, array $data, array $response): void
     {
         try {
             $status = $response['status'] ?? 0;
@@ -46,11 +77,11 @@ class NelcXapiService
                 'level'   => $isError ? 'error' : 'info',
                 'type'    => 'nelc_xapi',
                 'title'   => "NELC xAPI: {$verb}",
-                'message' => ($isError ? "FAILED (HTTP {$status})" : "SUCCESS (HTTP {$status})") . "\n" . ($response['message'] ?? ''),
+                'message' => ($isError ? "FAILED (HTTPS {$status})" : "SUCCESS (HTTPS {$status})") . "\n" . ($response['message'] ?? ''),
                 'context' => [
                     'verb'       => $verb,
                     'student_id' => $studentId,
-                    'course_id'  => $courseId,
+                    'booking_id' => $bookingId,
                     'http_status'=> $status,
                     'response_message' => $response['message'] ?? '',
                     'response_body' => is_string($response['body'] ?? '') ? substr($response['body'] ?? '', 0, 2000) : '',
@@ -64,7 +95,10 @@ class NelcXapiService
         }
     }
 
-    protected function logErrorToSystem(string $verb, int $studentId, ?int $courseId, \Throwable $e): void
+    /**
+     * Write an exception to the system_logs table.
+     */
+    protected function logErrorToSystem(string $verb, int $studentId, ?int $bookingId, \Throwable $e): void
     {
         try {
             SystemLog::create([
@@ -78,7 +112,7 @@ class NelcXapiService
                 'context' => [
                     'verb'       => $verb,
                     'student_id' => $studentId,
-                    'course_id'  => $courseId,
+                    'booking_id' => $bookingId,
                 ],
                 'occurrences' => 1,
                 'last_occurred_at' => now(),
@@ -88,67 +122,45 @@ class NelcXapiService
         }
     }
 
-    public function registered(User $student, Course $course): void
+    // ─── Private Lesson xAPI Verbs ───────────────────────────────────
+
+    /**
+     * Student registers for a private lesson package.
+     * Fires when the booking is confirmed after payment.
+     */
+    public function registered(User $student, Booking $booking): void
     {
         try {
-            $data = $this->baseData($student, $course);
+            $data = $this->baseData($student, $booking);
             $response = $this->xapi->Registered($data);
-            $this->logToSystem('registered', $student->id, $course->id, $data, $response);
+            $this->logToSystem('registered', $student->id, $booking->id, $data, $response);
         } catch (\Throwable $e) {
-            $this->logErrorToSystem('registered', $student->id, $course->id, $e);
+            $this->logErrorToSystem('registered', $student->id, $booking->id, $e);
         }
     }
 
-    public function initialized(User $student, Course $course): void
+    /**
+     * Learning session initialized (teacher confirms / first session starts).
+     */
+    public function initialized(User $student, Booking $booking): void
     {
         try {
-            $data = $this->baseData($student, $course);
+            $data = $this->baseData($student, $booking);
             $response = $this->xapi->Initialized($data);
-            $this->logToSystem('initialized', $student->id, $course->id, $data, $response);
+            $this->logToSystem('initialized', $student->id, $booking->id, $data, $response);
         } catch (\Throwable $e) {
-            $this->logErrorToSystem('initialized', $student->id, $course->id, $e);
+            $this->logErrorToSystem('initialized', $student->id, $booking->id, $e);
         }
     }
 
-    public function completedLesson(User $student, Course $course, string $lessonUrl, string $lessonName, ?int $durationMinutes = null): void
+    /**
+     * Student attended / watched a private lesson session.
+     * Fires each time the teacher ends a session.
+     */
+    public function attended(User $student, Booking $booking, string $sessionUrl, string $sessionName, string $duration): void
     {
         try {
-            $base = $this->baseData($student, $course);
-            $data = array_merge($base, [
-                'lessonUrl'      => $lessonUrl,
-                'lessonName'     => $lessonName,
-                'lessonDesc'     => '',
-                'lessonDuration' => $durationMinutes ? 'PT' . $durationMinutes . 'M0S' : 'PT15M0S',
-            ]);
-            $response = $this->xapi->CompletedLesson($data);
-            $this->logToSystem('completedLesson', $student->id, $course->id, $data, $response);
-        } catch (\Throwable $e) {
-            $this->logErrorToSystem('completedLesson', $student->id, $course->id, $e);
-        }
-    }
-
-    public function watched(User $student, Course $course, string $videoUrl, string $videoName, bool $completion, string $duration): void
-    {
-        try {
-            $base = $this->baseData($student, $course);
-            $data = array_merge($base, [
-                'lessonUrl'   => $videoUrl,
-                'lessonName'  => $videoName,
-                'lessonDesc'  => '',
-                'completion'  => $completion,
-                'duration'    => $duration,
-            ]);
-            $response = $this->xapi->Watched($data);
-            $this->logToSystem('watched', $student->id, $course->id, $data, $response);
-        } catch (\Throwable $e) {
-            $this->logErrorToSystem('watched', $student->id, $course->id, $e);
-        }
-    }
-
-    public function attended(User $student, Course $course, string $sessionUrl, string $sessionName, string $duration): void
-    {
-        try {
-            $base = $this->baseData($student, $course);
+            $base = $this->baseData($student, $booking);
             $data = array_merge($base, [
                 'lessonUrl'   => $sessionUrl,
                 'lessonName'  => $sessionName,
@@ -157,88 +169,78 @@ class NelcXapiService
                 'duration'    => $duration,
             ]);
             $response = $this->xapi->Watched($data);
-            $this->logToSystem('attended', $student->id, $course->id, $data, $response);
+            $this->logToSystem('attended', $student->id, $booking->id, $data, $response);
         } catch (\Throwable $e) {
-            $this->logErrorToSystem('attended', $student->id, $course->id, $e);
+            $this->logErrorToSystem('attended', $student->id, $booking->id, $e);
         }
     }
 
-    public function progressed(User $student, Course $course, float $scaled, bool $completion = false): void
+    /**
+     * Progress through the private lesson package.
+     * Fires on each session completion with updated progress.
+     */
+    public function progressed(User $student, Booking $booking, float $scaled, bool $completion = false): void
     {
         try {
-            $data = array_merge($this->baseData($student, $course), [
+            $data = array_merge($this->baseData($student, $booking), [
                 'scaled'     => $scaled,
                 'completion' => $completion,
             ]);
             $response = $this->xapi->Progressed($data);
-            $this->logToSystem('progressed', $student->id, $course->id, $data, $response);
+            $this->logToSystem('progressed', $student->id, $booking->id, $data, $response);
         } catch (\Throwable $e) {
-            $this->logErrorToSystem('progressed', $student->id, $course->id, $e);
+            $this->logErrorToSystem('progressed', $student->id, $booking->id, $e);
         }
     }
 
-    public function completedCourse(User $student, Course $course): void
+    /**
+     * All sessions in the private lesson package are completed.
+     */
+    public function completedCourse(User $student, Booking $booking): void
     {
         try {
-            $data = $this->baseData($student, $course);
+            $data = $this->baseData($student, $booking);
             $response = $this->xapi->CompletedCourse($data);
-            $this->logToSystem('completedCourse', $student->id, $course->id, $data, $response);
+            $this->logToSystem('completedCourse', $student->id, $booking->id, $data, $response);
         } catch (\Throwable $e) {
-            $this->logErrorToSystem('completedCourse', $student->id, $course->id, $e);
+            $this->logErrorToSystem('completedCourse', $student->id, $booking->id, $e);
         }
     }
 
-    public function attempted(User $student, Course $course, string $quizUrl, string $quizName, int $attemptNumber, float $scaled, float $raw, float $min, float $max, bool $completion, bool $success): void
+    /**
+     * Student rates the teacher after a private lesson.
+     */
+    public function rated(User $student, Booking $booking, float $scaled, float $raw, string $comment = ''): void
     {
         try {
-            $base = $this->baseData($student, $course);
+            $base = $this->baseData($student, $booking);
             $data = array_merge($base, [
-                'quizUrl'       => $quizUrl,
-                'quizName'      => $quizName,
-                'quizDesc'      => '',
-                'attempNumber'  => $attemptNumber,
-                'scaled'        => $scaled,
-                'raw'           => $raw,
-                'min'           => $min,
-                'max'           => $max,
-                'completion'    => $completion,
-                'success'       => $success,
-            ]);
-            $response = $this->xapi->Attempted($data);
-            $this->logToSystem('attempted', $student->id, $course->id, $data, $response);
-        } catch (\Throwable $e) {
-            $this->logErrorToSystem('attempted', $student->id, $course->id, $e);
-        }
-    }
-
-    public function earned(User $student, Course $course, string $certUrl, string $certName): void
-    {
-        try {
-            $base = $this->baseData($student, $course);
-            $data = array_merge($base, [
-                'certUrl'  => $certUrl,
-                'certName' => $certName,
-            ]);
-            $response = $this->xapi->Earned($data);
-            $this->logToSystem('earned', $student->id, $course->id, $data, $response);
-        } catch (\Throwable $e) {
-            $this->logErrorToSystem('earned', $student->id, $course->id, $e);
-        }
-    }
-
-    public function rated(User $student, Course $course, float $scaled, float $raw, string $comment = ''): void
-    {
-        try {
-            $base = $this->baseData($student, $course);
-            $data = array_merge($base, [
-                'scaled'   => $scaled,
-                'raw'      => $raw,
-                'comment'  => $comment,
+                'scaled'  => $scaled,
+                'raw'     => $raw,
+                'comment' => $comment,
             ]);
             $response = $this->xapi->Rated($data);
-            $this->logToSystem('rated', $student->id, $course->id, $data, $response);
+            $this->logToSystem('rated', $student->id, $booking->id, $data, $response);
         } catch (\Throwable $e) {
-            $this->logErrorToSystem('rated', $student->id, $course->id, $e);
+            $this->logErrorToSystem('rated', $student->id, $booking->id, $e);
+        }
+    }
+
+    /**
+     * Admin issues a certificate — the final "earned" statement.
+     */
+    public function earned(User $student, Booking $booking, string $certUrl, string $certNumber): void
+    {
+        try {
+            $base = $this->baseData($student, $booking);
+            $data = array_merge($base, [
+                'certUrl'  => $certUrl,
+                'certName' => $certNumber,
+            ]);
+            $response = $this->xapi->Earned($data);
+            $this->logToSystem('earned', $student->id, $booking->id, $data, $response);
+        } catch (\Throwable $e) {
+            $this->logErrorToSystem('earned', $student->id, $booking->id, $e);
         }
     }
 }

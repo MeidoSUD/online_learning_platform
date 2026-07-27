@@ -431,6 +431,14 @@ class SessionsController extends Controller
 
         $session->start();
 
+        try {
+            if ($session->student && $session->booking && $session->booking->teacher) {
+                app(NelcXapiService::class)->initialized($session->student, $session->booking);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('NELC xAPI: initialized hook failed', ['error' => $e->getMessage()]);
+        }
+
         // Send notification to student that session is live
         NotificationHelper::sessionStarted($session->student, $session);
 
@@ -592,26 +600,20 @@ class SessionsController extends Controller
 
             try {
                 $student = $session->student;
-                $course = null;
-                if ($session->course_id) {
-                    $course = \App\Models\Course::find($session->course_id);
-                } elseif ($session->booking && $session->booking->course_id) {
-                    $course = \App\Models\Course::find($session->booking->course_id);
-                }
-                if ($student && $course && $course->teacher) {
+                $booking = $session->booking;
+                if ($student && $booking && $booking->teacher) {
                     $nelc = app(NelcXapiService::class);
                     $sessionUrl = url('/') . '/session/' . $session->id;
                     $duration = $session->duration ? 'PT' . $session->duration . 'M0S' : 'PT30M0S';
-                    $nelc->attended($student, $course, $sessionUrl, $session->session_title ?? 'Session ' . $session->id, $duration);
-                    $nelc->watched($student, $course, $sessionUrl, $session->session_title ?? 'Session ' . $session->id, true, $duration);
+                    $nelc->attended($student, $booking, $sessionUrl, $session->session_title ?? 'Session ' . $session->id, $duration);
 
-                    $completedSessions = $session->booking ? $session->booking->sessions_completed : 1;
-                    $totalSessions = $session->booking ? $session->booking->sessions_count : 1;
+                    $completedSessions = $booking->sessions_completed;
+                    $totalSessions = $booking->sessions_count;
                     if ($totalSessions > 0) {
                         $progress = round($completedSessions / $totalSessions, 2);
-                        $nelc->progressed($student, $course, $progress, $progress >= 1.0);
+                        $nelc->progressed($student, $booking, $progress, $progress >= 1.0);
                         if ($progress >= 1.0) {
-                            $nelc->completedCourse($student, $course);
+                            $nelc->completedCourse($student, $booking);
                         }
                     }
                 }
