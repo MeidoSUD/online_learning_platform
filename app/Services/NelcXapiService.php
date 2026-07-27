@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Models\Course;
+use App\Models\SystemLog;
 use Bzzix\LaravelLrsPackage\XapiIntegration;
 use Illuminate\Support\Facades\Log;
 
@@ -35,14 +36,66 @@ class NelcXapiService
         ];
     }
 
+    protected function logToSystem(string $verb, int $studentId, ?int $courseId, array $data, array $response): void
+    {
+        try {
+            $status = $response['status'] ?? 0;
+            $isError = $status < 200 || $status >= 300;
+
+            SystemLog::create([
+                'level'   => $isError ? 'error' : 'info',
+                'type'    => 'nelc_xapi',
+                'title'   => "NELC xAPI: {$verb}",
+                'message' => ($isError ? "FAILED (HTTP {$status})" : "SUCCESS (HTTP {$status})") . "\n" . ($response['message'] ?? ''),
+                'context' => [
+                    'verb'       => $verb,
+                    'student_id' => $studentId,
+                    'course_id'  => $courseId,
+                    'http_status'=> $status,
+                    'response_message' => $response['message'] ?? '',
+                    'response_body' => is_string($response['body'] ?? '') ? substr($response['body'] ?? '', 0, 2000) : '',
+                    'xapi_payload' => $data,
+                ],
+                'occurrences' => 1,
+                'last_occurred_at' => now(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('NELC xAPI: failed to write to system_logs', ['error' => $e->getMessage()]);
+        }
+    }
+
+    protected function logErrorToSystem(string $verb, int $studentId, ?int $courseId, \Throwable $e): void
+    {
+        try {
+            SystemLog::create([
+                'level'   => 'error',
+                'type'    => 'nelc_xapi',
+                'title'   => "NELC xAPI: {$verb} — EXCEPTION",
+                'message' => $e->getMessage(),
+                'file'    => $e->getFile(),
+                'line'    => $e->getLine(),
+                'trace'   => $e->getTraceAsString(),
+                'context' => [
+                    'verb'       => $verb,
+                    'student_id' => $studentId,
+                    'course_id'  => $courseId,
+                ],
+                'occurrences' => 1,
+                'last_occurred_at' => now(),
+            ]);
+        } catch (\Throwable $inner) {
+            Log::warning('NELC xAPI: failed to write exception to system_logs', ['error' => $inner->getMessage()]);
+        }
+    }
+
     public function registered(User $student, Course $course): void
     {
         try {
             $data = $this->baseData($student, $course);
             $response = $this->xapi->Registered($data);
-            Log::info('NELC xAPI: registered', ['student' => $student->id, 'course' => $course->id, 'status' => $response['status']]);
+            $this->logToSystem('registered', $student->id, $course->id, $data, $response);
         } catch (\Throwable $e) {
-            Log::warning('NELC xAPI: registered failed', ['error' => $e->getMessage()]);
+            $this->logErrorToSystem('registered', $student->id, $course->id, $e);
         }
     }
 
@@ -51,9 +104,9 @@ class NelcXapiService
         try {
             $data = $this->baseData($student, $course);
             $response = $this->xapi->Initialized($data);
-            Log::info('NELC xAPI: initialized', ['student' => $student->id, 'course' => $course->id, 'status' => $response['status']]);
+            $this->logToSystem('initialized', $student->id, $course->id, $data, $response);
         } catch (\Throwable $e) {
-            Log::warning('NELC xAPI: initialized failed', ['error' => $e->getMessage()]);
+            $this->logErrorToSystem('initialized', $student->id, $course->id, $e);
         }
     }
 
@@ -68,9 +121,9 @@ class NelcXapiService
                 'lessonDuration' => $durationMinutes ? 'PT' . $durationMinutes . 'M0S' : 'PT15M0S',
             ]);
             $response = $this->xapi->CompletedLesson($data);
-            Log::info('NELC xAPI: completed lesson', ['student' => $student->id, 'lesson' => $lessonName, 'status' => $response['status']]);
+            $this->logToSystem('completedLesson', $student->id, $course->id, $data, $response);
         } catch (\Throwable $e) {
-            Log::warning('NELC xAPI: completed lesson failed', ['error' => $e->getMessage()]);
+            $this->logErrorToSystem('completedLesson', $student->id, $course->id, $e);
         }
     }
 
@@ -86,9 +139,9 @@ class NelcXapiService
                 'duration'    => $duration,
             ]);
             $response = $this->xapi->Watched($data);
-            Log::info('NELC xAPI: watched', ['student' => $student->id, 'video' => $videoName, 'status' => $response['status']]);
+            $this->logToSystem('watched', $student->id, $course->id, $data, $response);
         } catch (\Throwable $e) {
-            Log::warning('NELC xAPI: watched failed', ['error' => $e->getMessage()]);
+            $this->logErrorToSystem('watched', $student->id, $course->id, $e);
         }
     }
 
@@ -104,9 +157,9 @@ class NelcXapiService
                 'duration'    => $duration,
             ]);
             $response = $this->xapi->Watched($data);
-            Log::info('NELC xAPI: attended (via watched)', ['student' => $student->id, 'session' => $sessionName, 'status' => $response['status']]);
+            $this->logToSystem('attended', $student->id, $course->id, $data, $response);
         } catch (\Throwable $e) {
-            Log::warning('NELC xAPI: attended failed', ['error' => $e->getMessage()]);
+            $this->logErrorToSystem('attended', $student->id, $course->id, $e);
         }
     }
 
@@ -118,9 +171,9 @@ class NelcXapiService
                 'completion' => $completion,
             ]);
             $response = $this->xapi->Progressed($data);
-            Log::info('NELC xAPI: progressed', ['student' => $student->id, 'course' => $course->id, 'scaled' => $scaled, 'status' => $response['status']]);
+            $this->logToSystem('progressed', $student->id, $course->id, $data, $response);
         } catch (\Throwable $e) {
-            Log::warning('NELC xAPI: progressed failed', ['error' => $e->getMessage()]);
+            $this->logErrorToSystem('progressed', $student->id, $course->id, $e);
         }
     }
 
@@ -129,9 +182,9 @@ class NelcXapiService
         try {
             $data = $this->baseData($student, $course);
             $response = $this->xapi->CompletedCourse($data);
-            Log::info('NELC xAPI: completed course', ['student' => $student->id, 'course' => $course->id, 'status' => $response['status']]);
+            $this->logToSystem('completedCourse', $student->id, $course->id, $data, $response);
         } catch (\Throwable $e) {
-            Log::warning('NELC xAPI: completed course failed', ['error' => $e->getMessage()]);
+            $this->logErrorToSystem('completedCourse', $student->id, $course->id, $e);
         }
     }
 
@@ -152,9 +205,9 @@ class NelcXapiService
                 'success'       => $success,
             ]);
             $response = $this->xapi->Attempted($data);
-            Log::info('NELC xAPI: attempted quiz', ['student' => $student->id, 'quiz' => $quizName, 'status' => $response['status']]);
+            $this->logToSystem('attempted', $student->id, $course->id, $data, $response);
         } catch (\Throwable $e) {
-            Log::warning('NELC xAPI: attempted quiz failed', ['error' => $e->getMessage()]);
+            $this->logErrorToSystem('attempted', $student->id, $course->id, $e);
         }
     }
 
@@ -167,9 +220,9 @@ class NelcXapiService
                 'certName' => $certName,
             ]);
             $response = $this->xapi->Earned($data);
-            Log::info('NELC xAPI: earned certificate', ['student' => $student->id, 'cert' => $certName, 'status' => $response['status']]);
+            $this->logToSystem('earned', $student->id, $course->id, $data, $response);
         } catch (\Throwable $e) {
-            Log::warning('NELC xAPI: earned certificate failed', ['error' => $e->getMessage()]);
+            $this->logErrorToSystem('earned', $student->id, $course->id, $e);
         }
     }
 
@@ -183,9 +236,9 @@ class NelcXapiService
                 'comment'  => $comment,
             ]);
             $response = $this->xapi->Rated($data);
-            Log::info('NELC xAPI: rated course', ['student' => $student->id, 'course' => $course->id, 'rating' => $raw, 'status' => $response['status']]);
+            $this->logToSystem('rated', $student->id, $course->id, $data, $response);
         } catch (\Throwable $e) {
-            Log::warning('NELC xAPI: rated course failed', ['error' => $e->getMessage()]);
+            $this->logErrorToSystem('rated', $student->id, $course->id, $e);
         }
     }
 }

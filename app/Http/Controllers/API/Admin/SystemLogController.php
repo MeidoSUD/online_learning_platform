@@ -16,6 +16,10 @@ class SystemLogController extends Controller
             $query->where('level', $request->level);
         }
 
+        if ($request->filled('type')) {
+            $query->where('type', $request->type);
+        }
+
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {

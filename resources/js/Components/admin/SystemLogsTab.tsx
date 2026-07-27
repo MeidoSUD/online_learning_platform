@@ -25,6 +25,7 @@ export const SystemLogsTab: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [levelFilter, setLevelFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [selectedLog, setSelectedLog] = useState<SystemLogEntry | null>(null);
@@ -32,7 +33,7 @@ export const SystemLogsTab: React.FC = () => {
 
   useEffect(() => {
     fetchLogs();
-  }, [currentPage, levelFilter]);
+  }, [currentPage, levelFilter, typeFilter]);
 
   const fetchLogs = async () => {
     setLoading(true);
@@ -42,6 +43,7 @@ export const SystemLogsTab: React.FC = () => {
         per_page: 25,
       };
       if (levelFilter !== 'all') params.level = levelFilter;
+      if (typeFilter !== 'all') params.type = typeFilter;
       if (searchTerm.trim()) params.search = searchTerm.trim();
 
       const res = await adminService.getSystemLogs(params);
@@ -164,6 +166,12 @@ export const SystemLogsTab: React.FC = () => {
               <Search size={16} />
               {language === 'ar' ? 'بحث' : 'Search'}
             </Button>
+            <button
+              onClick={() => { setTypeFilter(typeFilter === 'nelc_xapi' ? 'all' : 'nelc_xapi'); setCurrentPage(1); }}
+              className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${typeFilter === 'nelc_xapi' ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-amber-700 border-amber-200 hover:bg-amber-50'}`}
+            >
+              NELC xAPI
+            </button>
           </div>
         </div>
 
