@@ -438,6 +438,15 @@ class Sessions extends Model
 
     public static function createForBooking(Booking $booking): void
     {
+        $existingSessions = self::where('booking_id', $booking->id)->count();
+        if ($existingSessions > 0) {
+            Log::info('Sessions already exist for booking, skipping creation', [
+                'booking_id' => $booking->id,
+                'existing_count' => $existingSessions,
+            ]);
+            return;
+        }
+
         Log::info('Starting session creation for booking', [
             'booking_id' => $booking->id,
             'session_type' => $booking->session_type,

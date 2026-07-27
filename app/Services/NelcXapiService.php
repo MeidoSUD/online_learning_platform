@@ -87,6 +87,7 @@ class NelcXapiService
                     'response_body' => is_string($response['body'] ?? '') ? substr($response['body'] ?? '', 0, 2000) : '',
                     'xapi_payload' => $data,
                 ],
+                'hash' => md5("nelc_{$verb}_{$studentId}_{$bookingId}_" . now()->timestamp),
                 'occurrences' => 1,
                 'last_occurred_at' => now(),
             ]);
@@ -114,6 +115,7 @@ class NelcXapiService
                     'student_id' => $studentId,
                     'booking_id' => $bookingId,
                 ],
+                'hash' => md5("nelc_{$verb}_exception_{$studentId}_{$bookingId}_" . now()->timestamp),
                 'occurrences' => 1,
                 'last_occurred_at' => now(),
             ]);
