@@ -43,7 +43,7 @@ class AdminCertificateController extends Controller
     {
         $existing = DB::table('certificates')->select('student_id', 'booking_id');
 
-        $completedBookings = Booking::where('status', 'completed')
+        $completedBookings = Booking::whereIn('status', ['confirmed', 'in_progress', 'completed'])
             ->whereColumn('sessions_completed', '>=', 'sessions_count')
             ->where('sessions_count', '>', 0)
             ->leftJoinSub($existing, 'certs', function ($join) {

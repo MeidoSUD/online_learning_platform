@@ -432,7 +432,7 @@ class SessionsController extends Controller
         $session->start();
 
         try {
-            if ($session->student && $session->booking && $session->booking->teacher) {
+            if ($session->student && $session->booking && $session->booking->teacher && !$session->started_at) {
                 app(NelcXapiService::class)->initialized($session->student, $session->booking);
             }
         } catch (\Throwable $e) {

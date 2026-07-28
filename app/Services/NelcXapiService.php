@@ -10,11 +10,19 @@ use Illuminate\Support\Facades\Log;
 
 class NelcXapiService
 {
-    protected Client $client;
     protected string $endpoint;
     protected string $platformUrl;
     protected string $platformAr;
     protected string $platformEn;
+    protected Client $client;
+    protected array $sent = [];
+
+    protected function alreadySent(string $key): bool
+    {
+        if (isset($this->sent[$key])) return true;
+        $this->sent[$key] = true;
+        return false;
+    }
 
     public function __construct()
     {
@@ -82,7 +90,7 @@ class NelcXapiService
         return $ctx;
     }
 
-    protected function courseObjectArray(Booking $booking): array
+    protected function courseObjectArray(Booking $booking, bool $withDescription = true): array
     {
         $teacher = $booking->teacher;
         $subject = $booking->subject;
@@ -96,16 +104,20 @@ class NelcXapiService
         if ($subjectName) $name .= ' - ' . $subjectName;
         elseif ($serviceName) $name .= ' - ' . $serviceName;
 
-        $desc = 'Private lesson with ' . $teacherName;
-        if ($subjectName) $desc .= ' — ' . $subjectName;
+        $definition = [
+            'name' => ['en-US' => $name],
+            'type' => 'https://w3id.org/xapi/cmi5/activitytype/course',
+        ];
+
+        if ($withDescription) {
+            $desc = 'Private lesson with ' . $teacherName;
+            if ($subjectName) $desc .= ' — ' . $subjectName;
+            $definition['description'] = ['en-US' => $desc];
+        }
 
         return [
             'id' => $this->platformUrl . '/booking/' . $booking->booking_reference,
-            'definition' => [
-                'name'        => ['en-US' => $name],
-                'description' => ['en-US' => $desc],
-                'type'        => 'https://w3id.org/xapi/cmi5/activitytype/course',
-            ],
+            'definition' => $definition,
             'objectType' => 'Activity',
         ];
     }
@@ -256,6 +268,7 @@ class NelcXapiService
     {
         $verb = 'platformRegistered';
         try {
+            if ($this->alreadySent("platformRegistered_{$student->id}")) return;
             $nationalId = $student->notional_id ?? $student->phone_number ?? '';
             if (empty($nationalId)) {
                 return;
@@ -312,6 +325,7 @@ class NelcXapiService
     {
         $verb = 'registered';
         try {
+            if ($this->alreadySent("registered_{$student->id}_{$booking->id}")) return;
             $statement = [
                 'actor'   => $this->actorArray($student),
                 'verb'    => [
@@ -346,13 +360,14 @@ class NelcXapiService
     {
         $verb = 'initialized';
         try {
+            if ($this->alreadySent("initialized_{$student->id}_{$booking->id}")) return;
             $statement = [
                 'actor'   => $this->actorArray($student),
                 'verb'    => [
                     'id'      => 'http://adlnet.gov/expapi/verbs/initialized',
                     'display'=> ['en-US' => 'initialized'],
                 ],
-                'object'  => $this->courseObjectArray($booking),
+                'object'  => $this->courseObjectArray($booking, false),
                 'context' => $this->contextArray($booking, true),
                 'timestamp' => $this->timestamp(),
             ];
@@ -392,7 +407,7 @@ class NelcXapiService
                         'parent' => [
                             [
                                 'id'          => $this->platformUrl . '/booking/' . $booking->booking_reference,
-                                'definition'  => $this->courseObjectArray($booking)['definition'],
+                                'definition'  => $this->courseObjectArray($booking, false)['definition'],
                                 'objectType'  => 'Activity',
                             ],
                         ],
@@ -440,7 +455,7 @@ class NelcXapiService
                         'parent' => [
                             [
                                 'id'          => $this->platformUrl . '/booking/' . $booking->booking_reference,
-                                'definition'  => $this->courseObjectArray($booking)['definition'],
+                                'definition'  => $this->courseObjectArray($booking, false)['definition'],
                                 'objectType'  => 'Activity',
                             ],
                         ],
@@ -473,7 +488,7 @@ class NelcXapiService
                     'id'      => 'http://adlnet.gov/expapi/verbs/progressed',
                     'display'=> ['en-US' => 'progressed'],
                 ],
-                'object'  => $this->courseObjectArray($booking),
+                'object'  => $this->courseObjectArray($booking, false),
                 'context' => $this->contextArray($booking, true),
                 'result'  => [
                     'score'      => ['scaled' => $scaled],
@@ -496,13 +511,14 @@ class NelcXapiService
     {
         $verb = 'completed';
         try {
+            if ($this->alreadySent("completedCourse_{$student->id}_{$booking->id}")) return;
             $statement = [
                 'actor'   => $this->actorArray($student),
                 'verb'    => [
                     'id'      => 'http://adlnet.gov/expapi/verbs/completed',
                     'display'=> ['en-US' => 'completed'],
                 ],
-                'object'  => $this->courseObjectArray($booking),
+                'object'  => $this->courseObjectArray($booking, false),
                 'context' => $this->contextArray($booking, true),
                 'timestamp' => $this->timestamp(),
             ];
@@ -527,7 +543,7 @@ class NelcXapiService
                     'id'      => 'http://id.tincanapi.com/verb/rated',
                     'display'=> ['en-US' => 'rated'],
                 ],
-                'object'  => $this->courseObjectArray($booking),
+                'object'  => $this->courseObjectArray($booking, false),
                 'context' => $this->contextArray($booking, true),
                 'result'  => [
                     'score' => [
@@ -555,6 +571,7 @@ class NelcXapiService
     {
         $verb = 'earned';
         try {
+            if ($this->alreadySent("earned_{$student->id}_{$booking->id}")) return;
             $path = parse_url($certUrl, PHP_URL_PATH);
             $uuid = basename($path);
             $certId = $this->platformUrl . '/certificate/' . $uuid;
@@ -587,7 +604,7 @@ class NelcXapiService
                         'parent' => [
                             [
                                 'id'          => $this->platformUrl . '/booking/' . $booking->booking_reference,
-                                'definition'  => $this->courseObjectArray($booking)['definition'],
+                                'definition'  => $this->courseObjectArray($booking, false)['definition'],
                                 'objectType'  => 'Activity',
                             ],
                         ],
