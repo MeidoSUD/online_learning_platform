@@ -37,6 +37,7 @@ class NelcXapiService
             'auth' => [$key, $secret],
             'timeout' => 30,
             'connect_timeout' => 10,
+            'curl' => [CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4],
         ]);
     }
 
