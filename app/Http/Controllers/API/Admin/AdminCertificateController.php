@@ -41,16 +41,15 @@ class AdminCertificateController extends Controller
 
     public function eligible(Request $request)
     {
-        $existing = DB::table('certificates')->select('student_id', 'booking_id');
-
         $completedBookings = Booking::whereIn('status', ['confirmed', 'in_progress', 'completed'])
             ->whereColumn('sessions_completed', '>=', 'sessions_count')
             ->where('sessions_count', '>', 0)
-            ->leftJoinSub($existing, 'certs', function ($join) {
-                $join->on('certs.student_id', '=', 'bookings.student_id')
-                     ->on('certs.booking_id', '=', 'bookings.id');
+            ->whereNotExists(function ($q) {
+                $q->select(DB::raw(1))
+                  ->from('certificates')
+                  ->whereColumn('certificates.student_id', 'bookings.student_id')
+                  ->whereColumn('certificates.booking_id', 'bookings.id');
             })
-            ->whereNull('certs.student_id')
             ->with('student:id,first_name,last_name,notional_id', 'course:id,name', 'teacher:id,first_name,last_name')
             ->get()
             ->filter(fn($b) => $b->student && $b->teacher)
