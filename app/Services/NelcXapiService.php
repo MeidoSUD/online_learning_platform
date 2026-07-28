@@ -23,11 +23,20 @@ class NelcXapiService
         $this->platformAr  = config('lrs-nelc-xapi.platform_in_arabic');
         $this->platformEn  = config('lrs-nelc-xapi.platform_in_english');
 
+        $key = config('lrs-nelc-xapi.key');
+        $secret = config('lrs-nelc-xapi.secret');
+
+        Log::debug('NelcXapiService constructed', [
+            'endpoint' => $this->endpoint ? substr($this->endpoint, 0, 50) . '...' : 'MISSING',
+            'key' => $key ? 'set' : 'MISSING',
+            'secret' => $secret ? 'set' : 'MISSING',
+            'platformUrl' => $this->platformUrl,
+        ]);
+
         $this->client = new Client([
-            'auth' => [
-                config('lrs-nelc-xapi.key'),
-                config('lrs-nelc-xapi.secret'),
-            ],
+            'auth' => [$key, $secret],
+            'timeout' => 30,
+            'connect_timeout' => 10,
         ]);
     }
 
@@ -109,6 +118,12 @@ class NelcXapiService
 
     protected function sendStatement(array $statement): array
     {
+        Log::debug('NelcXapiService: sending statement', [
+            'verb' => $statement['verb']['id'] ?? 'unknown',
+            'actor_name' => $statement['actor']['name'] ?? '',
+            'object_id' => $statement['object']['id'] ?? '',
+        ]);
+
         try {
             $response = $this->client->post($this->endpoint, [
                 'headers' => [
@@ -119,6 +134,11 @@ class NelcXapiService
             ]);
 
             $body = $response->getBody()->getContents();
+
+            Log::debug('NelcXapiService: LRS response', [
+                'status' => $response->getStatusCode(),
+                'body' => $body,
+            ]);
 
             return [
                 'success' => true,
@@ -132,6 +152,15 @@ class NelcXapiService
                 $status = $e->getResponse()->getStatusCode();
                 $body   = $e->getResponse()->getBody()->getContents();
             }
+
+            Log::error('NelcXapiService: LRS request failed', [
+                'status' => $status,
+                'body' => $body,
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => substr($e->getTraceAsString(), 0, 500),
+            ]);
 
             return [
                 'success' => false,
@@ -150,31 +179,45 @@ class NelcXapiService
             $isSuccess = $response['success'] ?? false;
             $status    = $response['status'] ?? 0;
 
+            $context = [
+                'verb'       => $verb,
+                'student_id' => $studentId,
+                'booking_id' => $bookingId,
+                'http_status'=> $status,
+                'lrs_response' => mb_substr($response['body'] ?? '', 0, 2000),
+                'xapi_payload'=> $payload,
+            ];
+
             SystemLog::create([
                 'level'   => $isSuccess ? 'info' : 'error',
                 'type'    => 'nelc_xapi',
                 'title'   => "NELC xAPI: {$verb}",
                 'message' => ($isSuccess ? "SUCCESS (HTTPS {$status})" : "FAILED (HTTPS {$status})") . "\n" . ($response['error'] ?? $response['body'] ?? ''),
-                'context' => [
-                    'verb'       => $verb,
-                    'student_id' => $studentId,
-                    'booking_id' => $bookingId,
-                    'http_status'=> $status,
-                    'lrs_response' => $response['body'] ?? '',
-                    'xapi_payload'=> $payload,
-                ],
+                'context' => $context,
                 'hash' => md5("nelc_{$verb}_{$studentId}_{$bookingId}_" . now()->timestamp),
                 'occurrences' => 1,
                 'last_occurred_at' => now(),
             ]);
+
+            Log::info("NELC xAPI: {$verb} — " . ($isSuccess ? 'SUCCESS' : 'FAILED'), $context);
         } catch (\Throwable $e) {
-            Log::warning('NELC xAPI: failed to write to system_logs', ['error' => $e->getMessage()]);
+            Log::error('NELC xAPI: failed to write to system_logs', [
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
         }
     }
 
     protected function logErrorToSystem(string $verb, int $studentId, ?int $bookingId, \Throwable $e): void
     {
         try {
+            $context = [
+                'verb'       => $verb,
+                'student_id' => $studentId,
+                'booking_id' => $bookingId,
+            ];
+
             SystemLog::create([
                 'level'   => 'error',
                 'type'    => 'nelc_xapi',
@@ -183,17 +226,21 @@ class NelcXapiService
                 'file'    => $e->getFile(),
                 'line'    => $e->getLine(),
                 'trace'   => $e->getTraceAsString(),
-                'context' => [
-                    'verb'       => $verb,
-                    'student_id' => $studentId,
-                    'booking_id' => $bookingId,
-                ],
+                'context' => $context,
                 'hash' => md5("nelc_{$verb}_exception_{$studentId}_{$bookingId}_" . now()->timestamp),
                 'occurrences' => 1,
                 'last_occurred_at' => now(),
             ]);
+
+            Log::error("NELC xAPI: {$verb} — EXCEPTION", [
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
         } catch (\Throwable $inner) {
-            Log::warning('NELC xAPI: failed to write exception to system_logs', ['error' => $inner->getMessage()]);
+            Log::error('NELC xAPI: failed to write exception to system_logs', [
+                'error' => $inner->getMessage(),
+            ]);
         }
     }
 

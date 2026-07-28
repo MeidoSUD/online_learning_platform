@@ -179,6 +179,33 @@ Route::prefix('auth')->group(function () {
     Route::get('profile', [AuthController::class, 'profile'])->middleware('auth:sanctum');
 });
 // ======================
+// NELC xAPI Debug
+// ======================
+Route::prefix('nelc')->group(function () {
+    Route::get('config', function () {
+        $config = [
+            'endpoint'    => config('lrs-nelc-xapi.endpoint') ? 'set' : 'MISSING',
+            'key'         => config('lrs-nelc-xapi.key') ? 'set' : 'MISSING',
+            'secret'      => config('lrs-nelc-xapi.secret') ? 'set' : 'MISSING',
+            'platform'    => config('lrs-nelc-xapi.platform') ?: 'MISSING',
+            'platform_ar' => config('lrs-nelc-xapi.platform_in_arabic') ?: 'MISSING',
+            'platform_en' => config('lrs-nelc-xapi.platform_in_english') ?: 'MISSING',
+        ];
+        return response()->json(['success' => true, 'config' => $config], 200, [], JSON_UNESCAPED_UNICODE);
+    });
+    Route::get('test-student/{userId}', function ($userId) {
+        $user = \App\Models\User::find($userId);
+        if (!$user) return response()->json(['success' => false, 'error' => 'User not found']);
+        if (!$user->notional_id) return response()->json(['success' => false, 'error' => 'User has no notional_id', 'user' => ['id' => $user->id, 'phone' => $user->phone_number]]);
+        try {
+            app(\App\Services\NelcXapiService::class)->platformRegistered($user);
+            return response()->json(['success' => true, 'message' => 'platformRegistered sent', 'user_id' => $userId, 'notional_id' => $user->notional_id]);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage(), 'file' => $e->getFile(), 'line' => $e->getLine()]);
+        }
+    });
+});
+// ======================
 // Profile (Shared)
 // ======================
 Route::prefix('profile')->middleware('auth:sanctum')->group(function () {

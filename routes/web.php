@@ -196,52 +196,199 @@ Route::get('/nelc-test', function () {
     $endpoint = config('lrs-nelc-xapi.endpoint');
     $key = config('lrs-nelc-xapi.key');
     $secret = config('lrs-nelc-xapi.secret');
+    $platform = config('lrs-nelc-xapi.platform');
 
-    if (!$endpoint || !$key || !$secret) {
-        return response()->json([
-            'success' => false,
-            'message' => 'NELC LRS not configured. Set LRS_ENDPOINT, LRS_USERNAME, LRS_PASSWORD in .env',
-            'config' => [
-                'endpoint' => $endpoint ? 'set' : 'missing',
-                'key' => $key ? 'set' : 'missing',
-                'secret' => $secret ? 'set' : 'missing',
-                'platform' => config('lrs-nelc-xapi.platform'),
-            ]
-        ], 200, [], JSON_PRETTY_PRINT);
-    }
+    $configStatus = [
+        'endpoint' => $endpoint ? substr($endpoint, 0, 60) . '...' : 'MISSING',
+        'key' => $key ? 'set' : 'MISSING',
+        'secret' => $secret ? 'set (len=' . strlen($secret) . ')' : 'MISSING',
+        'platform' => $platform ?: 'MISSING',
+        'platform_ar' => config('lrs-nelc-xapi.platform_in_arabic') ?: 'MISSING',
+        'platform_en' => config('lrs-nelc-xapi.platform_in_english') ?: 'MISSING',
+    ];
 
-    // Try sending a test statement
+    $results = [];
+
+    // Test 1: Basic connectivity with Guzzle
     try {
-        $xapi = new \Bzzix\LaravelLrsPackage\XapiIntegration();
-        $response = $xapi->Registered([
-            'name'              => '1234567890',
-            'email'             => 'test@example.com',
-            'courseId'          => url('/') . '/course/test',
-            'courseName'        => 'Test Course',
-            'courseDesc'        => 'Test course for NELC integration',
-            'instructor'        => 'Test Instructor',
-            'inst_email'        => 'instructor@test.com',
-            'learneMobileNo'    => '966501234567',
-            'learnerFullName'   => 'Test Student',
-            'learnerNationality'=> 'Saudi Arabia',
-            'lmsUrl'            => url('/'),
-            'duration'          => 'PT10H00M00S',
+        $client = new \GuzzleHttp\Client([
+            'auth' => [$key, $secret],
+            'timeout' => 30,
+            'connect_timeout' => 10,
         ]);
 
-        return response()->json([
-            'success' => $response['status'] === 200,
-            'nelc_response' => $response,
-            'config' => [
-                'endpoint' => $endpoint,
-                'platform' => config('lrs-nelc-xapi.platform'),
-            ]
-        ], 200, [], JSON_PRETTY_PRINT);
+        $statement = [
+            'actor' => [
+                'mbox' => 'mailto:test@nelc-test.com',
+                'name' => '1234567890',
+                'objectType' => 'Agent',
+            ],
+            'verb' => [
+                'id' => 'http://adlnet.gov/expapi/verbs/registered',
+                'display' => ['en-US' => 'registered'],
+            ],
+            'object' => [
+                'id' => $platform . '/nelc-test',
+                'definition' => [
+                    'name' => ['en-US' => 'NELC Connectivity Test'],
+                    'description' => ['en-US' => 'Automated connectivity test from nelc-test endpoint'],
+                    'type' => 'https://w3id.org/xapi/cmi5/activitytype/course',
+                ],
+                'objectType' => 'Activity',
+            ],
+            'context' => [
+                'platform' => $platform,
+                'language' => 'ar-SA',
+                'extensions' => [
+                    'https://nelc.gov.sa/extensions/platform' => [
+                        'name' => [
+                            'ar-SA' => config('lrs-nelc-xapi.platform_in_arabic'),
+                            'en-US' => config('lrs-nelc-xapi.platform_in_english'),
+                        ],
+                    ],
+                ],
+            ],
+            'timestamp' => gmdate('Y-m-d\TH:i:s') . 'Z',
+        ];
+
+        $response = $client->post($endpoint, [
+            'headers' => [
+                'Content-Type' => 'application/json',
+                'X-Experience-API-Version' => '1.0.3',
+            ],
+            'json' => $statement,
+        ]);
+
+        $body = $response->getBody()->getContents();
+        $results['connectivity_test'] = [
+            'success' => true,
+            'status' => $response->getStatusCode(),
+            'body' => $body,
+        ];
     } catch (\Throwable $e) {
-        return response()->json([
+        $errorBody = '';
+        $errorStatus = 0;
+        if ($e->getResponse()) {
+            $errorStatus = $e->getResponse()->getStatusCode();
+            $errorBody = $e->getResponse()->getBody()->getContents();
+        }
+        $results['connectivity_test'] = [
             'success' => false,
-            'message' => $e->getMessage(),
-        ], 500, [], JSON_PRETTY_PRINT);
+            'status' => $errorStatus,
+            'error' => $e->getMessage(),
+            'error_body' => $errorBody,
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+        ];
     }
+
+    // Test 2: Send all NELC verbs to verify they're accepted
+    $testVerbs = [
+        'initialized' => [
+            'verb' => ['id' => 'http://adlnet.gov/expapi/verbs/initialized', 'display' => ['en-US' => 'initialized']],
+        ],
+        'completed' => [
+            'verb' => ['id' => 'http://adlnet.gov/expapi/verbs/completed', 'display' => ['en-US' => 'completed']],
+        ],
+        'progressed' => [
+            'verb' => ['id' => 'http://adlnet.gov/expapi/verbs/progressed', 'display' => ['en-US' => 'progressed']],
+            'result' => ['score' => ['scaled' => 0.5], 'completion' => false],
+        ],
+        'watched' => [
+            'verb' => ['id' => 'https://w3id.org/xapi/acrossx/verbs/watched', 'display' => ['en-US' => 'watched']],
+            'object' => [
+                'id' => $platform . '/session/test',
+                'definition' => [
+                    'name' => ['en-US' => 'Test Session'],
+                    'type' => 'https://w3id.org/xapi/video/activity-type/video',
+                ],
+                'objectType' => 'Activity',
+            ],
+        ],
+        'rated' => [
+            'verb' => ['id' => 'http://id.tincanapi.com/verb/rated', 'display' => ['en-US' => 'rated']],
+            'result' => ['score' => ['scaled' => 0.8, 'raw' => 4, 'min' => 0, 'max' => 5], 'response' => 'Test'],
+        ],
+        'earned' => [
+            'verb' => ['id' => 'http://id.tincanapi.com/verb/earned', 'display' => ['en-US' => 'earned']],
+            'object' => [
+                'id' => $platform . '/certificate/test-uuid',
+                'definition' => [
+                    'name' => ['en-US' => 'TEST-CERT-001'],
+                    'type' => 'https://www.opigno.org/en/tincan_registry/activity_type/certificate',
+                ],
+                'objectType' => 'Activity',
+            ],
+        ],
+    ];
+
+    foreach ($testVerbs as $name => $overrides) {
+        $stmt = array_merge([
+            'actor' => [
+                'mbox' => 'mailto:test@nelc-test.com',
+                'name' => '1234567890',
+                'objectType' => 'Agent',
+            ],
+            'object' => [
+                'id' => $platform . '/nelc-test',
+                'definition' => [
+                    'name' => ['en-US' => 'NELC Connectivity Test'],
+                    'type' => 'https://w3id.org/xapi/cmi5/activitytype/course',
+                ],
+                'objectType' => 'Activity',
+            ],
+            'context' => [
+                'instructor' => [
+                    'name' => 'Test Instructor',
+                    'mbox' => 'mailto:instructor@nelc-test.com',
+                    'objectType' => 'Agent',
+                ],
+                'platform' => $platform,
+                'language' => 'ar-SA',
+                'extensions' => [
+                    'https://nelc.gov.sa/extensions/platform' => [
+                        'name' => [
+                            'ar-SA' => config('lrs-nelc-xapi.platform_in_arabic'),
+                            'en-US' => config('lrs-nelc-xapi.platform_in_english'),
+                        ],
+                    ],
+                ],
+            ],
+            'timestamp' => gmdate('Y-m-d\TH:i:s') . 'Z',
+        ], $overrides);
+
+        try {
+            $resp = $client->post($endpoint, [
+                'headers' => ['Content-Type' => 'application/json', 'X-Experience-API-Version' => '1.0.3'],
+                'json' => $stmt,
+            ]);
+            $results['verbs'][$name] = [
+                'success' => true,
+                'status' => $resp->getStatusCode(),
+                'body' => $resp->getBody()->getContents(),
+            ];
+        } catch (\Throwable $e) {
+            $b = '';
+            $s = 0;
+            if ($e->getResponse()) {
+                $s = $e->getResponse()->getStatusCode();
+                $b = $e->getResponse()->getBody()->getContents();
+            }
+            $results['verbs'][$name] = [
+                'success' => false,
+                'status' => $s,
+                'error' => $e->getMessage(),
+                'error_body' => $b,
+            ];
+        }
+    }
+
+    return response()->json([
+        'success' => $results['connectivity_test']['success'] ?? false,
+        'config' => $configStatus,
+        'results' => $results,
+        'php_version' => phpversion(),
+    ], 200, [], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 });
 
 // ==========================================
