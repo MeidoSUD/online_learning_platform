@@ -572,9 +572,6 @@ class NelcXapiService
         $verb = 'earned';
         try {
             if ($this->alreadySent("earned_{$student->id}_{$booking->id}")) return;
-            $path = parse_url($certUrl, PHP_URL_PATH);
-            $uuid = basename($path);
-            $certId = $this->platformUrl . '/certificate/' . $uuid;
 
             $statement = [
                 'actor'   => $this->actorArray($student),
@@ -583,7 +580,7 @@ class NelcXapiService
                     'display'=> ['en-US' => 'earned'],
                 ],
                 'object'  => [
-                    'id' => $certId,
+                    'id' => $this->platformUrl . '/uuid/' . $certNumber,
                     'definition' => [
                         'name' => ['en-US' => $certNumber],
                         'type' => 'https://www.opigno.org/en/tincan_registry/activity_type/certificate',

@@ -52,6 +52,21 @@ Route::get('/meet', function () {
     return view('meet');
 });
 
+// Certificate public view — NELC requires this URL to return 200, not 404
+Route::get('/certificate/{number}', function (string $number) {
+    $cert = \App\Models\Certificate::where('certificate_number', $number)->first();
+    if (!$cert) {
+        return response()->json(['success' => false, 'message' => 'Certificate not found'], 404);
+    }
+    return response()->json(['success' => true, 'data' => [
+        'certificate_number' => $cert->certificate_number,
+        'student_name' => $cert->student_name,
+        'course_name' => $cert->course_name,
+        'completion_date' => $cert->completion_date,
+        'issued_at' => $cert->issued_at,
+    ]]);
+})->name('certificate.show');
+
 Route::get('/test-firebase-path', function () {
     // Clear config cache first
     Artisan::call('config:clear');
