@@ -629,8 +629,9 @@ export const adminService = {
 
   // Certificates
   getCertificates: (filters: any = {}) => {
-    const query = new URLSearchParams(filters).toString();
-    return fetchWithAuth(`/admin/certificates${query ? `?${query}  ` : ''}`).then(res => res.data?.data || res.data || []);
+    const params = Object.fromEntries(Object.entries(filters).filter(([_, v]) => v != null && v !== ''));
+    const query = new URLSearchParams(params).toString();
+    return fetchWithAuth(`/admin/certificates${query ? `?${query}` : ''}`).then(res => res.data?.data || res.data || []);
   },
   getCertificateDetails: (id: number) => fetchWithAuth(`/admin/certificates/${id}`).then(res => res.data),
   getEligibleStudents: () => fetchWithAuth('/admin/certificates/eligible').then(res => res.data?.data || res.data || []),
