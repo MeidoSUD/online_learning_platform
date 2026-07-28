@@ -200,6 +200,63 @@ class NelcXapiService
     // ─── Public verb methods ───────────────────────────────────────
 
     /**
+     * 0. New student registered on the platform.
+     * Fires when a student creates their account (has National ID).
+     * This ensures NELC knows about the student before any booking.
+     */
+    public function platformRegistered(User $student): void
+    {
+        $verb = 'platformRegistered';
+        try {
+            $nationalId = $student->notional_id ?? $student->phone_number ?? '';
+            if (empty($nationalId)) {
+                return;
+            }
+
+            $statement = [
+                'actor' => [
+                    'mbox'      => 'mailto:' . ($student->email ?? 'student@example.com'),
+                    'name'      => strval($nationalId),
+                    'objectType'=> 'Agent',
+                ],
+                'verb'  => [
+                    'id'      => 'http://adlnet.gov/expapi/verbs/registered',
+                    'display'=> ['en-US' => 'registered'],
+                ],
+                'object' => [
+                    'id' => $this->platformUrl,
+                    'definition' => [
+                        'name'        => ['en-US' => $student->first_name . ' ' . $student->last_name],
+                        'description' => ['en-US' => 'Student registered on the platform'],
+                        'type'        => 'https://w3id.org/xapi/cmi5/activitytype/course',
+                    ],
+                    'objectType' => 'Activity',
+                ],
+                'context' => [
+                    'platform' => $this->platformUrl,
+                    'language' => 'ar-SA',
+                    'extensions' => [
+                        'https://nelc.gov.sa/extensions/lms_url' => $this->platformUrl,
+                        'https://nelc.gov.sa/extensions/program_url' => $this->platformUrl,
+                        'https://nelc.gov.sa/extensions/platform' => [
+                            'name' => [
+                                'ar-SA' => $this->platformAr,
+                                'en-US' => $this->platformEn,
+                            ],
+                        ],
+                    ],
+                ],
+                'timestamp' => $this->timestamp(),
+            ];
+
+            $response = $this->sendStatement($statement);
+            $this->logToSystem($verb, $student->id, null, $statement, $response);
+        } catch (\Throwable $e) {
+            $this->logErrorToSystem($verb, $student->id, null, $e);
+        }
+    }
+
+    /**
      * 1. Student registers for a private lesson package.
      * Fires when the booking status changes to confirmed.
      */

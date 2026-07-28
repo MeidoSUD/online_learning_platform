@@ -12,6 +12,7 @@ use App\Models\DeviceToken;
 use App\Http\Controllers\API\UserController;
 use App\Services\FirebaseNotificationService;
 use App\Helpers\PhoneHelper;
+use App\Services\NelcXapiService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\VerificationCodeMail;
@@ -488,6 +489,14 @@ class AuthController extends Controller
             Log::info('Student user created', ['user_id' => $user->id]);
 
             DB::commit();
+
+            try {
+                if ($user->notional_id) {
+                    app(\App\Services\NelcXapiService::class)->platformRegistered($user);
+                }
+            } catch (\Throwable $e) {
+                Log::warning('NELC xAPI: platformRegistered hook failed', ['error' => $e->getMessage()]);
+            }
 
             // Send verification code
             $smsPhone = PhoneHelper::normalizeForSMS($normalizedPhone);
