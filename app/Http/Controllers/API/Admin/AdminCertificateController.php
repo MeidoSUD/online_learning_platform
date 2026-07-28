@@ -53,6 +53,7 @@ class AdminCertificateController extends Controller
             ->whereNull('certs.student_id')
             ->with('student:id,first_name,last_name,notional_id', 'course:id,name', 'teacher:id,first_name,last_name')
             ->get()
+            ->filter(fn($b) => $b->student && $b->teacher)
             ->map(function ($booking) {
                 $isPrivate = $booking->course_id === null;
                 $student = $booking->student;
