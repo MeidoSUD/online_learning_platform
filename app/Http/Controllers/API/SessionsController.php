@@ -606,6 +606,7 @@ class SessionsController extends Controller
                     $sessionUrl = url('/') . '/session/' . $session->id;
                     $duration = $session->duration ? 'PT' . $session->duration . 'M0S' : 'PT30M0S';
                     $nelc->attended($student, $booking, $sessionUrl, $session->session_title ?? 'Session ' . $session->id, $duration);
+                    $nelc->completedLesson($student, $booking, $sessionUrl, $session->session_title ?? 'Session ' . $session->id, $duration);
 
                     $completedSessions = $booking->sessions_completed;
                     $totalSessions = $booking->sessions_count;

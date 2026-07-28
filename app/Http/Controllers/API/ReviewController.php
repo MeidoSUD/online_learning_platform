@@ -62,8 +62,14 @@ class ReviewController extends Controller
             if ($request->course_id) {
                 $course = Course::find($request->course_id);
                 if ($course) {
-                    $scaled = round($request->rating / 5, 2);
-                    app(NelcXapiService::class)->rated($request->user(), $course, $scaled, (float) $request->rating, $request->comment ?? '');
+                    $booking = \App\Models\Booking::where('student_id', $request->user()->id)
+                        ->where('course_id', $course->id)
+                        ->where('status', 'completed')
+                        ->first();
+                    if ($booking) {
+                        $scaled = round($request->rating / 5, 2);
+                        app(NelcXapiService::class)->rated($request->user(), $booking, $scaled, (float) $request->rating, $request->comment ?? '');
+                    }
                 }
             }
         } catch (\Throwable $e) {
