@@ -21,7 +21,7 @@ class TeacherWalletService
                 return false;
             }
 
-            $amount = $booking->price_per_session;
+            $amount = $booking->teacher_rate_per_session;
             $teacherId = $session->teacher_id;
 
             $wallet = Wallet::firstOrCreate(
