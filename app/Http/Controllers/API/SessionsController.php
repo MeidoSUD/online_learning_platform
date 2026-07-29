@@ -420,19 +420,22 @@ class SessionsController extends Controller
             return response()->json(['success' => false, 'message' => 'Failed to generate Agora host token. Check Agora credentials.'], 500);
         }
 
-        // 2. Persist meeting_id and mark session live
+        // 2. Persist meeting_id
         try {
             $session->meeting_id = $channel;
-            $session->status = Sessions::STATUS_LIVE;
             $session->save();
         } catch (\Throwable $e) {
             Log::warning('Failed to persist meeting id to session: ' . $e->getMessage());
         }
 
-        $session->start();
+        // 3. Start session — sets status to LIVE + started_at (can_start must pass)
+        if (!$session->start()) {
+            Log::error('Failed to start session — can_start check failed', ['session_id' => $session->id]);
+            return response()->json(['success' => false, 'message' => 'Cannot start session. It may have already started or be outside the allowed window.'], 400);
+        }
 
         try {
-            if ($session->student && $session->booking && $session->booking->teacher && !$session->started_at) {
+            if ($session->student && $session->booking && $session->booking->teacher) {
                 app(NelcXapiService::class)->initialized($session->student, $session->booking);
             }
         } catch (\Throwable $e) {

@@ -259,7 +259,7 @@ class PaymentController extends Controller
 
             if ($data['status'] === 'paid') {
                 $payment->update([
-                    'status' => 'completed', // Using local constant STATUS_COMPLETED or 'completed'
+                    'status' => 'paid',
                     'gateway_response' => json_encode($data),
                     'paid_at' => now(),
                 ]);
@@ -283,7 +283,7 @@ class PaymentController extends Controller
                                     'booking_id' => $booking->id,
                                 ]);
                                 
-                                $payment->update(['status' => 'completed']);
+                                $payment->update(['status' => 'paid']);
                                 
                                 return $this->conflictError('Slot was booked by another student', [
                                     'payment_id' => $payment->id,

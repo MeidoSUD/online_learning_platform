@@ -419,14 +419,6 @@ class StudentPackageController extends Controller
 
             Sessions::createForBooking($booking);
 
-            try {
-                if ($booking->student && $booking->student->notional_id) {
-                    app(\App\Services\NelcXapiService::class)->registered($booking->student, $booking);
-                }
-            } catch (\Throwable $e) {
-                Log::warning('NELC xAPI: registered hook failed on booking creation', ['error' => $e->getMessage()]);
-            }
-
             $booking->refresh();
             $booking->createMeetingsForSessions();
 

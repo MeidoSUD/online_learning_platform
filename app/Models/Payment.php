@@ -281,11 +281,7 @@ protected static function boot()
     parent::boot();
 
     static::updated(function ($payment) {
-        // When payment is completed, create Zoom meetings for sessions
-        if ($payment->status === self::STATUS_COMPLETED && $payment->booking) {
-            $payment->booking->update(['status' => Booking::STATUS_CONFIRMED]);
-            
-            // Create Zoom meetings for all sessions
+        if (in_array($payment->status, [self::STATUS_COMPLETED, 'paid']) && $payment->booking) {
             $payment->booking->createMeetingsForSessions();
         }
     });

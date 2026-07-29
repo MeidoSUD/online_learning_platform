@@ -15,12 +15,12 @@ class NelcXapiService
     protected string $platformAr;
     protected string $platformEn;
     protected Client $client;
-    protected array $sent = [];
+    protected static array $sent = [];
 
     protected function alreadySent(string $key): bool
     {
-        if (isset($this->sent[$key])) return true;
-        $this->sent[$key] = true;
+        if (isset(self::$sent[$key])) return true;
+        self::$sent[$key] = true;
         return false;
     }
 
