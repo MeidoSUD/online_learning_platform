@@ -303,6 +303,13 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin,support'])->grou
     Route::put('/users/{id}/verify-teacher', [UsersController::class, 'verifyTeacher']);
     Route::put('/users/{id}/suspend', [UsersController::class, 'suspend']);
     Route::put('/users/{id}/activate', [UsersController::class, 'activate']);
+
+    // Bookings & Sessions (shared between admin and support roles)
+    Route::get('/bookings', [BookingAdminController::class, 'index']);
+    Route::get('/bookings/{id}', [BookingAdminController::class, 'show']);
+    Route::get('/sessions', [SessionsAdminController::class, 'index']);
+    Route::put('/sessions/{id}/reschedule', [SessionsAdminController::class, 'reschedule']);
+    Route::get('/users/{userId}/sessions', [SessionsAdminController::class, 'userSessions']);
 });
 
 Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(function () {
@@ -420,18 +427,11 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     Route::get('/stats', [DashboardController::class, 'stats']);
     Route::get('/health', [DashboardController::class, 'health']);
 
-    // Bookings & payments
-    Route::get('/bookings', [BookingAdminController::class, 'index']);
-    Route::get('/bookings/{id}', [BookingAdminController::class, 'show']);
+    // Admin-only booking actions
     Route::post('/bookings/{id}/mark-paid', [BookingAdminController::class, 'markPaid']);
     Route::post('/bookings/{id}/refund', [BookingAdminController::class, 'refund']);
 
-    // Sessions
-    Route::get('/sessions', [SessionsAdminController::class, 'index']);
-    Route::put('/sessions/{id}/reschedule', [SessionsAdminController::class, 'reschedule']);
-    Route::get('/users/{userId}/sessions', [SessionsAdminController::class, 'userSessions']);
-
-    Route::get('/payments', [PaymentAdminController::class, 'index']);
+    // Payments
     Route::get('/payments/{id}', [PaymentAdminController::class, 'show']);
     Route::post('/payments/{id}/reconcile', [PaymentAdminController::class, 'reconcile']);
 

@@ -88,7 +88,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ activeTab, setActive
     ];
 
     const visibleGroups = role === 'support'
-        ? menuGroups.filter(g => g.id === 'users_group')
+        ? menuGroups.filter(g => g.id === 'users_group' || g.id === 'bookings_group')
         : menuGroups;
 
     return (
