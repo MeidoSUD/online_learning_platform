@@ -20,6 +20,7 @@ const processUserObject = (userObj, token) => {
     case 1: finalRole = 'admin'; break;
     case 3: finalRole = 'teacher'; break;
     case 4: finalRole = 'student'; break;
+    case 5: finalRole = 'support'; break;
     default: return null;
   }
   return { user: { role: finalRole, data: userObj }, token };
@@ -107,7 +108,8 @@ export default function Dashboard() {
 
   switch (userData.user.role) {
     case 'admin':
-      return <AdminDashboardScreen data={userData} onLogout={handleLogout} />;
+    case 'support':
+      return <AdminDashboardScreen data={userData} onLogout={handleLogout} role={userData.user.role} />;
     case 'student':
       return <StudentDashboardScreen data={userData} onLogout={handleLogout} />;
     case 'teacher':

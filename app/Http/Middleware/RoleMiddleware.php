@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\URL;
 
 class RoleMiddleware
 {
-    public function handle($request, Closure $next, $role)
+    public function handle($request, Closure $next, ...$roles)
     {
         $user = Auth::user();
         if (!$user) {
@@ -20,11 +20,13 @@ class RoleMiddleware
             return redirect(URL::to('/login'));
         }
 
-        // Get the role from the database by name
-        $roleModel = Role::where('name_key', $role)->first();
+        foreach ($roles as $role) {
+            // Get the role from the database by name
+            $roleModel = Role::where('name_key', $role)->first();
 
-        if ($roleModel && $user->role_id == $roleModel->id) {
-            return $next($request);
+            if ($roleModel && $user->role_id == $roleModel->id) {
+                return $next($request);
+            }
         }
 
         abort(403);

@@ -9,9 +9,10 @@ interface AdminSidebarProps {
     onLogout: () => void;
     isOpen: boolean;
     setIsOpen: (val: boolean) => void;
+    role?: string;
 }
 
-export const AdminSidebar: React.FC<AdminSidebarProps> = ({ activeTab, setActiveTab, onLogout, isOpen, setIsOpen }) => {
+export const AdminSidebar: React.FC<AdminSidebarProps> = ({ activeTab, setActiveTab, onLogout, isOpen, setIsOpen, role }) => {
     const { t, language, setLanguage, direction } = useLanguage();
     const [openGroups, setOpenGroups] = useState<string[]>(['overview', 'users_group', 'bookings_group', 'education_group', 'financials_group', 'system_group']);
 
@@ -86,6 +87,10 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ activeTab, setActive
         }
     ];
 
+    const visibleGroups = role === 'support'
+        ? menuGroups.filter(g => g.id === 'users_group')
+        : menuGroups;
+
     return (
         <>
             {/* Mobile Overlay */}
@@ -107,7 +112,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ activeTab, setActive
                 </div>
 
                 <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1 custom-scrollbar">
-                    {menuGroups.map(group => {
+                    {visibleGroups.map(group => {
                         if (group.isAction) {
                             return (
                                 <button

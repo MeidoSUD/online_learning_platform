@@ -1,0 +1,1 @@
+INSERT INTO `roles` (`id`, `name_key`, `name_en`, `name_ar`, `created_at`, `updated_at`) VALUES (NULL, 'support', 'support', 'support', NULL, NULL)

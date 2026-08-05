@@ -1,0 +1,1 @@
+import{o as e}from"./LanguageContext-DLuFee5L.js";var t=e(`chevron-right`,[[`path`,{d:`m9 18 6-6-6-6`,key:`mthhwq`}]]);export{t};

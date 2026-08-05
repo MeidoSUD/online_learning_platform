@@ -13,11 +13,12 @@ import { useLanguage } from '../Contexts/LanguageContext';
 interface AdminDashboardScreenProps {
   data: AuthResponse;
   onLogout: () => void;
+  role?: string;
 }
 
-export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ data, onLogout }) => {
+export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ data, onLogout, role }) => {
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(role === 'support' ? 'users' : 'overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const renderContent = () => {
@@ -74,6 +75,7 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ data
   return (
     <div className="h-screen bg-slate-50 flex overflow-hidden font-sans">
       <AdminSidebar
+        role={role}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onLogout={onLogout}

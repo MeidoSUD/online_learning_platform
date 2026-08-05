@@ -289,6 +289,22 @@ Route::prefix('teacher')->middleware(['auth:sanctum', 'role:teacher'])->group(fu
 });
 
 
+// Users & Teachers management (shared between admin and support roles)
+Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin,support'])->group(function () {
+    Route::get('/users', [UsersController::class, 'index']);
+    Route::get('/users/{id}', [UsersController::class, 'show']);
+    Route::get('/users/{id}/profile', [UsersController::class, 'profile']);
+    Route::post('/users', [UsersController::class, 'store']);
+    Route::put('/users/{id}', [UsersController::class, 'update']);
+    Route::delete('/users/{id}', [UsersController::class, 'destroy']);
+    Route::get('/teachers', [UsersController::class, 'teachers']);
+    Route::get('/teachers/{id}', [UsersController::class, 'teacherDetails']);
+    Route::put('/users/{id}/reset-password', [UsersController::class, 'resetPassword']);
+    Route::put('/users/{id}/verify-teacher', [UsersController::class, 'verifyTeacher']);
+    Route::put('/users/{id}/suspend', [UsersController::class, 'suspend']);
+    Route::put('/users/{id}/activate', [UsersController::class, 'activate']);
+});
+
 Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(function () {
     // Admin language management routes
 
@@ -351,8 +367,6 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     Route::get('language-study/teachers', [LanguageStudyController::class, 'getAllTeachersWithLanguages']); // Get all teachers with languages
     Route::get('language-study/teacher/{teacherId}', [LanguageStudyController::class, 'getTeacherLanguages']); // Get specific teacher languages
     Route::get('language-study/teachers/filter', [LanguageStudyController::class, 'filterTeachersByLanguage']); // Filter teachers by language
-    Route::get('/teachers', [UserController::class, 'listTeachers']);
-    Route::get('/teachers/{id}', [UserController::class, 'teacherDetails']);
     Route::get('/education-levels', [EducationLevelAdminController::class, 'levelsWithClassesAndSubjects']);
     Route::get('/classes/{education_level_id}', [EducationLevelAdminController::class, 'classes']);
     Route::get('subjectsClasses/{class_id}', [EducationLevelAdminController::class, 'getSubjectsByClass']);
@@ -405,22 +419,6 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     Route::get('/dashboard', [DashboardController::class, 'dashboard']); // Comprehensive admin dashboard
     Route::get('/stats', [DashboardController::class, 'stats']);
     Route::get('/health', [DashboardController::class, 'health']);
-
-    // Users management
-    Route::get('/users', [UsersController::class, 'index']);
-    Route::get('/users/{id}', [UsersController::class, 'show']);
-    Route::get('/users/{id}/profile', [UsersController::class, 'profile']);
-    Route::post('/users', [UsersController::class, 'store']); // create admin user or seed
-    Route::put('/users/{id}', [UsersController::class, 'update']);
-    Route::delete('/users/{id}', [UsersController::class, 'destroy']);
-    Route::get('/teachers', [UsersController::class, 'teachers']);
-    Route::get('/teachers/{id}', [UsersController::class, 'teacherDetails']);
-
-    // User actions: reset password, verify teacher, suspend/activate
-    Route::put('/users/{id}/reset-password', [UsersController::class, 'resetPassword']);
-    Route::put('/users/{id}/verify-teacher', [UsersController::class, 'verifyTeacher']);
-    Route::put('/users/{id}/suspend', [UsersController::class, 'suspend']);
-    Route::put('/users/{id}/activate', [UsersController::class, 'activate']);
 
     // Bookings & payments
     Route::get('/bookings', [BookingAdminController::class, 'index']);
