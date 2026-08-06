@@ -22,6 +22,7 @@ use App\Http\Controllers\API\PaymentMethodController;
 use App\Http\Controllers\API\UserPaymentMethodController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\API\SessionsController;
+use App\Http\Controllers\API\AiAssistantController;
 use App\Http\Controllers\API\LanguageStudyController;
 use App\Http\Controllers\API\LanguageController;
 use App\Http\Controllers\FCMTokenController;
@@ -102,6 +103,11 @@ Route::middleware('auth:sanctum')->group(function () {
     // Teacher Reviews
     Route::get('/teachers/{teacher_id}/reviews', [ReviewController::class, 'index']);
     Route::post('/teachers/{teacher_id}/reviews', [ReviewController::class, 'storeTeacherReview']);
+
+    // AI Educational Assistant
+    Route::post('/ai/assistant', [AiAssistantController::class, 'send']);
+    Route::get('/ai/assistant/history', [AiAssistantController::class, 'history']);
+    Route::delete('/ai/assistant', [AiAssistantController::class, 'clear']);
 });
 Route::get('/common-subjects', [ServicesController::class, 'getAllSubjects']);
 // main screen APIs
