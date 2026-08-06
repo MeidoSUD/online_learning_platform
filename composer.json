@@ -19,7 +19,8 @@
     "laravel/sanctum": "^2.14",
     "laravel/tinker": "^2.7",
     "macsidigital/laravel-zoom": "^8.0",
-    "nelc/laravel-nelc-xapi-integration": "dev-main"
+    "nelc/laravel-nelc-xapi-integration": "dev-main",
+    "openai-php/laravel": "*"
   },
   "require-dev": {
     "fakerphp/faker": "^1.9.1",

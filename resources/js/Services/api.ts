@@ -518,16 +518,10 @@ export const adminService = {
     method: 'POST', 
     body: data instanceof FormData ? data : JSON.stringify(data) 
   }),
-  updateService: (id: number, data: any) => {
-    if (data instanceof FormData) {
-      data.append('_method', 'PUT');
-      return fetchWithAuth(`/admin/services/${id}`, { method: 'POST', body: data });
-    }
-    return fetchWithAuth(`/admin/services/${id}`, { 
-      method: 'PUT', 
-      body: JSON.stringify(data) 
-    });
-  },
+  updateService: (id: number, data: any) => fetchWithAuth(`/admin/services/${id}`, { 
+    method: 'PUT', 
+    body: data instanceof FormData ? data : JSON.stringify(data) 
+  }),
   deleteService: (id: number) => fetchWithAuth(`/admin/services/${id}`, { method: 'DELETE' }),
 
   // Order Management

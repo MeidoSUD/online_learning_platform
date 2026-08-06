@@ -8,6 +8,7 @@ use App\Models\Services;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 
 /**
  * ============================================================================
@@ -40,6 +41,19 @@ use Illuminate\Support\Facades\Log;
 
 class ServiceAdminController extends Controller
 {
+    private function normalizeServicePayload(Request $request): array
+    {
+        $data = $request->all();
+
+        foreach (['name_en', 'name_ar', 'description_en', 'description_ar', 'key_name', 'icon'] as $field) {
+            if (array_key_exists($field, $data) && $data[$field] === '') {
+                $data[$field] = null;
+            }
+        }
+
+        return $data;
+    }
+
     /**
      * ========================================================================
      * GET /api/admin/services
@@ -110,7 +124,7 @@ class ServiceAdminController extends Controller
             $services = $query->orderByDesc('id')->paginate($perPage);
 
             // Format response with string IDs
-            $formattedServices = $services->map(function ($service) {
+            $formattedServices = $services->getCollection()->map(function ($service) {
                 return $this->formatServiceResponse($service);
             });
 
@@ -183,8 +197,10 @@ class ServiceAdminController extends Controller
     public function store(Request $request)
     {
         try {
-            // Validate input
-            $validated = $request->validate([
+            $payload = $this->normalizeServicePayload($request);
+            $request->merge($payload);
+
+            $validator = Validator::make($payload, [
                 'name_en' => 'required|string|max:255|unique:services,name_en',
                 'name_ar' => 'required|string|max:255|unique:services,name_ar',
                 'description_en' => 'nullable|string|max:1000',
@@ -194,6 +210,12 @@ class ServiceAdminController extends Controller
                 'status' => 'nullable|integer|in:0,1',
                 'icon' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:5120' // 5MB max
             ]);
+
+            if ($validator->fails()) {
+                throw new ValidationException($validator);
+            }
+
+            $validated = $validator->validated();
 
             // Auto-generate key_name from name_en if not provided
             if (empty($validated['key_name'])) {
@@ -236,6 +258,10 @@ class ServiceAdminController extends Controller
             ], 201);
 
         } catch (ValidationException $e) {
+            Log::warning('Service store validation failed', [
+                'errors' => $e->errors(),
+                'payload' => array_map(fn($v) => $v instanceof \Illuminate\Http\UploadedFile ? 'FILE:' . $v->getClientOriginalName() : $v, $request->all())
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Validation failed',
@@ -338,9 +364,10 @@ class ServiceAdminController extends Controller
     {
         try {
             $service = Services::findOrFail($id);
+            $payload = $this->normalizeServicePayload($request);
+            $request->merge($payload);
 
-            // Validate update
-            $validated = $request->validate([
+            $validator = Validator::make($payload, [
                 'name_en' => 'nullable|string|max:255|unique:services,name_en,' . $id,
                 'name_ar' => 'nullable|string|max:255|unique:services,name_ar,' . $id,
                 'description_en' => 'nullable|string|max:1000',
@@ -351,10 +378,16 @@ class ServiceAdminController extends Controller
                 'icon' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:5120'
             ]);
 
+            if ($validator->fails()) {
+                throw new ValidationException($validator);
+            }
+
+            $validated = $validator->validated();
+
             // If name_en is updated but key_name isn't, auto-update key_name
             if ($request->filled('name_en') && !$request->filled('key_name')) {
                 $validated['key_name'] = Str::slug($request->input('name_en'), '-');
-                
+
                 // Handle duplicate slugs
                 $counter = 1;
                 $original = $validated['key_name'];
@@ -397,6 +430,11 @@ class ServiceAdminController extends Controller
             ], 404);
 
         } catch (ValidationException $e) {
+            Log::warning('Service update validation failed', [
+                'service_id' => $id,
+                'errors' => $e->errors(),
+                'payload' => array_map(fn($v) => $v instanceof \Illuminate\Http\UploadedFile ? 'FILE:' . $v->getClientOriginalName() : $v, $request->all())
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Validation failed',

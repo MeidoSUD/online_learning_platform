@@ -86,7 +86,8 @@ export const AdminServicesTab: React.FC = () => {
             role_id: Number(service.role_id),
             status: Number(service.status)
         });
-        // Backend now returns full URLs, use image field directly
+        // Clear any stale logo selection so an edit does not accidentally upload an old file.
+        setLogoFile(null);
         setLogoPreview(service.image || null);
         setIsEditing(true);
         setIsModalOpen(true);
@@ -97,22 +98,40 @@ export const AdminServicesTab: React.FC = () => {
         setFormLoading(true);
 
         try {
-            const data = new FormData();
-            if (logoFile) data.append('icon', logoFile);  // backend field name is 'icon'
-            data.append('name_en', formData.name_en || '');
-            data.append('name_ar', formData.name_ar || '');
-            data.append('description_en', formData.description_en || '');
-            data.append('description_ar', formData.description_ar || '');
-            data.append('role_id', String(formData.role_id || 3));
-            data.append('status', String(formData.status || 1));
+            const payload: Record<string, string | number | null | undefined> = {};
+            const appendIfPresent = (key: string, value: string | number | null | undefined) => {
+                if (value === null || value === undefined || value === '') {
+                    return;
+                }
+                payload[key] = String(value).trim();
+            };
 
-            if (isEditing && currentService) {
-                await adminService.updateService(currentService.id, data);
-                showToast(t.success, 'success');
+            appendIfPresent('name_en', formData.name_en);
+            appendIfPresent('name_ar', formData.name_ar);
+            appendIfPresent('description_en', formData.description_en);
+            appendIfPresent('description_ar', formData.description_ar);
+            appendIfPresent('role_id', formData.role_id);
+            appendIfPresent('status', formData.status);
+
+            if (logoFile) {
+                const form = new FormData();
+                Object.entries(payload).forEach(([key, value]) => {
+                    form.append(key, String(value));
+                });
+                form.append('icon', logoFile);
+
+                if (isEditing && currentService) {
+                    await adminService.updateService(currentService.id, form);
+                } else {
+                    await adminService.createService(form);
+                }
+            } else if (isEditing && currentService) {
+                await adminService.updateService(currentService.id, payload);
             } else {
-                await adminService.createService(data);
-                showToast(t.success, 'success');
+                await adminService.createService(payload);
             }
+
+            showToast(t.success, 'success');
 
             setIsModalOpen(false);
             resetForm();
