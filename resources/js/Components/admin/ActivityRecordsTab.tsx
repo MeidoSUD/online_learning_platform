@@ -123,8 +123,8 @@ export const ActivityRecordsTab: React.FC = () => {
 
   const summaryCards = stats
     ? [
-        { label: language === 'ar' ? 'الإجمالي' : 'Total', value: formatNumber(stats.total), icon: BarChart3, color: 'text-blue-600', bg: 'bg-blue-50' },
-        { label: language === 'ar' ? 'اليوم' : 'Today', value: formatNumber(stats.today), icon: Activity, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+        { label: language === 'ar' ? 'الإجمالي' : 'Total', value: formatNumber(stats.total), icon: BarChart3, color: 'text-secondary', bg: 'bg-secondary-pale' },
+        { label: language === 'ar' ? 'اليوم' : 'Today', value: formatNumber(stats.today), icon: Activity, color: 'text-primary', bg: 'bg-primary-pale' },
         { label: language === 'ar' ? 'هذا الأسبوع' : 'This Week', value: formatNumber(stats.this_week), icon: BarChart3, color: 'text-violet-600', bg: 'bg-violet-50' },
         { label: language === 'ar' ? 'هذا الشهر' : 'This Month', value: formatNumber(stats.this_month), icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
         { label: language === 'ar' ? 'المستخدمين' : 'Users', value: formatNumber(stats.unique_users), icon: Users, color: 'text-cyan-600', bg: 'bg-cyan-50' },
@@ -156,10 +156,10 @@ export const ActivityRecordsTab: React.FC = () => {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="text-2xl font-bold text-[var(--text-main)]">
             {language === 'ar' ? 'سجلات النشاطات' : 'Activity Records'}
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-[var(--text-muted)] mt-1">
             {language === 'ar' ? 'عرض جميع الأحداث والإجراءات في النظام' : 'View all events and actions in the system'}
           </p>
         </div>
@@ -178,9 +178,9 @@ export const ActivityRecordsTab: React.FC = () => {
       ) : summaryCards.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
           {summaryCards.map((card, i) => (
-            <div key={i} className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+            <div key={i} className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] p-4 shadow-[var(--shadow-sm)]">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-medium text-slate-500">{card.label}</span>
+                <span className="text-xs font-medium text-[var(--text-muted)]">{card.label}</span>
                 <div className={`p-2 rounded-lg ${card.bg}`}>
                   <card.icon size={16} className={card.color} />
                 </div>
@@ -192,11 +192,11 @@ export const ActivityRecordsTab: React.FC = () => {
       )}
 
       {/* Sub Tabs */}
-      <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
+      <div className="flex gap-1 bg-[var(--light-bg)] p-1 rounded-[var(--radius-md)] w-fit">
         <button
           onClick={() => setActiveSubTab('records')}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-            activeSubTab === 'records' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            activeSubTab === 'records' ? 'bg-white text-[var(--text-main)] shadow-[var(--shadow-sm)]' : 'text-[var(--text-muted)] hover:text-navy'
           }`}
         >
           <List size={16} />
@@ -205,7 +205,7 @@ export const ActivityRecordsTab: React.FC = () => {
         <button
           onClick={() => setActiveSubTab('grouped')}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-            activeSubTab === 'grouped' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            activeSubTab === 'grouped' ? 'bg-white text-[var(--text-main)] shadow-[var(--shadow-sm)]' : 'text-[var(--text-muted)] hover:text-navy'
           }`}
         >
           <PieChart size={16} />
@@ -214,25 +214,25 @@ export const ActivityRecordsTab: React.FC = () => {
       </div>
 
       {activeSubTab === 'records' && (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <div className="p-4 border-b border-slate-100">
+        <div className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] overflow-hidden">
+          <div className="p-4 border-b border-[var(--border)]">
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
-                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
                 <input
                   type="text"
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleSearch()}
                   placeholder={language === 'ar' ? 'بحث في العنوان...' : 'Search title...'}
-                  className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full pl-10 pr-4 py-2 border border-[var(--border)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
               </div>
               {categories.length > 0 && (
                 <div className="relative">
                   <button
                     onClick={() => setFilterOpen(!filterOpen)}
-                    className="flex items-center gap-2 px-4 py-2 border border-slate-300 rounded-lg text-sm bg-white hover:bg-slate-50"
+                    className="flex items-center gap-2 px-4 py-2 border border-[var(--border)] rounded-lg text-sm bg-white hover:bg-[var(--light-bg)]"
                   >
                     {categoryFilter === 'all'
                       ? (language === 'ar' ? 'كل التصنيفات' : 'All Categories')
@@ -240,10 +240,10 @@ export const ActivityRecordsTab: React.FC = () => {
                     <ChevronDown size={16} />
                   </button>
                   {filterOpen && (
-                    <div className={`absolute z-20 mt-1 w-44 bg-white border border-slate-200 rounded-lg shadow-lg ${direction === 'rtl' ? 'left-0' : 'right-0'}`}>
+                    <div className={`absolute z-20 mt-1 w-44 bg-white border border-[var(--border)] rounded-lg shadow-[var(--shadow-lg)] ${direction === 'rtl' ? 'left-0' : 'right-0'}`}>
                       <button
                         onClick={() => { setCategoryFilter('all'); setFilterOpen(false); setCurrentPage(1); }}
-                        className={`w-full text-left px-4 py-2 text-sm hover:bg-slate-50 ${categoryFilter === 'all' ? 'bg-slate-50 font-medium' : ''}`}
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-[var(--light-bg)] ${categoryFilter === 'all' ? 'bg-[var(--light-bg)] font-medium' : ''}`}
                       >
                         {language === 'ar' ? 'الكل' : 'All'}
                       </button>
@@ -251,7 +251,7 @@ export const ActivityRecordsTab: React.FC = () => {
                         <button
                           key={cat}
                           onClick={() => { setCategoryFilter(cat!); setFilterOpen(false); setCurrentPage(1); }}
-                          className={`w-full text-left px-4 py-2 text-sm hover:bg-slate-50 ${categoryFilter === cat ? 'bg-slate-50 font-medium' : ''}`}
+                          className={`w-full text-left px-4 py-2 text-sm hover:bg-[var(--light-bg)] ${categoryFilter === cat ? 'bg-[var(--light-bg)] font-medium' : ''}`}
                         >
                           {cat}
                         </button>
@@ -272,7 +272,7 @@ export const ActivityRecordsTab: React.FC = () => {
               <Loader2 className="w-8 h-8 text-primary animate-spin" />
             </div>
           ) : records.length === 0 ? (
-            <div className="text-center py-20 text-slate-400">
+            <div className="text-center py-20 text-[var(--text-muted)]">
               <Activity size={48} className="mx-auto mb-4 opacity-30" />
               <p>{language === 'ar' ? 'لا توجد سجلات نشاطات' : 'No activity records found'}</p>
             </div>
@@ -280,7 +280,7 @@ export const ActivityRecordsTab: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  <tr className="bg-[var(--light-bg)] text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">
                     <th className="text-right pr-4 py-3">ID</th>
                     <th className="text-right px-4 py-3">{language === 'ar' ? 'العنوان' : 'Title'}</th>
                     <th className="text-right px-4 py-3 hidden md:table-cell">{language === 'ar' ? 'التصنيف' : 'Category'}</th>
@@ -291,28 +291,28 @@ export const ActivityRecordsTab: React.FC = () => {
                     <th className="text-right pr-4 py-3 w-16">{language === 'ar' ? 'عرض' : 'View'}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-[var(--border)]">
                   {records.map(record => (
-                    <tr key={record.id} className="hover:bg-slate-50 transition-colors text-sm">
-                      <td className="pr-4 py-3 text-slate-400 font-mono text-xs">#{record.id}</td>
-                      <td className="px-4 py-3 font-medium text-slate-900 max-w-[200px] truncate">{record.title}</td>
+                    <tr key={record.id} className="hover:bg-[var(--light-bg)] transition-colors text-sm">
+                      <td className="pr-4 py-3 text-[var(--text-muted)] font-mono text-xs">#{record.id}</td>
+                      <td className="px-4 py-3 font-medium text-[var(--text-main)] max-w-[200px] truncate">{record.title}</td>
                       <td className="px-4 py-3 hidden md:table-cell">
                         {record.category ? (
-                          <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">{record.category}</span>
-                        ) : <span className="text-slate-400">—</span>}
+                          <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-secondary-pale text-secondary">{record.category}</span>
+                        ) : <span className="text-[var(--text-muted)]">—</span>}
                       </td>
                       <td className="px-4 py-3 hidden lg:table-cell">
-                        {record.user ? <span className="text-slate-700">{record.user.first_name} {record.user.last_name}</span> : <span className="text-slate-400">—</span>}
+                        {record.user ? <span className="text-navy">{record.user.first_name} {record.user.last_name}</span> : <span className="text-[var(--text-muted)]">—</span>}
                       </td>
                       <td className="px-4 py-3 hidden lg:table-cell">
-                        {record.teacher ? <span className="text-slate-700">{record.teacher.first_name} {record.teacher.last_name}</span> : <span className="text-slate-400">—</span>}
+                        {record.teacher ? <span className="text-navy">{record.teacher.first_name} {record.teacher.last_name}</span> : <span className="text-[var(--text-muted)]">—</span>}
                       </td>
-                      <td className="px-4 py-3 hidden xl:table-cell text-slate-600 max-w-[120px] truncate">
+                      <td className="px-4 py-3 hidden xl:table-cell text-[var(--text-muted)] max-w-[120px] truncate">
                         {localizedName(record.service ?? undefined) as string}
                       </td>
-                      <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">{formatDate(record.created_at)}</td>
+                      <td className="px-4 py-3 text-[var(--text-muted)] text-xs whitespace-nowrap">{formatDate(record.created_at)}</td>
                       <td className="pr-4 py-3">
-                        <button onClick={() => setSelectedRecord(record)} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-600 transition-colors" title={language === 'ar' ? 'عرض التفاصيل' : 'View details'}>
+                        <button onClick={() => setSelectedRecord(record)} className="p-1.5 rounded-lg hover:bg-secondary-pale text-secondary transition-colors" title={language === 'ar' ? 'عرض التفاصيل' : 'View details'}>
                           <Eye size={16} />
                         </button>
                       </td>
@@ -329,11 +329,11 @@ export const ActivityRecordsTab: React.FC = () => {
       {activeSubTab === 'grouped' && (
         <div className="space-y-4">
           {groupedLoading ? (
-            <div className="flex items-center justify-center py-20 bg-white rounded-xl border border-slate-200">
+            <div className="flex items-center justify-center py-20 bg-white rounded-[var(--radius-md)] border border-[var(--border)]">
               <Loader2 className="w-8 h-8 text-primary animate-spin" />
             </div>
           ) : !groupedStats ? (
-            <div className="text-center py-20 text-slate-400 bg-white rounded-xl border border-slate-200">
+            <div className="text-center py-20 text-[var(--text-muted)] bg-white rounded-[var(--radius-md)] border border-[var(--border)]">
               <PieChart size={48} className="mx-auto mb-4 opacity-30" />
               <p>{language === 'ar' ? 'لا توجد بيانات' : 'No data available'}</p>
             </div>
@@ -350,28 +350,28 @@ export const ActivityRecordsTab: React.FC = () => {
               if (data.length === 0) return null;
 
               return (
-                <div key={key} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                  <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                <div key={key} className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] overflow-hidden">
+                  <div className="px-4 py-3 border-b border-[var(--border)] bg-[var(--light-bg)]">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-navy">
                       {groupedIcons[key]}
                       {label}
-                      <span className="text-xs font-normal text-slate-400">({data.length})</span>
+                      <span className="text-xs font-normal text-[var(--text-muted)]">({data.length})</span>
                     </div>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead>
-                        <tr className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        <tr className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">
                           <th className="text-right px-4 py-2 w-10">#</th>
                           <th className="text-right px-4 py-2">{language === 'ar' ? 'الاسم' : 'Name'}</th>
                           <th className="text-right px-4 py-2 w-28">{language === 'ar' ? 'عدد السجلات' : 'Count'}</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100">
+                      <tbody className="divide-y divide-[var(--border)]">
                         {data.map((item, i) => (
-                          <tr key={item.id ?? i} className="hover:bg-slate-50 transition-colors text-sm">
-                            <td className="px-4 py-2 text-slate-400 font-mono text-xs">{i + 1}</td>
-                            <td className="px-4 py-2 font-medium text-slate-900">
+                          <tr key={item.id ?? i} className="hover:bg-[var(--light-bg)] transition-colors text-sm">
+                            <td className="px-4 py-2 text-[var(--text-muted)] font-mono text-xs">{i + 1}</td>
+                            <td className="px-4 py-2 font-medium text-[var(--text-main)]">
                               {item.name_ar && language === 'ar' ? item.name_ar : item.name}
                             </td>
                             <td className="px-4 py-2">
@@ -403,34 +403,34 @@ export const ActivityRecordsTab: React.FC = () => {
                 <Activity size={12} />
                 {selectedRecord.title}
               </span>
-              <span className="text-xs text-slate-400">#{selectedRecord.id}</span>
+              <span className="text-xs text-[var(--text-muted)]">#{selectedRecord.id}</span>
             </div>
             {selectedRecord.category && (
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">{language === 'ar' ? 'التصنيف' : 'Category'}</label>
-                <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">{selectedRecord.category}</span>
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">{language === 'ar' ? 'التصنيف' : 'Category'}</label>
+                <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-secondary-pale text-secondary">{selectedRecord.category}</span>
               </div>
             )}
             <div className="grid grid-cols-2 gap-4">
-              {selectedRecord.user && <div><label className="block text-xs font-medium text-slate-500 mb-1"><User size={12} className="inline mr-1" />{language === 'ar' ? 'المستخدم' : 'User'}</label><p className="text-slate-800">{selectedRecord.user.first_name} {selectedRecord.user.last_name}</p></div>}
-              {selectedRecord.teacher && <div><label className="block text-xs font-medium text-slate-500 mb-1"><User size={12} className="inline mr-1" />{language === 'ar' ? 'المعلم' : 'Teacher'}</label><p className="text-slate-800">{selectedRecord.teacher.first_name} {selectedRecord.teacher.last_name}</p></div>}
-              {selectedRecord.booking && <div><label className="block text-xs font-medium text-slate-500 mb-1"><Hash size={12} className="inline mr-1" />{language === 'ar' ? 'الحجز' : 'Booking'}</label><p className="text-slate-800 font-mono text-xs">{selectedRecord.booking.booking_reference}</p></div>}
-              {selectedRecord.service && <div><label className="block text-xs font-medium text-slate-500 mb-1"><Layers size={12} className="inline mr-1" />{language === 'ar' ? 'الخدمة' : 'Service'}</label><p className="text-slate-800">{localizedName(selectedRecord.service)}</p></div>}
-              {selectedRecord.subject && <div><label className="block text-xs font-medium text-slate-500 mb-1"><BookOpen size={12} className="inline mr-1" />{language === 'ar' ? 'المادة' : 'Subject'}</label><p className="text-slate-800">{localizedName(selectedRecord.subject)}</p></div>}
-              {selectedRecord.language && <div><label className="block text-xs font-medium text-slate-500 mb-1"><Globe size={12} className="inline mr-1" />{language === 'ar' ? 'اللغة' : 'Language'}</label><p className="text-slate-800">{localizedName(selectedRecord.language)}</p></div>}
-              {selectedRecord.course && <div><label className="block text-xs font-medium text-slate-500 mb-1"><BookOpen size={12} className="inline mr-1" />{language === 'ar' ? 'الدورة' : 'Course'}</label><p className="text-slate-800">{localizedName(selectedRecord.course)}</p></div>}
-              {selectedRecord.session_type && <div><label className="block text-xs font-medium text-slate-500 mb-1">{language === 'ar' ? 'نوع الجلسة' : 'Session Type'}</label><p className="text-slate-800">{selectedRecord.session_type}</p></div>}
-              {selectedRecord.sessions_count !== null && <div><label className="block text-xs font-medium text-slate-500 mb-1">{language === 'ar' ? 'عدد الجلسات' : 'Sessions Count'}</label><p className="text-slate-800">{selectedRecord.sessions_count}</p></div>}
+              {selectedRecord.user && <div><label className="block text-xs font-medium text-[var(--text-muted)] mb-1"><User size={12} className="inline mr-1" />{language === 'ar' ? 'المستخدم' : 'User'}</label><p className="text-[var(--text-main)]">{selectedRecord.user.first_name} {selectedRecord.user.last_name}</p></div>}
+              {selectedRecord.teacher && <div><label className="block text-xs font-medium text-[var(--text-muted)] mb-1"><User size={12} className="inline mr-1" />{language === 'ar' ? 'المعلم' : 'Teacher'}</label><p className="text-[var(--text-main)]">{selectedRecord.teacher.first_name} {selectedRecord.teacher.last_name}</p></div>}
+              {selectedRecord.booking && <div><label className="block text-xs font-medium text-[var(--text-muted)] mb-1"><Hash size={12} className="inline mr-1" />{language === 'ar' ? 'الحجز' : 'Booking'}</label><p className="text-[var(--text-main)] font-mono text-xs">{selectedRecord.booking.booking_reference}</p></div>}
+              {selectedRecord.service && <div><label className="block text-xs font-medium text-[var(--text-muted)] mb-1"><Layers size={12} className="inline mr-1" />{language === 'ar' ? 'الخدمة' : 'Service'}</label><p className="text-[var(--text-main)]">{localizedName(selectedRecord.service)}</p></div>}
+              {selectedRecord.subject && <div><label className="block text-xs font-medium text-[var(--text-muted)] mb-1"><BookOpen size={12} className="inline mr-1" />{language === 'ar' ? 'المادة' : 'Subject'}</label><p className="text-[var(--text-main)]">{localizedName(selectedRecord.subject)}</p></div>}
+              {selectedRecord.language && <div><label className="block text-xs font-medium text-[var(--text-muted)] mb-1"><Globe size={12} className="inline mr-1" />{language === 'ar' ? 'اللغة' : 'Language'}</label><p className="text-[var(--text-main)]">{localizedName(selectedRecord.language)}</p></div>}
+              {selectedRecord.course && <div><label className="block text-xs font-medium text-[var(--text-muted)] mb-1"><BookOpen size={12} className="inline mr-1" />{language === 'ar' ? 'الدورة' : 'Course'}</label><p className="text-[var(--text-main)]">{localizedName(selectedRecord.course)}</p></div>}
+              {selectedRecord.session_type && <div><label className="block text-xs font-medium text-[var(--text-muted)] mb-1">{language === 'ar' ? 'نوع الجلسة' : 'Session Type'}</label><p className="text-[var(--text-main)]">{selectedRecord.session_type}</p></div>}
+              {selectedRecord.sessions_count !== null && <div><label className="block text-xs font-medium text-[var(--text-muted)] mb-1">{language === 'ar' ? 'عدد الجلسات' : 'Sessions Count'}</label><p className="text-[var(--text-main)]">{selectedRecord.sessions_count}</p></div>}
             </div>
             {selectedRecord.data && Object.keys(selectedRecord.data).length > 0 && (
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">{language === 'ar' ? 'البيانات' : 'Data'}</label>
-                <pre className="whitespace-pre-wrap text-xs bg-slate-50 border border-slate-200 rounded-lg p-3 max-h-48 overflow-y-auto text-slate-700">{JSON.stringify(selectedRecord.data, null, 2)}</pre>
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">{language === 'ar' ? 'البيانات' : 'Data'}</label>
+                <pre className="whitespace-pre-wrap text-xs bg-[var(--light-bg)] border border-[var(--border)] rounded-lg p-3 max-h-48 overflow-y-auto text-navy">{JSON.stringify(selectedRecord.data, null, 2)}</pre>
               </div>
             )}
-            <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100">
-              <div><label className="block text-xs font-medium text-slate-500 mb-1"><Calendar size={12} className="inline mr-1" />{language === 'ar' ? 'تم الإنشاء' : 'Created'}</label><p className="text-xs text-slate-600">{formatDate(selectedRecord.created_at)}</p></div>
-              <div><label className="block text-xs font-medium text-slate-500 mb-1"><Calendar size={12} className="inline mr-1" />{language === 'ar' ? 'آخر تحديث' : 'Updated'}</label><p className="text-xs text-slate-600">{formatDate(selectedRecord.updated_at)}</p></div>
+            <div className="grid grid-cols-2 gap-4 pt-2 border-t border-[var(--border)]">
+              <div><label className="block text-xs font-medium text-[var(--text-muted)] mb-1"><Calendar size={12} className="inline mr-1" />{language === 'ar' ? 'تم الإنشاء' : 'Created'}</label><p className="text-xs text-[var(--text-muted)]">{formatDate(selectedRecord.created_at)}</p></div>
+              <div><label className="block text-xs font-medium text-[var(--text-muted)] mb-1"><Calendar size={12} className="inline mr-1" />{language === 'ar' ? 'آخر تحديث' : 'Updated'}</label><p className="text-xs text-[var(--text-muted)]">{formatDate(selectedRecord.updated_at)}</p></div>
             </div>
           </div>
         </Modal>

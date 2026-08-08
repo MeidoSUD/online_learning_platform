@@ -128,14 +128,14 @@ export const WalletTab: React.FC<WalletTabProps> = ({ user, onNavigate }) => {
     <div className="space-y-6 animate-fade-in">
       {/* Balance Card */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-8 text-white shadow-xl relative overflow-hidden">
+        <div className="md:col-span-2 bg-gradient-to-br from-slate-800 to-slate-900 rounded-[var(--radius-md)] p-8 text-white shadow-xl relative overflow-hidden">
           <div className="absolute top-0 right-0 p-4 opacity-10">
             <Wallet size={120} />
           </div>
           <div className="relative z-10">
-            <p className="text-slate-400 font-medium mb-2">{t.balance}</p>
+            <p className="text-[var(--text-muted)] font-medium mb-2">{t.balance}</p>
             <h2 className="text-4xl font-bold mb-6">
-              {Number(displayBalance).toFixed(2)} <span className="text-lg font-normal text-slate-400">{t.sar}</span>
+              {Number(displayBalance).toFixed(2)} <span className="text-lg font-normal text-[var(--text-muted)]">{t.sar}</span>
             </h2>
             <div className="flex gap-3">
               <Button onClick={() => setShowWithdraw(true)} className="bg-primary hover:bg-primary/90 text-white border-0">
@@ -145,21 +145,21 @@ export const WalletTab: React.FC<WalletTabProps> = ({ user, onNavigate }) => {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm flex flex-col justify-center">
-            <h3 className="text-slate-500 font-medium mb-4">{t.pending}</h3>
-            <div className="text-2xl font-bold text-slate-900 mb-2">
+        <div className="bg-white rounded-[var(--radius-md)] p-6 border border-[var(--border)] shadow-[var(--shadow-sm)] flex flex-col justify-center">
+            <h3 className="text-[var(--text-muted)] font-medium mb-4">{t.pending}</h3>
+            <div className="text-2xl font-bold text-[var(--text-main)] mb-2">
                {displayWithdrawals
                    .filter((w: Withdrawal) => w.status === 'pending')
                    .reduce((sum: number, w: Withdrawal) => sum + Number(w.amount), 0).toFixed(2)} {t.sar}
             </div>
-            <p className="text-xs text-slate-400">Payouts currently in processing</p>
+            <p className="text-xs text-[var(--text-muted)]">Payouts currently in processing</p>
         </div>
       </div>
 
       {/* Bank Accounts */}
       <div>
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-bold text-slate-900">{t.bankAccounts}</h3>
+          <h3 className="text-lg font-bold text-[var(--text-main)]">{t.bankAccounts}</h3>
           {onNavigate && (
             <Button variant="outline" onClick={() => onNavigate('bank-accounts')}>
               <Building size={16} className="mr-2" /> {language === 'ar' ? 'إدارة الحسابات' : 'Manage Accounts'}
@@ -172,25 +172,25 @@ export const WalletTab: React.FC<WalletTabProps> = ({ user, onNavigate }) => {
              const bankName = language === 'ar' ? (acc.banks?.name_ar || "بنك") : (acc.banks?.name_en || "Bank");
              
              return (
-              <div key={acc.id} className={`p-5 rounded-xl border transition-all relative group ${acc.is_default ? 'bg-blue-50 border-blue-200' : 'bg-white border-slate-200'}`}>
+              <div key={acc.id} className={`p-5 rounded-[var(--radius-md)] border transition-all relative group ${acc.is_default ? 'bg-secondary-pale border-secondary/30' : 'bg-white border-[var(--border)]'}`}>
                 <div className="flex justify-between items-start">
                   <div className="flex items-center gap-3">
-                    <div className={`p-3 rounded-lg ${acc.is_default ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-500'}`}>
+                    <div className={`p-3 rounded-lg ${acc.is_default ? 'bg-secondary-pale text-secondary' : 'bg-[var(--light-bg)] text-[var(--text-muted)]'}`}>
                       <Building size={24} />
                     </div>
                     <div>
-                      <h4 className="font-bold text-slate-900">{bankName}</h4>
-                      <p className="text-sm text-slate-500 font-mono mt-1">**** {acc.account_number.slice(-4)}</p>
-                      <p className="text-xs text-slate-400 mt-1">{acc.account_holder_name}</p>
+                      <h4 className="font-bold text-[var(--text-main)]">{bankName}</h4>
+                      <p className="text-sm text-[var(--text-muted)] font-mono mt-1">**** {acc.account_number.slice(-4)}</p>
+                      <p className="text-xs text-[var(--text-muted)] mt-1">{acc.account_holder_name}</p>
                     </div>
                   </div>
                   {acc.is_default ? (
-                    <span className="text-blue-600"><CheckCircle size={20} /></span>
+                    <span className="text-secondary"><CheckCircle size={20} /></span>
                   ) : (
                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                        <button 
                           onClick={() => handleSetDefault(acc.id)}
-                          className="text-xs px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-slate-600"
+                          className="text-xs px-2 py-1 bg-[var(--light-bg)] hover:bg-[var(--border)] rounded text-[var(--text-muted)]"
                        >
                           {language === 'ar' ? 'تعيين افتراضي' : 'Set Default'}
                        </button>
@@ -205,7 +205,7 @@ export const WalletTab: React.FC<WalletTabProps> = ({ user, onNavigate }) => {
           })}
           
           {myBankAccounts.length === 0 && (
-              <div className="col-span-full text-center py-8 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-slate-500">
+              <div className="col-span-full text-center py-8 bg-[var(--light-bg)] rounded-[var(--radius-md)] border border-dashed border-[var(--border)] text-[var(--text-muted)]">
                   {language === 'ar' ? 'لا توجد حسابات بنكية' : 'No bank accounts yet.'}
               </div>
           )}
@@ -214,37 +214,37 @@ export const WalletTab: React.FC<WalletTabProps> = ({ user, onNavigate }) => {
 
       {/* Transactions History */}
       <div>
-        <h3 className="text-lg font-bold text-slate-900 mb-4">{t.history}</h3>
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <h3 className="text-lg font-bold text-[var(--text-main)] mb-4">{t.history}</h3>
+        <div className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 border-b border-slate-200">
+              <thead className="bg-[var(--light-bg)] border-b border-[var(--border)]">
                 <tr>
-                  <th className="px-6 py-3 font-semibold text-slate-700">Date</th>
-                  <th className="px-6 py-3 font-semibold text-slate-700">Description</th>
-                  <th className="px-6 py-3 font-semibold text-slate-700">Status</th>
-                  <th className="px-6 py-3 font-semibold text-slate-700 text-right">Amount</th>
+                  <th className="px-6 py-3 font-semibold text-navy">Date</th>
+                  <th className="px-6 py-3 font-semibold text-navy">Description</th>
+                  <th className="px-6 py-3 font-semibold text-navy">Status</th>
+                  <th className="px-6 py-3 font-semibold text-navy text-right">Amount</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[var(--border)]">
                 {displayWithdrawals.length === 0 && (
                      <tr>
-                        <td colSpan={4} className="px-6 py-8 text-center text-slate-500">
+                        <td colSpan={4} className="px-6 py-8 text-center text-[var(--text-muted)]">
                             No withdrawal history found.
                         </td>
                     </tr>
                 )}
                 {displayWithdrawals.map((tx: Withdrawal) => (
-                  <tr key={tx.id} className="hover:bg-slate-50/50">
-                    <td className="px-6 py-4 text-slate-600">
+                  <tr key={tx.id} className="hover:bg-[var(--light-bg)]">
+                    <td className="px-6 py-4 text-[var(--text-muted)]">
                         {new Date(tx.requested_at || tx.created_at || Date.now()).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4 font-medium text-slate-900">
+                    <td className="px-6 py-4 font-medium text-[var(--text-main)]">
                         Withdrawal to {language === 'ar' ? tx.payment_method?.banks?.name_ar : tx.payment_method?.banks?.name_en || 'Bank'}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        tx.status === 'completed' || tx.status === 'approved' ? 'bg-green-100 text-green-800' :
+                        tx.status === 'completed' || tx.status === 'approved' ? 'bg-primary-pale text-green-800' :
                         tx.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                         'bg-red-100 text-red-800'
                       }`}>
@@ -253,7 +253,7 @@ export const WalletTab: React.FC<WalletTabProps> = ({ user, onNavigate }) => {
                     </td>
                     <td className="px-6 py-4 text-right">
                         <div className="flex flex-col items-end gap-1">
-                            <span className="font-bold text-slate-900">-{tx.amount} {t.sar}</span>
+                            <span className="font-bold text-[var(--text-main)]">-{tx.amount} {t.sar}</span>
                             {tx.status === 'pending' && (
                                 <button 
                                     onClick={() => handleCancelWithdrawal(tx.id)}
@@ -276,8 +276,8 @@ export const WalletTab: React.FC<WalletTabProps> = ({ user, onNavigate }) => {
 
       <Modal isOpen={showWithdraw} onClose={() => setShowWithdraw(false)} title={t.requestPayout}>
         <div className="space-y-4">
-          <div className="p-4 bg-blue-50 rounded-lg mb-4">
-            <p className="text-sm text-blue-700">Available Balance: <strong>{Number(displayBalance).toFixed(2)} {t.sar}</strong></p>
+          <div className="p-4 bg-secondary-pale rounded-lg mb-4">
+            <p className="text-sm text-secondary">Available Balance: <strong>{Number(displayBalance).toFixed(2)} {t.sar}</strong></p>
           </div>
           
           <Input 

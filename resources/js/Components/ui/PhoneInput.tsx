@@ -40,7 +40,7 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
       </label>
       <div className="relative flex" dir="ltr">
         {/* Fixed Country Code - Always LTR for number layout */}
-        <div className="flex items-center justify-center rounded-l-lg border border-r-0 border-slate-200 bg-slate-100 px-3 text-slate-600 font-semibold">
+        <div className="flex items-center justify-center rounded-l-lg border border-r-0 border-[var(--border)] bg-[var(--light-bg)] px-3 text-[var(--text-muted)] font-semibold">
           <span className="mr-1">🇸🇦</span> +966
         </div>
 
@@ -52,10 +52,10 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
           maxLength={9}
           placeholder="5xxxxxxxx"
           className={`
-            flex-1 rounded-r-lg border bg-white py-3 px-4 text-text shadow-sm transition-all
+            flex-1 rounded-r-lg border bg-white py-3 px-4 text-text shadow-[var(--shadow-sm)] transition-all
             focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none
-            disabled:cursor-not-allowed disabled:bg-slate-50
-            ${error ? 'border-error' : 'border-slate-200'}
+            disabled:cursor-not-allowed disabled:bg-[var(--light-bg)]
+            ${error ? 'border-error' : 'border-[var(--border)]'}
             ${className}
           `}
         />

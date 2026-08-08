@@ -102,11 +102,11 @@ export const TeacherCard: React.FC<TeacherCardProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col">
+    <div className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] transition-all overflow-hidden flex flex-col">
       <div className="p-5 flex-1">
         {/* Row 1: Profile Image + Name/Verified/Fav */}
         <div className="flex gap-4">
-          <div className="w-[70px] h-[70px] rounded-xl border-2 border-primary/20 overflow-hidden shrink-0">
+          <div className="w-[70px] h-[70px] rounded-[var(--radius-md)] border-2 border-primary/20 overflow-hidden shrink-0">
             {profileImage ? (
               <img
                 src={getStorageUrl(profileImage)}
@@ -114,11 +114,11 @@ export const TeacherCard: React.FC<TeacherCardProps> = ({
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = 'none';
-                  (e.target as HTMLImageElement).parentElement!.classList.add('flex', 'items-center', 'justify-center', 'bg-slate-100');
+                  (e.target as HTMLImageElement).parentElement!.classList.add('flex', 'items-center', 'justify-center', 'bg-[var(--light-bg)]');
                 }}
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400">
+              <div className="w-full h-full flex items-center justify-center bg-[var(--light-bg)] text-[var(--text-muted)]">
                 <span className="text-2xl font-bold">{firstName?.charAt(0) || '?'}</span>
               </div>
             )}
@@ -126,11 +126,11 @@ export const TeacherCard: React.FC<TeacherCardProps> = ({
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1 flex-wrap">
-              <h3 className="text-[17px] font-bold text-slate-900 truncate max-w-[160px]">
+              <h3 className="text-[17px] font-bold text-[var(--text-main)] truncate max-w-[160px]">
                 {fullName}
               </h3>
               {verified && (
-                <ShieldCheck size={18} className="text-blue-500 shrink-0" fill="white" />
+                <ShieldCheck size={18} className="text-secondary shrink-0" fill="white" />
               )}
               <button
                 onClick={handleFavoriteClick}
@@ -138,27 +138,27 @@ export const TeacherCard: React.FC<TeacherCardProps> = ({
                 className="ml-auto shrink-0 p-1 hover:scale-110 transition-transform disabled:opacity-50"
               >
                 {favLoading ? (
-                  <Loader2 size={18} className="animate-spin text-slate-400" />
+                  <Loader2 size={18} className="animate-spin text-[var(--text-muted)]" />
                 ) : (
                   <Heart
                     size={18}
-                    className={favorited ? 'fill-red-400 text-red-400' : 'text-slate-300'}
+                    className={favorited ? 'fill-red-400 text-red-400' : 'text-[var(--text-muted)]'}
                   />
                 )}
               </button>
             </div>
 
             {/* Row 2: Nationality + Service */}
-            <div className="flex items-center gap-1.5 mt-1.5 text-sm text-slate-500">
+            <div className="flex items-center gap-1.5 mt-1.5 text-sm text-[var(--text-muted)]">
               <span className="text-base leading-none">{flag}</span>
               <span className="truncate max-w-[90px]">{nationality || t.notSpecified || 'N/A'}</span>
-              <span className="w-1 h-1 rounded-full bg-slate-300 shrink-0" />
+              <span className="w-1 h-1 rounded-full bg-[var(--border)] shrink-0" />
               <span className="truncate">{serviceName}</span>
               {serviceCountStr && (
                 <>
-                  <span className="text-slate-400">(</span>
-                  <span className="font-semibold text-slate-600">{serviceCountStr}</span>
-                  <span className="text-slate-400">)</span>
+                  <span className="text-[var(--text-muted)]">(</span>
+                  <span className="font-semibold text-[var(--text-muted)]">{serviceCountStr}</span>
+                  <span className="text-[var(--text-muted)]">)</span>
                 </>
               )}
             </div>
@@ -167,16 +167,16 @@ export const TeacherCard: React.FC<TeacherCardProps> = ({
             <div className="flex items-center gap-3 mt-2">
               <div className="flex items-center gap-1">
                 <Star size={14} className="text-amber-500 fill-amber-500" />
-                <span className="text-sm font-semibold text-slate-600">
+                <span className="text-sm font-semibold text-[var(--text-muted)]">
                   {rating > 0 ? rating.toFixed(1) : '0.0'}
                 </span>
-                <span className="text-xs text-slate-400">
+                <span className="text-xs text-[var(--text-muted)]">
                   ({reviewsCount})
                 </span>
               </div>
               <div className="flex items-center gap-1">
                 <Clock size={14} className="text-primary" />
-                <span className="text-sm text-slate-500">
+                <span className="text-sm text-[var(--text-muted)]">
                   {language === 'ar'
                     ? `${availableDaysCount} أيام متاحة`
                     : `${availableDaysCount} day${availableDaysCount !== 1 ? 's' : ''} available`}
@@ -188,7 +188,7 @@ export const TeacherCard: React.FC<TeacherCardProps> = ({
 
         {/* Bio snippet (only for non-compact) */}
         {!compact && bio && (
-          <p className="text-sm text-slate-500 mt-3 line-clamp-2">{bio}</p>
+          <p className="text-sm text-[var(--text-muted)] mt-3 line-clamp-2">{bio}</p>
         )}
       </div>
 
@@ -196,7 +196,7 @@ export const TeacherCard: React.FC<TeacherCardProps> = ({
       <div className="p-4 pt-0">
         <button
           onClick={() => onViewDetails?.(teacher)}
-          className="w-full py-3 px-4 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary/90 transition-colors"
+          className="w-full py-3 px-4 bg-primary text-white text-sm font-semibold rounded-[var(--radius-md)] hover:bg-primary/90 transition-colors"
         >
           {(t.viewDetails || 'View Details') + ' & ' + (t.bookNow || 'Book')}
         </button>

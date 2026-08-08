@@ -101,7 +101,7 @@ export const TeacherServicesTab: React.FC<TeacherServicesTabProps> = ({ onNaviga
         <div className="space-y-6 animate-fade-in">
             {/* Header */}
             <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-slate-900">{t.servicesProvided}</h2>
+                <h2 className="text-xl font-bold text-[var(--text-main)]">{t.servicesProvided}</h2>
                 {isSaving ? (
                     <Loader2 className="animate-spin text-primary" size={20} />
                 ) : (
@@ -113,7 +113,7 @@ export const TeacherServicesTab: React.FC<TeacherServicesTabProps> = ({ onNaviga
             </div>
 
             {/* Lesson Preferences Form */}
-            <div className="bg-[#F0F5FF] rounded-xl border border-primary/20 p-5">
+            <div className="bg-[#F0F5FF] rounded-[var(--radius-md)] border border-primary/20 p-5">
                 <div className="flex items-center gap-2 mb-4">
                     <School size={22} className="text-primary" />
                     <h3 className="font-bold text-primary text-base">{t.lessonTypes}</h3>
@@ -128,24 +128,24 @@ export const TeacherServicesTab: React.FC<TeacherServicesTabProps> = ({ onNaviga
                             setPriceError('');
                         }
                     }}
-                    className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                    className={`flex items-center gap-3 p-3 rounded-[var(--radius-md)] border-2 cursor-pointer transition-all ${
                         teachSingleLesson
                             ? 'bg-primary/10 border-primary'
-                            : 'bg-white border-slate-300'
+                            : 'bg-white border-[var(--border)]'
                     }`}
                 >
                     <div
                         className={`w-6 h-6 rounded-md flex items-center justify-center border-2 transition-all ${
                             teachSingleLesson
                                 ? 'bg-primary border-primary'
-                                : 'border-slate-400 bg-transparent'
+                                : 'border-[var(--border)] bg-transparent'
                         }`}
                     >
                         {teachSingleLesson && <Check size={14} className="text-white" />}
                     </div>
                     <div className="flex-1">
-                        <p className="font-bold text-slate-900 text-sm">{t.individualLessons}</p>
-                        <p className="text-xs text-slate-500">{t.individualLessonsDesc}</p>
+                        <p className="font-bold text-[var(--text-main)] text-sm">{t.individualLessons}</p>
+                        <p className="text-xs text-[var(--text-muted)]">{t.individualLessonsDesc}</p>
                     </div>
                     <div className="text-primary">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -175,15 +175,15 @@ export const TeacherServicesTab: React.FC<TeacherServicesTabProps> = ({ onNaviga
                                 setPriceError('');
                             }}
                             placeholder="0"
-                            className={`w-full rounded-xl border bg-white py-3 ${
+                            className={`w-full rounded-[var(--radius-md)] border bg-white py-3 ${
                                 direction === 'rtl' ? 'pr-10 pl-4' : 'pl-10 pr-4'
-                            } text-slate-900 shadow-sm transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none ${
-                                priceError ? 'border-red-400' : 'border-slate-300'
+                            } text-[var(--text-main)] shadow-[var(--shadow-sm)] transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none ${
+                                priceError ? 'border-red-400' : 'border-[var(--border)]'
                             }`}
                         />
                         <div className={`absolute inset-y-0 ${
                             direction === 'rtl' ? 'left-0 pl-3' : 'right-0 pr-3'
-                        } flex items-center pointer-events-none text-slate-400 text-sm`}>
+                        } flex items-center pointer-events-none text-[var(--text-muted)] text-sm`}>
                             {t.sar}
                         </div>
                     </div>
@@ -192,13 +192,13 @@ export const TeacherServicesTab: React.FC<TeacherServicesTabProps> = ({ onNaviga
             </div>
 
             {/* Packages Toggle */}
-            <div className="bg-white rounded-xl border border-primary/20 p-4 shadow-sm">
+            <div className="bg-white rounded-[var(--radius-md)] border border-primary/20 p-4 shadow-[var(--shadow-sm)]">
                 <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-primary/10 text-primary">
                         <Package size={22} />
                     </div>
                     <div className="flex-1">
-                        <p className="font-bold text-slate-900 text-sm">{t.offerPackages}</p>
+                        <p className="font-bold text-[var(--text-main)] text-sm">{t.offerPackages}</p>
                     </div>
                     {togglingPackages ? (
                         <Loader2 className="animate-spin text-primary" size={20} />
@@ -210,7 +210,7 @@ export const TeacherServicesTab: React.FC<TeacherServicesTabProps> = ({ onNaviga
                                 onChange={handleTogglePackages}
                                 className="sr-only peer"
                             />
-                            <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/30 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                            <div className="w-11 h-6 bg-[var(--border)] peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-[var(--border)] after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                         </label>
                     )}
                 </div>
@@ -219,20 +219,20 @@ export const TeacherServicesTab: React.FC<TeacherServicesTabProps> = ({ onNaviga
             {/* Bank Account Shortcut */}
             <div
                 onClick={() => onNavigate?.('wallet')}
-                className="bg-white rounded-xl border border-primary/20 p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+                className="bg-white rounded-[var(--radius-md)] border border-primary/20 p-4 shadow-[var(--shadow-sm)] cursor-pointer hover:shadow-[var(--shadow-md)] transition-shadow"
             >
                 <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-primary/10 text-primary">
                         <Building size={22} />
                     </div>
                     <div className="flex-1">
-                        <p className="font-bold text-slate-900 text-sm">{t.manageBankAccount}</p>
-                        <p className="text-xs text-slate-500">{t.forReceivingEarnings}</p>
+                        <p className="font-bold text-[var(--text-main)] text-sm">{t.manageBankAccount}</p>
+                        <p className="text-xs text-[var(--text-muted)]">{t.forReceivingEarnings}</p>
                     </div>
                     {direction === 'rtl' ? (
-                        <ChevronLeft size={16} className="text-slate-400" />
+                        <ChevronLeft size={16} className="text-[var(--text-muted)]" />
                     ) : (
-                        <ChevronRight size={16} className="text-slate-400" />
+                        <ChevronRight size={16} className="text-[var(--text-muted)]" />
                     )}
                 </div>
             </div>

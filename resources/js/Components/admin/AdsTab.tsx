@@ -165,30 +165,30 @@ export const AdsTab: React.FC = () => {
     return (
         <div className="space-y-6 animate-fade-in">
             <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-slate-900">{t.adsManagement}</h2>
+                <h2 className="text-2xl font-bold text-[var(--text-main)]">{t.adsManagement}</h2>
                 <Button onClick={() => { resetForm(); setIsModalOpen(true); }} className="flex items-center gap-2">
                     <Plus size={20} /> {t.uploadAd}
                 </Button>
             </div>
 
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="bg-white p-4 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)]">
                 <div className="flex flex-col md:flex-row gap-4 mb-6">
                     <div className="relative flex-1">
-                        <Search className={`absolute top-1/2 -translate-y-1/2 text-slate-400 ${direction === 'rtl' ? 'right-3' : 'left-3'}`} size={20} />
+                        <Search className={`absolute top-1/2 -translate-y-1/2 text-[var(--text-muted)] ${direction === 'rtl' ? 'right-3' : 'left-3'}`} size={20} />
                         <input
                             type="text"
                             placeholder={t.searchPlaceholder}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className={`w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-primary ${direction === 'rtl' ? 'pr-10 pl-4' : ''}`}
+                            className={`w-full pl-10 pr-4 py-2 rounded-lg border border-[var(--border)] focus:outline-none focus:border-primary ${direction === 'rtl' ? 'pr-10 pl-4' : ''}`}
                         />
                     </div>
                     <div className="flex items-center gap-2">
-                        <Filter size={20} className="text-slate-400" />
+                        <Filter size={20} className="text-[var(--text-muted)]" />
                         <select
                             value={filterPlatform}
                             onChange={(e) => setFilterPlatform(e.target.value)}
-                            className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                            className="bg-[var(--light-bg)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"
                         >
                             <option value="all">{t.allStatus}</option>
                             <option value="web">{t.web}</option>
@@ -200,33 +200,33 @@ export const AdsTab: React.FC = () => {
 
                 <div className="overflow-x-auto min-h-[400px]">
                     <table className="w-full text-left text-sm">
-                        <thead className="bg-slate-50 border-b border-slate-200">
+                        <thead className="bg-[var(--light-bg)] border-b border-[var(--border)]">
                             <tr>
-                                <th className="px-6 py-3 font-semibold text-slate-700">{t.image}</th>
-                                <th className="px-6 py-3 font-semibold text-slate-700">{t.targetRole}</th>
-                                <th className="px-6 py-3 font-semibold text-slate-700">{t.platform}</th>
-                                <th className="px-6 py-3 font-semibold text-slate-700">{t.displayOrder}</th>
-                                <th className="px-6 py-3 font-semibold text-slate-700">{t.status}</th>
-                                <th className="px-6 py-3 font-semibold text-slate-700 text-right">{t.actions}</th>
+                                <th className="px-6 py-3 font-semibold text-navy">{t.image}</th>
+                                <th className="px-6 py-3 font-semibold text-navy">{t.targetRole}</th>
+                                <th className="px-6 py-3 font-semibold text-navy">{t.platform}</th>
+                                <th className="px-6 py-3 font-semibold text-navy">{t.displayOrder}</th>
+                                <th className="px-6 py-3 font-semibold text-navy">{t.status}</th>
+                                <th className="px-6 py-3 font-semibold text-navy text-right">{t.actions}</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
+                        <tbody className="divide-y divide-[var(--border)]">
                             {filteredAds.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
+                                    <td colSpan={6} className="px-6 py-12 text-center text-[var(--text-muted)]">
                                         {t.noAdsFound}
                                     </td>
                                 </tr>
                             ) : (
                                 filteredAds.map(ad => (
-                                    <tr key={ad.id} className="hover:bg-slate-50">
+                                    <tr key={ad.id} className="hover:bg-[var(--light-bg)]">
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="h-12 w-20 rounded-lg bg-slate-100 overflow-hidden flex-shrink-0 border border-slate-200">
+                                                <div className="h-12 w-20 rounded-lg bg-[var(--light-bg)] overflow-hidden flex-shrink-0 border border-[var(--border)]">
                                                     <img src={ad.image_url} alt="" className="h-full w-full object-cover" />
                                                 </div>
                                                 <div className="max-w-[200px]">
-                                                    <div className="font-medium text-slate-900 line-clamp-1">{ad.description || t.na}</div>
+                                                    <div className="font-medium text-[var(--text-main)] line-clamp-1">{ad.description || t.na}</div>
                                                     {ad.link_url && (
                                                         <div className="text-[10px] text-primary flex items-center gap-1">
                                                             <LinkIcon size={10} /> {ad.link_url}
@@ -235,35 +235,35 @@ export const AdsTab: React.FC = () => {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 text-slate-600">
+                                        <td className="px-6 py-4 text-[var(--text-muted)]">
                                             <div className="flex items-center gap-2">
-                                                <Users size={16} className="text-slate-400" />
+                                                <Users size={16} className="text-[var(--text-muted)]" />
                                                 {ad.role_id === 3 ? t.teacher : ad.role_id === 4 ? t.student : t.allUsers}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 text-slate-600">
+                                        <td className="px-6 py-4 text-[var(--text-muted)]">
                                             <div className="flex items-center gap-2">
-                                                <Monitor size={16} className="text-slate-400" />
+                                                <Monitor size={16} className="text-[var(--text-muted)]" />
                                                 {ad.platform === 'both' ? t.both : ad.platform === 'web' ? t.web : t.app}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 font-medium text-slate-900">
+                                        <td className="px-6 py-4 font-medium text-[var(--text-main)]">
                                             {ad.display_order}
                                         </td>
                                         <td className="px-6 py-4">
                                             <button
                                                 onClick={() => handleToggle(ad)}
-                                                className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${ad.is_active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}
+                                                className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${ad.is_active ? 'bg-primary-pale text-primary' : 'bg-[var(--light-bg)] text-[var(--text-muted)]'}`}
                                             >
                                                 {ad.is_active ? t.active : t.inactiveStatus}
                                             </button>
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex justify-end gap-2">
-                                                <button onClick={() => handleEdit(ad)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                                                <button onClick={() => handleEdit(ad)} className="p-2 text-[var(--text-muted)] hover:text-secondary hover:bg-secondary-pale rounded-lg transition-colors">
                                                     <Edit size={18} />
                                                 </button>
-                                                <button onClick={() => handleDelete(ad.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                                                <button onClick={() => handleDelete(ad.id)} className="p-2 text-[var(--text-muted)] hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
                                                     <Trash2 size={18} />
                                                 </button>
                                             </div>
@@ -281,17 +281,17 @@ export const AdsTab: React.FC = () => {
                     <div className="grid grid-cols-1 gap-4">
                         {/* Image Upload */}
                         <div className="space-y-2">
-                            <label className="text-sm font-semibold text-slate-700">{t.image} *</label>
+                            <label className="text-sm font-semibold text-navy">{t.image} *</label>
                             <div
                                 onClick={() => document.getElementById('ad-image-input')?.click()}
-                                className="aspect-[16/9] w-full border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center bg-slate-50 hover:bg-slate-100 cursor-pointer overflow-hidden relative"
+                                className="aspect-[16/9] w-full border-2 border-dashed border-[var(--border)] rounded-[var(--radius-md)] flex flex-col items-center justify-center bg-[var(--light-bg)] hover:bg-[var(--light-bg)] cursor-pointer overflow-hidden relative"
                             >
                                 {imagePreview ? (
                                     <img src={imagePreview} className="w-full h-full object-cover" alt="Preview" />
                                 ) : (
                                     <>
-                                        <ImageIcon size={48} className="text-slate-300 mb-2" />
-                                        <span className="text-xs text-slate-400">Click to upload image</span>
+                                        <ImageIcon size={48} className="text-[var(--text-muted)] mb-2" />
+                                        <span className="text-xs text-[var(--text-muted)]">Click to upload image</span>
                                     </>
                                 )}
                                 <input id="ad-image-input" type="file" className="hidden" accept="image/*" onChange={handleImageChange} />
@@ -300,12 +300,12 @@ export const AdsTab: React.FC = () => {
 
                         {/* Description */}
                         <div className="space-y-1">
-                            <label className="text-sm font-semibold text-slate-700">{t.description}</label>
+                            <label className="text-sm font-semibold text-navy">{t.description}</label>
                             <input
                                 type="text"
                                 value={formData.description}
                                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                className="w-full p-2.5 rounded-lg border border-slate-200 focus:outline-none focus:border-primary text-sm"
+                                className="w-full p-2.5 rounded-lg border border-[var(--border)] focus:outline-none focus:border-primary text-sm"
                                 placeholder="Enter ad description..."
                             />
                         </div>
@@ -313,11 +313,11 @@ export const AdsTab: React.FC = () => {
                         <div className="grid grid-cols-2 gap-4">
                             {/* Platform */}
                             <div className="space-y-1">
-                                <label className="text-sm font-semibold text-slate-700">{t.platform} *</label>
+                                <label className="text-sm font-semibold text-navy">{t.platform} *</label>
                                 <select
                                     value={formData.platform}
                                     onChange={(e) => setFormData({ ...formData, platform: e.target.value as any })}
-                                    className="w-full p-2.5 rounded-lg border border-slate-200 focus:outline-none focus:border-primary text-sm"
+                                    className="w-full p-2.5 rounded-lg border border-[var(--border)] focus:outline-none focus:border-primary text-sm"
                                 >
                                     <option value="both">{t.both}</option>
                                     <option value="web">{t.web}</option>
@@ -327,11 +327,11 @@ export const AdsTab: React.FC = () => {
 
                             {/* Target Role */}
                             <div className="space-y-1">
-                                <label className="text-sm font-semibold text-slate-700">{t.targetRole}</label>
+                                <label className="text-sm font-semibold text-navy">{t.targetRole}</label>
                                 <select
                                     value={formData.role_id === null ? '' : String(formData.role_id)}
                                     onChange={(e) => setFormData({ ...formData, role_id: e.target.value === '' ? null : Number(e.target.value) })}
-                                    className="w-full p-2.5 rounded-lg border border-slate-200 focus:outline-none focus:border-primary text-sm"
+                                    className="w-full p-2.5 rounded-lg border border-[var(--border)] focus:outline-none focus:border-primary text-sm"
                                 >
                                     <option value="">{t.allUsers}</option>
                                     <option value="4">{t.student}</option>
@@ -343,24 +343,24 @@ export const AdsTab: React.FC = () => {
                         <div className="grid grid-cols-2 gap-4">
                             {/* Link URL */}
                             <div className="space-y-1">
-                                <label className="text-sm font-semibold text-slate-700">{t.linkUrl}</label>
+                                <label className="text-sm font-semibold text-navy">{t.linkUrl}</label>
                                 <input
                                     type="url"
                                     value={formData.link_url}
                                     onChange={(e) => setFormData({ ...formData, link_url: e.target.value })}
-                                    className="w-full p-2.5 rounded-lg border border-slate-200 focus:outline-none focus:border-primary text-sm"
+                                    className="w-full p-2.5 rounded-lg border border-[var(--border)] focus:outline-none focus:border-primary text-sm"
                                     placeholder="https://..."
                                 />
                             </div>
 
                             {/* CTA Text */}
                             <div className="space-y-1">
-                                <label className="text-sm font-semibold text-slate-700">{t.ctaText}</label>
+                                <label className="text-sm font-semibold text-navy">{t.ctaText}</label>
                                 <input
                                     type="text"
                                     value={formData.cta_text}
                                     onChange={(e) => setFormData({ ...formData, cta_text: e.target.value })}
-                                    className="w-full p-2.5 rounded-lg border border-slate-200 focus:outline-none focus:border-primary text-sm"
+                                    className="w-full p-2.5 rounded-lg border border-[var(--border)] focus:outline-none focus:border-primary text-sm"
                                     placeholder="Learn More"
                                 />
                             </div>
@@ -368,12 +368,12 @@ export const AdsTab: React.FC = () => {
 
                         {/* Display Order */}
                         <div className="space-y-1">
-                            <label className="text-sm font-semibold text-slate-700">{t.displayOrder}</label>
+                            <label className="text-sm font-semibold text-navy">{t.displayOrder}</label>
                             <input
                                 type="number"
                                 value={formData.display_order}
                                 onChange={(e) => setFormData({ ...formData, display_order: Number(e.target.value) })}
-                                className="w-full p-2.5 rounded-lg border border-slate-200 focus:outline-none focus:border-primary text-sm"
+                                className="w-full p-2.5 rounded-lg border border-[var(--border)] focus:outline-none focus:border-primary text-sm"
                             />
                         </div>
                     </div>

@@ -132,12 +132,12 @@ export const ProfileTab: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+      <div className="bg-white rounded-[var(--radius-md)] shadow-[var(--shadow-sm)] border border-[var(--border)] overflow-hidden">
         <div className="h-32 bg-gradient-to-r from-primary to-blue-600"></div>
         <div className="px-8 pb-8">
           <div className="relative flex justify-between items-end -mt-12 mb-6">
             <div className="relative">
-              <div className="h-24 w-24 rounded-full border-4 border-white bg-slate-100 shadow-md flex items-center justify-center text-3xl font-bold text-slate-400 overflow-hidden">
+              <div className="h-24 w-24 rounded-full border-4 border-white bg-[var(--light-bg)] shadow-[var(--shadow-md)] flex items-center justify-center text-3xl font-bold text-[var(--text-muted)] overflow-hidden">
                 {imageUrl ? (
                   <img src={imageUrl} alt="Profile" className="h-full w-full object-cover" />
                 ) : (
@@ -146,13 +146,13 @@ export const ProfileTab: React.FC = () => {
               </div>
             </div>
             {/* VISUAL CONFIRMATION: Button is green */}
-            <Button className="bg-green-600 hover:bg-green-700" onClick={() => setIsEditOpen(true)}>
+            <Button className="bg-primary hover:bg-primary" onClick={() => setIsEditOpen(true)}>
               <Edit size={16} className="mr-2" /> {t.editProfile}
             </Button>
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">{user.first_name} {user.last_name}</h1>
-            <div className="flex flex-wrap gap-x-6 gap-y-3 mt-3 text-sm text-slate-500">
+            <h1 className="text-2xl font-bold text-[var(--text-main)]">{user.first_name} {user.last_name}</h1>
+            <div className="flex flex-wrap gap-x-6 gap-y-3 mt-3 text-sm text-[var(--text-muted)]">
               <div className="flex items-center gap-2"><Mail size={16} /> {user.email || 'N/A'}</div>
               <div className="flex items-center gap-2" dir="ltr"><Phone size={16} /> {user.phone_number || 'N/A'}</div>
               {user.nationality && <div className="flex items-center gap-2"><span className="text-lg">{flag}</span> {user.nationality}</div>}
@@ -163,12 +163,12 @@ export const ProfileTab: React.FC = () => {
         </div>
       </div>
       {isTeacher && (
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-          <h3 className="text-lg font-bold text-slate-900 mb-4">{t.bio}</h3>
-          <p className="text-slate-600 leading-relaxed whitespace-pre-wrap">{user.bio || "No biography provided."}</p>
+        <div className="bg-white p-6 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)]">
+          <h3 className="text-lg font-bold text-[var(--text-main)] mb-4">{t.bio}</h3>
+          <p className="text-[var(--text-muted)] leading-relaxed whitespace-pre-wrap">{user.bio || "No biography provided."}</p>
         </div>
       )}
-      <div className="mt-8 pt-8 border-t border-slate-200 flex justify-center">
+      <div className="mt-8 pt-8 border-t border-[var(--border)] flex justify-center">
         <button onClick={handleDeleteAccount} className="flex items-center gap-2 text-red-500 hover:text-red-700 text-sm font-medium transition-colors">
           <Trash2 size={16} /> {language === 'ar' ? "حذف الحساب" : "Delete Account"}
         </button>
@@ -177,10 +177,10 @@ export const ProfileTab: React.FC = () => {
         <div className="space-y-4">
           <div className="flex justify-center mb-6">
             <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-              <div className="h-24 w-24 rounded-full overflow-hidden border-2 border-slate-200 bg-slate-50 flex items-center justify-center">
+              <div className="h-24 w-24 rounded-full overflow-hidden border-2 border-[var(--border)] bg-[var(--light-bg)] flex items-center justify-center">
                 {previewUrl ? <img src={previewUrl} alt="Preview" className="h-full w-full object-cover" /> :
                  imageUrl ? <img src={imageUrl} alt="Current profile" className="h-full w-full object-cover" /> :
-                 <User size={32} className="text-slate-300" />}
+                 <User size={32} className="text-[var(--text-muted)]" />}
               </div>
               <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <Camera className="text-white" size={24} />
@@ -195,8 +195,8 @@ export const ProfileTab: React.FC = () => {
           <Input label={t.phone} value={editForm.phone_number} onChange={(e) => setEditForm({...editForm, phone_number: e.target.value})} />
           {isTeacher && (
             <div className="mb-4 w-full">
-              <label className="block text-sm font-medium text-slate-700 mb-1">{t.bio}</label>
-              <textarea className="w-full rounded-lg border border-slate-200 p-3 h-24 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" value={editForm.bio} onChange={(e) => setEditForm({...editForm, bio: e.target.value})} />
+              <label className="block text-sm font-medium text-navy mb-1">{t.bio}</label>
+              <textarea className="w-full rounded-lg border border-[var(--border)] p-3 h-24 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" value={editForm.bio} onChange={(e) => setEditForm({...editForm, bio: e.target.value})} />
             </div>
           )}
           <Button className="w-full" onClick={handleUpdateProfile} isLoading={updating}>{t.save}</Button>

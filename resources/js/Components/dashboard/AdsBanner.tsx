@@ -61,7 +61,7 @@ export const AdsBanner: React.FC = () => {
 
     return (
         <div className="relative group w-full mb-8 animate-fade-in">
-            <div className="overflow-hidden rounded-2xl aspect-[3/1] md:aspect-[4/1] bg-slate-100 shadow-sm border border-slate-100">
+            <div className="overflow-hidden rounded-[var(--radius-md)] aspect-[3/1] md:aspect-[4/1] bg-[var(--light-bg)] shadow-[var(--shadow-sm)] border border-[var(--border)]">
                 {loading ? (
                     <div className="w-full h-full flex items-center justify-center">
                         <Loader2 className="animate-spin text-primary/30" />
@@ -78,7 +78,7 @@ export const AdsBanner: React.FC = () => {
                         <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent flex flex-col justify-center px-8 md:px-12">
                             <div className="max-w-md space-y-2 md:space-y-4">
                                 {currentAd.description && (
-                                    <h3 className="text-white text-lg md:text-2xl font-bold leading-tight drop-shadow-md">
+                                    <h3 className="text-white text-lg md:text-2xl font-bold leading-tight drop-shadow-[var(--shadow-md)]">
                                         {currentAd.description}
                                     </h3>
                                 )}
@@ -87,7 +87,7 @@ export const AdsBanner: React.FC = () => {
                                         href={currentAd.link_url}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-2 bg-primary hover:bg-blue-600 text-white px-4 py-2 md:px-6 md:py-2.5 rounded-full text-xs md:text-sm font-bold transition-all transform hover:scale-105 shadow-lg"
+                                        className="inline-flex items-center gap-2 bg-primary hover:bg-primary text-white px-4 py-2 md:px-6 md:py-2.5 rounded-full text-xs md:text-sm font-bold transition-all transform hover:scale-105 shadow-[var(--shadow-lg)]"
                                     >
                                         {currentAd.cta_text || t.bookNow}
                                         <ExternalLink size={14} />
@@ -131,7 +131,7 @@ export const AdsBanner: React.FC = () => {
             {/* Dismiss Button */}
             <button
                 onClick={() => setIsVisible(false)}
-                className="absolute -top-2 -right-2 p-1.5 bg-white rounded-full shadow-md text-slate-400 hover:text-slate-600 border border-slate-100 transition-colors"
+                className="absolute -top-2 -right-2 p-1.5 bg-white rounded-full shadow-[var(--shadow-md)] text-[var(--text-muted)] hover:text-[var(--text-muted)] border border-[var(--border)] transition-colors"
                 title={t.close}
             >
                 <X size={14} />

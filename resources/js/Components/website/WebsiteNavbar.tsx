@@ -1,8 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
-import { Button } from '../ui/Button';
 import { Logo } from '../Logo';
-import { Menu, X, Globe, ChevronDown } from 'lucide-react';
+import { ChevronDown, Globe, X } from 'lucide-react';
 import { Link, router, usePage } from '@inertiajs/react';
 
 export const WebsiteNavbar: React.FC = () => {
@@ -10,9 +9,17 @@ export const WebsiteNavbar: React.FC = () => {
   const { url } = usePage();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [scrolled, setScrolled] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const currentPath = url;
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 40);
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -33,6 +40,11 @@ export const WebsiteNavbar: React.FC = () => {
 
   const isActive = (path: string) => currentPath === path || currentPath.startsWith(path + '/');
 
+  const isHome = currentPath === '/';
+  const heroPage = isHome && !scrolled;
+  const navClass = `navbar-site ${scrolled ? 'scrolled' : ''} ${heroPage ? 'hero-page' : 'page-nav'}`;
+  const isLight = heroPage;
+
   const products = [
     { id: 'eprofile', label: language === 'ar' ? 'تطبيق Ewan' : 'Ewan App', href: '/e-profile', desc: language === 'ar' ? 'للطلاب والمعلمين' : 'For Students & Teachers' },
     { id: 'school', label: language === 'ar' ? 'المدرسة الذكية' : 'Smart School', href: '/ecosystem', desc: language === 'ar' ? 'للمؤسسات التعليمية' : 'For Schools & Institutes' },
@@ -47,13 +59,13 @@ export const WebsiteNavbar: React.FC = () => {
   ];
 
   return (
-    <nav className="fixed w-full z-50 bg-white/95 backdrop-blur-sm border-b border-slate-100 transition-all">
+    <nav className={navClass}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-20">
+        <div className="flex justify-between items-center">
           
           {/* Logo */}
-          <Link href="/" className="flex-shrink-0">
-            <Logo />
+          <Link href="/" className="flex-shrink-0 flex items-center gap-2">
+            <Logo onDark={isLight} />
           </Link>
 
           {/* Desktop Nav */}
@@ -63,10 +75,10 @@ export const WebsiteNavbar: React.FC = () => {
               <button
                 onMouseEnter={() => setOpenDropdown('products')}
                 onClick={() => setOpenDropdown(openDropdown === 'products' ? null : 'products')}
-                className={`flex items-center gap-1 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                className={`nav-link flex items-center gap-1 ${
                   openDropdown === 'products' || isActive('/e-profile') || isActive('/ecosystem') || isActive('/ewan-landing')
-                    ? 'text-primary bg-blue-50' 
-                    : 'text-slate-600 hover:text-primary hover:bg-slate-50'
+                    ? 'active'
+                    : ''
                 }`}
               >
                 {language === 'ar' ? 'المنتجات' : 'Products'}
@@ -75,18 +87,18 @@ export const WebsiteNavbar: React.FC = () => {
               {openDropdown === 'products' && (
                 <div 
                   onMouseLeave={() => setOpenDropdown(null)}
-                  className="absolute top-full right-0 mt-1 w-64 bg-white rounded-xl shadow-xl border border-slate-100 py-3 animate-fade-in z-50"
+                  className="absolute top-full right-0 mt-1 w-64 bg-white rounded-xl shadow-md border border-[var(--border)] py-3 animate-fade-in z-50"
                 >
                   {products.map((p) => (
                     <button
                       key={p.id}
                       onClick={() => handleNavClick(p.href)}
-                      className={`w-full text-right px-5 py-3 hover:bg-slate-50 transition-colors flex flex-col group ${
-                        isActive(p.href) ? 'bg-blue-50' : ''
+                      className={`w-full text-right px-5 py-3 hover:bg-[var(--light-bg)] transition-colors flex flex-col group ${
+                        isActive(p.href) ? 'bg-[var(--green-pale)]' : ''
                       }`}
                     >
-                      <span className="font-bold text-slate-900 group-hover:text-primary transition-colors">{p.label}</span>
-                      <span className="text-xs text-slate-400">{p.desc}</span>
+                      <span className="font-bold text-navy group-hover:text-green transition-colors">{p.label}</span>
+                      <span className="text-xs text-[var(--text-muted)]">{p.desc}</span>
                     </button>
                   ))}
                 </div>
@@ -98,12 +110,12 @@ export const WebsiteNavbar: React.FC = () => {
               <button
                 key={link.id}
                 onClick={() => handleNavClick(link.href)}
-                className={`relative px-4 py-2 text-sm font-medium rounded-lg transition-all group ${
-                  isActive(link.href) ? 'text-primary bg-blue-50' : 'text-slate-600 hover:text-primary hover:bg-slate-50'
+                className={`nav-link relative group ${
+                  isActive(link.href) ? 'active' : ''
                 }`}
               >
                 {link.label}
-                <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-primary whitespace-nowrap">
+                <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-green whitespace-nowrap">
                   {link.desc}
                 </span>
               </button>
@@ -111,29 +123,30 @@ export const WebsiteNavbar: React.FC = () => {
           </div>
 
           {/* Actions */}
-          <div className="hidden md:flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-3">
              <button 
                 onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}
-                className="p-2 rounded-full text-slate-500 hover:bg-slate-100 transition-colors flex items-center gap-1 text-sm font-medium"
+                className="lang-toggle"
              >
-                <Globe size={18} />
+                <Globe size={14} />
                 {language === 'en' ? 'AR' : 'EN'}
              </button>
-             <div className="h-6 w-px bg-slate-200"></div>
-             <Link href="/login" className="text-slate-900 font-semibold hover:text-primary">
+             <Link href="/login" className="btn-login">
                  {t.loginBtn}
              </Link>
-             <Link href="/register">
-                 <Button size="sm">
-                     {t.registerBtn}
-                 </Button>
+             <Link href="/register" className="btn-register">
+                 {t.registerBtn}
              </Link>
           </div>
 
           {/* Mobile Menu Button */}
           <div className="md:hidden flex items-center">
-            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 text-slate-600">
-                {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="navbar-toggler">
+              {isMenuOpen ? (
+                <X size={24} className={isLight ? 'text-white' : 'text-navy'} />
+              ) : (
+                <span className="toggler-icon"><span></span><span></span><span></span></span>
+              )}
             </button>
           </div>
         </div>
@@ -141,51 +154,47 @@ export const WebsiteNavbar: React.FC = () => {
 
       {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="md:hidden bg-white border-b border-slate-100 animate-fade-in">
+        <div className={`md:hidden mt-2 navbar-collapse-site animate-fade-in ${isLight ? '' : ''}`}>
           <div className="px-4 pt-2 pb-6 space-y-4">
             {/* Products Section */}
             <div className="px-3">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">{language === 'ar' ? 'المنتجات' : 'Products'}</p>
+              <p className={`text-xs font-bold uppercase tracking-widest mb-2 ${isLight ? 'text-white/60' : 'text-[var(--text-muted)]'}`}>{language === 'ar' ? 'المنتجات' : 'Products'}</p>
               {products.map((p) => (
                 <button
                   key={p.id}
                   onClick={() => handleNavClick(p.href)}
                   className={`w-full flex justify-between items-center px-3 py-3 text-sm font-medium rounded-lg transition-colors ${
-                    isActive(p.href) ? 'bg-blue-50 text-primary' : 'text-slate-700 hover:bg-slate-50'
+                    isActive(p.href) ? 'bg-[var(--green-pale)] text-green' : `${isLight ? 'text-white/85 hover:bg-white/10' : 'text-slate-700 hover:bg-slate-50'}`
                   }`}
                 >
-                  <span className="text-xs text-slate-400">{p.desc}</span>
+                  <span className={`text-xs ${isLight ? 'text-white/50' : 'text-[var(--text-muted)]'}`}>{p.desc}</span>
                   <span>{p.label}</span>
                 </button>
               ))}
             </div>
-            <div className="border-t border-slate-100" />
+            <div className={`${isLight ? 'border-white/10' : 'border-slate-100'} border-t`} />
             {/* Page Links */}
             {pageLinks.map((link) => (
               <button
                 key={link.id}
                 onClick={() => handleNavClick(link.href)}
-                className="block w-full text-start px-3 py-2 text-base font-medium text-slate-700 hover:bg-slate-50 rounded-lg"
+                className={`block w-full text-start px-3 py-2 text-base font-medium rounded-lg ${isLight ? 'text-white/90 hover:bg-white/10' : 'text-slate-700 hover:bg-slate-50'} ${isActive(link.href) ? 'text-green' : ''}`}
               >
                 {link.label}
               </button>
             ))}
-            <div className="border-t border-slate-100 pt-4 flex flex-col gap-3">
+            <div className={`${isLight ? 'border-white/10' : 'border-slate-100'} border-t pt-4 flex flex-col gap-3`}>
                  <button 
                     onClick={() => { setLanguage(language === 'en' ? 'ar' : 'en'); setIsMenuOpen(false); }}
-                    className="flex items-center gap-2 px-3 py-2 text-slate-600"
+                    className={`flex items-center gap-2 px-3 py-2 ${isLight ? 'text-white/90' : 'text-slate-600'}`}
                  >
                     <Globe size={18} /> {t.language}
                  </button>
-                 <Link href="/login" onClick={() => setIsMenuOpen(false)}>
-                     <Button variant="outline" className="w-full justify-center">
-                         {t.loginBtn}
-                     </Button>
+                 <Link href="/login" onClick={() => setIsMenuOpen(false)} className="btn-login justify-center">
+                     {t.loginBtn}
                  </Link>
-                 <Link href="/register" onClick={() => setIsMenuOpen(false)}>
-                     <Button className="w-full justify-center">
-                         {t.registerBtn}
-                     </Button>
+                 <Link href="/register" onClick={() => setIsMenuOpen(false)} className="btn-register justify-center">
+                     {t.registerBtn}
                  </Link>
             </div>
           </div>

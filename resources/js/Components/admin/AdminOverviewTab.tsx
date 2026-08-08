@@ -62,17 +62,17 @@ export const AdminOverviewTab: React.FC = () => {
 
     const summary = data?.summary;
     const statsCards = [
-        { title: t.totalUsers, value: summary?.total_users || 0, icon: Users, color: 'bg-blue-500' },
-        { title: t.activeTeachers, value: summary?.active_teachers || 0, icon: UserCheck, color: 'bg-green-500' },
-        { title: t.totalBookings, value: analytics?.total_bookings || summary?.total_bookings || 0, icon: BookOpen, color: 'bg-purple-500' },
-        { title: t.revenue, value: `${(analytics?.total_platform_revenue || summary?.total_revenue || 0).toLocaleString()} ${t.sar}`, icon: DollarSign, color: 'bg-orange-500' },
+        { title: t.totalUsers, value: summary?.total_users || 0, icon: Users, color: 'bg-navy' },
+        { title: t.activeTeachers, value: summary?.active_teachers || 0, icon: UserCheck, color: 'bg-primary' },
+        { title: t.totalBookings, value: analytics?.total_bookings || summary?.total_bookings || 0, icon: BookOpen, color: 'bg-[var(--accent)]' },
+        { title: t.revenue, value: `${(analytics?.total_platform_revenue || summary?.total_revenue || 0).toLocaleString()} ${t.sar}`, icon: DollarSign, color: 'bg-navy-mid' },
     ];
 
     return (
         <div className="space-y-8 animate-fade-in">
             <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-slate-900">{t.overview}</h2>
-                <div className="text-sm text-slate-500 bg-white px-4 py-2 rounded-lg border border-slate-200">
+                <h2 className="text-2xl font-bold text-[var(--text-main)]">{t.overview}</h2>
+                <div className="text-sm text-[var(--text-muted)] bg-white px-4 py-2 rounded-lg border border-[var(--border)]">
                     {t.lastUpdated || 'Last Updated'}: {new Date().toLocaleTimeString()}
                 </div>
             </div>
@@ -80,9 +80,9 @@ export const AdminOverviewTab: React.FC = () => {
             {/* Top Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {statsCards.map((card, idx) => (
-                    <div key={idx} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm transition-all hover:shadow-md">
+                    <div key={idx} className="bg-white p-6 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] transition-all hover:shadow-[var(--shadow-md)]">
                         <div className="flex items-center justify-between mb-4">
-                            <div className={`p-3 rounded-xl ${card.color} text-white`}>
+                            <div className={`p-3 rounded-[var(--radius-md)] ${card.color} text-white`}>
                                 <card.icon size={24} />
                             </div>
                             {(idx === 0 || idx === 3) && (
@@ -91,8 +91,8 @@ export const AdminOverviewTab: React.FC = () => {
                                 </span>
                             )}
                         </div>
-                        <h3 className="text-slate-500 text-sm font-medium mb-1">{card.title}</h3>
-                        <p className="text-2xl font-bold text-slate-900">{card.value}</p>
+                        <h3 className="text-[var(--text-muted)] text-sm font-medium mb-1">{card.title}</h3>
+                        <p className="text-2xl font-bold text-[var(--text-main)]">{card.value}</p>
                     </div>
                 ))}
             </div>
@@ -100,89 +100,89 @@ export const AdminOverviewTab: React.FC = () => {
             {/* Packages & Subscriptions Stats */}
             {data?.packages && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm transition-all hover:shadow-md">
+                    <div className="bg-white p-4 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] transition-all hover:shadow-[var(--shadow-md)]">
                         <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 rounded-xl bg-indigo-500 text-white">
+                            <div className="p-2 rounded-[var(--radius-md)] bg-navy text-white">
                                 <Package size={20} />
                             </div>
                         </div>
-                        <p className="text-slate-500 text-xs font-medium mb-1">{t.totalPackages || 'Total Packages'}</p>
-                        <p className="text-xl font-bold text-slate-900">{data.packages.total_packages}</p>
+                        <p className="text-[var(--text-muted)] text-xs font-medium mb-1">{t.totalPackages || 'Total Packages'}</p>
+                        <p className="text-xl font-bold text-[var(--text-main)]">{data.packages.total_packages}</p>
                     </div>
-                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm transition-all hover:shadow-md">
+                    <div className="bg-white p-4 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] transition-all hover:shadow-[var(--shadow-md)]">
                         <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 rounded-xl bg-green-500 text-white">
+                            <div className="p-2 rounded-[var(--radius-md)] bg-primary text-white">
                                 <Package size={20} />
                             </div>
                         </div>
-                        <p className="text-slate-500 text-xs font-medium mb-1">{t.activePackages || 'Active Packages'}</p>
-                        <p className="text-xl font-bold text-slate-900">{data.packages.active_packages}</p>
+                        <p className="text-[var(--text-muted)] text-xs font-medium mb-1">{t.activePackages || 'Active Packages'}</p>
+                        <p className="text-xl font-bold text-[var(--text-main)]">{data.packages.active_packages}</p>
                     </div>
-                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm transition-all hover:shadow-md">
+                    <div className="bg-white p-4 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] transition-all hover:shadow-[var(--shadow-md)]">
                         <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 rounded-xl bg-blue-500 text-white">
+                            <div className="p-2 rounded-[var(--radius-md)] bg-navy text-white">
                                 <CreditCard size={20} />
                             </div>
                         </div>
-                        <p className="text-slate-500 text-xs font-medium mb-1">{t.totalSubscriptions || 'Total Subscriptions'}</p>
-                        <p className="text-xl font-bold text-slate-900">{data.packages.total_subscriptions}</p>
+                        <p className="text-[var(--text-muted)] text-xs font-medium mb-1">{t.totalSubscriptions || 'Total Subscriptions'}</p>
+                        <p className="text-xl font-bold text-[var(--text-main)]">{data.packages.total_subscriptions}</p>
                     </div>
-                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm transition-all hover:shadow-md">
+                    <div className="bg-white p-4 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] transition-all hover:shadow-[var(--shadow-md)]">
                         <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 rounded-xl bg-teal-500 text-white">
+                            <div className="p-2 rounded-[var(--radius-md)] bg-secondary text-white">
                                 <CreditCard size={20} />
                             </div>
                         </div>
-                        <p className="text-slate-500 text-xs font-medium mb-1">{t.activeSubscriptions || 'Active Subscriptions'}</p>
-                        <p className="text-xl font-bold text-slate-900">{data.packages.active_subscriptions}</p>
+                        <p className="text-[var(--text-muted)] text-xs font-medium mb-1">{t.activeSubscriptions || 'Active Subscriptions'}</p>
+                        <p className="text-xl font-bold text-[var(--text-main)]">{data.packages.active_subscriptions}</p>
                     </div>
-                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm transition-all hover:shadow-md">
+                    <div className="bg-white p-4 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] transition-all hover:shadow-[var(--shadow-md)]">
                         <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 rounded-xl bg-orange-500 text-white">
+                            <div className="p-2 rounded-[var(--radius-md)] bg-navy-mid text-white">
                                 <DollarSign size={20} />
                             </div>
                         </div>
-                        <p className="text-slate-500 text-xs font-medium mb-1">{t.packageRevenue || 'Package Revenue'}</p>
-                        <p className="text-xl font-bold text-slate-900">{data.packages.total_revenue.toLocaleString()} {t.sar}</p>
+                        <p className="text-[var(--text-muted)] text-xs font-medium mb-1">{t.packageRevenue || 'Package Revenue'}</p>
+                        <p className="text-xl font-bold text-[var(--text-main)]">{data.packages.total_revenue.toLocaleString()} {t.sar}</p>
                     </div>
                 </div>
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* User Distribution */}
-                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm lg:col-span-1">
-                    <h3 className="font-bold text-slate-900 mb-6 flex items-center gap-2">
+                <div className="bg-white p-6 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] lg:col-span-1">
+                    <h3 className="font-bold text-[var(--text-main)] mb-6 flex items-center gap-2">
                         <Users size={20} className="text-primary" />
                         {t.userDistribution}
                     </h3>
                     <div className="space-y-6">
                         <div className="flex items-center justify-between">
-                            <span className="text-sm text-slate-600">{t.admin}</span>
+                            <span className="text-sm text-[var(--text-muted)]">{t.admin}</span>
                             <span className="font-bold">{data?.users_by_role?.admin || 0}</span>
                         </div>
-                        <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                            <div className="bg-purple-500 h-full" style={{ width: `${(data?.users_by_role?.admin || 0) / (data?.summary?.total_users || 1) * 100}%` }}></div>
+                        <div className="w-full bg-[var(--light-bg)] h-2 rounded-full overflow-hidden">
+                            <div className="bg-[var(--accent)] h-full" style={{ width: `${(data?.users_by_role?.admin || 0) / (data?.summary?.total_users || 1) * 100}%` }}></div>
                         </div>
 
                         <div className="flex items-center justify-between">
-                            <span className="text-sm text-slate-600">{t.teacher}</span>
+                            <span className="text-sm text-[var(--text-muted)]">{t.teacher}</span>
                             <span className="font-bold">{data?.users_by_role?.teacher || 0}</span>
                         </div>
-                        <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                            <div className="bg-green-500 h-full" style={{ width: `${(data?.users_by_role?.teacher || 0) / (data?.summary?.total_users || 1) * 100}%` }}></div>
+                        <div className="w-full bg-[var(--light-bg)] h-2 rounded-full overflow-hidden">
+                            <div className="bg-primary h-full" style={{ width: `${(data?.users_by_role?.teacher || 0) / (data?.summary?.total_users || 1) * 100}%` }}></div>
                         </div>
 
                         <div className="flex items-center justify-between">
-                            <span className="text-sm text-slate-600">{t.student}</span>
+                            <span className="text-sm text-[var(--text-muted)]">{t.student}</span>
                             <span className="font-bold">{data?.users_by_role?.student || 0}</span>
                         </div>
-                        <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                            <div className="bg-blue-500 h-full" style={{ width: `${(data?.users_by_role?.student || 0) / (data?.summary?.total_users || 1) * 100}%` }}></div>
+                        <div className="w-full bg-[var(--light-bg)] h-2 rounded-full overflow-hidden">
+                            <div className="bg-navy h-full" style={{ width: `${(data?.users_by_role?.student || 0) / (data?.summary?.total_users || 1) * 100}%` }}></div>
                         </div>
 
-                        <div className="pt-4 border-t border-slate-50 mt-4">
+                        <div className="pt-4 border-t border-[var(--border)] mt-4">
                             <div className="flex items-center justify-between text-sm">
-                                <span className="text-slate-500">{t.inactiveUsers || 'Inactive Users'}</span>
+                                <span className="text-[var(--text-muted)]">{t.inactiveUsers || 'Inactive Users'}</span>
                                 <span className="font-bold text-red-500">{data?.summary?.inactive_users || 0}</span>
                             </div>
                         </div>
@@ -190,40 +190,40 @@ export const AdminOverviewTab: React.FC = () => {
                 </div>
 
                 {/* Recent Activity */}
-                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm lg:col-span-2">
-                    <h3 className="font-bold text-slate-900 mb-6 flex items-center justify-between">
+                <div className="bg-white p-6 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] lg:col-span-2">
+                    <h3 className="font-bold text-[var(--text-main)] mb-6 flex items-center justify-between">
                         <span className="flex items-center gap-2">
                             <Activity size={20} className="text-primary" />
                             {t.recentActivity}
                         </span>
-                        <span className="text-xs font-normal text-slate-400">{t.lastUpdated}: {new Date().toLocaleTimeString()}</span>
+                        <span className="text-xs font-normal text-[var(--text-muted)]">{t.lastUpdated}: {new Date().toLocaleTimeString()}</span>
                     </h3>
                     <div className="space-y-1">
                         {data?.recent_activity && data.recent_activity.length > 0 ? (
                             data.recent_activity.map((activity, idx) => {
                                 const userName = activity.user_name || activity.teacher_name || activity.student_name || t.na;
                                 return (
-                                    <div key={activity.id || idx} className="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-xl transition-colors group">
-                                        <div className={`h-12 w-12 rounded-full flex items-center justify-center shrink-0 ${activity.type === 'booking' ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600'
+                                    <div key={activity.id || idx} className="flex items-center gap-4 p-4 hover:bg-[var(--light-bg)] rounded-[var(--radius-md)] transition-colors group">
+                                        <div className={`h-12 w-12 rounded-full flex items-center justify-center shrink-0 ${activity.type === 'booking' ? 'bg-secondary-pale text-secondary' : 'bg-primary-pale text-primary'
                                             }`}>
                                             {activity.type === 'booking' ? <Calendar size={20} /> : <Users size={20} />}
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center justify-between mb-1">
-                                                <p className="text-sm font-bold text-slate-900 truncate">{userName}</p>
+                                                <p className="text-sm font-bold text-[var(--text-main)] truncate">{userName}</p>
                                                 <span className="text-xs font-bold text-primary">{Number(activity.amount) > 0 ? `+${activity.amount} ${t.sar}` : ''}</span>
                                             </div>
-                                            <p className="text-xs text-slate-500 truncate flex items-center gap-2">
+                                            <p className="text-xs text-[var(--text-muted)] truncate flex items-center gap-2">
                                                 <span className="capitalize">{activity.user_role === 'student' ? t.student : t.teacher}</span>
-                                                <span className="h-1 w-1 bg-slate-300 rounded-full"></span>
-                                                <span className={`px-1.5 py-0.5 rounded-md text-[10px] uppercase font-bold ${activity.status === 'confirmed' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                                                <span className="h-1 w-1 bg-[var(--border)] rounded-full"></span>
+                                                <span className={`px-1.5 py-0.5 rounded-md text-[10px] uppercase font-bold ${activity.status === 'confirmed' ? 'bg-primary-pale text-primary' : 'bg-amber-100 text-amber-700'
                                                     }`}>
                                                     {activity.status}
                                                 </span>
                                             </p>
                                         </div>
                                         <div className="text-right shrink-0">
-                                            <span className="text-[10px] text-slate-400">
+                                            <span className="text-[10px] text-[var(--text-muted)]">
                                                 {new Date(activity.created_at).toLocaleTimeString(language === 'ar' ? 'ar-SA' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
                                             </span>
                                         </div>
@@ -231,7 +231,7 @@ export const AdminOverviewTab: React.FC = () => {
                                 );
                             })
                         ) : (
-                            <div className="text-center py-12 text-slate-400">
+                            <div className="text-center py-12 text-[var(--text-muted)]">
                                 <Activity className="mx-auto mb-2 opacity-20" size={40} />
                                 <p>{t.noResults}</p>
                             </div>
@@ -240,43 +240,43 @@ export const AdminOverviewTab: React.FC = () => {
                 </div>
 
                 {/* Wallets & Finances Overview */}
-                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white p-6 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="md:col-span-1">
-                        <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
+                        <h3 className="font-bold text-[var(--text-main)] mb-4 flex items-center gap-2">
                             <Wallet size={20} className="text-orange-500" />
                             {t.walletInfo || 'Wallet Summary'}
                         </h3>
-                        <p className="text-sm text-slate-500 leading-relaxed mb-4">
+                        <p className="text-sm text-[var(--text-muted)] leading-relaxed mb-4">
                             Total balance managed across all teacher wallets in the platform.
                         </p>
-                        <div className="bg-orange-50 p-4 rounded-xl border border-orange-100">
+                        <div className="bg-orange-50 p-4 rounded-[var(--radius-md)] border border-orange-100">
                             <p className="text-xs text-orange-600 font-bold uppercase mb-1">{t.totalRevenue || 'Total Teachers Wallet'}</p>
                             <p className="text-2xl font-black text-orange-700">{data?.summary?.teachers_wallet_total?.toLocaleString() || '0'} {t.sar}</p>
                         </div>
                     </div>
 
                     <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                            <p className="text-xs text-slate-500 font-bold uppercase mb-2">{t.monthlyMetrics || 'Monthly Metrics'}</p>
+                        <div className="p-4 bg-[var(--light-bg)] rounded-[var(--radius-md)] border border-[var(--border)]">
+                            <p className="text-xs text-[var(--text-muted)] font-bold uppercase mb-2">{t.monthlyMetrics || 'Monthly Metrics'}</p>
                             <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm text-slate-600">New Users</span>
+                                <span className="text-sm text-[var(--text-muted)]">New Users</span>
                                 <span className="font-bold text-primary">+{data?.monthly_metrics?.new_users_this_month || 0}</span>
                             </div>
                             <div className="flex items-center justify-between">
-                                <span className="text-sm text-slate-600">New Bookings</span>
+                                <span className="text-sm text-[var(--text-muted)]">New Bookings</span>
                                 <span className="font-bold text-secondary">+{data?.monthly_metrics?.new_bookings_this_month || 0}</span>
                             </div>
                         </div>
-                        <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                            <p className="text-xs text-slate-500 font-bold uppercase mb-2">System Health</p>
+                        <div className="p-4 bg-[var(--light-bg)] rounded-[var(--radius-md)] border border-[var(--border)]">
+                            <p className="text-xs text-[var(--text-muted)] font-bold uppercase mb-2">System Health</p>
                             <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm text-slate-600">Verified Rate</span>
-                                <span className="font-bold text-green-600">
+                                <span className="text-sm text-[var(--text-muted)]">Verified Rate</span>
+                                <span className="font-bold text-primary">
                                     {Math.round((data?.summary?.active_teachers || 0) / (data?.summary?.total_teachers || 1) * 100)}%
                                 </span>
                             </div>
                             <div className="flex items-center justify-between">
-                                <span className="text-sm text-slate-600">Avg. Wallet</span>
+                                <span className="text-sm text-[var(--text-muted)]">Avg. Wallet</span>
                                 <span className="font-bold">{data?.wallet_info?.average_per_teacher?.toLocaleString() || '0'} {t.sar}</span>
                             </div>
                         </div>

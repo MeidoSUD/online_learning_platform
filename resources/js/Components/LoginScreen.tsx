@@ -101,13 +101,13 @@ export const LoginScreen = ({ onSwitch, onLoginSuccess }) => {
   }
 
   return (
-    <div className="w-full max-w-md space-y-8 bg-surface p-8 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 relative">
+    <div className="w-full max-w-md space-y-8 bg-surface p-8 rounded-[var(--radius-lg)] shadow-[var(--shadow-md)] border border-[var(--border)] relative">
 
       <div className="flex justify-between items-center">
 
         <button
           onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}
-          className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-primary transition-colors"
+          className="flex items-center gap-2 text-sm font-medium text-[var(--text-muted)] hover:text-primary transition-colors border border-[var(--border)] rounded-[50px] px-3 py-1.5"
         >
           <Globe size={16} />
           {language === 'en' ? 'العربية' : 'English'}
@@ -118,8 +118,8 @@ export const LoginScreen = ({ onSwitch, onLoginSuccess }) => {
 
       <Logo />
       <div className="text-center">
-        <h2 className="mt-6 text-3xl font-bold tracking-tight text-text">{t.loginTitle}</h2>
-        <p className="mt-2 text-sm text-slate-500">{t.loginSubtitle}</p>
+        <h2 className="mt-6 text-3xl font-bold tracking-tight text-navy">{t.loginTitle}</h2>
+        <p className="mt-2 text-sm text-[var(--text-muted)]">{t.loginSubtitle}</p>
       </div>
 
       <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
@@ -159,22 +159,22 @@ export const LoginScreen = ({ onSwitch, onLoginSuccess }) => {
 
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <input id="remember-me" type="checkbox" checked={formData.rememberMe} onChange={(e) => setFormData({ ...formData, rememberMe: e.target.checked })} className="h-4 w-4 rounded border-border text-primary focus:ring-primary" />
+            <input id="remember-me" type="checkbox" checked={formData.rememberMe} onChange={(e) => setFormData({ ...formData, rememberMe: e.target.checked })} className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20" />
             <label htmlFor="remember-me" className="ms-2 block text-sm text-text">{t.rememberMe}</label>
           </div>
-          <button type="button" onClick={() => setShowForgotPassword(true)} className="text-sm font-medium text-primary hover:text-blue-600">
+          <button type="button" onClick={() => setShowForgotPassword(true)} className="text-sm font-medium text-primary hover:text-primary-light">
             {t.forgotPassword}
           </button>
         </div>
 
-        <Button type="submit" className="w-full shadow-lg shadow-primary/20" isLoading={isLoading}>
+        <Button type="submit" className="w-full shadow-[var(--shadow-lg)]" isLoading={isLoading}>
           {t.loginBtn}
         </Button>
       </form>
 
       <div className="text-center text-sm">
-        <span className="text-slate-500">{t.noAccount} </span>
-        <button onClick={onSwitch} className="font-semibold text-primary hover:text-blue-600">{t.switchToRegister}</button>
+        <span className="text-[var(--text-muted)]">{t.noAccount} </span>
+        <button onClick={onSwitch} className="font-semibold text-primary hover:text-primary-light">{t.switchToRegister}</button>
       </div>
     </div>
   );

@@ -86,7 +86,7 @@ export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ 
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/50 font-sans pb-10">
+    <div className="min-h-screen bg-[var(--light-bg)] font-sans pb-10">
       <Navbar
         userData={data}
         onLogout={onLogout}

@@ -154,8 +154,8 @@ export const SubjectsTab: React.FC = () => {
         <div className="w-24 h-24 rounded-full bg-red-50 flex items-center justify-center">
           <BookOpen size={48} className="text-red-300" />
         </div>
-        <h3 className="text-lg font-semibold text-slate-700">{t.errorLoadingCourses}</h3>
-        <p className="text-sm text-slate-500 text-center max-w-sm">{error}</p>
+        <h3 className="text-lg font-semibold text-navy">{t.errorLoadingCourses}</h3>
+        <p className="text-sm text-[var(--text-muted)] text-center max-w-sm">{error}</p>
         <Button onClick={() => loadCourses(1, false)} className="mt-2">{t.retry}</Button>
       </div>
     );
@@ -166,12 +166,12 @@ export const SubjectsTab: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">{t.trainingCourses}</h2>
-          <p className="text-sm text-slate-500 mt-1">{t.coursesAvailableCount(filteredCourses.length)}</p>
+          <h2 className="text-2xl font-bold text-[var(--text-main)]">{t.trainingCourses}</h2>
+          <p className="text-sm text-[var(--text-muted)] mt-1">{t.coursesAvailableCount(filteredCourses.length)}</p>
         </div>
         <Button
           variant="outline"
-          className="h-10 px-4 rounded-xl flex items-center gap-2"
+          className="h-10 px-4 rounded-[var(--radius-md)] flex items-center gap-2"
           onClick={() => setShowFilterSheet(true)}
         >
           <SlidersHorizontal size={18} className="text-primary" />
@@ -181,19 +181,19 @@ export const SubjectsTab: React.FC = () => {
 
       {/* Search Bar */}
       <div className="relative">
-        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
         <input
           ref={searchInputRef}
           type="text"
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
           placeholder={t.searchPlaceholder}
-          className="w-full h-12 pl-12 pr-4 bg-white border border-slate-200 rounded-2xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+          className="w-full h-12 pl-12 pr-4 bg-white border border-[var(--border)] rounded-[var(--radius-md)] text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
         />
         {searchQuery && (
           <button
             onClick={() => { setSearchQuery(''); searchInputRef.current?.focus(); }}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-muted)]"
           >
             <X size={16} />
           </button>
@@ -207,8 +207,8 @@ export const SubjectsTab: React.FC = () => {
             onClick={() => setFilters(prev => ({ ...prev, categoryId: null }))}
             className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
               filters.categoryId === null
-                ? 'bg-primary text-white shadow-md shadow-primary/30'
-                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                ? 'bg-primary text-white shadow-[var(--shadow-md)] shadow-primary/30'
+                : 'bg-white text-[var(--text-muted)] border border-[var(--border)] hover:bg-[var(--light-bg)]'
             }`}
           >
             {language === 'ar' ? 'الكل' : 'All'}
@@ -219,8 +219,8 @@ export const SubjectsTab: React.FC = () => {
               onClick={() => setFilters(prev => ({ ...prev, categoryId: prev.categoryId === cat.id ? null : cat.id }))}
               className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
                 filters.categoryId === cat.id
-                  ? 'bg-primary text-white shadow-md shadow-primary/30'
-                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                  ? 'bg-primary text-white shadow-[var(--shadow-md)] shadow-primary/30'
+                  : 'bg-white text-[var(--text-muted)] border border-[var(--border)] hover:bg-[var(--light-bg)]'
               }`}
             >
               {language === 'ar' ? cat.name_ar : cat.name_en}
@@ -231,9 +231,9 @@ export const SubjectsTab: React.FC = () => {
 
       {/* Active Filters */}
       {hasActiveFilters && (
-        <div className="bg-white rounded-2xl p-4 border border-slate-100">
+        <div className="bg-white rounded-[var(--radius-md)] p-4 border border-[var(--border)]">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-medium text-slate-700">{t.activeFilters}:</span>
+            <span className="text-sm font-medium text-navy">{t.activeFilters}:</span>
             <button onClick={clearFilters} className="text-xs font-medium text-red-500 hover:text-red-600">
               {t.clearAll}
             </button>
@@ -270,11 +270,11 @@ export const SubjectsTab: React.FC = () => {
       {/* Empty State */}
       {!loading && filteredCourses.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 gap-4">
-          <div className="w-28 h-28 rounded-full bg-slate-100 flex items-center justify-center">
-            <School size={56} className="text-slate-300" />
+          <div className="w-28 h-28 rounded-full bg-[var(--light-bg)] flex items-center justify-center">
+            <School size={56} className="text-[var(--text-muted)]" />
           </div>
-          <h3 className="text-lg font-semibold text-slate-700">{t.noCoursesFound}</h3>
-          <p className="text-sm text-slate-500">{t.tryAdjustingSearch}</p>
+          <h3 className="text-lg font-semibold text-navy">{t.noCoursesFound}</h3>
+          <p className="text-sm text-[var(--text-muted)]">{t.tryAdjustingSearch}</p>
         </div>
       )}
 
@@ -298,16 +298,16 @@ export const SubjectsTab: React.FC = () => {
               return (
                 <div
                   key={course.id}
-                  className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden hover:shadow-lg transition-all group flex flex-col cursor-pointer"
+                  className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] overflow-hidden hover:shadow-[var(--shadow-lg)] transition-all group flex flex-col cursor-pointer"
                   onClick={() => setSelectedCourse(course)}
                 >
                   {/* Image */}
-                  <div className="relative aspect-[2.5/1] bg-slate-100 overflow-hidden">
+                  <div className="relative aspect-[2.5/1] bg-[var(--light-bg)] overflow-hidden">
                     {coverImg ? (
                       <img src={coverImg} alt={course.name} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
-                        <BookOpen size={36} className="text-slate-300" />
+                        <BookOpen size={36} className="text-[var(--text-muted)]" />
                       </div>
                     )}
 
@@ -331,29 +331,29 @@ export const SubjectsTab: React.FC = () => {
 
                   {/* Content */}
                   <div className="p-4 flex flex-col flex-1">
-                    <h3 className="font-bold text-slate-900 text-base leading-tight line-clamp-2 mb-1">
+                    <h3 className="font-bold text-[var(--text-main)] text-base leading-tight line-clamp-2 mb-1">
                       {course.name}
                     </h3>
-                    <p className="text-xs text-slate-500 line-clamp-1 mb-3">{course.description}</p>
+                    <p className="text-xs text-[var(--text-muted)] line-clamp-1 mb-3">{course.description}</p>
 
                     {/* Teacher & Level */}
                     <div className="flex items-center gap-2 mb-3">
-                      <div className="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0">
-                        <Users size={10} className="text-slate-500" />
+                      <div className="w-5 h-5 rounded-full bg-[var(--border)] flex items-center justify-center flex-shrink-0">
+                        <Users size={10} className="text-[var(--text-muted)]" />
                       </div>
-                      <span className="text-xs text-slate-600 font-medium truncate flex-1">{teacherName}</span>
+                      <span className="text-xs text-[var(--text-muted)] font-medium truncate flex-1">{teacherName}</span>
                     </div>
 
                     {/* Meta Chips */}
                     <div className="flex items-center gap-4 mb-3">
                       {course.duration_hours && (
-                        <span className="flex items-center gap-1 text-xs text-slate-500">
+                        <span className="flex items-center gap-1 text-xs text-[var(--text-muted)]">
                           <Clock size={13} />
                           {t.hoursShort(course.duration_hours)}
                         </span>
                       )}
                       {availableSeats > 0 && (
-                        <span className={`flex items-center gap-1 text-xs ${availableSeats <= 5 ? 'text-orange-500' : 'text-slate-500'}`}>
+                        <span className={`flex items-center gap-1 text-xs ${availableSeats <= 5 ? 'text-orange-500' : 'text-[var(--text-muted)]'}`}>
                           <Users size={13} />
                           {t.availableSeatsCount(availableSeats)}
                         </span>
@@ -361,15 +361,15 @@ export const SubjectsTab: React.FC = () => {
                     </div>
 
                     {/* Footer */}
-                    <div className="mt-auto flex items-center justify-between pt-3 border-t border-slate-50">
+                    <div className="mt-auto flex items-center justify-between pt-3 border-t border-[var(--border)]">
                       <div>
-                        <span className="text-xs text-slate-400">{t.price}</span>
+                        <span className="text-xs text-[var(--text-muted)]">{t.price}</span>
                         <p className="text-lg font-bold text-primary leading-tight">
-                          {Number(course.price).toFixed(2)} <span className="text-xs font-normal text-slate-400">{t.currency}</span>
+                          {Number(course.price).toFixed(2)} <span className="text-xs font-normal text-[var(--text-muted)]">{t.currency}</span>
                         </p>
                       </div>
                       <Button
-                        className="h-9 px-4 text-xs font-bold rounded-xl"
+                        className="h-9 px-4 text-xs font-bold rounded-[var(--radius-md)]"
                         onClick={(e) => { e.stopPropagation(); setSelectedCourse(course); }}
                       >
                         {t.details}
@@ -448,20 +448,20 @@ const CourseFilterSheet: React.FC<{
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[80vh] overflow-y-auto">
+      <div className="relative w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-[var(--radius-md)] shadow-xl max-h-[80vh] overflow-y-auto">
         {/* Handle */}
         <div className="flex justify-center pt-3 sm:hidden">
-          <div className="w-10 h-1 bg-slate-300 rounded-full" />
+          <div className="w-10 h-1 bg-[var(--border)] rounded-full" />
         </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <h3 className="text-lg font-bold text-slate-900">{t.filterCourses}</h3>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
+          <h3 className="text-lg font-bold text-[var(--text-main)]">{t.filterCourses}</h3>
           <div className="flex items-center gap-2">
             <button onClick={resetDraft} className="text-xs font-medium text-red-500 hover:text-red-600">
               {t.reset}
             </button>
-            <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+            <button onClick={onClose} className="text-[var(--text-muted)] hover:text-[var(--text-muted)]">
               <X size={20} />
             </button>
           </div>
@@ -471,13 +471,13 @@ const CourseFilterSheet: React.FC<{
         <div className="px-6 py-5 space-y-6">
           {/* Category */}
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
+            <label className="block text-sm font-semibold text-navy mb-2">
               {language === 'ar' ? 'الفئة' : t.category}
             </label>
             <select
               value={draft.categoryId ?? ''}
               onChange={e => setDraft(prev => ({ ...prev, categoryId: e.target.value ? Number(e.target.value) : null }))}
-              className="w-full h-12 px-4 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all appearance-none"
+              className="w-full h-12 px-4 bg-white border border-[var(--border)] rounded-[var(--radius-md)] text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all appearance-none"
             >
               <option value="">{t.selectItem(language === 'ar' ? 'الفئة' : t.category)}</option>
               {categories.map(cat => (
@@ -490,13 +490,13 @@ const CourseFilterSheet: React.FC<{
 
           {/* Education Level */}
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
+            <label className="block text-sm font-semibold text-navy mb-2">
               {language === 'ar' ? 'المرحلة الدراسية' : t.levels}
             </label>
             <select
               value={draft.levelId ?? ''}
               onChange={e => setDraft(prev => ({ ...prev, levelId: e.target.value ? Number(e.target.value) : null }))}
-              className="w-full h-12 px-4 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all appearance-none"
+              className="w-full h-12 px-4 bg-white border border-[var(--border)] rounded-[var(--radius-md)] text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all appearance-none"
             >
               <option value="">{t.selectItem(language === 'ar' ? 'المرحلة الدراسية' : 'level')}</option>
               {educationLevels.map(level => (
@@ -509,8 +509,8 @@ const CourseFilterSheet: React.FC<{
 
           {/* Max Price */}
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">{t.maxPrice}</label>
-            <p className="text-sm text-slate-500 mb-2">≤ {draft.maxPrice ?? 1500} {t.sar}</p>
+            <label className="block text-sm font-semibold text-navy mb-2">{t.maxPrice}</label>
+            <p className="text-sm text-[var(--text-muted)] mb-2">≤ {draft.maxPrice ?? 1500} {t.sar}</p>
             <input
               type="range"
               min={100}
@@ -518,9 +518,9 @@ const CourseFilterSheet: React.FC<{
               step={100}
               value={draft.maxPrice ?? 1500}
               onChange={e => setDraft(prev => ({ ...prev, maxPrice: Number(e.target.value) }))}
-              className="w-full h-2 bg-slate-200 rounded-full appearance-none cursor-pointer accent-primary"
+              className="w-full h-2 bg-[var(--border)] rounded-full appearance-none cursor-pointer accent-primary"
             />
-            <div className="flex justify-between text-xs text-slate-400 mt-1">
+            <div className="flex justify-between text-xs text-[var(--text-muted)] mt-1">
               <span>100 {t.sar}</span>
               <span>3000 {t.sar}</span>
             </div>
@@ -528,8 +528,8 @@ const CourseFilterSheet: React.FC<{
         </div>
 
         {/* Apply */}
-        <div className="px-6 py-4 border-t border-slate-100">
-          <Button className="w-full h-12 text-base font-bold rounded-xl" onClick={() => onApply(draft)}>
+        <div className="px-6 py-4 border-t border-[var(--border)]">
+          <Button className="w-full h-12 text-base font-bold rounded-[var(--radius-md)]" onClick={() => onApply(draft)}>
             {t.applyFilters}
           </Button>
         </div>
@@ -562,12 +562,12 @@ const CourseDetailsModal: React.FC<{
     <Modal isOpen={!!course} onClose={onClose} title={course.name}>
       <div className="space-y-5">
         {/* Image */}
-        <div className="relative aspect-[2.5/1] bg-slate-100 rounded-xl overflow-hidden -mx-6 -mt-6 mb-0">
+        <div className="relative aspect-[2.5/1] bg-[var(--light-bg)] rounded-[var(--radius-md)] overflow-hidden -mx-6 -mt-6 mb-0">
           {coverImg ? (
             <img src={coverImg} alt={course.name} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <BookOpen size={48} className="text-slate-300" />
+              <BookOpen size={48} className="text-[var(--text-muted)]" />
             </div>
           )}
           {categoryName && (
@@ -591,32 +591,32 @@ const CourseDetailsModal: React.FC<{
             <Users size={18} className="text-primary" />
           </div>
           <div>
-            <p className="text-xs text-slate-500">{language === 'ar' ? 'المعلم' : 'Teacher'}</p>
-            <p className="text-sm font-semibold text-slate-900">{teacherName}</p>
+            <p className="text-xs text-[var(--text-muted)]">{language === 'ar' ? 'المعلم' : 'Teacher'}</p>
+            <p className="text-sm font-semibold text-[var(--text-main)]">{teacherName}</p>
           </div>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
-          <div className="bg-blue-50 rounded-xl p-3 text-center">
-            <Clock size={18} className="text-blue-600 mx-auto mb-1" />
-            <p className="text-lg font-bold text-blue-600">{course.duration_hours || 0}</p>
-            <p className="text-[10px] text-blue-500">{language === 'ar' ? 'ساعة' : 'Hours'}</p>
+          <div className="bg-secondary-pale rounded-[var(--radius-md)] p-3 text-center">
+            <Clock size={18} className="text-secondary mx-auto mb-1" />
+            <p className="text-lg font-bold text-secondary">{course.duration_hours || 0}</p>
+            <p className="text-[10px] text-secondary">{language === 'ar' ? 'ساعة' : 'Hours'}</p>
           </div>
-          <div className="bg-green-50 rounded-xl p-3 text-center">
-            <Users size={18} className="text-green-600 mx-auto mb-1" />
-            <p className="text-lg font-bold text-green-600">{0}</p>
+          <div className="bg-primary-pale rounded-[var(--radius-md)] p-3 text-center">
+            <Users size={18} className="text-primary mx-auto mb-1" />
+            <p className="text-lg font-bold text-primary">{0}</p>
             <p className="text-[10px] text-green-500">{language === 'ar' ? 'طلاب' : 'Students'}</p>
           </div>
-          <div className={`rounded-xl p-3 text-center ${availableSeats <= 5 ? 'bg-orange-50' : 'bg-purple-50'}`}>
-            <Users size={18} className={`mx-auto mb-1 ${availableSeats <= 5 ? 'text-orange-600' : 'text-purple-600'}`} />
-            <p className={`text-lg font-bold ${availableSeats <= 5 ? 'text-orange-600' : 'text-purple-600'}`}>{availableSeats}</p>
-            <p className="text-[10px] text-slate-500">{language === 'ar' ? 'مقاعد' : 'Seats'}</p>
+          <div className={`rounded-[var(--radius-md)] p-3 text-center ${availableSeats <= 5 ? 'bg-orange-50' : 'bg-secondary-pale'}`}>
+            <Users size={18} className={`mx-auto mb-1 ${availableSeats <= 5 ? 'text-orange-600' : 'text-[var(--accent)]'}`} />
+            <p className={`text-lg font-bold ${availableSeats <= 5 ? 'text-orange-600' : 'text-[var(--accent)]'}`}>{availableSeats}</p>
+            <p className="text-[10px] text-[var(--text-muted)]">{language === 'ar' ? 'مقاعد' : 'Seats'}</p>
           </div>
         </div>
 
         {/* Price */}
-        <div className="bg-gradient-to-r from-green-400 to-green-600 rounded-xl p-4 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-green-400 to-green-600 rounded-[var(--radius-md)] p-4 flex items-center justify-between">
           <div>
             <p className="text-white text-sm font-medium">{language === 'ar' ? 'سعر الدورة' : 'Course Price'}</p>
             <p className="text-white/70 text-xs">{language === 'ar' ? 'شامل الشهادة' : 'Certificate included'}</p>
@@ -627,14 +627,14 @@ const CourseDetailsModal: React.FC<{
         </div>
 
         {/* Description */}
-        <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
-          <h4 className="text-sm font-bold text-slate-900 mb-2">{language === 'ar' ? 'الوصف' : 'Description'}</h4>
-          <p className="text-sm text-slate-600 leading-relaxed">{course.description}</p>
+        <div className="bg-[var(--light-bg)] rounded-[var(--radius-md)] p-4 border border-[var(--border)]">
+          <h4 className="text-sm font-bold text-[var(--text-main)] mb-2">{language === 'ar' ? 'الوصف' : 'Description'}</h4>
+          <p className="text-sm text-[var(--text-muted)] leading-relaxed">{course.description}</p>
         </div>
 
         {/* Book Button */}
         <Button
-          className="w-full h-12 text-base font-bold rounded-xl"
+          className="w-full h-12 text-base font-bold rounded-[var(--radius-md)]"
           onClick={() => onBook(course.name, parseFloat(course.price) || 0)}
         >
           {t.bookNow}

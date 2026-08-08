@@ -137,12 +137,12 @@ export const TermsTab: React.FC = () => {
 
   const typeBadge = (type: string) => {
     const colors: Record<string, string> = {
-      terms: 'bg-blue-100 text-blue-700',
-      conditions: 'bg-purple-100 text-purple-700',
-      privacy_policy: 'bg-green-100 text-green-700',
+      terms: 'bg-secondary-pale text-secondary',
+      conditions: 'bg-purple-100 text-[var(--accent)]',
+      privacy_policy: 'bg-primary-pale text-primary',
     };
     return (
-      <span className={`text-xs px-2 py-1 rounded ${colors[type] || 'bg-slate-100 text-slate-600'}`}>
+      <span className={`text-xs px-2 py-1 rounded ${colors[type] || 'bg-[var(--light-bg)] text-[var(--text-muted)]'}`}>
         {typeLabel(type)}
       </span>
     );
@@ -152,7 +152,7 @@ export const TermsTab: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+        <h2 className="text-2xl font-bold text-[var(--text-main)] flex items-center gap-2">
           <FileText className="text-primary" />
           {language === 'ar' ? 'إدارة الشروط والأحكام' : 'Terms & Conditions'}
         </h2>
@@ -182,7 +182,7 @@ export const TermsTab: React.FC = () => {
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               filterType === type
                 ? 'bg-primary text-white'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                : 'bg-[var(--light-bg)] text-[var(--text-muted)] hover:bg-[var(--border)]'
             }`}
           >
             {type === 'all' ? (language === 'ar' ? 'الكل' : 'All') : typeLabel(type)}
@@ -191,55 +191,55 @@ export const TermsTab: React.FC = () => {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] overflow-hidden">
         {loading ? (
           <div className="p-8 text-center">
             <RefreshCw className="animate-spin mx-auto text-primary" size={32} />
           </div>
         ) : terms.length === 0 ? (
-          <div className="p-8 text-center text-slate-500">
+          <div className="p-8 text-center text-[var(--text-muted)]">
             {language === 'ar' ? 'لا توجد شروط وأحكام' : 'No terms & conditions found'}
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-slate-50 border-b border-slate-200">
+              <thead className="bg-[var(--light-bg)] border-b border-[var(--border)]">
                 <tr>
-                  <th className="px-4 py-3 text-start text-sm font-semibold text-slate-700">
+                  <th className="px-4 py-3 text-start text-sm font-semibold text-navy">
                     {language === 'ar' ? 'العنوان (عربي)' : 'Title (AR)'}
                   </th>
-                  <th className="px-4 py-3 text-start text-sm font-semibold text-slate-700">
+                  <th className="px-4 py-3 text-start text-sm font-semibold text-navy">
                     {language === 'ar' ? 'العنوان (إنجليزي)' : 'Title (EN)'}
                   </th>
-                  <th className="px-4 py-3 text-start text-sm font-semibold text-slate-700">
+                  <th className="px-4 py-3 text-start text-sm font-semibold text-navy">
                     {language === 'ar' ? 'النوع' : 'Type'}
                   </th>
-                  <th className="px-4 py-3 text-start text-sm font-semibold text-slate-700">
+                  <th className="px-4 py-3 text-start text-sm font-semibold text-navy">
                     {language === 'ar' ? 'الإصدار' : 'Version'}
                   </th>
-                  <th className="px-4 py-3 text-start text-sm font-semibold text-slate-700">
+                  <th className="px-4 py-3 text-start text-sm font-semibold text-navy">
                     {language === 'ar' ? 'الحالة' : 'Status'}
                   </th>
-                  <th className="px-4 py-3 text-start text-sm font-semibold text-slate-700">
+                  <th className="px-4 py-3 text-start text-sm font-semibold text-navy">
                     {language === 'ar' ? 'إجراءات' : 'Actions'}
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[var(--border)]">
                 {terms.map(term => (
-                  <tr key={term.id} className={`hover:bg-slate-50 ${term.is_deleted ? 'opacity-60' : ''}`}>
-                    <td className="px-4 py-3 text-sm font-medium text-slate-900">{term.title_ar}</td>
-                    <td className="px-4 py-3 text-sm text-slate-700">{term.title_en}</td>
+                  <tr key={term.id} className={`hover:bg-[var(--light-bg)] ${term.is_deleted ? 'opacity-60' : ''}`}>
+                    <td className="px-4 py-3 text-sm font-medium text-[var(--text-main)]">{term.title_ar}</td>
+                    <td className="px-4 py-3 text-sm text-navy">{term.title_en}</td>
                     <td className="px-4 py-3">{typeBadge(term.type)}</td>
                     <td className="px-4 py-3">
-                      <span className="text-sm font-mono bg-slate-100 px-2 py-1 rounded">v{term.version}</span>
+                      <span className="text-sm font-mono bg-[var(--light-bg)] px-2 py-1 rounded">v{term.version}</span>
                     </td>
                     <td className="px-4 py-3">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                         term.is_deleted
                           ? 'bg-red-100 text-red-700'
                           : term.status
-                            ? 'bg-green-100 text-green-700'
+                            ? 'bg-primary-pale text-primary'
                             : 'bg-yellow-100 text-yellow-700'
                       }`}>
                         {term.is_deleted
@@ -268,7 +268,7 @@ export const TermsTab: React.FC = () => {
                               className={`p-2 rounded-lg text-sm transition-all ${
                                 term.status
                                   ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
-                                  : 'bg-green-100 text-green-700 hover:bg-green-200'
+                                  : 'bg-primary-pale text-primary hover:bg-green-200'
                               }`}
                               title={term.status
                                 ? (language === 'ar' ? 'إلغاء التفعيل' : 'Deactivate')
@@ -317,39 +317,39 @@ export const TermsTab: React.FC = () => {
             placeholder="Terms of Service"
           />
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-navy mb-1">
               {language === 'ar' ? 'المحتوى (عربي)' : 'Content (Arabic)'}
             </label>
             <textarea
               value={form.content_ar}
               onChange={(e) => setForm({ ...form, content_ar: e.target.value })}
               rows={5}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+              className="w-full px-3 py-2 border border-[var(--border)] rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-transparent"
               dir="rtl"
               placeholder={language === 'ar' ? 'محتوى الشروط بالعربية...' : 'محتوى الشروط بالعربية...'}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-navy mb-1">
               {language === 'ar' ? 'المحتوى (إنجليزي)' : 'Content (English)'}
             </label>
             <textarea
               value={form.content_en}
               onChange={(e) => setForm({ ...form, content_en: e.target.value })}
               rows={5}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+              className="w-full px-3 py-2 border border-[var(--border)] rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-transparent"
               placeholder="Full terms content in English..."
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-navy mb-1">
                 {language === 'ar' ? 'النوع' : 'Type'}
               </label>
               <select
                 value={form.type}
                 onChange={(e) => setForm({ ...form, type: e.target.value as TermsConditionsPayload['type'] })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full px-3 py-2 border border-[var(--border)] rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-transparent"
               >
                 <option value="terms">{typeLabel('terms')}</option>
                 <option value="conditions">{typeLabel('conditions')}</option>
@@ -357,13 +357,13 @@ export const TermsTab: React.FC = () => {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-navy mb-1">
                 {language === 'ar' ? 'الحالة' : 'Status'}
               </label>
               <select
                 value={form.status ? '1' : '0'}
                 onChange={(e) => setForm({ ...form, status: e.target.value === '1' })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full px-3 py-2 border border-[var(--border)] rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-transparent"
               >
                 <option value="1">{language === 'ar' ? 'نشط' : 'Active'}</option>
                 <option value="0">{language === 'ar' ? 'غير نشط' : 'Inactive'}</option>
@@ -394,28 +394,28 @@ export const TermsTab: React.FC = () => {
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               {typeBadge(showPreview.type)}
-              <span className="text-xs font-mono bg-slate-100 px-2 py-1 rounded">v{showPreview.version}</span>
+              <span className="text-xs font-mono bg-[var(--light-bg)] px-2 py-1 rounded">v{showPreview.version}</span>
               <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                showPreview.status ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                showPreview.status ? 'bg-primary-pale text-primary' : 'bg-yellow-100 text-yellow-700'
               }`}>
                 {showPreview.status
                   ? (language === 'ar' ? 'نشط' : 'Active')
                   : (language === 'ar' ? 'غير نشط' : 'Inactive')}
               </span>
             </div>
-            <div className="border-t border-slate-200 pt-4">
-              <h4 className="text-sm font-semibold text-slate-700 mb-2">
+            <div className="border-t border-[var(--border)] pt-4">
+              <h4 className="text-sm font-semibold text-navy mb-2">
                 {language === 'ar' ? 'المحتوى (عربي)' : 'Arabic Content'}
               </h4>
-              <div className="p-4 bg-slate-50 rounded-lg text-sm text-slate-700 whitespace-pre-wrap leading-relaxed" dir="rtl">
+              <div className="p-4 bg-[var(--light-bg)] rounded-lg text-sm text-navy whitespace-pre-wrap leading-relaxed" dir="rtl">
                 {showPreview.content_ar}
               </div>
             </div>
-            <div className="border-t border-slate-200 pt-4">
-              <h4 className="text-sm font-semibold text-slate-700 mb-2">
+            <div className="border-t border-[var(--border)] pt-4">
+              <h4 className="text-sm font-semibold text-navy mb-2">
                 {language === 'ar' ? 'المحتوى (إنجليزي)' : 'English Content'}
               </h4>
-              <div className="p-4 bg-slate-50 rounded-lg text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
+              <div className="p-4 bg-[var(--light-bg)] rounded-lg text-sm text-navy whitespace-pre-wrap leading-relaxed">
                 {showPreview.content_en}
               </div>
             </div>

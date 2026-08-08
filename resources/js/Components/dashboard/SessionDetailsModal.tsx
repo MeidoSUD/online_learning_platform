@@ -104,7 +104,7 @@ export const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({
             />
 
             <div
-                className={`relative w-full sm:max-w-lg max-h-[92vh] bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ease-out ${
+                className={`relative w-full sm:max-w-lg max-h-[92vh] bg-white rounded-t-3xl sm:rounded-[var(--radius-lg)] shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ease-out ${
                     visible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'
                 }`}
             >
@@ -112,14 +112,14 @@ export const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({
                 <div className="relative bg-gradient-to-br from-primary to-primary/85 px-5 pt-8 pb-5">
                     <button
                         onClick={onClose}
-                        className={`absolute top-3 ${direction === 'rtl' ? 'right-3' : 'left-3'} w-8 h-8 bg-white/90 backdrop-blur rounded-lg flex items-center justify-center shadow-md hover:bg-white transition-all active:scale-95`}
+                        className={`absolute top-3 ${direction === 'rtl' ? 'right-3' : 'left-3'} w-8 h-8 bg-white/90 backdrop-blur rounded-lg flex items-center justify-center shadow-[var(--shadow-md)] hover:bg-white transition-all active:scale-95`}
                     >
-                        <ArrowLeft size={16} className="text-slate-700" />
+                        <ArrowLeft size={16} className="text-navy" />
                     </button>
 
                     <div className={`${direction === 'rtl' ? 'text-right' : 'text-left'}`}>
                         <div className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur rounded-full px-3 py-1 border border-white/30 mb-3">
-                            <span className={`w-1.5 h-1.5 rounded-full ${live ? 'bg-green-400 animate-pulse' : ended ? 'bg-slate-300' : 'bg-orange-400'}`} />
+                            <span className={`w-1.5 h-1.5 rounded-full ${live ? 'bg-green-400 animate-pulse' : ended ? 'bg-[var(--border)]' : 'bg-orange-400'}`} />
                             <span className="text-white text-[10px] font-semibold tracking-wide">
                                 {live
                                     ? (language === 'ar' ? 'مباشر' : 'Live')
@@ -146,38 +146,38 @@ export const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({
                 </div>
 
                 {/* ===== BODY ===== */}
-                <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 bg-slate-50/50">
+                <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 bg-[var(--light-bg)]">
                     {/* Info Cards */}
                     <div>
-                        <h3 className="text-base font-bold text-slate-900 mb-4">
+                        <h3 className="text-base font-bold text-[var(--text-main)] mb-4">
                             {language === 'ar' ? 'معلومات الدرس' : 'Lesson Info'}
                         </h3>
                         <div className="grid grid-cols-2 gap-3">
-                            <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-4 flex items-center gap-3">
-                                <div className="p-2.5 rounded-xl bg-green-50">
-                                    <Calendar size={18} className="text-green-600" />
+                            <div className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-4 flex items-center gap-3">
+                                <div className="p-2.5 rounded-[var(--radius-md)] bg-primary-pale">
+                                    <Calendar size={18} className="text-primary" />
                                 </div>
                                 <div className="min-w-0">
-                                    <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wider">{language === 'ar' ? 'التاريخ' : 'Date'}</p>
-                                    <p className="text-sm font-bold text-slate-800 truncate">{session.session_date || '-'}</p>
+                                    <p className="text-[11px] text-[var(--text-muted)] font-medium uppercase tracking-wider">{language === 'ar' ? 'التاريخ' : 'Date'}</p>
+                                    <p className="text-sm font-bold text-[var(--text-main)] truncate">{session.session_date || '-'}</p>
                                 </div>
                             </div>
-                            <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-4 flex items-center gap-3">
-                                <div className="p-2.5 rounded-xl bg-purple-50">
-                                    <CheckCircle size={18} className="text-purple-600" />
+                            <div className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-4 flex items-center gap-3">
+                                <div className="p-2.5 rounded-[var(--radius-md)] bg-secondary-pale">
+                                    <CheckCircle size={18} className="text-[var(--accent)]" />
                                 </div>
                                 <div className="min-w-0">
-                                    <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wider">{language === 'ar' ? 'المكتملة' : 'Completed'}</p>
-                                    <p className="text-sm font-bold text-slate-800">{session.session_number || '0'}</p>
+                                    <p className="text-[11px] text-[var(--text-muted)] font-medium uppercase tracking-wider">{language === 'ar' ? 'المكتملة' : 'Completed'}</p>
+                                    <p className="text-sm font-bold text-[var(--text-main)]">{session.session_number || '0'}</p>
                                 </div>
                             </div>
-                            <div className="col-span-2 bg-white rounded-2xl border border-slate-100 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-4 flex items-center gap-3">
-                                <div className="p-2.5 rounded-xl bg-orange-50">
+                            <div className="col-span-2 bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-4 flex items-center gap-3">
+                                <div className="p-2.5 rounded-[var(--radius-md)] bg-orange-50">
                                     <Clock size={18} className="text-orange-600" />
                                 </div>
                                 <div className="min-w-0">
-                                    <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wider">{language === 'ar' ? 'المدة' : 'Duration'}</p>
-                                    <p className="text-sm font-bold text-slate-800">
+                                    <p className="text-[11px] text-[var(--text-muted)] font-medium uppercase tracking-wider">{language === 'ar' ? 'المدة' : 'Duration'}</p>
+                                    <p className="text-sm font-bold text-[var(--text-main)]">
                                         {session.duration
                                             ? (language === 'ar' ? `${session.duration} دقيقة` : `${session.duration} min`)
                                             : (language === 'ar' ? '٦٠ دقيقة' : '60 min')
@@ -190,28 +190,28 @@ export const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({
 
                     {/* Time Section */}
                     <div>
-                        <h3 className="text-base font-bold text-slate-900 mb-4">
+                        <h3 className="text-base font-bold text-[var(--text-main)] mb-4">
                             {language === 'ar' ? 'وقت الدرس' : 'Lesson Time'}
                         </h3>
-                        <div className={`rounded-2xl border p-5 ${live ? 'bg-green-50/70 border-green-200/60' : ended ? 'bg-slate-50 border-slate-200/60' : 'bg-orange-50/70 border-orange-200/60'}`}>
+                        <div className={`rounded-[var(--radius-md)] border p-5 ${live ? 'bg-primary-pale border-primary/30' : ended ? 'bg-[var(--light-bg)] border-[var(--border)]' : 'bg-orange-50/70 border-orange-200/60'}`}>
                             <div className="flex items-center gap-4">
-                                <div className={`p-3 rounded-xl ${live ? 'bg-green-100' : ended ? 'bg-slate-100' : 'bg-orange-100'}`}>
-                                    <Clock size={22} className={live ? 'text-green-700' : ended ? 'text-slate-500' : 'text-orange-700'} />
+                                <div className={`p-3 rounded-[var(--radius-md)] ${live ? 'bg-primary-pale' : ended ? 'bg-[var(--light-bg)]' : 'bg-orange-100'}`}>
+                                    <Clock size={22} className={live ? 'text-primary' : ended ? 'text-[var(--text-muted)]' : 'text-orange-700'} />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-xs text-slate-500 font-medium">{language === 'ar' ? 'موعد الجلسة' : 'Session Time'}</p>
-                                    <p className="text-base font-bold text-slate-800 truncate">
+                                    <p className="text-xs text-[var(--text-muted)] font-medium">{language === 'ar' ? 'موعد الجلسة' : 'Session Time'}</p>
+                                    <p className="text-base font-bold text-[var(--text-main)] truncate">
                                         {formatTime(session.start_time)} - {formatTime(session.end_time)}
                                     </p>
                                 </div>
                                 {live && (
-                                    <div className="bg-green-500 text-white text-[11px] font-bold px-3.5 py-2 rounded-full flex items-center gap-1.5 shadow-sm shrink-0">
+                                    <div className="bg-primary text-white text-[11px] font-bold px-3.5 py-2 rounded-full flex items-center gap-1.5 shadow-[var(--shadow-sm)] shrink-0">
                                         <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                                         {language === 'ar' ? 'مباشر' : 'Live'}
                                     </div>
                                 )}
                                 {ended && (
-                                    <div className="bg-slate-200 text-slate-600 text-[11px] font-bold px-3.5 py-2 rounded-full flex items-center gap-1.5 shrink-0">
+                                    <div className="bg-[var(--border)] text-[var(--text-muted)] text-[11px] font-bold px-3.5 py-2 rounded-full flex items-center gap-1.5 shrink-0">
                                         <CheckCircle size={12} />
                                         {language === 'ar' ? 'انتهت' : 'Done'}
                                     </div>
@@ -223,21 +223,21 @@ export const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({
                     {/* Student Section */}
                     {session.student && (
                         <div>
-                            <h3 className="text-base font-bold text-slate-900 mb-4">
+                            <h3 className="text-base font-bold text-[var(--text-main)] mb-4">
                                 {language === 'ar' ? 'الطالب' : 'Student'}
                             </h3>
-                            <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-4">
+                            <div className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-4">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-white font-bold text-base shadow-sm shadow-primary/20">
+                                    <div className="w-12 h-12 rounded-[var(--radius-md)] bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-white font-bold text-base shadow-[var(--shadow-md)]">
                                         {studentInitial}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="font-semibold text-slate-800 text-sm">
+                                        <p className="font-semibold text-[var(--text-main)] text-sm">
                                             {session.student.name || (language === 'ar' ? 'غير معروف' : 'Unknown')}
                                         </p>
-                                        <p className="text-[12px] text-slate-400 mt-0.5 truncate">{session.student.email || '-'}</p>
+                                        <p className="text-[12px] text-[var(--text-muted)] mt-0.5 truncate">{session.student.email || '-'}</p>
                                     </div>
-                                    <div className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center shrink-0">
+                                    <div className="w-8 h-8 rounded-full bg-primary-pale flex items-center justify-center shrink-0">
                                         <CheckCircle size={18} className="text-green-500" />
                                     </div>
                                 </div>
@@ -248,7 +248,7 @@ export const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({
                     {/* Review Section - يظهر إذا كان التقييم موجود */}
                     {ended && session.status !== 'cancelled' && (
                         <div>
-                            <h3 className="text-base font-bold text-slate-900 mb-4">
+                            <h3 className="text-base font-bold text-[var(--text-main)] mb-4">
                                 {language === 'ar' ? 'التقييم' : 'Review'}
                             </h3>
                             {reviewLoading ? (
@@ -256,7 +256,7 @@ export const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({
                                     <Loader2 size={20} className="animate-spin text-primary" />
                                 </div>
                             ) : review ? (
-                                <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-5">
+                                <div className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-5">
                                     <div className="flex items-center gap-1 mb-3">
                                         {[1, 2, 3, 4, 5].map((i) => (
                                             <Star
@@ -268,20 +268,20 @@ export const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({
                                                 }
                                             />
                                         ))}
-                                        <span className="text-sm font-bold text-slate-700 mr-2">
+                                        <span className="text-sm font-bold text-navy mr-2">
                                             {review.rating}/5
                                         </span>
                                     </div>
                                     {review.comment && (
-                                        <div className="flex items-start gap-2 text-sm text-slate-600 bg-slate-50 rounded-xl p-3">
-                                            <MessageSquare size={14} className="text-slate-400 mt-0.5 shrink-0" />
+                                        <div className="flex items-start gap-2 text-sm text-[var(--text-muted)] bg-[var(--light-bg)] rounded-[var(--radius-md)] p-3">
+                                            <MessageSquare size={14} className="text-[var(--text-muted)] mt-0.5 shrink-0" />
                                             <p className="leading-relaxed">{review.comment}</p>
                                         </div>
                                     )}
                                 </div>
                             ) : (
-                                <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-5">
-                                    <div className="flex items-center gap-2 text-slate-400 text-sm">
+                                <div className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] p-5">
+                                    <div className="flex items-center gap-2 text-[var(--text-muted)] text-sm">
                                         <Star size={16} />
                                         <span>{language === 'ar' ? 'لا يوجد تقييم بعد' : 'No review yet'}</span>
                                     </div>
@@ -292,16 +292,16 @@ export const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({
                 </div>
 
                 {/* ===== BOTTOM ACTION ===== */}
-                <div className="px-6 py-4 bg-white border-t border-slate-100">
+                <div className="px-6 py-4 bg-white border-t border-[var(--border)]">
                     {!ended ? (
                         <div>
                             <button
                                 onClick={() => live && onStartSession?.(session.id)}
                                 disabled={!live}
-                                className={`w-full h-12 rounded-2xl font-bold text-sm flex items-center justify-center gap-2.5 transition-all duration-200 ${
+                                className={`w-full h-12 rounded-[var(--radius-md)] font-bold text-sm flex items-center justify-center gap-2.5 transition-all duration-200 ${
                                     live
-                                        ? 'bg-primary text-white hover:bg-primary/90 shadow-lg shadow-primary/20 active:scale-[0.98]'
-                                        : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                        ? 'bg-primary text-white hover:bg-primary/90 shadow-[var(--shadow-lg)] active:scale-[0.98]'
+                                        : 'bg-[var(--light-bg)] text-[var(--text-muted)] cursor-not-allowed'
                                 }`}
                             >
                                 {live ? (
@@ -316,7 +316,7 @@ export const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({
                                     </>
                                 )}
                             </button>
-                            <p className="text-[11px] text-slate-400 text-center mt-2.5">
+                            <p className="text-[11px] text-[var(--text-muted)] text-center mt-2.5">
                                 {live
                                     ? (language === 'ar' ? 'انقر لبدء الجلسة والدخول إلى الغرفة' : 'Click to start the session and join the room')
                                     : (language === 'ar' ? 'سيصبح متاحاً عند وقت الدرس المحدد' : 'Will be available at the scheduled lesson time')
@@ -324,8 +324,8 @@ export const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({
                             </p>
                         </div>
                     ) : (
-                        <div className="w-full h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 text-sm font-semibold gap-2">
-                            <CheckCircle size={16} className="text-slate-400" />
+                        <div className="w-full h-12 rounded-[var(--radius-md)] bg-[var(--light-bg)] flex items-center justify-center text-[var(--text-muted)] text-sm font-semibold gap-2">
+                            <CheckCircle size={16} className="text-[var(--text-muted)]" />
                             {language === 'ar' ? 'تم الانتهاء من هذه الجلسة' : 'This session has ended'}
                         </div>
                     )}

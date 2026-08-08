@@ -74,7 +74,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
 
   return (
     <div className="space-y-8 animate-fade-in">
-      <div className="bg-gradient-to-r from-primary to-blue-600 rounded-2xl p-8 text-white shadow-lg shadow-blue-200">
+      <div className="bg-gradient-to-r from-primary to-blue-600 rounded-[var(--radius-md)] p-8 text-white shadow-[var(--shadow-lg)] shadow-blue-200">
         <h1 className="text-3xl font-bold mb-2">{t.welcomeBack} {user.first_name}!</h1>
         <p className="text-blue-100 opacity-90">Ready to learn something new today?</p>
       </div>
@@ -82,24 +82,24 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
       {/* Last Booking Section */}
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <h2 className="text-xl font-bold text-slate-900">{t.lastBooking}</h2>
+          <h2 className="text-xl font-bold text-[var(--text-main)]">{t.lastBooking}</h2>
           <button className="text-sm text-primary font-medium hover:underline" onClick={() => onNavigate('schedule')}>
             {t.viewAll}
           </button>
         </div>
 
         {lastBooking ? (
-          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="bg-white p-6 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center">
+              <div className="h-12 w-12 rounded-full bg-primary-pale text-primary flex items-center justify-center">
                 <Clock size={24} />
               </div>
               <div>
-                <h3 className="font-bold text-slate-900">{getSubjectName(lastBooking)}</h3>
-                <p className="text-slate-500 text-sm">with {lastBooking.teacher?.first_name} {lastBooking.teacher?.last_name}</p>
-                <div className="flex items-center gap-2 mt-1 text-xs text-slate-400">
+                <h3 className="font-bold text-[var(--text-main)]">{getSubjectName(lastBooking)}</h3>
+                <p className="text-[var(--text-muted)] text-sm">with {lastBooking.teacher?.first_name} {lastBooking.teacher?.last_name}</p>
+                <div className="flex items-center gap-2 mt-1 text-xs text-[var(--text-muted)]">
                   <span>{new Date(lastBooking.created_at || Date.now()).toLocaleDateString()}</span>
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${lastBooking.status === 'confirmed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${lastBooking.status === 'confirmed' ? 'bg-primary-pale text-primary' : 'bg-yellow-100 text-yellow-700'}`}>
                     {lastBooking.status}
                   </span>
                 </div>
@@ -112,7 +112,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
             </div>
           </div>
         ) : (
-          <div className="p-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-slate-500">
+          <div className="p-8 text-center bg-[var(--light-bg)] rounded-[var(--radius-md)] border border-dashed border-[var(--border)] text-[var(--text-muted)]">
             {t.noBookings}
           </div>
         )}
@@ -121,14 +121,14 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
       {/* Top Teachers */}
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <h2 className="text-xl font-bold text-slate-900">{t.topTeachers}</h2>
+          <h2 className="text-xl font-bold text-[var(--text-main)]">{t.topTeachers}</h2>
           <button className="text-sm text-primary font-medium hover:underline" onClick={() => onNavigate('private-lessons')}>
             {t.viewAll}
           </button>
         </div>
 
         {topTeachers.length === 0 ? (
-          <div className="text-center py-10 bg-slate-50 rounded-xl text-slate-500">No teachers found.</div>
+          <div className="text-center py-10 bg-[var(--light-bg)] rounded-[var(--radius-md)] text-[var(--text-muted)]">No teachers found.</div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {topTeachers.map((teacher) => {
@@ -145,11 +145,11 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
               return (
                 <div
                   key={teacher.id}
-                  className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all group cursor-pointer"
+                  className="bg-white p-4 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] transition-all group cursor-pointer"
                   onClick={() => onNavigate('private-lessons')}
                 >
                   <div className="flex items-start justify-between mb-3">
-                    <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-bold overflow-hidden shrink-0">
+                    <div className="h-12 w-12 rounded-full bg-[var(--light-bg)] flex items-center justify-center text-[var(--text-muted)] font-bold overflow-hidden shrink-0">
                       {profileImage ? (
                         <img src={getStorageUrl(profileImage)} alt={firstName} className="h-full w-full object-cover" />
                       ) : (
@@ -162,14 +162,14 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
                   </div>
                   <div className="flex items-center gap-1.5 mb-1">
                     {flag && <span className="text-base">{flag}</span>}
-                    <h3 className="font-bold text-slate-900 truncate">{firstName} {lastName}</h3>
+                    <h3 className="font-bold text-[var(--text-main)] truncate">{firstName} {lastName}</h3>
                   </div>
-                  <p className="text-sm text-slate-500 mb-3 truncate">{subjectTitle}</p>
-                  <div className="flex items-center justify-between pt-3 border-t border-slate-50">
+                  <p className="text-sm text-[var(--text-muted)] mb-3 truncate">{subjectTitle}</p>
+                  <div className="flex items-center justify-between pt-3 border-t border-[var(--border)]">
                     <span className="text-sm font-semibold text-primary">
-                      {Number(price).toFixed(2)} {t.sar}<span className="text-slate-400 text-xs font-normal">{t.perHour}</span>
+                      {Number(price).toFixed(2)} {t.sar}<span className="text-[var(--text-muted)] text-xs font-normal">{t.perHour}</span>
                     </span>
-                    <ChevronRight size={18} className={`text-slate-300 group-hover:text-primary transition-colors ${direction === 'rtl' ? 'rotate-180' : ''}`} />
+                    <ChevronRight size={18} className={`text-[var(--text-muted)] group-hover:text-primary transition-colors ${direction === 'rtl' ? 'rotate-180' : ''}`} />
                   </div>
                 </div>
               );
@@ -181,19 +181,19 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
       {/* Recommended Courses */}
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <h2 className="text-xl font-bold text-slate-900">{t.recommendedCourses}</h2>
+          <h2 className="text-xl font-bold text-[var(--text-main)]">{t.recommendedCourses}</h2>
           <button className="text-sm text-primary font-medium hover:underline" onClick={() => onNavigate('courses')}>
             {t.viewAll}
           </button>
         </div>
 
         {courses.length === 0 ? (
-          <div className="text-center py-10 bg-slate-50 rounded-xl text-slate-500">No courses available.</div>
+          <div className="text-center py-10 bg-[var(--light-bg)] rounded-[var(--radius-md)] text-[var(--text-muted)]">No courses available.</div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {courses.map((course) => (
-              <div key={course.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-                <div className="h-32 bg-slate-100 flex items-center justify-center text-slate-300 overflow-hidden">
+              <div key={course.id} className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] overflow-hidden hover:shadow-[var(--shadow-md)] transition-shadow">
+                <div className="h-32 bg-[var(--light-bg)] flex items-center justify-center text-[var(--text-muted)] overflow-hidden">
                   {course.cover_image ? (
                     <img src={getStorageUrl(course.cover_image)} alt={course.name} className="w-full h-full object-cover" />
                   ) : (
@@ -201,9 +201,9 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
                   )}
                 </div>
                 <div className="p-5">
-                  <h3 className="font-bold text-slate-900 mb-1 truncate">{course.name}</h3>
-                  <p className="text-sm text-slate-500 mb-4 truncate">by {course.teacher_basic?.first_name} {course.teacher_basic?.last_name}</p>
-                  <div className="flex items-center justify-between mb-4 text-xs text-slate-500 font-medium bg-slate-50 p-2 rounded-lg">
+                  <h3 className="font-bold text-[var(--text-main)] mb-1 truncate">{course.name}</h3>
+                  <p className="text-sm text-[var(--text-muted)] mb-4 truncate">by {course.teacher_basic?.first_name} {course.teacher_basic?.last_name}</p>
+                  <div className="flex items-center justify-between mb-4 text-xs text-[var(--text-muted)] font-medium bg-[var(--light-bg)] p-2 rounded-lg">
                     <span className="flex items-center gap-1"><PlayCircle size={14} /> {course.duration_hours || 'N/A'} Hours</span>
                     <span>{course.course_type}</span>
                   </div>

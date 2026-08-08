@@ -234,11 +234,11 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
       {BOOKING_STEPS.slice(0, 4).map((s, i) => (
         <div key={s} className="flex items-center flex-1">
           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
-            i <= step ? 'bg-primary text-white' : 'bg-slate-100 text-slate-400'
+            i <= step ? 'bg-primary text-white' : 'bg-[var(--light-bg)] text-[var(--text-muted)]'
           }`}>
             {i < step ? <CheckCircle size={16} /> : i + 1}
           </div>
-          {i < 3 && <div className={`flex-1 h-0.5 mx-2 ${i < step ? 'bg-primary' : 'bg-slate-200'}`} />}
+          {i < 3 && <div className={`flex-1 h-0.5 mx-2 ${i < step ? 'bg-primary' : 'bg-[var(--border)]'}`} />}
         </div>
       ))}
     </div>
@@ -246,18 +246,18 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
 
   const renderSubjectStep = () => (
     <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
-      <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+      <h3 className="font-semibold text-[var(--text-main)] flex items-center gap-2">
         <BookOpen size={18} />
         {language === 'ar' ? 'اختر المادة' : 'Select Subject'}
       </h3>
       {isLanguageService ? (
         languages.length === 0 ? (
-          <p className="text-slate-500 text-sm">{language === 'ar' ? 'لا توجد لغات متاحة' : 'No languages available'}</p>
+          <p className="text-[var(--text-muted)] text-sm">{language === 'ar' ? 'لا توجد لغات متاحة' : 'No languages available'}</p>
         ) : (
           languages.map((lang: any) => (
             <button key={lang.id} onClick={() => setSelectedLanguage(lang)}
               className={`w-full text-left p-3 rounded-lg border transition-all ${
-                selectedLanguage?.id === lang.id ? 'bg-primary/10 border-primary' : 'hover:bg-slate-50 border-slate-200'
+                selectedLanguage?.id === lang.id ? 'bg-primary/10 border-primary' : 'hover:bg-[var(--light-bg)] border-[var(--border)]'
               }`}
             >
               <p className="font-semibold">{language === 'ar' ? lang.name_ar : lang.name_en}</p>
@@ -266,19 +266,19 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
         )
       ) : (
         subjects.length === 0 ? (
-          <p className="text-slate-500 text-sm">{language === 'ar' ? 'لا توجد مواد متاحة' : 'No subjects available'}</p>
+          <p className="text-[var(--text-muted)] text-sm">{language === 'ar' ? 'لا توجد مواد متاحة' : 'No subjects available'}</p>
         ) : (
           subjects.map((sub: any) => {
             const title = sub.title || (language === 'ar' ? sub.name_ar : sub.name_en) || 'Unnamed Subject';
             return (
               <button key={sub.id} onClick={() => setSelectedSubject(sub)}
                 className={`w-full text-left p-3 rounded-lg border transition-all ${
-                  selectedSubject?.id === sub.id ? 'bg-primary/10 border-primary' : 'hover:bg-slate-50 border-slate-200'
+                  selectedSubject?.id === sub.id ? 'bg-primary/10 border-primary' : 'hover:bg-[var(--light-bg)] border-[var(--border)]'
                 }`}
               >
                 <p className="font-semibold">{title}</p>
                 {sub.class_level_title && sub.class_title && (
-                  <p className="text-xs text-slate-500 mt-1">{sub.class_level_title} - {sub.class_title}</p>
+                  <p className="text-xs text-[var(--text-muted)] mt-1">{sub.class_level_title} - {sub.class_title}</p>
                 )}
               </button>
             );
@@ -303,17 +303,17 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
 
     return (
       <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
-        <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+        <h3 className="font-semibold text-[var(--text-main)] flex items-center gap-2">
           <Calendar size={18} />
           {language === 'ar' ? 'اختر المواعيد' : 'Select Times'}
         </h3>
-        <p className="text-xs text-slate-500 mb-2">
+        <p className="text-xs text-[var(--text-muted)] mb-2">
           {language === 'ar'
             ? 'يمكنك اختيار موعد واحد أو أكثر. كل موعد يمثل جلسة منفصلة.'
             : 'You can select one or more slots. Each slot is a separate session.'}
         </p>
         {timeItems.length === 0 ? (
-          <p className="text-slate-500 text-sm">{language === 'ar' ? 'لا توجد مواعيد متاحة' : 'No times available'}</p>
+          <p className="text-[var(--text-muted)] text-sm">{language === 'ar' ? 'لا توجد مواعيد متاحة' : 'No times available'}</p>
         ) : (
           <div className="grid grid-cols-3 gap-2">
             {timeItems.map((slot: any) => (
@@ -321,7 +321,7 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
                 className={`py-2 px-1 rounded-lg text-sm font-medium border transition-all ${
                   selectedTimeSlots.includes(slot.id)
                     ? 'bg-primary text-white border-primary'
-                    : 'bg-white hover:border-primary border-slate-200'
+                    : 'bg-white hover:border-primary border-[var(--border)]'
                 }`}
               >
                 {slot.time}
@@ -343,18 +343,18 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
 
     return (
       <div className="space-y-4 max-h-80 overflow-y-auto pr-2">
-        <h3 className="font-semibold text-slate-800">
+        <h3 className="font-semibold text-[var(--text-main)]">
           {language === 'ar' ? 'تأكيد الحجز' : 'Confirm Booking'}
         </h3>
 
         {/* Summary */}
-        <div className="bg-slate-50 rounded-lg p-4 space-y-2 text-sm">
+        <div className="bg-[var(--light-bg)] rounded-lg p-4 space-y-2 text-sm">
           <div className="flex justify-between">
-            <span className="text-slate-500">{language === 'ar' ? 'المعلم' : 'Teacher'}</span>
+            <span className="text-[var(--text-muted)]">{language === 'ar' ? 'المعلم' : 'Teacher'}</span>
             <span className="font-medium">{teacher.first_name} {teacher.last_name}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-slate-500">{isLanguageService ? (language === 'ar' ? 'اللغة' : 'Language') : (language === 'ar' ? 'المادة' : 'Subject')}</span>
+            <span className="text-[var(--text-muted)]">{isLanguageService ? (language === 'ar' ? 'اللغة' : 'Language') : (language === 'ar' ? 'المادة' : 'Subject')}</span>
             <span className="font-medium">
               {isLanguageService
                 ? (language === 'ar' ? selectedLanguage?.name_ar : selectedLanguage?.name_en)
@@ -362,19 +362,19 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
             </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-slate-500">{language === 'ar' ? 'عدد المواعيد' : 'Time Slots'}</span>
+            <span className="text-[var(--text-muted)]">{language === 'ar' ? 'عدد المواعيد' : 'Time Slots'}</span>
             <span className="font-medium">{totalSelectedTimes}</span>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-slate-500">{language === 'ar' ? 'عدد الجلسات لكل موعد' : 'Sessions per slot'}</span>
+            <span className="text-[var(--text-muted)]">{language === 'ar' ? 'عدد الجلسات لكل موعد' : 'Sessions per slot'}</span>
             <div className="flex items-center gap-2">
               <button onClick={() => setSessionCount(Math.max(1, sessionCount - 1))}
-                className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center hover:bg-slate-300">
+                className="w-6 h-6 rounded-full bg-[var(--border)] flex items-center justify-center hover:bg-[var(--border)]">
                 <Minus size={12} />
               </button>
               <span className="font-medium w-6 text-center">{sessionCount}</span>
               <button onClick={() => setSessionCount(Math.min(10, sessionCount + 1))}
-                className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center hover:bg-slate-300">
+                className="w-6 h-6 rounded-full bg-[var(--border)] flex items-center justify-center hover:bg-[var(--border)]">
                 <Plus size={12} />
               </button>
             </div>
@@ -389,30 +389,30 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
         {subscriptions.filter((s: any) => s.is_active && s.sessions_remaining > 0).map((sub: any) => (
           <button key={sub.id} onClick={() => handlePayWithPackage(sub)}
             disabled={loading}
-            className="w-full p-3 rounded-lg border border-green-200 bg-green-50 hover:bg-green-100 transition-all flex items-center gap-3 disabled:opacity-60"
+            className="w-full p-3 rounded-lg border border-green-200 bg-primary-pale hover:bg-primary-pale transition-all flex items-center gap-3 disabled:opacity-60"
           >
-            <Package size={20} className="text-green-600 shrink-0" />
+            <Package size={20} className="text-primary shrink-0" />
             <div className="text-left flex-1">
               <p className="font-semibold text-sm text-green-800">
                 {language === 'ar' ? 'الدفع من الباقة' : 'Pay from Package'}
               </p>
-              <p className="text-xs text-green-600">
+              <p className="text-xs text-primary">
                 {language === 'ar'
                   ? `${sub.sessions_remaining} جلسات متبقية`
                   : `${sub.sessions_remaining} sessions remaining`}
               </p>
             </div>
             {loading ? (
-              <Loader2 size={16} className="animate-spin text-green-600 shrink-0" />
+              <Loader2 size={16} className="animate-spin text-primary shrink-0" />
             ) : (
-              <Package size={16} className="text-green-600 shrink-0" />
+              <Package size={16} className="text-primary shrink-0" />
             )}
           </button>
         ))}
 
         {/* Card Payment - shown when no package or as alternative */}
         <div className="space-y-2">
-            <p className="font-medium text-sm text-slate-700">
+            <p className="font-medium text-sm text-navy">
               {language === 'ar' ? 'طريقة الدفع' : 'Payment Method'}
             </p>
 
@@ -420,10 +420,10 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
             {savedCards.map((card: any) => (
               <div key={card.id} onClick={() => { setSelectedSavedCard(card); setShowCardForm(false); }}
                 className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${
-                  selectedSavedCard?.id === card.id ? 'bg-primary/10 border-primary' : 'hover:bg-slate-50 border-slate-200'
+                  selectedSavedCard?.id === card.id ? 'bg-primary/10 border-primary' : 'hover:bg-[var(--light-bg)] border-[var(--border)]'
                 }`}>
                 <div className="flex items-center gap-2">
-                  <CreditCard size={16} className="text-slate-400" />
+                  <CreditCard size={16} className="text-[var(--text-muted)]" />
                   <span className="text-sm font-medium">{card.card_brand} **** {card.last4}</span>
                 </div>
                 {selectedSavedCard?.id === card.id && <CheckCircle size={16} className="text-primary" />}
@@ -433,7 +433,7 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
             {/* New Card Option */}
             <div onClick={() => { setShowCardForm(true); setSelectedSavedCard(null); }}
               className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                showCardForm ? 'bg-primary/10 border-primary' : 'hover:bg-slate-50 border-slate-200'
+                showCardForm ? 'bg-primary/10 border-primary' : 'hover:bg-[var(--light-bg)] border-[var(--border)]'
               }`}>
               <p className="text-sm font-medium">
                 {language === 'ar' ? '+ إضافة بطاقة جديدة' : '+ Add New Card'}
@@ -441,9 +441,9 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
             </div>
 
             {showCardForm && (
-              <div className="p-4 border border-slate-200 rounded-lg space-y-3 bg-slate-50/50">
+              <div className="p-4 border border-[var(--border)] rounded-lg space-y-3 bg-[var(--light-bg)]">
                 <select value={newCard.payment_brand} onChange={e => setNewCard({...newCard, payment_brand: e.target.value})}
-                  className="w-full p-2 border border-slate-300 rounded-lg text-sm">
+                  className="w-full p-2 border border-[var(--border)] rounded-lg text-sm">
                   <option value="VISA">Visa</option>
                   <option value="MASTERCARD">Mastercard</option>
                   <option value="MADA">Mada</option>
@@ -453,17 +453,17 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
                     const val = e.target.value.replace(/[^0-9]/g, '');
                     setNewCard({...newCard, card_number: val});
                   }}
-                  className="w-full p-2 border border-slate-300 rounded-lg text-sm" />
+                  className="w-full p-2 border border-[var(--border)] rounded-lg text-sm" />
                 <input placeholder={language === 'ar' ? 'اسم حامل البطاقة' : 'Card Holder'}
                   value={newCard.card_holder} onChange={e => setNewCard({...newCard, card_holder: e.target.value})}
-                  className="w-full p-2 border border-slate-300 rounded-lg text-sm" />
+                  className="w-full p-2 border border-[var(--border)] rounded-lg text-sm" />
                 <div className="grid grid-cols-3 gap-2">
                   <input placeholder="MM" value={newCard.expiry_month} onChange={e => setNewCard({...newCard, expiry_month: e.target.value})}
-                    className="p-2 border border-slate-300 rounded-lg text-sm" />
+                    className="p-2 border border-[var(--border)] rounded-lg text-sm" />
                   <input placeholder="YY" value={newCard.expiry_year} onChange={e => setNewCard({...newCard, expiry_year: e.target.value})}
-                    className="p-2 border border-slate-300 rounded-lg text-sm" />
+                    className="p-2 border border-[var(--border)] rounded-lg text-sm" />
                   <input placeholder="CVV" value={newCard.cvv} onChange={e => setNewCard({...newCard, cvv: e.target.value})}
-                    className="p-2 border border-slate-300 rounded-lg text-sm" />
+                    className="p-2 border border-[var(--border)] rounded-lg text-sm" />
                 </div>
               </div>
             )}
@@ -482,13 +482,13 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
     if (pollingStatus === 'paid' || (paymentResult?.method === 'package' && paymentResult?.success)) {
       return (
         <div className="text-center py-8">
-          <div className="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle size={32} className="text-green-600" />
+          <div className="h-16 w-16 bg-primary-pale rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircle size={32} className="text-primary" />
           </div>
-          <h2 className="text-xl font-bold text-slate-900">
+          <h2 className="text-xl font-bold text-[var(--text-main)]">
             {language === 'ar' ? 'تم الحجز بنجاح' : 'Booking Successful'}
           </h2>
-          <p className="text-slate-500 mt-2">
+          <p className="text-[var(--text-muted)] mt-2">
             {paymentResult?.method === 'package'
               ? (language === 'ar' ? 'تم حجز الجلسات من باقتك' : 'Sessions booked from your package')
               : (language === 'ar' ? 'تم تأكيد الحجز والدفع' : 'Booking confirmed and paid')}
@@ -503,10 +503,10 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
           <div className="h-16 w-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Clock size={32} className="text-orange-600" />
           </div>
-          <h2 className="text-xl font-bold text-slate-900">
+          <h2 className="text-xl font-bold text-[var(--text-main)]">
             {language === 'ar' ? 'في انتظار تأكيد الدفع' : 'Awaiting Payment Confirmation'}
           </h2>
-          <p className="text-slate-500 mt-2 mb-4">
+          <p className="text-[var(--text-muted)] mt-2 mb-4">
             {language === 'ar'
               ? 'لم يتم تأكيد الدفع بعد. إذا أكملت الدفع، انقر على "التحقق" أدناه.'
               : 'Payment not yet confirmed. If you completed payment, click "Check" below.'}
@@ -525,10 +525,10 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
           <div className="h-16 w-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Loader2 size={32} className="text-yellow-600 animate-spin" />
           </div>
-          <h2 className="text-xl font-bold text-slate-900">
+          <h2 className="text-xl font-bold text-[var(--text-main)]">
             {language === 'ar' ? 'في انتظار الدفع' : 'Waiting for Payment'}
           </h2>
-          <p className="text-slate-500 mt-2">
+          <p className="text-[var(--text-muted)] mt-2">
             {language === 'ar'
               ? 'تم فتح صفحة الدفع. أكمل الدفع في النافذة المفتوحة. يتم التحقق من حالة الدفع تلقائياً...'
               : 'Payment page opened. Complete payment in the new window. Checking payment status automatically...'}
@@ -542,10 +542,10 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
         <div className="h-16 w-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <Clock size={32} className="text-yellow-600" />
         </div>
-        <h2 className="text-xl font-bold text-slate-900">
+        <h2 className="text-xl font-bold text-[var(--text-main)]">
           {language === 'ar' ? 'في انتظار الدفع' : 'Waiting for Payment'}
         </h2>
-        <p className="text-slate-500 mt-2">
+        <p className="text-[var(--text-muted)] mt-2">
           {language === 'ar'
             ? 'تم فتح صفحة الدفع. أكمل الدفع في النافذة المفتوحة.'
             : 'Payment page opened. Complete payment in the new window.'}
@@ -598,7 +598,7 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
           {renderStep()}
         </div>
 
-        <div className="border-t border-slate-100 mt-6 pt-4 flex gap-3">
+        <div className="border-t border-[var(--border)] mt-6 pt-4 flex gap-3">
           {step > 0 && step < 3 && (
             <Button variant="outline" onClick={() => setStep(s => s - 1)} className="flex-1">
               <ChevronLeft size={16} className="mr-1" />

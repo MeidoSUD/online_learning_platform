@@ -104,33 +104,33 @@ export const PayoutsTab: React.FC = () => {
 
     return (
         <div className="space-y-6 animate-fade-in">
-            <h2 className="text-2xl font-bold text-slate-900">{t.payoutRequests}</h2>
+            <h2 className="text-2xl font-bold text-[var(--text-main)]">{t.payoutRequests}</h2>
 
             {/* Filters Bar */}
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 items-end">
+            <div className="bg-white p-4 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] flex flex-col md:flex-row gap-4 items-end">
                 <div className="w-full md:w-1/3">
-                    <label className="text-xs font-bold text-slate-500 mb-1 block">{t.teacher}</label>
+                    <label className="text-xs font-bold text-[var(--text-muted)] mb-1 block">{t.teacher}</label>
                     <input
                         type="text"
-                        className="w-full p-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-primary"
+                        className="w-full p-2 rounded-lg border border-[var(--border)] text-sm focus:outline-none focus:border-primary"
                         placeholder={t.phSearchCourses}
                         value={filterTeacher}
                         onChange={(e) => setFilterTeacher(e.target.value)}
                     />
                 </div>
                 <div className="w-full md:w-1/4">
-                    <label className="text-xs font-bold text-slate-500 mb-1 block">{t.date}</label>
+                    <label className="text-xs font-bold text-[var(--text-muted)] mb-1 block">{t.date}</label>
                     <input
                         type="date"
-                        className="w-full p-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-primary"
+                        className="w-full p-2 rounded-lg border border-[var(--border)] text-sm focus:outline-none focus:border-primary"
                         value={filterDate}
                         onChange={(e) => setFilterDate(e.target.value)}
                     />
                 </div>
                 <div className="w-full md:w-1/4">
-                    <label className="text-xs font-bold text-slate-500 mb-1 block">{t.status}</label>
+                    <label className="text-xs font-bold text-[var(--text-muted)] mb-1 block">{t.status}</label>
                     <select
-                        className="w-full p-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-primary bg-white"
+                        className="w-full p-2 rounded-lg border border-[var(--border)] text-sm focus:outline-none focus:border-primary bg-white"
                         value={filterStatus}
                         onChange={(e) => setFilterStatus(e.target.value)}
                     >
@@ -142,36 +142,36 @@ export const PayoutsTab: React.FC = () => {
                 </div>
                 <button
                     onClick={clearFilters}
-                    className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+                    className="p-2 text-[var(--text-muted)] hover:text-red-500 transition-colors"
                     title="Clear Filters"
                 >
                     <X size={20} />
                 </button>
             </div>
 
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] overflow-hidden">
                 <table className="w-full text-left text-sm">
-                    <thead className="bg-slate-50 border-b border-slate-200">
+                    <thead className="bg-[var(--light-bg)] border-b border-[var(--border)]">
                         <tr>
-                            <th className="px-6 py-4 font-bold text-slate-700">{t.teacher}</th>
-                            <th className="px-6 py-4 font-bold text-slate-700">{t.payoutAmount}</th>
-                            <th className="px-6 py-4 font-bold text-slate-700">{t.details}</th>
-                            <th className="px-6 py-4 font-bold text-slate-700">{t.date}</th>
-                            <th className="px-6 py-4 font-bold text-slate-700 text-right">{t.actions}</th>
+                            <th className="px-6 py-4 font-bold text-navy">{t.teacher}</th>
+                            <th className="px-6 py-4 font-bold text-navy">{t.payoutAmount}</th>
+                            <th className="px-6 py-4 font-bold text-navy">{t.details}</th>
+                            <th className="px-6 py-4 font-bold text-navy">{t.date}</th>
+                            <th className="px-6 py-4 font-bold text-navy text-right">{t.actions}</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-[var(--border)]">
                         {filteredPayouts.map(payout => (
-                            <tr key={payout.id} className="hover:bg-slate-50">
-                                <td className="px-6 py-4 font-medium text-slate-900">{payout.teacher?.name || `User #${payout.user?.id}`}</td>
-                                <td className="px-6 py-4 text-lg font-bold text-green-600">{payout.amount} {t.sar}</td>
-                                  <td className="px-6 py-4 text-slate-600 truncate max-w-xs" >
+                            <tr key={payout.id} className="hover:bg-[var(--light-bg)]">
+                                <td className="px-6 py-4 font-medium text-[var(--text-main)]">{payout.teacher?.name || `User #${payout.user?.id}`}</td>
+                                <td className="px-6 py-4 text-lg font-bold text-primary">{payout.amount} {t.sar}</td>
+                                  <td className="px-6 py-4 text-[var(--text-muted)] truncate max-w-xs" >
                                     { payout.payment_method.account_holder_name} { payout.payment_method.account_number}
                                 </td>
-                                {/* <td className="px-6 py-4 text-slate-600 truncate max-w-xs" title={typeof payout.bank_details === 'string' ? payout.bank_details : JSON.stringify(payout.bank_details)}>
+                                {/* <td className="px-6 py-4 text-[var(--text-muted)] truncate max-w-xs" title={typeof payout.bank_details === 'string' ? payout.bank_details : JSON.stringify(payout.bank_details)}>
                                     {typeof payout.bank_details === 'string' ? payout.bank_details : t.bankDetails}
                                 </td> */}
-                                <td className="px-6 py-4 text-slate-500">{new Date(payout.requested_at).toLocaleDateString()}</td>
+                                <td className="px-6 py-4 text-[var(--text-muted)]">{new Date(payout.requested_at).toLocaleDateString()}</td>
                                 <td className="px-6 py-4 text-right">
                                     <div className="flex items-center justify-end gap-2">
                                         {(payout.receipt || (payout.status === 'rejected' && payout.reject_reason)) && (
@@ -185,7 +185,7 @@ export const PayoutsTab: React.FC = () => {
                                                         setViewType('reason'); 
                                                     }
                                                 }} 
-                                                className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors" 
+                                                className="p-2 rounded-lg bg-secondary-pale text-secondary hover:bg-secondary-pale transition-colors" 
                                                 title={payout.receipt ? (t.viewReceipt || 'عرض الإيصال') : (t.viewReason || 'سبب الرفض')}
                                             >
                                                 <Eye size={18} />
@@ -193,7 +193,7 @@ export const PayoutsTab: React.FC = () => {
                                         )}
                                         {payout.status === 'pending' ? (
                                             <>
-                                                <button onClick={() => openActionModal(payout, 'approve')} className="p-2 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 transition-colors" title={t.approve}>
+                                                <button onClick={() => openActionModal(payout, 'approve')} className="p-2 rounded-lg bg-primary-pale text-primary hover:bg-primary-pale transition-colors" title={t.approve}>
                                                     <Check size={18} />
                                                 </button>
                                                 <button onClick={() => openActionModal(payout, 'reject')} className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors" title={t.reject}>
@@ -201,7 +201,7 @@ export const PayoutsTab: React.FC = () => {
                                                 </button>
                                             </>
                                         ) : (
-                                            <span className={`capitalize font-medium ${payout.status === 'approved' ? 'text-green-600' : 'text-red-600'}`}>
+                                            <span className={`capitalize font-medium ${payout.status === 'approved' ? 'text-primary' : 'text-red-600'}`}>
                                                 {payout.status === 'approved' ? t.approve : payout.status === 'rejected' ? t.reject : t.pending}
                                             </span>
                                         )}
@@ -210,7 +210,7 @@ export const PayoutsTab: React.FC = () => {
                             </tr>
                         ))}
                         {filteredPayouts.length === 0 && (
-                            <tr><td colSpan={5} className="p-8 text-center text-slate-500">{t.noFile}</td></tr>
+                            <tr><td colSpan={5} className="p-8 text-center text-[var(--text-muted)]">{t.noFile}</td></tr>
                         )}
                     </tbody>
                 </table>
@@ -219,30 +219,30 @@ export const PayoutsTab: React.FC = () => {
             {/* Action Modal */}
             <Modal isOpen={!!selectedPayout} onClose={() => setSelectedPayout(null)} title={actionType === 'approve' ? t.approvePayout : t.rejectPayout}>
                 <div className="space-y-4">
-                    <div className="p-4 bg-slate-50 rounded-lg">
-                        <p className="text-sm font-bold text-slate-700">{t.payoutAmount}: <span className="text-green-600">{selectedPayout?.amount} {t.sar}</span></p>
-                        <p className="text-xs text-slate-500 mt-1">{t.to.replace('إلى', 'لـ')}: {selectedPayout?.user?.name}</p>
+                    <div className="p-4 bg-[var(--light-bg)] rounded-lg">
+                        <p className="text-sm font-bold text-navy">{t.payoutAmount}: <span className="text-primary">{selectedPayout?.amount} {t.sar}</span></p>
+                        <p className="text-xs text-[var(--text-muted)] mt-1">{t.to.replace('إلى', 'لـ')}: {selectedPayout?.user?.name}</p>
                     </div>
 
                     {actionType === 'approve' ? (
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">{t.uploadTransferReceipt}</label>
-                            <div className="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center bg-slate-50 hover:bg-white transition-colors relative cursor-pointer">
+                            <label className="block text-sm font-medium text-navy mb-2">{t.uploadTransferReceipt}</label>
+                            <div className="border-2 border-dashed border-[var(--border)] rounded-[var(--radius-md)] p-6 text-center bg-[var(--light-bg)] hover:bg-white transition-colors relative cursor-pointer">
                                 <input
                                     type="file"
                                     accept="image/*,.pdf"
                                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                     onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
                                 />
-                                <Upload className="mx-auto text-slate-400 mb-2" size={24} />
-                                <p className="text-sm text-slate-600">{receiptFile ? receiptFile.name : t.clickToUploadReceipt}</p>
+                                <Upload className="mx-auto text-[var(--text-muted)] mb-2" size={24} />
+                                <p className="text-sm text-[var(--text-muted)]">{receiptFile ? receiptFile.name : t.clickToUploadReceipt}</p>
                             </div>
                         </div>
                     ) : (
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">{t.rejectionReasonLabel}</label>
+                            <label className="block text-sm font-medium text-navy mb-2">{t.rejectionReasonLabel}</label>
                             <textarea
-                                className="w-full p-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-red-200 focus:border-red-500 outline-none"
+                                className="w-full p-3 rounded-lg border border-[var(--border)] focus:ring-2 focus:ring-red-200 focus:border-red-500 outline-none"
                                 rows={4}
                                 placeholder={t.phSearchCourses}
                                 value={rejectReason}
@@ -254,7 +254,7 @@ export const PayoutsTab: React.FC = () => {
                     <div className="flex gap-3 pt-2">
                         <Button variant="outline" className="flex-1" onClick={() => setSelectedPayout(null)}>{t.cancel}</Button>
                         <Button
-                            className={`flex-1 ${actionType === 'approve' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
+                            className={`flex-1 ${actionType === 'approve' ? 'bg-primary hover:bg-primary' : 'bg-red-600 hover:bg-red-700'}`}
                             onClick={handleSubmitAction}
                             isLoading={actionLoading}
                         >
@@ -284,7 +284,7 @@ export const PayoutsTab: React.FC = () => {
                                     <img 
                                         src={viewReceipt} 
                                         alt="Receipt" 
-                                        className="max-w-full h-auto rounded-lg border border-slate-200"
+                                        className="max-w-full h-auto rounded-lg border border-[var(--border)]"
                                         style={{ maxHeight: '70vh' }}
                                     />
                                 )

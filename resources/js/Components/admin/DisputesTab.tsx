@@ -24,27 +24,27 @@ export const AdminDisputesTab: React.FC = () => {
 
     return (
         <div className="space-y-6 animate-fade-in">
-            <h2 className="text-2xl font-bold text-slate-900">{t.disputes}</h2>
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <h2 className="text-2xl font-bold text-[var(--text-main)]">{t.disputes}</h2>
+            <div className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] overflow-hidden">
                 <table className="w-full text-left text-sm">
-                    <thead className="bg-slate-50 border-b border-slate-200">
+                    <thead className="bg-[var(--light-bg)] border-b border-[var(--border)]">
                         <tr>
-                            <th className="px-6 py-4 font-bold text-slate-700">{t.reference}</th>
-                            <th className="px-6 py-4 font-bold text-slate-700">{t.reason}</th>
-                            <th className="px-6 py-4 font-bold text-slate-700">{t.parties}</th>
-                            <th className="px-6 py-4 font-bold text-slate-700">{t.status}</th>
-                            <th className="px-6 py-4 font-bold text-slate-700 text-right">{t.actions}</th>
+                            <th className="px-6 py-4 font-bold text-navy">{t.reference}</th>
+                            <th className="px-6 py-4 font-bold text-navy">{t.reason}</th>
+                            <th className="px-6 py-4 font-bold text-navy">{t.parties}</th>
+                            <th className="px-6 py-4 font-bold text-navy">{t.status}</th>
+                            <th className="px-6 py-4 font-bold text-navy text-right">{t.actions}</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-[var(--border)]">
                         {disputes.map(dispute => (
-                            <tr key={dispute.id} className="hover:bg-slate-50">
-                                <td className="px-6 py-4 font-mono text-slate-500">{dispute.booking_reference}</td>
+                            <tr key={dispute.id} className="hover:bg-[var(--light-bg)]">
+                                <td className="px-6 py-4 font-mono text-[var(--text-muted)]">{dispute.booking_reference}</td>
                                 <td className="px-6 py-4">
-                                    <div className="font-medium text-slate-900">{dispute.reason}</div>
-                                    <div className="text-xs text-slate-500 line-clamp-1">{dispute.description}</div>
+                                    <div className="font-medium text-[var(--text-main)]">{dispute.reason}</div>
+                                    <div className="text-xs text-[var(--text-muted)] line-clamp-1">{dispute.description}</div>
                                 </td>
-                                <td className="px-6 py-4 text-xs text-slate-600">
+                                <td className="px-6 py-4 text-xs text-[var(--text-muted)]">
                                     <div>{t.raisedBy}: {dispute.raised_by}</div>
                                     <div>{t.againstUser}: {dispute.against}</div>
                                 </td>
@@ -57,7 +57,7 @@ export const AdminDisputesTab: React.FC = () => {
                             </tr>
                         ))}
                         {disputes.length === 0 && (
-                            <tr><td colSpan={5} className="p-8 text-center text-slate-500">{t.noDisputesFound}</td></tr>
+                            <tr><td colSpan={5} className="p-8 text-center text-[var(--text-muted)]">{t.noDisputesFound}</td></tr>
                         )}
                     </tbody>
                 </table>

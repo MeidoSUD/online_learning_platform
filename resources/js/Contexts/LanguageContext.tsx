@@ -21,8 +21,8 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
     // Update HTML tag for Tailwind RTL support
     document.documentElement.dir = dir;
     document.documentElement.lang = language;
-    // Switch font family
-    document.body.style.fontFamily = language === 'ar' ? "'Cairo', sans-serif" : "'Inter', sans-serif";
+    // Switch font family (Cairo design font for all languages)
+    document.body.style.fontFamily = "'Cairo', 'Segoe UI', sans-serif";
   }, [language]);
 
   const setLanguage = (lang: Language) => {

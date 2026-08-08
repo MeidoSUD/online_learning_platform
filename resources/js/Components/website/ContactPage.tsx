@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
+import { Link } from '@inertiajs/react';
 import { useLanguage } from '../../Contexts/LanguageContext';
 import { Footer } from './Footer';
-import { Mail, Phone, MapPin, Send, MessageSquare, CheckCircle2 } from 'lucide-react';
+import { Mail, Phone, MapPin, Send, MessageSquare, CheckCircle2, ChevronLeft } from 'lucide-react';
 
 export const ContactPage: React.FC = () => {
   const { language, direction } = useLanguage();
@@ -22,87 +23,102 @@ export const ContactPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white" dir={direction}>
-      <section className="pt-32 pb-20 bg-gradient-to-br from-slate-50 to-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col lg:flex-row items-center gap-12 mb-16">
+      {/* Hero */}
+      <section className="page-hero -mt-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+          <div className="flex flex-col lg:flex-row items-center gap-12">
             <div className="flex-1 text-center lg:text-start">
-              <h1 className="text-4xl font-bold text-slate-900 mb-4">{language === 'ar' ? 'اتصل بنا' : 'Contact Us'}</h1>
-              <p className="text-slate-500 text-lg">{language === 'ar' ? 'تواصل معنا لأي استفسار حول منتجاتنا وخدماتنا' : 'Get in touch with us for any inquiries about our products and services'}</p>
+              <nav className="breadcrumb-custom">
+                <Link href="/">{language === 'ar' ? 'الرئيسية' : 'Home'}</Link>
+                <ChevronLeft size={12} />
+                <span className="current">{language === 'ar' ? 'اتصل بنا' : 'Contact Us'}</span>
+              </nav>
+              <h1 className="text-4xl font-bold">{language === 'ar' ? 'اتصل بنا' : 'Contact Us'}</h1>
+              <p className="text-lg">{language === 'ar' ? 'تواصل معنا لأي استفسار حول منتجاتنا وخدماتنا' : 'Get in touch with us for any inquiries about our products and services'}</p>
             </div>
             <div className="flex-1">
-              <img src="/heros/contact_us_2.jpg" alt="Contact us" className="w-full max-w-md mx-auto rounded-3xl shadow-2xl" />
+              <img src="/heros/contact_us_2.jpg" alt="Contact us" className="w-full max-w-md mx-auto rounded-[var(--radius-lg)] shadow-[var(--shadow-lg)] border border-white/20" />
             </div>
           </div>
+        </div>
+      </section>
 
+      {/* Contact */}
+      <section className="section-pad">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             {/* Contact Info */}
             <div className="space-y-8">
-              <div className={`bg-white rounded-2xl p-8 shadow-xl border border-slate-100 space-y-6 ${direction === 'rtl' ? 'text-right' : 'text-left'}`}>
-                <h2 className="text-2xl font-bold text-slate-900 mb-2">{language === 'ar' ? 'معلومات الاتصال' : 'Contact Information'}</h2>
-                <p className="text-slate-500 mb-6">{language === 'ar' ? 'نحن هنا لمساعدتك' : 'We are here to help you'}</p>
+              <div className="contact-info-card">
+                <h3 className="text-2xl font-bold mb-2">{language === 'ar' ? 'معلومات الاتصال' : 'Contact Information'}</h3>
+                <p className="mb-6">{language === 'ar' ? 'نحن هنا لمساعدتك' : 'We are here to help you'}</p>
 
-                <div className={`flex items-center gap-4 ${direction === 'rtl' ? 'flex-row' : 'flex-row'}`}>
-                  <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-primary shrink-0"><MapPin size={22} /></div>
-                  <div>
-                    <p className="font-bold text-slate-900">{language === 'ar' ? 'العنوان' : 'Address'}</p>
-                    <p className="text-slate-500">{language === 'ar' ? 'جدة - شارع الأمير سلطان' : 'Jeddah - ALameer Sultan Street'}</p>
+                <div className="contact-item">
+                  <div className="contact-item-icon"><MapPin size={22} /></div>
+                  <div className="contact-item-text">
+                    <strong>{language === 'ar' ? 'العنوان' : 'Address'}</strong>
+                    <span>{language === 'ar' ? 'جدة - شارع الأمير سلطان' : 'Jeddah - ALameer Sultan Street'}</span>
                   </div>
                 </div>
 
-                <div className={`flex items-center gap-4 ${direction === 'rtl' ? 'flex-row' : 'flex-row'}`}>
-                  <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center text-green-600 shrink-0"><Phone size={22} /></div>
-                  <div>
-                    <p className="font-bold text-slate-900">{language === 'ar' ? 'الهاتف' : 'Phone'}</p>
-                    <p className="text-slate-500">+966 555683154</p>
+                <div className="contact-item">
+                  <div className="contact-item-icon"><Phone size={22} /></div>
+                  <div className="contact-item-text">
+                    <strong>{language === 'ar' ? 'الهاتف' : 'Phone'}</strong>
+                    <span>+966 555683154</span>
                   </div>
                 </div>
 
-                <div className={`flex items-center gap-4 ${direction === 'rtl' ? 'flex-row' : 'flex-row'}`}>
-                  <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center text-purple-600 shrink-0"><Mail size={22} /></div>
-                  <div>
-                    <p className="font-bold text-slate-900">{language === 'ar' ? 'البريد الإلكتروني' : 'Email'}</p>
-                    <p className="text-slate-500">contact@ewan-geniuses.com</p>
+                <div className="contact-item">
+                  <div className="contact-item-icon"><Mail size={22} /></div>
+                  <div className="contact-item-text">
+                    <strong>{language === 'ar' ? 'البريد الإلكتروني' : 'Email'}</strong>
+                    <span>contact@ewan-geniuses.com</span>
                   </div>
                 </div>
-              </div>
 
-              <div className="bg-gradient-to-br from-primary to-blue-700 rounded-2xl p-8 text-white">
-                <MessageSquare size={32} className="mb-4 opacity-80" />
-                <h3 className="text-xl font-bold mb-2">{language === 'ar' ? 'نحن نسمعك' : 'We Listen'}</h3>
-                <p className="text-blue-100 text-sm leading-relaxed">
-                  {language === 'ar'
-                    ? 'نحن ملتزمون بالرد على جميع الاستفسارات خلال 24 ساعة عمل. فريقنا جاهز لمساعدتك.'
-                    : 'We are committed to responding to all inquiries within 24 business hours. Our team is ready to assist you.'}
-                </p>
+                <div className="border-t border-white/10 pt-6 mt-6">
+                  <div className="flex items-start gap-4 mb-4">
+                    <div className="contact-item-icon"><MessageSquare size={22} /></div>
+                    <div className="contact-item-text">
+                      <strong>{language === 'ar' ? 'نحن نسمعك' : 'We Listen'}</strong>
+                      <span>
+                        {language === 'ar'
+                          ? 'نحن ملتزمون بالرد على جميع الاستفسارات خلال 24 ساعة عمل. فريقنا جاهز لمساعدتك.'
+                          : 'We are committed to responding to all inquiries within 24 business hours. Our team is ready to assist you.'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
             {/* Contact Form */}
-            <div className="bg-white rounded-2xl p-8 shadow-xl border border-slate-100">
+            <div className="contact-form-card">
               {sent ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <CheckCircle2 size={64} className="text-green-500 mb-6" />
-                  <h3 className="text-2xl font-bold text-slate-900 mb-2">{language === 'ar' ? 'تم الإرسال!' : 'Sent Successfully!'}</h3>
-                  <p className="text-slate-500">{language === 'ar' ? 'سيتم الرد على استفسارك في أقرب وقت.' : 'We will respond to your inquiry shortly.'}</p>
+                  <CheckCircle2 size={64} className="text-green mb-6" />
+                  <h3 className="text-2xl font-bold text-navy mb-2">{language === 'ar' ? 'تم الإرسال!' : 'Sent Successfully!'}</h3>
+                  <p className="mb-0">{language === 'ar' ? 'سيتم الرد على استفسارك في أقرب وقت.' : 'We will respond to your inquiry shortly.'}</p>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit} className={`space-y-5 ${direction === 'rtl' ? 'text-right' : 'text-left'}`}>
-                  <h2 className="text-2xl font-bold text-slate-900 mb-2">{language === 'ar' ? 'أرسل استفسارك' : 'Send Your Inquiry'}</h2>
-                  <p className="text-slate-500 mb-6">{language === 'ar' ? 'اختر المنتج واكتب رسالتك' : 'Select a product and write your message'}</p>
+                <form onSubmit={handleSubmit}>
+                  <h2 className="text-2xl font-bold text-navy mb-2">{language === 'ar' ? 'أرسل استفسارك' : 'Send Your Inquiry'}</h2>
+                  <p className="mb-6">{language === 'ar' ? 'اختر المنتج واكتب رسالتك' : 'Select a product and write your message'}</p>
 
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">{language === 'ar' ? 'الاسم' : 'Name'}</label>
-                    <input name="name" required className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-slate-50" placeholder={language === 'ar' ? 'اسمك الكامل' : 'Your full name'} />
+                  <div className="form-group">
+                    <label className="form-label">{language === 'ar' ? 'الاسم' : 'Name'}</label>
+                    <input name="name" required className="form-input" placeholder={language === 'ar' ? 'اسمك الكامل' : 'Your full name'} />
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">{language === 'ar' ? 'البريد الإلكتروني' : 'Email'}</label>
-                    <input name="email" type="email" required className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-slate-50" placeholder="email@example.com" />
+                  <div className="form-group">
+                    <label className="form-label">{language === 'ar' ? 'البريد الإلكتروني' : 'Email'}</label>
+                    <input name="email" type="email" required className="form-input" placeholder="email@example.com" />
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">{language === 'ar' ? 'المنتج' : 'Product'}</label>
-                    <select name="product" required className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-slate-50">
+                  <div className="form-group">
+                    <label className="form-label">{language === 'ar' ? 'المنتج' : 'Product'}</label>
+                    <select name="product" required className="form-input">
                       <option value="">{language === 'ar' ? 'اختر المنتج' : 'Select product'}</option>
                       <option value="Ewan App">{language === 'ar' ? 'تطبيق Ewan' : 'Ewan App'}</option>
                       <option value="Smart School">{language === 'ar' ? 'نظام المدرسة الذكية' : 'Smart School System'}</option>
@@ -110,12 +126,12 @@ export const ContactPage: React.FC = () => {
                     </select>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">{language === 'ar' ? 'الرسالة' : 'Message'}</label>
-                    <textarea name="message" required rows={5} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-slate-50 resize-none" placeholder={language === 'ar' ? 'اكتب رسالتك هنا...' : 'Write your message here...'} />
+                  <div className="form-group">
+                    <label className="form-label">{language === 'ar' ? 'الرسالة' : 'Message'}</label>
+                    <textarea name="message" required rows={5} className="form-input" placeholder={language === 'ar' ? 'اكتب رسالتك هنا...' : 'Write your message here...'} />
                   </div>
 
-                  <button type="submit" className="w-full bg-primary text-white py-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition-colors shadow-lg shadow-primary/20 flex items-center justify-center gap-2">
+                  <button type="submit" className="btn-primary-custom w-full text-lg py-4 flex items-center justify-center gap-2">
                     <Send size={18} /> {language === 'ar' ? 'إرسال' : 'Send Message'}
                   </button>
                 </form>

@@ -38,37 +38,37 @@ export const DisputesTab: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-slate-900">{t.disputes}</h2>
-        <Button onClick={() => setIsModalOpen(true)} className="shadow-lg shadow-red-500/20 bg-red-600 hover:bg-red-700 focus:ring-red-600">
+        <h2 className="text-2xl font-bold text-[var(--text-main)]">{t.disputes}</h2>
+        <Button onClick={() => setIsModalOpen(true)} className="shadow-[var(--shadow-lg)] shadow-red-500/20 bg-red-600 hover:bg-red-700 focus:ring-red-600">
           <Plus size={18} className="mr-2" /> {t.openDispute}
         </Button>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] overflow-hidden">
         <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-                <thead className="bg-slate-50 border-b border-slate-200">
+                <thead className="bg-[var(--light-bg)] border-b border-[var(--border)]">
                     <tr>
-                        <th className="px-6 py-4 font-bold text-slate-700">{t.caseNumber}</th>
-                        <th className="px-6 py-4 font-bold text-slate-700">{t.teacher}</th>
-                        <th className="px-6 py-4 font-bold text-slate-700">{t.reason}</th>
-                        <th className="px-6 py-4 font-bold text-slate-700">{t.date}</th>
-                        <th className="px-6 py-4 font-bold text-slate-700">{t.status}</th>
+                        <th className="px-6 py-4 font-bold text-navy">{t.caseNumber}</th>
+                        <th className="px-6 py-4 font-bold text-navy">{t.teacher}</th>
+                        <th className="px-6 py-4 font-bold text-navy">{t.reason}</th>
+                        <th className="px-6 py-4 font-bold text-navy">{t.date}</th>
+                        <th className="px-6 py-4 font-bold text-navy">{t.status}</th>
                         <th className="px-6 py-4 text-right">Action</th>
                     </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-[var(--border)]">
                     {disputes.map(dispute => (
-                        <tr key={dispute.id} className="hover:bg-slate-50 transition-colors">
-                            <td className="px-6 py-4 font-mono text-slate-500">{dispute.caseNumber}</td>
-                            <td className="px-6 py-4 font-medium text-slate-900">{dispute.teacherName}</td>
-                            <td className="px-6 py-4 text-slate-600">{dispute.reason}</td>
-                            <td className="px-6 py-4 text-slate-500">{dispute.date}</td>
+                        <tr key={dispute.id} className="hover:bg-[var(--light-bg)] transition-colors">
+                            <td className="px-6 py-4 font-mono text-[var(--text-muted)]">{dispute.caseNumber}</td>
+                            <td className="px-6 py-4 font-medium text-[var(--text-main)]">{dispute.teacherName}</td>
+                            <td className="px-6 py-4 text-[var(--text-muted)]">{dispute.reason}</td>
+                            <td className="px-6 py-4 text-[var(--text-muted)]">{dispute.date}</td>
                             <td className="px-6 py-4">
                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide ${
                                     dispute.status === 'open' ? 'bg-red-100 text-red-700' :
-                                    dispute.status === 'resolved' ? 'bg-green-100 text-green-700' :
-                                    'bg-slate-100 text-slate-700'
+                                    dispute.status === 'resolved' ? 'bg-primary-pale text-primary' :
+                                    'bg-[var(--light-bg)] text-navy'
                                 }`}>
                                     {dispute.status}
                                 </span>
@@ -117,9 +117,9 @@ export const DisputesTab: React.FC = () => {
               />
 
               <div className="mb-4 w-full">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">{t.description}</label>
+                  <label className="block text-sm font-medium text-navy mb-1">{t.description}</label>
                   <textarea 
-                      className="w-full rounded-lg border border-slate-200 p-3 h-32 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                      className="w-full rounded-lg border border-[var(--border)] p-3 h-32 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
                       placeholder={t.phDisputeDesc}
                       value={form.description}
                       onChange={(e) => setForm({...form, description: e.target.value})}

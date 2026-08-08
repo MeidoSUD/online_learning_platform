@@ -152,21 +152,21 @@ export const MySessionsTab: React.FC = () => {
         switch (s) {
             case 'live':
                 return (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 text-green-700 text-[10px] font-bold rounded-md border border-green-200">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary-pale text-primary text-[10px] font-bold rounded-md border border-green-200">
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                         {language === 'ar' ? 'مباشر' : 'Live'}
                     </span>
                 );
             case 'scheduled':
                 return (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-bold rounded-md border border-blue-200">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-secondary-pale text-secondary text-[10px] font-bold rounded-md border border-secondary/30">
                         {language === 'ar' ? 'مجدول' : 'Scheduled'}
                     </span>
                 );
             case 'ended':
             case 'completed':
                 return (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-bold rounded-md border border-slate-200">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[var(--light-bg)] text-[var(--text-muted)] text-[10px] font-bold rounded-md border border-[var(--border)]">
                         {language === 'ar' ? 'منتهي' : 'Ended'}
                     </span>
                 );
@@ -184,7 +184,7 @@ export const MySessionsTab: React.FC = () => {
                 );
             default:
                 return (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-bold rounded-md">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[var(--light-bg)] text-[var(--text-muted)] text-[10px] font-bold rounded-md">
                         {status}
                     </span>
                 );
@@ -226,8 +226,8 @@ export const MySessionsTab: React.FC = () => {
     return (
         <div className="space-y-5 animate-fade-in">
             {/* Header & Tabs */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="flex border-b border-slate-100">
+            <div className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] overflow-hidden">
+                <div className="flex border-b border-[var(--border)]">
                     {tabs.map(tab => (
                         <button
                             key={tab.id}
@@ -235,7 +235,7 @@ export const MySessionsTab: React.FC = () => {
                             className={`flex-1 py-3.5 text-sm font-bold transition-colors relative ${
                                 activeTab === tab.id
                                     ? 'text-primary'
-                                    : 'text-slate-400 hover:text-slate-600'
+                                    : 'text-[var(--text-muted)] hover:text-[var(--text-muted)]'
                             }`}
                         >
                             {tab.label}
@@ -248,14 +248,14 @@ export const MySessionsTab: React.FC = () => {
 
                 {/* Filter Bar */}
                 {activeTab !== 'teachers' && (
-                    <div className="px-4 py-3 bg-slate-50/50 border-b border-slate-100 flex items-center gap-3">
+                    <div className="px-4 py-3 bg-[var(--light-bg)] border-b border-[var(--border)] flex items-center gap-3">
                         <div className="relative flex-1 max-w-xs">
-                            <Calendar size={14} className="absolute top-1/2 -translate-y-1/2 text-slate-400 left-3" />
+                            <Calendar size={14} className="absolute top-1/2 -translate-y-1/2 text-[var(--text-muted)] left-3" />
                             <input
                                 type="date"
                                 value={filterDate}
                                 onChange={(e) => setFilterDate(e.target.value)}
-                                className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 text-xs bg-white focus:outline-none focus:border-primary"
+                                className="w-full pl-9 pr-3 py-2 rounded-lg border border-[var(--border)] text-xs bg-white focus:outline-none focus:border-primary"
                                 placeholder={language === 'ar' ? 'تصفية بالتاريخ' : 'Filter by date'}
                             />
                         </div>
@@ -272,14 +272,14 @@ export const MySessionsTab: React.FC = () => {
 
                 {/* Teachers Search */}
                 {activeTab === 'teachers' && (
-                    <div className="px-4 py-3 bg-slate-50/50 border-b border-slate-100">
+                    <div className="px-4 py-3 bg-[var(--light-bg)] border-b border-[var(--border)]">
                         <div className="relative max-w-xs">
-                            <Search size={14} className="absolute top-1/2 -translate-y-1/2 text-slate-400 left-3" />
+                            <Search size={14} className="absolute top-1/2 -translate-y-1/2 text-[var(--text-muted)] left-3" />
                             <input
                                 type="text"
                                 value={teacherSearch}
                                 onChange={(e) => setTeacherSearch(e.target.value)}
-                                className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 text-xs bg-white focus:outline-none focus:border-primary"
+                                className="w-full pl-9 pr-3 py-2 rounded-lg border border-[var(--border)] text-xs bg-white focus:outline-none focus:border-primary"
                                 placeholder={language === 'ar' ? 'بحث عن معلم...' : 'Search teacher...'}
                             />
                         </div>
@@ -288,13 +288,13 @@ export const MySessionsTab: React.FC = () => {
 
                 {/* Content */}
                 {activeTab === 'teachers' ? (
-                    <div className="divide-y divide-slate-100">
+                    <div className="divide-y divide-[var(--border)]">
                         {filteredTeachers.length > 0 ? (
                             filteredTeachers.map(teacher => {
                                 const flag = COUNTRIES.find(c => c.label.toLowerCase() === (teacher.nationality || '').toLowerCase())?.flag || '';
                                 return (
-                                    <div key={teacher.id} className="px-4 py-4 flex items-center gap-3 hover:bg-slate-50 transition-colors">
-                                        <div className="h-12 w-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 font-bold shrink-0 overflow-hidden">
+                                    <div key={teacher.id} className="px-4 py-4 flex items-center gap-3 hover:bg-[var(--light-bg)] transition-colors">
+                                        <div className="h-12 w-12 rounded-[var(--radius-md)] bg-[var(--light-bg)] flex items-center justify-center text-[var(--text-muted)] font-bold shrink-0 overflow-hidden">
                                             {teacher.profile_image ? (
                                                 <img src={getStorageUrl(teacher.profile_image)} alt={teacher.name} className="h-full w-full object-cover" />
                                             ) : (
@@ -304,15 +304,15 @@ export const MySessionsTab: React.FC = () => {
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-1.5">
                                                 {flag && <span className="text-base">{flag}</span>}
-                                                <p className="font-semibold text-slate-800 text-sm truncate">{teacher.name}</p>
+                                                <p className="font-semibold text-[var(--text-main)] text-sm truncate">{teacher.name}</p>
                                             </div>
                                             {teacher.rating ? (
                                                 <div className="flex items-center gap-1 text-xs text-amber-500 mt-0.5">
                                                     <Star size={12} fill="currentColor" />
-                                                    <span className="text-slate-600 font-medium">{teacher.rating.toFixed(1)}</span>
+                                                    <span className="text-[var(--text-muted)] font-medium">{teacher.rating.toFixed(1)}</span>
                                                 </div>
                                             ) : teacher.email && (
-                                                <p className="text-xs text-slate-400 truncate">{teacher.email}</p>
+                                                <p className="text-xs text-[var(--text-muted)] truncate">{teacher.email}</p>
                                             )}
                                         </div>
                                         <span className="shrink-0 px-3 py-1 bg-primary/5 text-primary text-[10px] font-bold rounded-full border border-primary/10">
@@ -323,8 +323,8 @@ export const MySessionsTab: React.FC = () => {
                             })
                         ) : (
                             <div className="py-16 text-center">
-                                <School size={40} className="mx-auto text-slate-300 mb-3" />
-                                <p className="text-slate-500 text-sm font-medium">
+                                <School size={40} className="mx-auto text-[var(--text-muted)] mb-3" />
+                                <p className="text-[var(--text-muted)] text-sm font-medium">
                                     {language === 'ar' ? 'لا يوجد معلمون بعد' : 'No teachers yet'}
                                 </p>
                             </div>
@@ -333,22 +333,22 @@ export const MySessionsTab: React.FC = () => {
                 ) : loading ? (
                     <div className="p-8 space-y-4">
                         {[1, 2, 3].map(i => (
-                            <div key={i} className="animate-pulse rounded-xl border border-slate-100 overflow-hidden">
-                                <div className="h-12 bg-slate-200" />
+                            <div key={i} className="animate-pulse rounded-[var(--radius-md)] border border-[var(--border)] overflow-hidden">
+                                <div className="h-12 bg-[var(--border)]" />
                                 <div className="p-4 space-y-3">
-                                    <div className="h-4 bg-slate-100 rounded w-2/3" />
-                                    <div className="h-10 bg-slate-50 rounded-lg" />
+                                    <div className="h-4 bg-[var(--light-bg)] rounded w-2/3" />
+                                    <div className="h-10 bg-[var(--light-bg)] rounded-lg" />
                                 </div>
                             </div>
                         ))}
                     </div>
                 ) : filteredSessions.length > 0 ? (
-                    <div className="divide-y divide-slate-100">
+                    <div className="divide-y divide-[var(--border)]">
                         {filteredSessions.map(session => (
                             <div
                                 key={session.id}
                                 onClick={() => setSelectedSession(session)}
-                                className="mx-3 my-3 rounded-xl border border-slate-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow bg-white cursor-pointer"
+                                className="mx-3 my-3 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] overflow-hidden hover:shadow-[var(--shadow-md)] transition-shadow bg-white cursor-pointer"
                             >
                                 {/* Gradient Time Header */}
                                 <div className="bg-gradient-to-br from-primary to-blue-600 px-4 py-3 flex items-center gap-3">
@@ -387,15 +387,15 @@ export const MySessionsTab: React.FC = () => {
                                     </div>
 
                                     {/* Teacher Info + Action */}
-                                    <div className="bg-slate-50 rounded-xl border border-slate-100 p-3 flex items-center gap-3">
-                                        <div className="h-8 w-8 rounded-full bg-slate-200 flex items-center justify-center shrink-0">
-                                            <User size={16} className="text-slate-500" />
+                                    <div className="bg-[var(--light-bg)] rounded-[var(--radius-md)] border border-[var(--border)] p-3 flex items-center gap-3">
+                                        <div className="h-8 w-8 rounded-full bg-[var(--border)] flex items-center justify-center shrink-0">
+                                            <User size={16} className="text-[var(--text-muted)]" />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">
+                                            <p className="text-[10px] text-[var(--text-muted)] font-medium uppercase tracking-wider">
                                                 {language === 'ar' ? 'المعلم' : 'Teacher'}
                                             </p>
-                                            <p className="text-sm font-semibold text-slate-800 truncate">
+                                            <p className="text-sm font-semibold text-[var(--text-main)] truncate">
                                                 {session.teacher?.name || (language === 'ar' ? 'غير معروف' : 'Unknown')}
                                             </p>
                                         </div>
@@ -404,7 +404,7 @@ export const MySessionsTab: React.FC = () => {
                                                 <button
                                                     onClick={() => handleJoinSession(session.id)}
                                                     disabled={joining === session.id}
-                                                    className="flex items-center gap-1.5 px-4 py-2 bg-primary text-white text-xs font-bold rounded-lg hover:bg-primary-dark transition-colors shadow-sm shadow-primary/20 disabled:opacity-50"
+                                                    className="flex items-center gap-1.5 px-4 py-2 bg-primary text-white text-xs font-bold rounded-lg hover:bg-primary-dark transition-colors shadow-[var(--shadow-sm)] shadow-[var(--shadow-md)] disabled:opacity-50"
                                                 >
                                                     {joining === session.id ? (
                                                         <Loader2 size={14} className="animate-spin" />
@@ -414,12 +414,12 @@ export const MySessionsTab: React.FC = () => {
                                                     {language === 'ar' ? 'انضمام' : 'Join'}
                                                 </button>
                                             ) : session.status === 'scheduled' ? (
-                                                <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-600 text-[10px] font-bold rounded-lg border border-blue-100">
+                                                <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-secondary-pale text-secondary text-[10px] font-bold rounded-lg border border-secondary/30">
                                                     <Clock size={12} />
                                                     {language === 'ar' ? 'قادم' : 'Upcoming'}
                                                 </span>
                                             ) : (
-                                                <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-100 text-slate-500 text-[10px] font-bold rounded-lg">
+                                                <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-[var(--light-bg)] text-[var(--text-muted)] text-[10px] font-bold rounded-lg">
                                                     <ChevronRight size={12} />
                                                     {language === 'ar' ? 'انتهت' : 'Done'}
                                                 </span>
@@ -432,8 +432,8 @@ export const MySessionsTab: React.FC = () => {
                     </div>
                 ) : (
                     <div className="py-16 text-center">
-                        <Calendar size={40} className="mx-auto text-slate-300 mb-3" />
-                        <p className="text-slate-500 text-sm font-medium">
+                        <Calendar size={40} className="mx-auto text-[var(--text-muted)] mb-3" />
+                        <p className="text-[var(--text-muted)] text-sm font-medium">
                             {activeTab === 'active'
                                 ? (language === 'ar' ? 'لا توجد جلسات نشطة' : 'No active sessions')
                                 : (language === 'ar' ? 'لا توجد جلسات منتهية' : 'No finished sessions')}

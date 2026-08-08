@@ -13,8 +13,8 @@ import {
 const levelConfig: Record<string, { bg: string; text: string; dot: string; icon: React.ReactNode }> = {
   error:    { bg: 'bg-red-50',   text: 'text-red-700',   dot: 'bg-red-500',   icon: <X size={14} /> },
   warning:  { bg: 'bg-yellow-50', text: 'text-yellow-700', dot: 'bg-yellow-500', icon: <AlertTriangle size={14} /> },
-  info:     { bg: 'bg-blue-50',  text: 'text-blue-700',  dot: 'bg-blue-500',  icon: <Info size={14} /> },
-  debug:    { bg: 'bg-slate-50', text: 'text-slate-600', dot: 'bg-slate-400', icon: <Terminal size={14} /> },
+  info:     { bg: 'bg-secondary-pale',  text: 'text-secondary',  dot: 'bg-navy',  icon: <Info size={14} /> },
+  debug:    { bg: 'bg-[var(--light-bg)]', text: 'text-[var(--text-muted)]', dot: 'bg-[var(--border)]', icon: <Terminal size={14} /> },
 };
 
 export const SystemLogsTab: React.FC = () => {
@@ -106,10 +106,10 @@ export const SystemLogsTab: React.FC = () => {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="text-2xl font-bold text-[var(--text-main)]">
             {language === 'ar' ? 'سجلات النظام' : 'System Logs'}
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-[var(--text-muted)] mt-1">
             {language === 'ar' ? 'مراقبة الأخطاء وأحداث النظام' : 'Monitor errors and system events'}
           </p>
         </div>
@@ -124,24 +124,24 @@ export const SystemLogsTab: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <div className="p-4 border-b border-slate-100">
+      <div className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] overflow-hidden">
+        <div className="p-4 border-b border-[var(--border)]">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
-              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSearch()}
                 placeholder={language === 'ar' ? 'بحث في العنوان أو الرسالة...' : 'Search title or message...'}
-                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full pl-10 pr-4 py-2 border border-[var(--border)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
             <div className="relative">
               <button
                 onClick={() => setFilterOpen(!filterOpen)}
-                className="flex items-center gap-2 px-4 py-2 border border-slate-300 rounded-lg text-sm bg-white hover:bg-slate-50"
+                className="flex items-center gap-2 px-4 py-2 border border-[var(--border)] rounded-lg text-sm bg-white hover:bg-[var(--light-bg)]"
               >
                 {levelFilter === 'all'
                   ? (language === 'ar' ? 'كل المستويات' : 'All Levels')
@@ -149,12 +149,12 @@ export const SystemLogsTab: React.FC = () => {
                 <ChevronDown size={16} />
               </button>
               {filterOpen && (
-                <div className={`absolute z-20 mt-1 w-40 bg-white border border-slate-200 rounded-lg shadow-lg ${direction === 'rtl' ? 'left-0' : 'right-0'}`}>
+                <div className={`absolute z-20 mt-1 w-40 bg-white border border-[var(--border)] rounded-lg shadow-[var(--shadow-lg)] ${direction === 'rtl' ? 'left-0' : 'right-0'}`}>
                   {['all', 'error', 'warning', 'info', 'debug'].map(l => (
                     <button
                       key={l}
                       onClick={() => { setLevelFilter(l); setFilterOpen(false); setCurrentPage(1); }}
-                      className={`w-full text-left px-4 py-2 text-sm hover:bg-slate-50 ${levelFilter === l ? 'bg-slate-50 font-medium' : ''}`}
+                      className={`w-full text-left px-4 py-2 text-sm hover:bg-[var(--light-bg)] ${levelFilter === l ? 'bg-[var(--light-bg)] font-medium' : ''}`}
                     >
                       {l === 'all' ? (language === 'ar' ? 'الكل' : 'All') : l}
                     </button>
@@ -180,7 +180,7 @@ export const SystemLogsTab: React.FC = () => {
             <Loader2 className="w-8 h-8 text-primary animate-spin" />
           </div>
         ) : logs.length === 0 ? (
-          <div className="text-center py-20 text-slate-400">
+          <div className="text-center py-20 text-[var(--text-muted)]">
             <Terminal size={48} className="mx-auto mb-4 opacity-30" />
             <p>{language === 'ar' ? 'لا توجد سجلات' : 'No logs found'}</p>
           </div>
@@ -188,7 +188,7 @@ export const SystemLogsTab: React.FC = () => {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                <tr className="bg-[var(--light-bg)] text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">
                   <th className="text-right pr-4 py-3 w-20">{language === 'ar' ? 'المستوى' : 'Level'}</th>
                   <th className="text-right px-4 py-3">{language === 'ar' ? 'العنوان' : 'Title'}</th>
                   <th className="text-right px-4 py-3 hidden md:table-cell">{language === 'ar' ? 'الرسالة' : 'Message'}</th>
@@ -197,36 +197,36 @@ export const SystemLogsTab: React.FC = () => {
                   <th className="text-right pr-4 py-3 w-20">{language === 'ar' ? 'إجراء' : 'Actions'}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[var(--border)]">
                 {logs.map(log => {
                   const style = getLevelStyle(log.level);
                   return (
-                    <tr key={log.id} className="hover:bg-slate-50 transition-colors text-sm">
+                    <tr key={log.id} className="hover:bg-[var(--light-bg)] transition-colors text-sm">
                       <td className="pr-4 py-3">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${style.bg} ${style.text}`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
                           {log.level}
                         </span>
                       </td>
-                      <td className="px-4 py-3 font-medium text-slate-900 max-w-[200px] truncate">
+                      <td className="px-4 py-3 font-medium text-[var(--text-main)] max-w-[200px] truncate">
                         {log.title}
                       </td>
-                      <td className="px-4 py-3 text-slate-600 max-w-[300px] truncate hidden md:table-cell">
+                      <td className="px-4 py-3 text-[var(--text-muted)] max-w-[300px] truncate hidden md:table-cell">
                         {log.message}
                       </td>
                       <td className="px-4 py-3">
-                        <span className="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full bg-slate-100 text-xs font-bold text-slate-700">
+                        <span className="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full bg-[var(--light-bg)] text-xs font-bold text-navy">
                           {log.occurrences}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-slate-500 text-xs hidden lg:table-cell">
+                      <td className="px-4 py-3 text-[var(--text-muted)] text-xs hidden lg:table-cell">
                         {formatDate(log.last_occurred_at)}
                       </td>
                       <td className="pr-4 py-3">
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => setSelectedLog(log)}
-                            className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-600 transition-colors"
+                            className="p-1.5 rounded-lg hover:bg-secondary-pale text-secondary transition-colors"
                             title={language === 'ar' ? 'عرض التفاصيل' : 'View details'}
                           >
                             <Eye size={16} />
@@ -263,32 +263,32 @@ export const SystemLogsTab: React.FC = () => {
                 <span className={`w-1.5 h-1.5 rounded-full ${getLevelStyle(selectedLog.level).dot}`} />
                 {selectedLog.level}
               </span>
-              <span className="text-xs text-slate-400">#{selectedLog.id}</span>
+              <span className="text-xs text-[var(--text-muted)]">#{selectedLog.id}</span>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">{language === 'ar' ? 'العنوان' : 'Title'}</label>
-              <p className="font-semibold text-slate-900">{selectedLog.title}</p>
+              <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">{language === 'ar' ? 'العنوان' : 'Title'}</label>
+              <p className="font-semibold text-[var(--text-main)]">{selectedLog.title}</p>
             </div>
 
             {selectedLog.type && (
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">{language === 'ar' ? 'النوع' : 'Type'}</label>
-                <p className="font-mono text-xs text-slate-700 bg-slate-100 px-2 py-1 rounded">{selectedLog.type}</p>
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">{language === 'ar' ? 'النوع' : 'Type'}</label>
+                <p className="font-mono text-xs text-navy bg-[var(--light-bg)] px-2 py-1 rounded">{selectedLog.type}</p>
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">{language === 'ar' ? 'الرسالة' : 'Message'}</label>
-              <pre className="whitespace-pre-wrap text-xs bg-slate-50 border border-slate-200 rounded-lg p-3 max-h-40 overflow-y-auto text-slate-800">
+              <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">{language === 'ar' ? 'الرسالة' : 'Message'}</label>
+              <pre className="whitespace-pre-wrap text-xs bg-[var(--light-bg)] border border-[var(--border)] rounded-lg p-3 max-h-40 overflow-y-auto text-[var(--text-main)]">
                 {selectedLog.message}
               </pre>
             </div>
 
             {(selectedLog.file || selectedLog.line) && (
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">{language === 'ar' ? 'الملف' : 'File'}</label>
-                <p className="font-mono text-xs text-slate-700">
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">{language === 'ar' ? 'الملف' : 'File'}</label>
+                <p className="font-mono text-xs text-navy">
                   {selectedLog.file}:{selectedLog.line}
                 </p>
               </div>
@@ -296,37 +296,37 @@ export const SystemLogsTab: React.FC = () => {
 
             {selectedLog.url && (
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">URL</label>
-                <p className="font-mono text-xs text-slate-700 break-all">{selectedLog.method} {selectedLog.url}</p>
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">URL</label>
+                <p className="font-mono text-xs text-navy break-all">{selectedLog.method} {selectedLog.url}</p>
               </div>
             )}
 
             <div className="grid grid-cols-2 gap-4">
               {selectedLog.ip && (
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">IP</label>
-                  <p className="text-xs text-slate-700">{selectedLog.ip}</p>
+                  <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">IP</label>
+                  <p className="text-xs text-navy">{selectedLog.ip}</p>
                 </div>
               )}
               {selectedLog.user_id && (
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">User ID</label>
-                  <p className="text-xs text-slate-700">{selectedLog.user_id}</p>
+                  <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">User ID</label>
+                  <p className="text-xs text-navy">{selectedLog.user_id}</p>
                 </div>
               )}
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">{language === 'ar' ? 'التكرار' : 'Occurrences'}</label>
-                <p className="text-xs text-slate-700">{selectedLog.occurrences}</p>
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">{language === 'ar' ? 'التكرار' : 'Occurrences'}</label>
+                <p className="text-xs text-navy">{selectedLog.occurrences}</p>
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">{language === 'ar' ? 'آخر مرة' : 'Last occurred'}</label>
-                <p className="text-xs text-slate-700">{formatDate(selectedLog.last_occurred_at)}</p>
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">{language === 'ar' ? 'آخر مرة' : 'Last occurred'}</label>
+                <p className="text-xs text-navy">{formatDate(selectedLog.last_occurred_at)}</p>
               </div>
             </div>
 
             {selectedLog.trace && (
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Stack Trace</label>
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Stack Trace</label>
                 <pre className="whitespace-pre-wrap text-xs bg-slate-900 text-green-400 rounded-lg p-3 max-h-60 overflow-y-auto font-mono leading-relaxed">
                   {selectedLog.trace}
                 </pre>
@@ -335,14 +335,14 @@ export const SystemLogsTab: React.FC = () => {
 
             {selectedLog.context && Object.keys(selectedLog.context).length > 0 && (
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">{language === 'ar' ? 'السياق' : 'Context'}</label>
-                <pre className="whitespace-pre-wrap text-xs bg-slate-50 border border-slate-200 rounded-lg p-3 max-h-40 overflow-y-auto text-slate-700">
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">{language === 'ar' ? 'السياق' : 'Context'}</label>
+                <pre className="whitespace-pre-wrap text-xs bg-[var(--light-bg)] border border-[var(--border)] rounded-lg p-3 max-h-40 overflow-y-auto text-navy">
                   {JSON.stringify(selectedLog.context, null, 2)}
                 </pre>
               </div>
             )}
 
-            <div className="text-xs text-slate-400 pt-2 border-t border-slate-100">
+            <div className="text-xs text-[var(--text-muted)] pt-2 border-t border-[var(--border)]">
               {language === 'ar' ? 'تم الإنشاء: ' : 'Created: '}{formatDate(selectedLog.created_at)}
             </div>
           </div>

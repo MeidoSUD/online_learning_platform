@@ -102,13 +102,13 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ activeTab, setActive
             )}
 
             <div className={`
-            fixed lg:static inset-y-0 z-50 w-64 bg-white border-r border-slate-200 shadow-lg lg:shadow-none transform transition-transform duration-300 ease-in-out flex flex-col h-screen
+            fixed lg:static inset-y-0 z-50 w-64 bg-navy border-r border-navy-dark shadow-[var(--shadow-lg)] lg:shadow-none transform transition-transform duration-300 ease-in-out flex flex-col h-screen
             ${isOpen ? 'translate-x-0' : (direction === 'rtl' ? 'translate-x-full' : '-translate-x-full')}
             lg:translate-x-0
             ${direction === 'rtl' ? 'right-0 border-l border-r-0' : 'left-0'}
         `}>
-                <div className="p-6 flex justify-center border-b border-slate-100 flex-shrink-0">
-                    <Logo className="scale-75" />
+                <div className="p-6 flex justify-center border-b border-white/10 flex-shrink-0">
+                    <Logo className="scale-75 [&_span]:text-white" />
                 </div>
 
                 <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1 custom-scrollbar">
@@ -119,8 +119,8 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ activeTab, setActive
                                     key={group.id}
                                     onClick={() => { setActiveTab(group.id); setIsOpen(false); }}
                                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all mb-2 ${activeTab === group.id
-                                        ? 'bg-primary text-white shadow-md shadow-primary/20'
-                                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                                        ? 'bg-gradient-to-r from-primary-light to-primary text-white shadow-primary/30'
+                                        : 'text-white/70 hover:bg-white/10 hover:text-white'
                                         }`}
                                 >
                                     <group.icon size={18} />
@@ -137,17 +137,17 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ activeTab, setActive
                                 <button
                                     onClick={() => toggleGroup(group.id)}
                                     className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-semibold transition-all ${
-                                        hasActiveChild ? 'text-primary bg-primary/5' : 'text-slate-700 hover:bg-slate-50'
+                                        hasActiveChild ? 'text-green-light bg-white/10' : 'text-white/70 hover:bg-white/10'
                                     }`}
                                 >
                                     <div className="flex items-center gap-3">
-                                        <group.icon size={18} className={hasActiveChild ? 'text-primary' : 'text-slate-500'} />
+                                        <group.icon size={18} className={hasActiveChild ? 'text-green-light' : 'text-white/50'} />
                                         <span>{group.label}</span>
                                     </div>
                                     {isOpenGroup ? (
-                                        <ChevronDown size={16} className="text-slate-400" />
+                                        <ChevronDown size={16} className="text-white/40" />
                                     ) : (
-                                        <ChevronRight size={16} className={`text-slate-400 ${direction === 'rtl' ? 'rotate-180' : ''}`} />
+                                        <ChevronRight size={16} className={`text-white/40 ${direction === 'rtl' ? 'rotate-180' : ''}`} />
                                     )}
                                 </button>
 
@@ -160,11 +160,11 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ activeTab, setActive
                                                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                                                     direction === 'rtl' ? 'pr-11' : 'pl-11'
                                                 } ${activeTab === child.id
-                                                    ? 'bg-primary text-white shadow-md shadow-primary/20'
-                                                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                                                    ? 'bg-gradient-to-r from-primary-light to-primary text-white shadow-primary/30'
+                                                    : 'text-white/60 hover:bg-white/10 hover:text-white'
                                                     }`}
                                             >
-                                                <child.icon size={16} className={activeTab === child.id ? 'text-white' : 'text-slate-400'} />
+                                                <child.icon size={16} className={activeTab === child.id ? 'text-white' : 'text-white/40'} />
                                                 {child.label}
                                             </button>
                                         ))}
@@ -175,17 +175,17 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ activeTab, setActive
                     })}
                 </div>
 
-                <div className="p-4 border-t border-slate-100 space-y-2 flex-shrink-0">
+                <div className="p-4 border-t border-white/10 space-y-2 flex-shrink-0">
                     <button
                         onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-all"
+                        className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-white/70 hover:bg-white/10 hover:text-white transition-all"
                     >
                         <Globe size={18} />
                         {language === 'en' ? 'العربية' : 'English'}
                     </button>
                     <button
                         onClick={onLogout}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-all"
+                        className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-red-300 hover:bg-red-500/20 hover:text-red-200 transition-all"
                     >
                         <LogOut size={18} />
                         {t.logout}
@@ -200,11 +200,11 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ activeTab, setActive
                     background: transparent;
                 }
                 .custom-scrollbar::-webkit-scrollbar-thumb {
-                    background: #cbd5e1;
+                    background: #7DC242;
                     border-radius: 4px;
                 }
                 .custom-scrollbar:hover::-webkit-scrollbar-thumb {
-                    background: #94a3b8;
+                    background: #3D8B37;
                 }
             `}</style>
         </>

@@ -70,13 +70,13 @@ export const VerificationScreen: React.FC<VerificationScreenProps> = ({ userId, 
   };
 
   return (
-    <div className="w-full max-w-md space-y-8 bg-white p-8 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100">
+    <div className="w-full max-w-md space-y-8 bg-white p-8 rounded-[var(--radius-lg)] shadow-[var(--shadow-md)] border border-[var(--border)]">
       <Logo />
       <div className="text-center">
-        <h2 className="mt-6 text-3xl font-bold tracking-tight text-slate-900">
+        <h2 className="mt-6 text-3xl font-bold tracking-tight text-[var(--text-main)]">
           {language === 'ar' ? 'تفعيل الحساب' : 'Verify Account'}
         </h2>
-        <p className="mt-2 text-sm text-slate-500">
+        <p className="mt-2 text-sm text-[var(--text-muted)]">
           {language === 'ar'
             ? 'أدخل رمز التحقق المرسل إلى هاتفك'
             : 'Enter the verification code sent to your phone'}
@@ -90,7 +90,7 @@ export const VerificationScreen: React.FC<VerificationScreenProps> = ({ userId, 
           </div>
         )}
         {success && (
-          <div className="p-3 bg-green-50 text-green-700 text-sm rounded-lg flex items-center gap-2">
+          <div className="p-3 bg-primary-pale text-primary text-sm rounded-lg flex items-center gap-2">
             <CheckCircle size={16} /> {success}
           </div>
         )}
@@ -111,7 +111,7 @@ export const VerificationScreen: React.FC<VerificationScreenProps> = ({ userId, 
           <button
             type="button"
             onClick={handleResend}
-            className={`text-sm font-medium ${timer > 0 ? 'text-slate-400 cursor-not-allowed' : 'text-primary hover:underline'}`}
+            className={`text-sm font-medium ${timer > 0 ? 'text-[var(--text-muted)] cursor-not-allowed' : 'text-primary hover:underline'}`}
             disabled={loading || timer > 0}
           >
             {language === 'ar'

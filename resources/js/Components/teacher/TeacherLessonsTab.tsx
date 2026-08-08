@@ -47,16 +47,16 @@ function getStatusBadge(status: string | undefined, language: string): { label: 
     switch (status) {
         case 'live':
         case 'wait_for_teacher':
-            return { label: language === 'ar' ? 'نشط' : 'Active', color: 'text-green-700', bg: 'bg-green-100' };
+            return { label: language === 'ar' ? 'نشط' : 'Active', color: 'text-primary', bg: 'bg-primary-pale' };
         case 'scheduled':
             return { label: language === 'ar' ? 'مجدول' : 'Upcoming', color: 'text-orange-700', bg: 'bg-orange-100' };
         case 'ended':
         case 'completed':
-            return { label: language === 'ar' ? 'مكتمل' : 'Completed', color: 'text-green-700', bg: 'bg-green-100' };
+            return { label: language === 'ar' ? 'مكتمل' : 'Completed', color: 'text-primary', bg: 'bg-primary-pale' };
         case 'cancelled':
             return { label: language === 'ar' ? 'ملغي' : 'Cancelled', color: 'text-red-600', bg: 'bg-red-100' };
         default:
-            return { label: status || (language === 'ar' ? 'غير معروف' : 'Unknown'), color: 'text-slate-600', bg: 'bg-slate-100' };
+            return { label: status || (language === 'ar' ? 'غير معروف' : 'Unknown'), color: 'text-[var(--text-muted)]', bg: 'bg-[var(--light-bg)]' };
     }
 }
 
@@ -164,18 +164,18 @@ export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = ({ user }) =>
         <div className="space-y-6 animate-fade-in" dir={direction}>
             {/* Page Header */}
             <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-slate-900">
+                <h2 className="text-2xl font-bold text-[var(--text-main)]">
                     {language === 'ar' ? 'دروسي' : 'My Lessons'}
                 </h2>
             </div>
 
             {/* Today's Stats */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+            <div className="bg-white rounded-[var(--radius-md)] shadow-[var(--shadow-sm)] border border-[var(--border)] p-6">
                 <div className="flex items-center justify-between mb-1">
-                    <p className="text-sm text-slate-500 font-medium">
+                    <p className="text-sm text-[var(--text-muted)] font-medium">
                         {language === 'ar' ? 'إحصائيات اليوم' : "Today's Statistics"}
                     </p>
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs text-[var(--text-muted)]">
                         {new Date().toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US', {
                             weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
                         })}
@@ -183,41 +183,41 @@ export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = ({ user }) =>
                 </div>
                 <div className="grid grid-cols-3 gap-4 mt-4">
                     <div className="text-center">
-                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 text-primary mb-2">
+                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-[var(--radius-md)] bg-primary/10 text-primary mb-2">
                             <Clock size={22} />
                         </div>
-                        <p className="text-2xl font-bold text-slate-900">{todaySessions.length}</p>
-                        <p className="text-xs text-slate-500">{language === 'ar' ? 'دروس اليوم' : "Today's Lessons"}</p>
+                        <p className="text-2xl font-bold text-[var(--text-main)]">{todaySessions.length}</p>
+                        <p className="text-xs text-[var(--text-muted)]">{language === 'ar' ? 'دروس اليوم' : "Today's Lessons"}</p>
                     </div>
                     <div className="text-center">
-                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-orange-100 text-orange-600 mb-2">
+                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-[var(--radius-md)] bg-orange-100 text-orange-600 mb-2">
                             <Users size={22} />
                         </div>
-                        <p className="text-2xl font-bold text-slate-900">{todayStudents.size}</p>
-                        <p className="text-xs text-slate-500">{language === 'ar' ? 'الطلاب' : 'Students'}</p>
+                        <p className="text-2xl font-bold text-[var(--text-main)]">{todayStudents.size}</p>
+                        <p className="text-xs text-[var(--text-muted)]">{language === 'ar' ? 'الطلاب' : 'Students'}</p>
                     </div>
                     <div className="text-center">
-                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-green-100 text-green-600 mb-2">
+                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-[var(--radius-md)] bg-primary-pale text-primary mb-2">
                             <DollarSign size={22} />
                         </div>
-                        <p className="text-2xl font-bold text-slate-900">0</p>
-                        <p className="text-xs text-slate-500">{language === 'ar' ? 'الدخل المتوقع' : 'Expected Income'}</p>
+                        <p className="text-2xl font-bold text-[var(--text-main)]">0</p>
+                        <p className="text-xs text-[var(--text-muted)]">{language === 'ar' ? 'الدخل المتوقع' : 'Expected Income'}</p>
                     </div>
                 </div>
             </div>
 
             {/* Date Filter Header (matching Android SessionFilterHeader) */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 px-4 py-3">
+            <div className="bg-white rounded-[var(--radius-md)] shadow-[var(--shadow-sm)] border border-[var(--border)] px-4 py-3">
                 <div className="flex items-center gap-3">
                     <button
                         onClick={handleDateClick}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-colors text-sm ${
+                        className={`flex items-center gap-2 px-4 py-2 rounded-[var(--radius-md)] border transition-colors text-sm ${
                             selectedDate
                                 ? 'bg-primary/5 border-primary/20 text-primary font-semibold'
-                                : 'bg-slate-50 border-slate-200 text-slate-600'
+                                : 'bg-[var(--light-bg)] border-[var(--border)] text-[var(--text-muted)]'
                         }`}
                     >
-                        <Calendar size={18} className={selectedDate ? 'text-primary' : 'text-slate-400'} />
+                        <Calendar size={18} className={selectedDate ? 'text-primary' : 'text-[var(--text-muted)]'} />
                         <span>
                             {selectedDate
                                 ? formatDate(selectedDate)
@@ -236,7 +236,7 @@ export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = ({ user }) =>
                     {selectedDate && (
                         <button
                             onClick={clearDateFilter}
-                            className="flex items-center gap-1 px-3 py-2 rounded-xl border border-red-200 bg-red-50 text-red-600 text-sm hover:bg-red-100 transition-colors"
+                            className="flex items-center gap-1 px-3 py-2 rounded-[var(--radius-md)] border border-red-200 bg-red-50 text-red-600 text-sm hover:bg-red-100 transition-colors"
                         >
                             <FilterX size={16} />
                             <span className="hidden sm:inline">{language === 'ar' ? 'مسح' : 'Clear'}</span>
@@ -246,14 +246,14 @@ export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = ({ user }) =>
             </div>
 
             {/* Tabs: Active | Finished | Students */}
-            <div className="border-b border-slate-200">
+            <div className="border-b border-[var(--border)]">
                 <div className="flex gap-6">
                     <button
                         onClick={() => setActiveTab('active')}
                         className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
                             activeTab === 'active'
                                 ? 'border-primary text-primary'
-                                : 'border-transparent text-slate-500 hover:text-slate-700'
+                                : 'border-transparent text-[var(--text-muted)] hover:text-navy'
                         }`}
                     >
                         {language === 'ar' ? 'الدروس النشطة' : 'Active Lessons'}
@@ -268,12 +268,12 @@ export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = ({ user }) =>
                         className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
                             activeTab === 'finished'
                                 ? 'border-primary text-primary'
-                                : 'border-transparent text-slate-500 hover:text-slate-700'
+                                : 'border-transparent text-[var(--text-muted)] hover:text-navy'
                         }`}
                     >
                         {language === 'ar' ? 'المنتهية' : 'Finished'}
                         {finishedSessions.length > 0 && (
-                            <span className="ml-2 text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
+                            <span className="ml-2 text-xs bg-[var(--light-bg)] text-[var(--text-muted)] px-2 py-0.5 rounded-full">
                                 {finishedSessions.length}
                             </span>
                         )}
@@ -283,12 +283,12 @@ export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = ({ user }) =>
                         className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
                             activeTab === 'students'
                                 ? 'border-primary text-primary'
-                                : 'border-transparent text-slate-500 hover:text-slate-700'
+                                : 'border-transparent text-[var(--text-muted)] hover:text-navy'
                         }`}
                     >
                         {language === 'ar' ? 'الطلاب' : 'Students'}
                         {uniqueStudents.length > 0 && (
-                            <span className="ml-2 text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
+                            <span className="ml-2 text-xs bg-[var(--light-bg)] text-[var(--text-muted)] px-2 py-0.5 rounded-full">
                                 {uniqueStudents.length}
                             </span>
                         )}
@@ -304,14 +304,14 @@ export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = ({ user }) =>
             ) : activeTab === 'students' ? (
                 /* ===== STUDENTS TAB (matching Android _TeacherStudentsTabContent) ===== */
                 uniqueStudents.length === 0 ? (
-                    <div className="text-center py-16 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 mb-4">
-                            <Users className="text-slate-300" size={28} />
+                    <div className="text-center py-16 bg-[var(--light-bg)] rounded-[var(--radius-md)] border border-dashed border-[var(--border)]">
+                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[var(--light-bg)] mb-4">
+                            <Users className="text-[var(--text-muted)]" size={28} />
                         </div>
-                        <p className="text-slate-500 font-medium">
+                        <p className="text-[var(--text-muted)] font-medium">
                             {language === 'ar' ? 'لا يوجد طلاب' : 'No students'}
                         </p>
-                        <p className="text-slate-400 text-sm mt-1">
+                        <p className="text-[var(--text-muted)] text-sm mt-1">
                             {language === 'ar' ? 'لا يوجد طلاب لديهم حجوزات' : 'No students with bookings'}
                         </p>
                     </div>
@@ -320,16 +320,16 @@ export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = ({ user }) =>
                         {uniqueStudents.map(({ user: student, bookingsCount }) => (
                             <div
                                 key={student.id}
-                                className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 flex items-center justify-between hover:shadow-md transition-shadow"
+                                className="bg-white rounded-[var(--radius-md)] shadow-[var(--shadow-sm)] border border-[var(--border)] p-4 flex items-center justify-between hover:shadow-[var(--shadow-md)] transition-shadow"
                             >
                                 <div className="flex items-center gap-4">
                                     <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
                                         {(student.name || '?').charAt(0).toUpperCase()}
                                     </div>
                                     <div>
-                                        <p className="font-semibold text-slate-800">{student.name || (language === 'ar' ? 'غير معروف' : 'Unknown')}</p>
+                                        <p className="font-semibold text-[var(--text-main)]">{student.name || (language === 'ar' ? 'غير معروف' : 'Unknown')}</p>
                                         {student.email && (
-                                            <p className="text-xs text-slate-400">{student.email}</p>
+                                            <p className="text-xs text-[var(--text-muted)]">{student.email}</p>
                                         )}
                                     </div>
                                 </div>
@@ -346,17 +346,17 @@ export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = ({ user }) =>
             ) : (
                 /* ===== ACTIVE / FINISHED TAB ===== */
                 (activeTab === 'active' ? activeSessions : finishedSessions).length === 0 ? (
-                    <div className="text-center py-16 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 mb-4">
-                            <Clock className="text-slate-300" size={28} />
+                    <div className="text-center py-16 bg-[var(--light-bg)] rounded-[var(--radius-md)] border border-dashed border-[var(--border)]">
+                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[var(--light-bg)] mb-4">
+                            <Clock className="text-[var(--text-muted)]" size={28} />
                         </div>
-                        <p className="text-slate-500 font-medium">
+                        <p className="text-[var(--text-muted)] font-medium">
                             {activeTab === 'active'
                                 ? (language === 'ar' ? 'لا توجد دروس نشطة' : 'No active lessons')
                                 : (language === 'ar' ? 'لا توجد دروس منتهية' : 'No finished lessons')
                             }
                         </p>
-                        <p className="text-slate-400 text-sm mt-1">
+                        <p className="text-[var(--text-muted)] text-sm mt-1">
                             {language === 'ar' ? 'استمتع بيومك!' : 'Enjoy your day!'}
                         </p>
                     </div>
@@ -372,7 +372,7 @@ export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = ({ user }) =>
                                 <div
                                     key={session.id}
                                     onClick={() => openDetailsModal(session)}
-                                    className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+                                    className="bg-white rounded-[var(--radius-md)] shadow-[var(--shadow-sm)] border border-[var(--border)] overflow-hidden hover:shadow-[var(--shadow-md)] transition-shadow cursor-pointer"
                                 >
                                     {/* Gradient Time Header - مطابق Android TeacherSessionCard */}
                                     <div className="bg-gradient-to-r from-primary to-primary/85 px-5 py-3">
@@ -385,7 +385,7 @@ export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = ({ user }) =>
                                                     {formatTime(session.start_time)} - {formatTime(session.end_time)}
                                                 </p>
                                             </div>
-                                            <div className="flex items-center gap-1.5 bg-white/20 rounded-xl px-3 py-1.5 border border-white/30">
+                                            <div className="flex items-center gap-1.5 bg-white/20 rounded-[var(--radius-md)] px-3 py-1.5 border border-white/30">
                                                 <Calendar size={13} className="text-white" />
                                                 <span className="text-white text-xs font-semibold">
                                                     {formatDate(session.session_date)}
@@ -401,9 +401,9 @@ export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = ({ user }) =>
                                             <h3 className="flex-1 text-lg font-bold text-primary truncate">
                                                 {subjectName || (language === 'ar' ? 'جلسة' : 'Session')}
                                             </h3>
-                                            <div className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 rounded-lg px-2.5 py-1">
-                                                <Clock size={13} className="text-green-600" />
-                                                <span className="text-blue-600 text-xs font-bold">
+                                            <div className="flex items-center gap-1.5 bg-secondary-pale border border-secondary/30 rounded-lg px-2.5 py-1">
+                                                <Clock size={13} className="text-primary" />
+                                                <span className="text-secondary text-xs font-bold">
                                                     {getDuration(session.start_time, session.end_time)}
                                                 </span>
                                             </div>
@@ -413,17 +413,17 @@ export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = ({ user }) =>
                                         </div>
 
                                         {/* Student Info & Actions (مطابق Android line 266-437) */}
-                                        <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
+                                        <div className="bg-[var(--light-bg)] rounded-[var(--radius-md)] p-3 border border-[var(--border)]">
                                             <div className="flex items-center justify-between gap-2">
                                                 <div className="flex items-center gap-3 min-w-0">
-                                                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                                                        <PersonStanding className="text-blue-700" size={16} />
+                                                    <div className="w-8 h-8 rounded-full bg-secondary-pale flex items-center justify-center shrink-0">
+                                                        <PersonStanding className="text-secondary" size={16} />
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <p className="text-xs text-slate-500">
+                                                        <p className="text-xs text-[var(--text-muted)]">
                                                             {language === 'ar' ? 'الطالب' : 'Student'}
                                                         </p>
-                                                        <p className="font-semibold text-slate-800 text-sm truncate">
+                                                        <p className="font-semibold text-[var(--text-main)] text-sm truncate">
                                                             {session.student?.name || (language === 'ar' ? 'غير محدد' : 'Unknown')}
                                                         </p>
                                                     </div>
@@ -431,9 +431,9 @@ export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = ({ user }) =>
 
                                                 {/* Status/Action - مطابق Android lines 312-432 */}
                                                 {(session.status === 'ended' || session.status === 'completed') && (
-                                                    <div className="flex items-center gap-1 bg-slate-200 rounded-lg px-2.5 py-1 shrink-0">
-                                                        <CheckCircle2 size={13} className="text-slate-500" />
-                                                        <span className="text-slate-600 text-xs font-bold">
+                                                    <div className="flex items-center gap-1 bg-[var(--border)] rounded-lg px-2.5 py-1 shrink-0">
+                                                        <CheckCircle2 size={13} className="text-[var(--text-muted)]" />
+                                                        <span className="text-[var(--text-muted)] text-xs font-bold">
                                                             {language === 'ar' ? 'منتهية' : 'Finished'}
                                                         </span>
                                                     </div>
@@ -457,7 +457,7 @@ export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = ({ user }) =>
                                                 {(session.status === 'live' || session.status === 'wait_for_teacher') && (
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); handleStartSession(session.id); }}
-                                                        className="flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-4 py-1.5 rounded-lg shadow-sm transition-colors shrink-0"
+                                                        className="flex items-center gap-1 bg-primary hover:bg-primary text-white text-xs font-bold px-4 py-1.5 rounded-lg shadow-[var(--shadow-sm)] transition-colors shrink-0"
                                                     >
                                                         <Play size={13} />
                                                         {language === 'ar' ? 'بدء' : 'Start'}

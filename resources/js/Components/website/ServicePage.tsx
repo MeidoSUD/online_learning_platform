@@ -1,7 +1,10 @@
 import React from 'react';
+import { Link } from '@inertiajs/react';
 import { useLanguage } from '../../Contexts/LanguageContext';
 import { Footer } from './Footer';
-import { BookOpen, Globe, Users, GraduationCap, Award, Smartphone, Monitor, Sparkles, ChevronRight } from 'lucide-react';
+import { BookOpen, Globe, Users, GraduationCap, Smartphone, Monitor, Sparkles, ChevronLeft } from 'lucide-react';
+
+const cardThemes = ['green', 'navy', 'accent', 'orange', 'purple', 'teal'];
 
 export const ServicePage: React.FC = () => {
   const { language, direction } = useLanguage();
@@ -54,47 +57,52 @@ export const ServicePage: React.FC = () => {
   return (
     <div className="min-h-screen bg-white" dir={direction}>
       {/* Hero */}
-      <section className="pt-32 pb-20 bg-gradient-to-br from-slate-50 to-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="page-hero -mt-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
           <div className="flex flex-col lg:flex-row items-center gap-12">
             <div className="flex-1 text-center lg:text-start">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-sm font-semibold mb-6">
+              <div className="hero-badge">
                 <Sparkles size={14} />
                 {language === 'ar' ? 'كل ما تحتاج في مكان واحد' : 'Everything you need in one place'}
               </div>
-              <h1 className="text-4xl lg:text-5xl font-bold text-slate-900 mb-4">{language === 'ar' ? 'خدماتنا' : 'Our Services'}</h1>
-              <p className="text-slate-500 max-w-3xl mx-auto lg:mx-0 text-lg">
+              <nav className="breadcrumb-custom">
+                <Link href="/">{language === 'ar' ? 'الرئيسية' : 'Home'}</Link>
+                <ChevronLeft size={12} />
+                <span className="current">{language === 'ar' ? 'خدماتنا' : 'Our Services'}</span>
+              </nav>
+              <h1 className="text-4xl lg:text-5xl font-bold">{language === 'ar' ? 'خدماتنا' : 'Our Services'}</h1>
+              <p className="text-lg max-w-3xl">
                 {language === 'ar'
                   ? 'نقدم مجموعة متكاملة من الخدمات التعليمية والتقنية المصممة لتلبية احتياجات الأفراد والمؤسسات على حد سواء.'
                   : 'We offer a comprehensive suite of educational and technical services designed to meet the needs of both individuals and institutions.'}
               </p>
             </div>
             <div className="flex-1">
-              <img src="/heros/teacher.png" alt="Our Services" className="w-full max-w-md mx-auto rounded-3xl shadow-2xl" />
+              <img src="/heros/teacher.png" alt="Our Services" className="w-full max-w-md mx-auto rounded-[var(--radius-lg)] shadow-[var(--shadow-lg)] border border-white/20" />
             </div>
           </div>
         </div>
       </section>
 
       {/* Services Grid */}
-      <section className="py-16 bg-white">
+      <section className="section-pad bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {services.map((service, idx) => (
-              <div key={idx} className={`bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden group hover:shadow-2xl transition-all ${direction === 'rtl' ? 'text-right' : 'text-left'}`}>
-                <div className={`bg-gradient-to-r ${service.color} p-6 text-white`}>
-                  <service.icon size={36} className="opacity-90" />
+              <div key={idx} className="service-card">
+                <div className={`service-card-top ${cardThemes[idx % cardThemes.length]}`}>
+                  <service.icon size={56} />
                 </div>
-                <div className="p-6">
-                  <h3 className="text-xl font-bold text-slate-900 mb-3">{service.title}</h3>
-                  <p className="text-slate-500 text-sm leading-relaxed mb-4">{service.desc}</p>
-                  <div className="flex flex-wrap gap-2">
+                <div className="service-card-body">
+                  <h3 className="text-xl font-bold text-navy mb-3">{service.title}</h3>
+                  <p className="text-sm leading-relaxed mb-4">{service.desc}</p>
+                  <div className="flex flex-wrap gap-2 mb-4">
                     {service.features.map((feat, i) => (
-                      <span key={i} className="px-3 py-1 bg-slate-50 text-slate-600 rounded-lg text-xs font-semibold">{feat}</span>
+                      <span key={i} className="px-3 py-1 bg-[var(--green-pale)] text-green rounded-full text-xs font-semibold">{feat}</span>
                     ))}
                   </div>
-                  <button className={`mt-6 text-primary font-semibold text-sm flex items-center gap-1 group ${direction === 'rtl' ? 'flex-row' : 'flex-row'}`}>
-                    {language === 'ar' ? 'اعرف أكثر' : 'Learn More'} <ChevronRight size={14} className={`transition-transform group-hover:translate-x-1 ${direction === 'rtl' ? 'rotate-180 group-hover:-translate-x-1' : ''}`} />
+                  <button className="service-link mt-2">
+                    {language === 'ar' ? 'اعرف أكثر' : 'Learn More'} <ChevronLeft size={14} />
                   </button>
                 </div>
               </div>
@@ -104,22 +112,20 @@ export const ServicePage: React.FC = () => {
       </section>
 
       {/* CTA */}
-      <section className="py-16 bg-slate-50">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-gradient-to-br from-primary to-blue-700 rounded-3xl p-12 text-center text-white shadow-2xl">
-            <h2 className="text-3xl font-bold mb-4">{language === 'ar' ? 'هل لديك استفسار؟' : 'Have a Question?'}</h2>
-            <p className="text-blue-100 mb-8 max-w-2xl mx-auto">
-              {language === 'ar'
-                ? 'فريقنا جاهز للإجابة على جميع استفساراتك ومساعدتك في اختيار الخدمة المناسبة.'
-                : 'Our team is ready to answer all your questions and help you choose the right service.'}
-            </p>
-            <a
-              href="mailto:contact@ewan-geniuses.com"
-              className="inline-block bg-white text-primary px-8 py-4 rounded-xl font-bold shadow-lg hover:bg-slate-50 transition-colors"
-            >
-              {language === 'ar' ? 'تواصل معنا' : 'Contact Us'}
-            </a>
-          </div>
+      <section className="cta-section section-pad">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative">
+          <h2 className="text-3xl font-bold mb-4">{language === 'ar' ? 'هل لديك استفسار؟' : 'Have a Question?'}</h2>
+          <p className="mb-8 max-w-2xl mx-auto">
+            {language === 'ar'
+              ? 'فريقنا جاهز للإجابة على جميع استفساراتك ومساعدتك في اختيار الخدمة المناسبة.'
+              : 'Our team is ready to answer all your questions and help you choose the right service.'}
+          </p>
+          <a
+            href="mailto:contact@ewan-geniuses.com"
+            className="btn-primary-custom"
+          >
+            {language === 'ar' ? 'تواصل معنا' : 'Contact Us'}
+          </a>
         </div>
       </section>
 

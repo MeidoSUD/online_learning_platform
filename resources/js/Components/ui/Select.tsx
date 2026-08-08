@@ -13,17 +13,17 @@ export const Select: React.FC<SelectProps> = ({ label, options, error, className
 
   return (
     <div className="mb-4 w-full">
-      <label className="block text-sm font-medium text-slate-700 mb-1">
+      <label className="block text-sm font-medium text-navy mb-1">
         {label}
       </label>
       <div className="relative">
         <select
           {...props}
           className={`
-            w-full appearance-none rounded-lg border bg-white py-3 px-4 text-slate-900 shadow-sm transition-all
+            w-full appearance-none rounded-lg border bg-white py-3 px-4 text-[var(--text-main)] shadow-[var(--shadow-sm)] transition-all
             focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none
-            disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400
-            ${error ? 'border-error' : 'border-slate-200'}
+            disabled:cursor-not-allowed disabled:bg-[var(--light-bg)] disabled:text-[var(--text-muted)]
+            ${error ? 'border-error' : 'border-[var(--border)]'}
             ${className}
           `}
         >
@@ -34,7 +34,7 @@ export const Select: React.FC<SelectProps> = ({ label, options, error, className
             </option>
           ))}
         </select>
-        <div className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-slate-400 ${direction === 'rtl' ? 'left-3' : 'right-3'}`}>
+        <div className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-[var(--text-muted)] ${direction === 'rtl' ? 'left-3' : 'right-3'}`}>
           <ChevronDown size={20} />
         </div>
       </div>

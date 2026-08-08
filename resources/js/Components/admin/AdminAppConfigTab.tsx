@@ -151,10 +151,10 @@ export const AdminAppConfigTab: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-slate-900">
+        <h1 className="text-3xl font-bold text-[var(--text-main)]">
           {language === 'ar' ? 'إعدادات التطبيق' : 'App Configuration'}
         </h1>
-        <p className="text-slate-600 mt-2">
+        <p className="text-[var(--text-muted)] mt-2">
           {language === 'ar'
             ? 'إدارة إصدارات التطبيق ووضع الصيانة'
             : 'Manage app versions and maintenance mode'}
@@ -170,24 +170,24 @@ export const AdminAppConfigTab: React.FC = () => {
       )}
 
       {success && (
-        <div className="flex items-start gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
-          <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-green-600">{success}</p>
+        <div className="flex items-start gap-3 p-4 bg-primary-pale border border-green-200 rounded-lg">
+          <CheckCircle className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-primary">{success}</p>
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* iOS Version Manager */}
-        <div className="bg-white border border-slate-200 rounded-lg p-6 space-y-4">
+        <div className="bg-white border border-[var(--border)] rounded-lg p-6 space-y-4">
           <div className="flex items-center gap-2 mb-4">
-            <h2 className="text-xl font-semibold text-slate-900">
+            <h2 className="text-xl font-semibold text-[var(--text-main)]">
               {language === 'ar' ? 'إصدار iOS' : 'iOS Version'}
             </h2>
           </div>
 
           {appConfig?.ios_version && (
-            <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-xs text-blue-600 font-medium">
+            <div className="p-3 bg-secondary-pale rounded-lg border border-secondary/30">
+              <p className="text-xs text-secondary font-medium">
                 {language === 'ar' ? 'الإصدار الحالي' : 'Current Version'}
               </p>
               <p className="text-lg font-bold text-blue-900">{appConfig.ios_version.version}</p>
@@ -198,7 +198,7 @@ export const AdminAppConfigTab: React.FC = () => {
                 </p>
               )}
               {appConfig.ios_version.updated_at && (
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-[var(--text-muted)] mt-1">
                   {language === 'ar' ? 'آخر تحديث: ' : 'Last updated: '}
                   {new Date(appConfig.ios_version.updated_at).toLocaleString()}
                 </p>
@@ -208,7 +208,7 @@ export const AdminAppConfigTab: React.FC = () => {
 
           <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-navy mb-1">
                 {language === 'ar' ? 'رقم الإصدار الجديد' : 'New Version Number'}
               </label>
               <Input
@@ -222,7 +222,7 @@ export const AdminAppConfigTab: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-navy mb-1">
                 {language === 'ar' ? 'ملاحظات الإصدار' : 'Release Notes'}
               </label>
               <textarea
@@ -230,7 +230,7 @@ export const AdminAppConfigTab: React.FC = () => {
                 value={iosReleaseNotes}
                 onChange={(e) => setIosReleaseNotes(e.target.value)}
                 disabled={updating}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                className="w-full px-3 py-2 border border-[var(--border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm"
                 rows={3}
               />
             </div>
@@ -241,9 +241,9 @@ export const AdminAppConfigTab: React.FC = () => {
                 checked={iosForceUpdate}
                 onChange={(e) => setIosForceUpdate(e.target.checked)}
                 disabled={updating}
-                className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-2 focus:ring-primary"
+                className="w-4 h-4 rounded border-[var(--border)] text-primary focus:ring-2 focus:ring-primary/20"
               />
-              <span className="text-sm font-medium text-slate-700">
+              <span className="text-sm font-medium text-navy">
                 {language === 'ar' ? 'فرض التحديث على جميع المستخدمين' : 'Force update for all users'}
               </span>
             </label>
@@ -251,7 +251,7 @@ export const AdminAppConfigTab: React.FC = () => {
             <Button
               onClick={handleUpdateIOSVersion}
               disabled={updating}
-              className="w-full bg-blue-600 hover:bg-blue-700"
+              className="w-full bg-primary hover:bg-primary"
             >
               {updating ? (
                 <>
@@ -269,16 +269,16 @@ export const AdminAppConfigTab: React.FC = () => {
         </div>
 
         {/* Android Version Manager */}
-        <div className="bg-white border border-slate-200 rounded-lg p-6 space-y-4">
+        <div className="bg-white border border-[var(--border)] rounded-lg p-6 space-y-4">
           <div className="flex items-center gap-2 mb-4">
-            <h2 className="text-xl font-semibold text-slate-900">
+            <h2 className="text-xl font-semibold text-[var(--text-main)]">
               {language === 'ar' ? 'إصدار Android' : 'Android Version'}
             </h2>
           </div>
 
           {appConfig?.android_version && (
-            <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-              <p className="text-xs text-green-600 font-medium">
+            <div className="p-3 bg-primary-pale rounded-lg border border-green-200">
+              <p className="text-xs text-primary font-medium">
                 {language === 'ar' ? 'الإصدار الحالي' : 'Current Version'}
               </p>
               <p className="text-lg font-bold text-green-900">{appConfig.android_version.version}</p>
@@ -289,7 +289,7 @@ export const AdminAppConfigTab: React.FC = () => {
                 </p>
               )}
               {appConfig.android_version.updated_at && (
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-[var(--text-muted)] mt-1">
                   {language === 'ar' ? 'آخر تحديث: ' : 'Last updated: '}
                   {new Date(appConfig.android_version.updated_at).toLocaleString()}
                 </p>
@@ -299,7 +299,7 @@ export const AdminAppConfigTab: React.FC = () => {
 
           <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-navy mb-1">
                 {language === 'ar' ? 'رقم الإصدار الجديد' : 'New Version Number'}
               </label>
               <Input
@@ -313,7 +313,7 @@ export const AdminAppConfigTab: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-navy mb-1">
                 {language === 'ar' ? 'ملاحظات الإصدار' : 'Release Notes'}
               </label>
               <textarea
@@ -321,7 +321,7 @@ export const AdminAppConfigTab: React.FC = () => {
                 value={androidReleaseNotes}
                 onChange={(e) => setAndroidReleaseNotes(e.target.value)}
                 disabled={updating}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                className="w-full px-3 py-2 border border-[var(--border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm"
                 rows={3}
               />
             </div>
@@ -332,9 +332,9 @@ export const AdminAppConfigTab: React.FC = () => {
                 checked={androidForceUpdate}
                 onChange={(e) => setAndroidForceUpdate(e.target.checked)}
                 disabled={updating}
-                className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-2 focus:ring-primary"
+                className="w-4 h-4 rounded border-[var(--border)] text-primary focus:ring-2 focus:ring-primary/20"
               />
-              <span className="text-sm font-medium text-slate-700">
+              <span className="text-sm font-medium text-navy">
                 {language === 'ar' ? 'فرض التحديث على جميع المستخدمين' : 'Force update for all users'}
               </span>
             </label>
@@ -342,7 +342,7 @@ export const AdminAppConfigTab: React.FC = () => {
             <Button
               onClick={handleUpdateAndroidVersion}
               disabled={updating}
-              className="w-full bg-green-600 hover:bg-green-700"
+              className="w-full bg-primary hover:bg-primary"
             >
               {updating ? (
                 <>
@@ -361,9 +361,9 @@ export const AdminAppConfigTab: React.FC = () => {
       </div>
 
       {/* Maintenance Mode */}
-      <div className="bg-white border border-slate-200 rounded-lg p-6 space-y-4">
+      <div className="bg-white border border-[var(--border)] rounded-lg p-6 space-y-4">
         <div className="flex items-center gap-2 mb-4">
-          <h2 className="text-xl font-semibold text-slate-900">
+          <h2 className="text-xl font-semibold text-[var(--text-main)]">
             {language === 'ar' ? 'وضع الصيانة' : 'Maintenance Mode'}
           </h2>
         </div>
@@ -373,7 +373,7 @@ export const AdminAppConfigTab: React.FC = () => {
             className={`p-3 rounded-lg border ${
               maintenanceEnabled
                 ? 'bg-yellow-50 border-yellow-200'
-                : 'bg-slate-50 border-slate-200'
+                : 'bg-[var(--light-bg)] border-[var(--border)]'
             }`}
           >
             <p className="text-xs font-medium mb-1">
@@ -382,10 +382,10 @@ export const AdminAppConfigTab: React.FC = () => {
             <div className="flex items-center gap-2">
               <div
                 className={`w-3 h-3 rounded-full ${
-                  maintenanceEnabled ? 'bg-yellow-600' : 'bg-slate-400'
+                  maintenanceEnabled ? 'bg-yellow-600' : 'bg-[var(--border)]'
                 }`}
               />
-              <span className="font-semibold text-slate-900">
+              <span className="font-semibold text-[var(--text-main)]">
                 {maintenanceEnabled
                   ? language === 'ar'
                     ? 'مفعل ⚠️'
@@ -396,7 +396,7 @@ export const AdminAppConfigTab: React.FC = () => {
               </span>
             </div>
             {appConfig.maintenance_mode.updated_at && (
-              <p className="text-xs text-slate-500 mt-2">
+              <p className="text-xs text-[var(--text-muted)] mt-2">
                 {language === 'ar' ? 'آخر تحديث: ' : 'Last updated: '}
                 {new Date(appConfig.maintenance_mode.updated_at).toLocaleString()}
               </p>
@@ -406,7 +406,7 @@ export const AdminAppConfigTab: React.FC = () => {
 
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-navy mb-1">
               {language === 'ar' ? 'رسالة الصيانة' : 'Maintenance Message'}
             </label>
             <textarea
@@ -418,13 +418,13 @@ export const AdminAppConfigTab: React.FC = () => {
               value={maintenanceMessage}
               onChange={(e) => setMaintenanceMessage(e.target.value)}
               disabled={updating}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+              className="w-full px-3 py-2 border border-[var(--border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm"
               rows={3}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-navy mb-1">
               {language === 'ar' ? 'الوقت المتوقع للانتهاء' : 'Estimated End Time'}
             </label>
             <Input
@@ -436,8 +436,8 @@ export const AdminAppConfigTab: React.FC = () => {
             />
           </div>
 
-          <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-            <p className="text-sm font-medium text-slate-900 mb-3">
+          <div className="bg-[var(--light-bg)] p-4 rounded-lg border border-[var(--border)]">
+            <p className="text-sm font-medium text-[var(--text-main)] mb-3">
               {language === 'ar' ? 'حالة الصيانة الحالية' : 'Current Maintenance Status'}
             </p>
             <Button

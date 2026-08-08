@@ -244,7 +244,7 @@ export const PrivateLessonsTab: React.FC<PrivateLessonsTabProps> = ({ onTeacherS
         ${showMobileFilters ? 'translate-x-0' : (direction === 'rtl' ? 'translate-x-full' : '-translate-x-full')}
         ${direction === 'rtl' ? 'right-0 left-auto' : 'left-0 right-auto'}
       `}>
-        <div className="h-full overflow-y-auto p-6 bg-white rounded-2xl border border-slate-100 shadow-sm lg:sticky lg:top-24">
+        <div className="h-full overflow-y-auto p-6 bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] lg:sticky lg:top-24">
           <div className="flex justify-between items-center mb-6 lg:hidden">
             <h3 className="font-bold text-lg">{t.filters}</h3>
             <button onClick={() => setShowMobileFilters(false)}><X size={24} /></button>
@@ -302,7 +302,7 @@ export const PrivateLessonsTab: React.FC<PrivateLessonsTabProps> = ({ onTeacherS
             )}
 
             <div>
-              <h4 className="text-sm font-bold text-slate-900 mb-3 uppercase tracking-wider">{t.rating}</h4>
+              <h4 className="text-sm font-bold text-[var(--text-main)] mb-3 uppercase tracking-wider">{t.rating}</h4>
               <div className="space-y-2">
                 {[5, 4, 3].map(star => (
                   <label key={star} className="flex items-center gap-2 cursor-pointer group">
@@ -311,37 +311,37 @@ export const PrivateLessonsTab: React.FC<PrivateLessonsTabProps> = ({ onTeacherS
                       name="rating"
                       checked={selectedRating === star}
                       onChange={() => setSelectedRating(selectedRating === star ? 0 : star)}
-                      className="rounded-full border-slate-300 text-primary focus:ring-primary"
+                      className="rounded-full border-[var(--border)] text-primary focus:ring-primary/20"
                     />
                     <div className="flex text-amber-400 group-hover:opacity-80">
                       {[...Array(5)].map((_, i) => (
-                        <Star key={i} size={16} fill={i < star ? "currentColor" : "none"} className={i >= star ? "text-slate-300" : ""} />
+                        <Star key={i} size={16} fill={i < star ? "currentColor" : "none"} className={i >= star ? "text-[var(--text-muted)]" : ""} />
                       ))}
                     </div>
-                    <span className="text-sm text-slate-600">& Up</span>
+                    <span className="text-sm text-[var(--text-muted)]">& Up</span>
                   </label>
                 ))}
               </div>
             </div>
 
             <div>
-              <h4 className="text-sm font-bold text-slate-900 mb-3 uppercase tracking-wider">{t.priceRange}</h4>
+              <h4 className="text-sm font-bold text-[var(--text-main)] mb-3 uppercase tracking-wider">{t.priceRange}</h4>
               <input
                 type="range"
                 min="50"
                 max="500"
                 value={priceRange}
                 onChange={(e) => setPriceRange(Number(e.target.value))}
-                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-primary"
+                className="w-full h-2 bg-[var(--border)] rounded-lg appearance-none cursor-pointer accent-primary"
               />
-              <div className="flex justify-between text-sm text-slate-500 mt-2 font-medium">
+              <div className="flex justify-between text-sm text-[var(--text-muted)] mt-2 font-medium">
                 <span>50 {t.sar}</span>
                 <span>{priceRange} {t.sar}</span>
               </div>
             </div>
 
             <Button className="w-full mt-4" onClick={handleApplyFilters}>{t.applyFilters}</Button>
-            <Button variant="ghost" className="w-full text-slate-500 hover:text-slate-700" onClick={clearAllFilters}>
+            <Button variant="ghost" className="w-full text-[var(--text-muted)] hover:text-navy" onClick={clearAllFilters}>
               {t.clearFilters}
             </Button>
           </div>
@@ -355,19 +355,19 @@ export const PrivateLessonsTab: React.FC<PrivateLessonsTabProps> = ({ onTeacherS
       <div className="flex-1 space-y-4" ref={scrollRef}>
         <div className="flex gap-2">
           <div className="relative flex-1">
-            <Search className={`absolute top-1/2 -translate-y-1/2 text-slate-400 ${direction === 'rtl' ? 'right-4' : 'left-4'}`} size={20} />
+            <Search className={`absolute top-1/2 -translate-y-1/2 text-[var(--text-muted)] ${direction === 'rtl' ? 'right-4' : 'left-4'}`} size={20} />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               placeholder={t.searchPlaceholder}
-              className={`w-full h-12 rounded-xl border border-slate-200 shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all ${direction === 'rtl' ? 'pr-12 pl-4' : 'pl-12 pr-4'}`}
+              className={`w-full h-12 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all ${direction === 'rtl' ? 'pr-12 pl-4' : 'pl-12 pr-4'}`}
             />
           </div>
           <button
             onClick={() => setShowCodeDialog(true)}
-            className="h-12 px-4 rounded-xl border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors flex items-center gap-2 text-slate-600"
+            className="h-12 px-4 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] hover:bg-[var(--light-bg)] transition-colors flex items-center gap-2 text-[var(--text-muted)]"
             title={t.searchByCode || (language === 'ar' ? 'البحث بالكود' : 'Search by Code')}
           >
             <Tag size={20} />
@@ -377,7 +377,7 @@ export const PrivateLessonsTab: React.FC<PrivateLessonsTabProps> = ({ onTeacherS
 
         {activeFilters.length > 0 && (
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-medium text-slate-500">{t.activeFilters || (language === 'ar' ? 'التصفية النشطة' : 'Active Filters')}:</span>
+            <span className="text-xs font-medium text-[var(--text-muted)]">{t.activeFilters || (language === 'ar' ? 'التصفية النشطة' : 'Active Filters')}:</span>
             {activeFilters.map(f => (
               <span key={f.key} className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary/10 text-primary text-sm font-medium rounded-full">
                 {f.label}
@@ -393,7 +393,7 @@ export const PrivateLessonsTab: React.FC<PrivateLessonsTabProps> = ({ onTeacherS
         )}
 
         {!isFirstLoad && !loading && (
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-[var(--text-muted)]">
             {t.teachersAvailable ? t.teachersAvailable(totalTeachers) : `${totalTeachers} ${language === 'ar' ? 'معلم متاح' : 'teachers available'}`}
           </p>
         )}
@@ -403,14 +403,14 @@ export const PrivateLessonsTab: React.FC<PrivateLessonsTabProps> = ({ onTeacherS
             <Loader2 className="animate-spin h-8 w-8 text-primary" />
           </div>
         ) : teachers.length === 0 ? (
-          <div className="text-center py-20 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+          <div className="text-center py-20 bg-[var(--light-bg)] rounded-[var(--radius-md)] border border-dashed border-[var(--border)]">
             <div className="flex justify-center mb-4">
-              <div className="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center">
-                <Search size={36} className="text-slate-400" />
+              <div className="w-20 h-20 rounded-full bg-[var(--light-bg)] flex items-center justify-center">
+                <Search size={36} className="text-[var(--text-muted)]" />
               </div>
             </div>
-            <p className="text-lg font-semibold text-slate-700 mb-2">{t.noTeachersFound || (language === 'ar' ? 'لم يتم العثور على معلمين' : 'No teachers found')}</p>
-            <p className="text-sm text-slate-500">{t.tryAdjustingSearch || (language === 'ar' ? 'حاول تعديل البحث أو التصفية' : 'Try adjusting your search or filters')}</p>
+            <p className="text-lg font-semibold text-navy mb-2">{t.noTeachersFound || (language === 'ar' ? 'لم يتم العثور على معلمين' : 'No teachers found')}</p>
+            <p className="text-sm text-[var(--text-muted)]">{t.tryAdjustingSearch || (language === 'ar' ? 'حاول تعديل البحث أو التصفية' : 'Try adjusting your search or filters')}</p>
           </div>
         ) : (
           <>
@@ -444,16 +444,16 @@ export const PrivateLessonsTab: React.FC<PrivateLessonsTabProps> = ({ onTeacherS
 
       {showCodeDialog && (
         <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4" onClick={() => setShowCodeDialog(false)}>
-          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-[var(--radius-md)] p-6 w-full max-w-sm shadow-xl" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-bold mb-2">{t.searchByCode || (language === 'ar' ? 'البحث بكود المعلم' : 'Search by Teacher Code')}</h3>
-            <p className="text-sm text-slate-500 mb-4">{language === 'ar' ? 'أدخل كود المعلم المكون من 3 أحرف وأرقام' : 'Enter the 3-letter + numbers teacher code'}</p>
+            <p className="text-sm text-[var(--text-muted)] mb-4">{language === 'ar' ? 'أدخل كود المعلم المكون من 3 أحرف وأرقام' : 'Enter the 3-letter + numbers teacher code'}</p>
             <input
               type="text"
               value={codeInput}
               onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
               onKeyDown={(e) => e.key === 'Enter' && handleCodeSearch()}
               placeholder={t.enterCode || (language === 'ar' ? 'أدخل كود المعلم' : 'Enter teacher code')}
-              className="w-full h-12 px-4 rounded-xl border border-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none text-center text-lg font-mono tracking-widest"
+              className="w-full h-12 px-4 rounded-[var(--radius-md)] border border-[var(--border)] focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none text-center text-lg font-mono tracking-widest"
               autoFocus
               dir="ltr"
             />

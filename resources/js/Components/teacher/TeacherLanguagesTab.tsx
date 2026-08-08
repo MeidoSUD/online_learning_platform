@@ -66,10 +66,10 @@ export const TeacherLanguagesTab: React.FC<TeacherLanguagesTabProps> = ({ user }
     return (
         <div className="space-y-6 animate-fade-in">
             <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-slate-900">{language === 'ar' ? 'لغاتي' : 'My Languages'}</h2>
+                <h2 className="text-2xl font-bold text-[var(--text-main)]">{language === 'ar' ? 'لغاتي' : 'My Languages'}</h2>
             </div>
 
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="bg-white p-6 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)]">
                 <h3 className="font-bold text-lg mb-4">{language === 'ar' ? 'إضافة لغة جديدة' : 'Add New Language'}</h3>
                 <div className="flex gap-4 items-end">
                     <div className="flex-1">
@@ -91,21 +91,21 @@ export const TeacherLanguagesTab: React.FC<TeacherLanguagesTabProps> = ({ user }
                 {myLanguages.map(subj => {
                     const name = language === 'ar' ? subj.name_ar : subj.name_en;
                     return (
-                        <div key={subj.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
+                        <div key={subj.id} className="bg-white p-4 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] flex justify-between items-center">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 bg-purple-100 text-purple-600 rounded-lg">
+                                <div className="p-2 bg-purple-100 text-[var(--accent)] rounded-lg">
                                     <Globe size={20} />
                                 </div>
-                                <span className="font-bold text-slate-800">{name || subj.title}</span>
+                                <span className="font-bold text-[var(--text-main)]">{name || subj.title}</span>
                             </div>
-                            <button className="text-slate-400 hover:text-red-500 transition-colors">
+                            <button className="text-[var(--text-muted)] hover:text-red-500 transition-colors">
                                 <Trash2 size={18} />
                             </button>
                         </div>
                     );
                 })}
                 {myLanguages.length === 0 && (
-                    <div className="col-span-full text-center py-10 bg-slate-50 rounded-xl border border-dashed border-slate-300 text-slate-500">
+                    <div className="col-span-full text-center py-10 bg-[var(--light-bg)] rounded-[var(--radius-md)] border border-dashed border-[var(--border)] text-[var(--text-muted)]">
                         No languages added yet.
                     </div>
                 )}

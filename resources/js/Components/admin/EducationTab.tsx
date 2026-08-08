@@ -223,15 +223,15 @@ export const EducationTab: React.FC = () => {
 
     return (
         <div className="space-y-6 animate-fade-in">
-            <h2 className="text-2xl font-bold text-slate-900">{t.academicStructure}</h2>
+            <h2 className="text-2xl font-bold text-[var(--text-main)]">{t.academicStructure}</h2>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[calc(100vh-250px)] min-h-[600px]">
 
                 {/* Levels Column */}
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
-                    <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                <div className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] flex flex-col overflow-hidden">
+                    <div className="p-4 border-b border-[var(--border)] bg-[var(--light-bg)] flex justify-between items-center">
                         <div className="flex items-center gap-2">
-                            <h3 className="font-bold text-slate-700">{t.levels}</h3>
+                            <h3 className="font-bold text-navy">{t.levels}</h3>
                             {loadingLevels && <Loader2 size={14} className="animate-spin text-primary" />}
                         </div>
                         <button
@@ -248,7 +248,7 @@ export const EducationTab: React.FC = () => {
                                 onClick={() => { setActiveLevel(level.id); setActiveClass(null); }}
                                 className={`group flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all border ${activeLevel === level.id
                                     ? 'bg-primary/5 border-primary text-primary'
-                                    : 'hover:bg-slate-50 border-transparent'
+                                    : 'hover:bg-[var(--light-bg)] border-transparent'
                                     } ${level.deleted_at ? 'opacity-50 grayscale' : ''}`}
                             >
                                 <div className="flex flex-col">
@@ -256,13 +256,13 @@ export const EducationTab: React.FC = () => {
                                     {level.deleted_at && <span className="text-[10px] text-red-500 font-bold uppercase">{t.deleted}</span>}
                                 </div>
                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button onClick={(e) => { e.stopPropagation(); openModal('level', level); }} className="p-1.5 text-slate-400 hover:text-blue-500 rounded-md hover:bg-white"><Edit2 size={14} /></button>
+                                    <button onClick={(e) => { e.stopPropagation(); openModal('level', level); }} className="p-1.5 text-[var(--text-muted)] hover:text-secondary rounded-md hover:bg-white"><Edit2 size={14} /></button>
                                     {level.deleted_at ? (
-                                        <button onClick={(e) => { e.stopPropagation(); handleRestore('level', level.id); }} className="p-1.5 text-slate-400 hover:text-green-500 rounded-md hover:bg-white"><RotateCcw size={14} /></button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleRestore('level', level.id); }} className="p-1.5 text-[var(--text-muted)] hover:text-green-500 rounded-md hover:bg-white"><RotateCcw size={14} /></button>
                                     ) : (
-                                        <button onClick={(e) => { e.stopPropagation(); handleDelete('level', level.id); }} className="p-1.5 text-slate-400 hover:text-red-500 rounded-md hover:bg-white"><Trash2 size={14} /></button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleDelete('level', level.id); }} className="p-1.5 text-[var(--text-muted)] hover:text-red-500 rounded-md hover:bg-white"><Trash2 size={14} /></button>
                                     )}
-                                    <ChevronRight size={16} className={`text-slate-400 ${direction === 'rtl' ? 'rotate-180' : ''}`} />
+                                    <ChevronRight size={16} className={`text-[var(--text-muted)] ${direction === 'rtl' ? 'rotate-180' : ''}`} />
                                 </div>
                             </div>
                         ))}
@@ -270,10 +270,10 @@ export const EducationTab: React.FC = () => {
                 </div>
 
                 {/* Classes Column */}
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
-                    <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                <div className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] flex flex-col overflow-hidden">
+                    <div className="p-4 border-b border-[var(--border)] bg-[var(--light-bg)] flex justify-between items-center">
                         <div className="flex items-center gap-2">
-                            <h3 className="font-bold text-slate-700">{t.classes}</h3>
+                            <h3 className="font-bold text-navy">{t.classes}</h3>
                             {loadingClasses && <Loader2 size={14} className="animate-spin text-primary" />}
                         </div>
                         <button
@@ -286,12 +286,12 @@ export const EducationTab: React.FC = () => {
                     </div>
                     <div className="flex-1 overflow-y-auto p-2 space-y-1">
                         {!activeLevel ? (
-                            <div className="flex flex-col items-center justify-center h-full text-slate-400 text-sm p-4 text-center">
+                            <div className="flex flex-col items-center justify-center h-full text-[var(--text-muted)] text-sm p-4 text-center">
                                 <AlertCircle size={24} className="mb-2 opacity-20" />
                                 {t.selectLevelFirst}
                             </div>
                         ) : classes.length === 0 && !loadingClasses ? (
-                            <div className="text-center text-slate-400 mt-10 text-sm">{t.noClassesFound}</div>
+                            <div className="text-center text-[var(--text-muted)] mt-10 text-sm">{t.noClassesFound}</div>
                         ) : (
                             classes.map(cls => (
                                 <div
@@ -299,7 +299,7 @@ export const EducationTab: React.FC = () => {
                                     onClick={() => setActiveClass(cls.id)}
                                     className={`group flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all border ${activeClass === cls.id
                                         ? 'bg-primary/5 border-primary text-primary'
-                                        : 'hover:bg-slate-50 border-transparent'
+                                        : 'hover:bg-[var(--light-bg)] border-transparent'
                                         } ${cls.deleted_at ? 'opacity-50 grayscale' : ''}`}
                                 >
                                     <div className="flex flex-col">
@@ -307,13 +307,13 @@ export const EducationTab: React.FC = () => {
                                         {cls.deleted_at && <span className="text-[10px] text-red-500 font-bold uppercase">{t.deleted}</span>}
                                     </div>
                                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button onClick={(e) => { e.stopPropagation(); openModal('class', cls); }} className="p-1.5 text-slate-400 hover:text-blue-500 rounded-md hover:bg-white"><Edit2 size={14} /></button>
+                                        <button onClick={(e) => { e.stopPropagation(); openModal('class', cls); }} className="p-1.5 text-[var(--text-muted)] hover:text-secondary rounded-md hover:bg-white"><Edit2 size={14} /></button>
                                         {cls.deleted_at ? (
-                                            <button onClick={(e) => { e.stopPropagation(); handleRestore('class', cls.id); }} className="p-1.5 text-slate-400 hover:text-green-500 rounded-md hover:bg-white"><RotateCcw size={14} /></button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleRestore('class', cls.id); }} className="p-1.5 text-[var(--text-muted)] hover:text-green-500 rounded-md hover:bg-white"><RotateCcw size={14} /></button>
                                         ) : (
-                                            <button onClick={(e) => { e.stopPropagation(); handleDelete('class', cls.id); }} className="p-1.5 text-slate-400 hover:text-red-500 rounded-md hover:bg-white"><Trash2 size={14} /></button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleDelete('class', cls.id); }} className="p-1.5 text-[var(--text-muted)] hover:text-red-500 rounded-md hover:bg-white"><Trash2 size={14} /></button>
                                         )}
-                                        <ChevronRight size={16} className={`text-slate-400 ${direction === 'rtl' ? 'rotate-180' : ''}`} />
+                                        <ChevronRight size={16} className={`text-[var(--text-muted)] ${direction === 'rtl' ? 'rotate-180' : ''}`} />
                                     </div>
                                 </div>
                             ))
@@ -322,10 +322,10 @@ export const EducationTab: React.FC = () => {
                 </div>
 
                 {/* Subjects Column */}
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
-                    <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                <div className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] flex flex-col overflow-hidden">
+                    <div className="p-4 border-b border-[var(--border)] bg-[var(--light-bg)] flex justify-between items-center">
                         <div className="flex items-center gap-2">
-                            <h3 className="font-bold text-slate-700">{t.subjects}</h3>
+                            <h3 className="font-bold text-navy">{t.subjects}</h3>
                             {loadingSubjects && <Loader2 size={14} className="animate-spin text-primary" />}
                         </div>
                         <button
@@ -338,28 +338,28 @@ export const EducationTab: React.FC = () => {
                     </div>
                     <div className="flex-1 overflow-y-auto p-2 space-y-1">
                         {!activeClass ? (
-                            <div className="flex flex-col items-center justify-center h-full text-slate-400 text-sm p-4 text-center">
+                            <div className="flex flex-col items-center justify-center h-full text-[var(--text-muted)] text-sm p-4 text-center">
                                 <AlertCircle size={24} className="mb-2 opacity-20" />
                                 {t.selectClassFirst}
                             </div>
                         ) : subjects.length === 0 && !loadingSubjects ? (
-                            <div className="text-center text-slate-400 mt-10 text-sm">{t.noSubjectsFound}</div>
+                            <div className="text-center text-[var(--text-muted)] mt-10 text-sm">{t.noSubjectsFound}</div>
                         ) : (
                             subjects.map(sub => (
                                 <div
                                     key={sub.id}
-                                    className={`group flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 border border-transparent transition-all ${sub.deleted_at ? 'opacity-50 grayscale' : ''}`}
+                                    className={`group flex items-center justify-between p-3 rounded-lg hover:bg-[var(--light-bg)] border border-transparent transition-all ${sub.deleted_at ? 'opacity-50 grayscale' : ''}`}
                                 >
                                     <div className="flex flex-col">
                                         <span className="font-medium">{language === 'ar' ? sub.name_ar : sub.name_en}</span>
                                         {sub.deleted_at && <span className="text-[10px] text-red-500 font-bold uppercase">{t.deleted}</span>}
                                     </div>
                                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button onClick={() => openModal('subject', sub)} className="p-1.5 text-slate-400 hover:text-blue-500 rounded-md hover:bg-white"><Edit2 size={14} /></button>
+                                        <button onClick={() => openModal('subject', sub)} className="p-1.5 text-[var(--text-muted)] hover:text-secondary rounded-md hover:bg-white"><Edit2 size={14} /></button>
                                         {sub.deleted_at ? (
-                                            <button onClick={() => handleRestore('subject', sub.id)} className="p-1.5 text-slate-400 hover:text-green-500 rounded-md hover:bg-white"><RotateCcw size={14} /></button>
+                                            <button onClick={() => handleRestore('subject', sub.id)} className="p-1.5 text-[var(--text-muted)] hover:text-green-500 rounded-md hover:bg-white"><RotateCcw size={14} /></button>
                                         ) : (
-                                            <button onClick={() => handleDelete('subject', sub.id)} className="p-1.5 text-slate-400 hover:text-red-500 rounded-md hover:bg-white"><Trash2 size={14} /></button>
+                                            <button onClick={() => handleDelete('subject', sub.id)} className="p-1.5 text-[var(--text-muted)] hover:text-red-500 rounded-md hover:bg-white"><Trash2 size={14} /></button>
                                         )}
                                     </div>
                                 </div>
@@ -392,9 +392,9 @@ export const EducationTab: React.FC = () => {
                     />
                     {modal.type === 'level' && (
                         <div className="mb-4 w-full">
-                            <label className="block text-sm font-medium text-slate-700 mb-1">{t.description}</label>
+                            <label className="block text-sm font-medium text-navy mb-1">{t.description}</label>
                             <textarea
-                                className="w-full rounded-lg border border-slate-200 p-3 h-20 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
+                                className="w-full rounded-lg border border-[var(--border)] p-3 h-20 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
                                 value={modal.data.description || ''}
                                 onChange={e => setModal({ ...modal, data: { ...modal.data, description: e.target.value } })}
                             />
@@ -415,10 +415,10 @@ export const EducationTab: React.FC = () => {
                     )}
 
                     <div className="flex items-center gap-2 py-2">
-                        <label className="text-sm font-medium text-slate-700">{t.status}:</label>
+                        <label className="text-sm font-medium text-navy">{t.status}:</label>
                         <button
                             onClick={() => setModal({ ...modal, data: { ...modal.data, status: modal.data.status === 1 ? 0 : 1 } })}
-                            className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${modal.data.status === 1 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                            className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${modal.data.status === 1 ? 'bg-primary-pale text-primary' : 'bg-red-100 text-red-700'
                                 }`}
                         >
                             {modal.data.status === 1 ? t.activeStatus : t.inactiveStatus}

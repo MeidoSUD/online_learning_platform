@@ -126,26 +126,26 @@ export const MyTransactions: React.FC = () => {
 
     return (
         <div className="space-y-6 animate-fade-in">
-            <h2 className="text-2xl font-bold text-slate-900">{t.myTransactions}</h2>
+            <h2 className="text-2xl font-bold text-[var(--text-main)]">{t.myTransactions}</h2>
             
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm">
-                        <thead className="bg-slate-50 border-b border-slate-200">
+                        <thead className="bg-[var(--light-bg)] border-b border-[var(--border)]">
                             <tr>
-                                <th className="px-6 py-4 font-bold text-slate-700">Reference</th>
-                                <th className="px-6 py-4 font-bold text-slate-700">{t.teacher}</th>
-                                <th className="px-6 py-4 font-bold text-slate-700">{t.subject}</th>
-                                <th className="px-6 py-4 font-bold text-slate-700">{t.date}</th>
-                                <th className="px-6 py-4 font-bold text-slate-700">{t.status}</th>
-                                <th className="px-6 py-4 font-bold text-slate-700 text-right">Amount</th>
-                                <th className="px-6 py-4 font-bold text-slate-700 text-right">Actions</th>
+                                <th className="px-6 py-4 font-bold text-navy">Reference</th>
+                                <th className="px-6 py-4 font-bold text-navy">{t.teacher}</th>
+                                <th className="px-6 py-4 font-bold text-navy">{t.subject}</th>
+                                <th className="px-6 py-4 font-bold text-navy">{t.date}</th>
+                                <th className="px-6 py-4 font-bold text-navy">{t.status}</th>
+                                <th className="px-6 py-4 font-bold text-navy text-right">Amount</th>
+                                <th className="px-6 py-4 font-bold text-navy text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
+                        <tbody className="divide-y divide-[var(--border)]">
                             {bookings.length === 0 ? (
                                 <tr>
-                                    <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
+                                    <td colSpan={7} className="px-6 py-12 text-center text-[var(--text-muted)]">
                                         No transactions found.
                                     </td>
                                 </tr>
@@ -156,30 +156,30 @@ export const MyTransactions: React.FC = () => {
                                     const isPending = booking.status === 'pending_payment';
 
                                     return (
-                                        <tr key={booking.id} className="hover:bg-slate-50 transition-colors">
-                                            <td className="px-6 py-4 font-mono text-slate-500">
+                                        <tr key={booking.id} className="hover:bg-[var(--light-bg)] transition-colors">
+                                            <td className="px-6 py-4 font-mono text-[var(--text-muted)]">
                                                 {booking.reference || `#${booking.id}`}
                                             </td>
-                                            <td className="px-6 py-4 font-medium text-slate-900">
+                                            <td className="px-6 py-4 font-medium text-[var(--text-main)]">
                                                 {booking.teacher?.first_name} {booking.teacher?.last_name}
                                             </td>
-                                            <td className="px-6 py-4 text-slate-600">
+                                            <td className="px-6 py-4 text-[var(--text-muted)]">
                                                 {getSubjectName(booking)}
                                             </td>
-                                            <td className="px-6 py-4 text-slate-500">
+                                            <td className="px-6 py-4 text-[var(--text-muted)]">
                                                 {booking.created_at ? new Date(booking.created_at).toLocaleDateString() : 'N/A'}
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide ${
-                                                    booking.status === 'confirmed' ? 'bg-green-100 text-green-700' :
+                                                    booking.status === 'confirmed' ? 'bg-primary-pale text-primary' :
                                                     booking.status === 'pending_payment' ? 'bg-yellow-100 text-yellow-700' :
                                                     booking.status === 'cancelled' ? 'bg-red-100 text-red-700' :
-                                                    'bg-slate-100 text-slate-700'
+                                                    'bg-[var(--light-bg)] text-navy'
                                                 }`}>
                                                     {isPending ? 'Pending Payment' : booking.status}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 text-right font-bold text-slate-900">
+                                            <td className="px-6 py-4 text-right font-bold text-[var(--text-main)]">
                                                 {amount} {currency}
                                             </td>
                                             <td className="px-6 py-4 text-right">
@@ -196,7 +196,7 @@ export const MyTransactions: React.FC = () => {
                                                         booking.status !== 'cancelled' && (
                                                             <button 
                                                                 onClick={() => handleDownload(booking.id)}
-                                                                className="inline-flex items-center justify-center p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                                                                className="inline-flex items-center justify-center p-2 text-primary hover:bg-primary-pale rounded-lg transition-colors"
                                                                 title="Download Invoice"
                                                             >
                                                                 <Download size={18} />
@@ -217,31 +217,31 @@ export const MyTransactions: React.FC = () => {
             {/* Payment Modal */}
             <Modal isOpen={!!selectedBooking} onClose={() => setSelectedBooking(null)} title="Complete Payment">
                 <div className="space-y-4">
-                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                    <div className="p-4 bg-[var(--light-bg)] rounded-[var(--radius-md)] border border-[var(--border)]">
                         <div className="flex justify-between items-center">
                             <div>
-                                <p className="text-xs text-slate-400">Booking Reference</p>
+                                <p className="text-xs text-[var(--text-muted)]">Booking Reference</p>
                                 <p className="font-bold font-mono">{selectedBooking?.reference || `#${selectedBooking?.id}`}</p>
                             </div>
                             <div className="text-right">
-                                <p className="text-xs text-slate-400">Total Amount</p>
+                                <p className="text-xs text-[var(--text-muted)]">Total Amount</p>
                                 <p className="text-xl font-bold text-primary">{selectedBooking?.total_price || selectedBooking?.pricing?.total_amount} {t.sar}</p>
                             </div>
                         </div>
                     </div>
 
-                    <h3 className="font-bold text-slate-900">Select Payment Method</h3>
+                    <h3 className="font-bold text-[var(--text-main)]">Select Payment Method</h3>
                     <div className="space-y-2">
                         {paymentMethods.map(method => (
                             <div 
                                 key={method.id} 
                                 onClick={() => setSelectedPaymentMethod(method)}
-                                className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
-                                    selectedPaymentMethod === method ? 'bg-blue-50 border-primary' : 'bg-white border-slate-200'
+                                className={`flex items-center justify-between p-3 rounded-[var(--radius-md)] border cursor-pointer transition-all ${
+                                    selectedPaymentMethod === method ? 'bg-secondary-pale border-primary' : 'bg-white border-[var(--border)]'
                                 }`}
                             >
                                 <div className="flex items-center gap-3">
-                                    <CreditCard size={20} className="text-slate-400" />
+                                    <CreditCard size={20} className="text-[var(--text-muted)]" />
                                     <span className="text-sm font-medium">{method.payment_method?.name_en} (**** {method.card_number?.slice(-4)})</span>
                                 </div>
                                 {selectedPaymentMethod === method && <CheckCircle size={16} className="text-primary" />}
@@ -249,16 +249,16 @@ export const MyTransactions: React.FC = () => {
                         ))}
                         <div 
                             onClick={() => setSelectedPaymentMethod('new')}
-                            className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                                selectedPaymentMethod === 'new' ? 'bg-blue-50 border-primary' : 'bg-white border-slate-200'
+                            className={`flex items-center gap-3 p-3 rounded-[var(--radius-md)] border cursor-pointer transition-all ${
+                                selectedPaymentMethod === 'new' ? 'bg-secondary-pale border-primary' : 'bg-white border-[var(--border)]'
                             }`}
                         >
-                            <span className="text-sm font-bold text-slate-500">+ Use New Card</span>
+                            <span className="text-sm font-bold text-[var(--text-muted)]">+ Use New Card</span>
                         </div>
                     </div>
 
                     {selectedPaymentMethod === 'new' && (
-                        <div className="p-4 border border-slate-200 rounded-xl bg-slate-50/50 space-y-3 animate-fade-in">
+                        <div className="p-4 border border-[var(--border)] rounded-[var(--radius-md)] bg-[var(--light-bg)] space-y-3 animate-fade-in">
                             <Select 
                                 label="Card Brand"
                                 options={[{value: 'VISA', label: 'Visa'}, {value: 'MASTERCARD', label: 'Mastercard'}, {value: 'MADA', label: 'Mada'}]}

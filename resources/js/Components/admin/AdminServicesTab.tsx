@@ -191,30 +191,30 @@ export const AdminServicesTab: React.FC = () => {
     return (
         <div className="space-y-6 animate-fade-in">
             <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-slate-900">{t.servicesManagement}</h2>
+                <h2 className="text-2xl font-bold text-[var(--text-main)]">{t.servicesManagement}</h2>
                 <Button onClick={() => { resetForm(); setIsModalOpen(true); }} className="flex items-center gap-2">
                     <Plus size={20} /> {t.create}
                 </Button>
             </div>
 
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="bg-white p-4 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)]">
                 <div className="flex flex-col md:flex-row gap-4 mb-6">
                     <div className="relative flex-1">
-                        <Search className={`absolute top-1/2 -translate-y-1/2 text-slate-400 ${direction === 'rtl' ? 'right-3' : 'left-3'}`} size={20} />
+                        <Search className={`absolute top-1/2 -translate-y-1/2 text-[var(--text-muted)] ${direction === 'rtl' ? 'right-3' : 'left-3'}`} size={20} />
                         <input
                             type="text"
                             placeholder={t.searchPlaceholder}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className={`w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-primary ${direction === 'rtl' ? 'pr-10 pl-4' : ''}`}
+                            className={`w-full pl-10 pr-4 py-2 rounded-lg border border-[var(--border)] focus:outline-none focus:border-primary ${direction === 'rtl' ? 'pr-10 pl-4' : ''}`}
                         />
                     </div>
                     <div className="flex items-center gap-2">
-                        <Filter size={20} className="text-slate-400" />
+                        <Filter size={20} className="text-[var(--text-muted)]" />
                         <select
                             value={filterStatus}
                             onChange={(e) => setFilterStatus(e.target.value)}
-                            className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                            className="bg-[var(--light-bg)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"
                         >
                             <option value="all">{t.allStatus}</option>
                             <option value="1">{t.active}</option>
@@ -225,27 +225,27 @@ export const AdminServicesTab: React.FC = () => {
 
                 <div className="overflow-x-auto min-h-[400px]">
                     <table className="w-full text-left text-sm">
-                        <thead className="bg-slate-50 border-b border-slate-200">
+                        <thead className="bg-[var(--light-bg)] border-b border-[var(--border)]">
                             <tr>
-                                <th className="px-6 py-3 font-semibold text-slate-700">{t.name}</th>
-                                <th className="px-6 py-3 font-semibold text-slate-700">{t.role}</th>
-                                <th className="px-6 py-3 font-semibold text-slate-700">{t.status}</th>
-                                <th className="px-6 py-3 font-semibold text-slate-700 text-right">{t.actions}</th>
+                                <th className="px-6 py-3 font-semibold text-navy">{t.name}</th>
+                                <th className="px-6 py-3 font-semibold text-navy">{t.role}</th>
+                                <th className="px-6 py-3 font-semibold text-navy">{t.status}</th>
+                                <th className="px-6 py-3 font-semibold text-navy text-right">{t.actions}</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
+                        <tbody className="divide-y divide-[var(--border)]">
                             {paginatedServices.length === 0 ? (
                                 <tr>
-                                    <td colSpan={4} className="px-6 py-12 text-center text-slate-400">
+                                    <td colSpan={4} className="px-6 py-12 text-center text-[var(--text-muted)]">
                                         {t.noResults}
                                     </td>
                                 </tr>
                             ) : (
                                 paginatedServices.map(service => (
-                                    <tr key={service.id} className="hover:bg-slate-50">
+                                    <tr key={service.id} className="hover:bg-[var(--light-bg)]">
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="h-10 w-10 rounded-lg bg-slate-100 overflow-hidden flex-shrink-0 border border-slate-200 flex items-center justify-center">
+                                                <div className="h-10 w-10 rounded-lg bg-[var(--light-bg)] overflow-hidden flex-shrink-0 border border-[var(--border)] flex items-center justify-center">
                                                     {service.image ? (
                                                         <img src={service.image} alt="" className="h-full w-full object-cover" />
                                                     ) : (
@@ -253,21 +253,21 @@ export const AdminServicesTab: React.FC = () => {
                                                     )}
                                                 </div>
                                                 <div>
-                                                    <div className="font-medium text-slate-900">{service.name_en}</div>
-                                                    <div className="text-xs text-slate-500 font-arabic">{service.name_ar}</div>
+                                                    <div className="font-medium text-[var(--text-main)]">{service.name_en}</div>
+                                                    <div className="text-xs text-[var(--text-muted)] font-arabic">{service.name_ar}</div>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 text-slate-600">
+                                        <td className="px-6 py-4 text-[var(--text-muted)]">
                                             <div className="flex items-center gap-2">
-                                                <UserCheck size={16} className="text-slate-400" />
+                                                <UserCheck size={16} className="text-[var(--text-muted)]" />
                                                 {Number(service.role_id) === 3 ? t.teacher : t.student}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
                                             <button
                                                 onClick={() => handleToggleStatus(service)}
-                                                className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold transition-all ${Number(service.status) === 1 ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                                                className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold transition-all ${Number(service.status) === 1 ? 'bg-primary-pale text-primary hover:bg-green-200' : 'bg-[var(--light-bg)] text-[var(--text-muted)] hover:bg-[var(--border)]'}`}
                                             >
                                                 {Number(service.status) === 1 ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
                                                 {Number(service.status) === 1 ? t.active : t.inactiveStatus}
@@ -275,10 +275,10 @@ export const AdminServicesTab: React.FC = () => {
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex justify-end gap-2">
-                                                <button onClick={() => handleEdit(service)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                                                <button onClick={() => handleEdit(service)} className="p-2 text-[var(--text-muted)] hover:text-secondary hover:bg-secondary-pale rounded-lg transition-colors">
                                                     <Edit size={18} />
                                                 </button>
-                                                <button onClick={() => handleDelete(service.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                                                <button onClick={() => handleDelete(service.id)} className="p-2 text-[var(--text-muted)] hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
                                                     <Trash2 size={18} />
                                                 </button>
                                             </div>
@@ -300,41 +300,41 @@ export const AdminServicesTab: React.FC = () => {
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-1">
-                            <label className="text-sm font-semibold text-slate-700">{t.nameEn} *</label>
+                            <label className="text-sm font-semibold text-navy">{t.nameEn} *</label>
                             <input
                                 type="text"
                                 required
                                 value={formData.name_en}
                                 onChange={(e) => setFormData({ ...formData, name_en: e.target.value })}
-                                className="w-full p-2.5 rounded-lg border border-slate-200 focus:outline-none focus:border-primary text-sm"
+                                className="w-full p-2.5 rounded-lg border border-[var(--border)] focus:outline-none focus:border-primary text-sm"
                                 placeholder="Service Name (English)"
                             />
                         </div>
                         <div className="space-y-1">
-                            <label className="text-sm font-semibold text-slate-700">{t.nameAr} *</label>
+                            <label className="text-sm font-semibold text-navy">{t.nameAr} *</label>
                             <input
                                 type="text"
                                 required
                                 value={formData.name_ar}
                                 onChange={(e) => setFormData({ ...formData, name_ar: e.target.value })}
-                                className="w-full p-2.5 rounded-lg border border-slate-200 focus:outline-none focus:border-primary text-sm text-right"
+                                className="w-full p-2.5 rounded-lg border border-[var(--border)] focus:outline-none focus:border-primary text-sm text-right"
                                 placeholder="..."
                             />
                         </div>
                     </div>
 
                     <div className="space-y-1">
-                        <label className="text-sm font-semibold text-slate-700">{t.image} ({t.serviceLogo})</label>
+                        <label className="text-sm font-semibold text-navy">{t.image} ({t.serviceLogo})</label>
                         <div
                             onClick={() => document.getElementById('service-logo-input')?.click()}
-                            className="aspect-square w-32 h-32 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center bg-slate-50 hover:bg-slate-100 cursor-pointer overflow-hidden relative mx-auto"
+                            className="aspect-square w-32 h-32 border-2 border-dashed border-[var(--border)] rounded-[var(--radius-md)] flex flex-col items-center justify-center bg-[var(--light-bg)] hover:bg-[var(--light-bg)] cursor-pointer overflow-hidden relative mx-auto"
                         >
                             {logoPreview ? (
                                 <img src={logoPreview} className="w-full h-full object-cover" alt="Logo Preview" />
                             ) : (
                                 <>
-                                    <ImageIcon size={32} className="text-slate-300 mb-1" />
-                                    <span className="text-[10px] text-slate-400">Click to upload</span>
+                                    <ImageIcon size={32} className="text-[var(--text-muted)] mb-1" />
+                                    <span className="text-[10px] text-[var(--text-muted)]">Click to upload</span>
                                 </>
                             )}
                             <input id="service-logo-input" type="file" className="hidden" accept="image/*" onChange={handleLogoChange} />
@@ -342,43 +342,43 @@ export const AdminServicesTab: React.FC = () => {
                     </div>
 
                     <div className="space-y-1">
-                        <label className="text-sm font-semibold text-slate-700">{language === 'ar' ? 'الوصف (إنجليزي)' : 'Description (English)'}</label>
+                        <label className="text-sm font-semibold text-navy">{language === 'ar' ? 'الوصف (إنجليزي)' : 'Description (English)'}</label>
                         <textarea
                             value={formData.description_en}
                             onChange={(e) => setFormData({ ...formData, description_en: e.target.value })}
-                            className="w-full p-2.5 rounded-lg border border-slate-200 focus:outline-none focus:border-primary text-sm min-h-[80px]"
+                            className="w-full p-2.5 rounded-lg border border-[var(--border)] focus:outline-none focus:border-primary text-sm min-h-[80px]"
                             placeholder="Brief description in English..."
                         />
                     </div>
 
                     <div className="space-y-1">
-                        <label className="text-sm font-semibold text-slate-700">{language === 'ar' ? 'الوصف (عربي)' : 'Description (Arabic)'}</label>
+                        <label className="text-sm font-semibold text-navy">{language === 'ar' ? 'الوصف (عربي)' : 'Description (Arabic)'}</label>
                         <textarea
                             value={formData.description_ar}
                             onChange={(e) => setFormData({ ...formData, description_ar: e.target.value })}
-                            className="w-full p-2.5 rounded-lg border border-slate-200 focus:outline-none focus:border-primary text-sm min-h-[80px] text-right"
+                            className="w-full p-2.5 rounded-lg border border-[var(--border)] focus:outline-none focus:border-primary text-sm min-h-[80px] text-right"
                             placeholder="..."
                         />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
-                            <label className="text-sm font-semibold text-slate-700">{t.role} *</label>
+                            <label className="text-sm font-semibold text-navy">{t.role} *</label>
                             <select
                                 value={String(formData.role_id || 3)}
                                 onChange={(e) => setFormData({ ...formData, role_id: Number(e.target.value) })}
-                                className="w-full p-2.5 rounded-lg border border-slate-200 focus:outline-none focus:border-primary text-sm"
+                                className="w-full p-2.5 rounded-lg border border-[var(--border)] focus:outline-none focus:border-primary text-sm"
                             >
                                 <option value="3">{t.teacher}</option>
                                 <option value="4">{t.student}</option>
                             </select>
                         </div>
                         <div className="space-y-1">
-                            <label className="text-sm font-semibold text-slate-700">{t.status} *</label>
+                            <label className="text-sm font-semibold text-navy">{t.status} *</label>
                             <select
                                 value={String(formData.status ?? 1)}
                                 onChange={(e) => setFormData({ ...formData, status: Number(e.target.value) })}
-                                className="w-full p-2.5 rounded-lg border border-slate-200 focus:outline-none focus:border-primary text-sm"
+                                className="w-full p-2.5 rounded-lg border border-[var(--border)] focus:outline-none focus:border-primary text-sm"
                             >
                                 <option value="1">{t.active}</option>
                                 <option value="0">{t.inactiveStatus}</option>

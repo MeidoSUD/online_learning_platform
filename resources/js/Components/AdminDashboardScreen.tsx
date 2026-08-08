@@ -73,7 +73,7 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ data
   };
 
   return (
-    <div className="h-screen bg-slate-50 flex overflow-hidden font-sans">
+    <div className="h-screen bg-[var(--light-bg)] flex overflow-hidden font-sans">
       <AdminSidebar
         role={role}
         activeTab={activeTab}
@@ -85,11 +85,11 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ data
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Mobile Header */}
-        <header className="lg:hidden bg-white border-b border-slate-200 p-4 flex items-center gap-4">
-          <button onClick={() => setSidebarOpen(true)} className="text-slate-600">
+        <header className="lg:hidden bg-white border-b border-[var(--border)] shadow-[var(--shadow-sm)] p-4 flex items-center gap-4">
+          <button onClick={() => setSidebarOpen(true)} className="text-navy">
             <Menu size={24} />
           </button>
-          <h1 className="font-bold text-lg">{t.adminPanel}</h1>
+          <h1 className="font-bold text-lg text-navy">{t.adminPanel}</h1>
         </header>
 
         {/* Main Content */}

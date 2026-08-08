@@ -124,19 +124,19 @@ export const PaymentMethodsTab: React.FC = () => {
     <div className="space-y-6 animate-fade-in">
       
       {successMsg && (
-          <div className="p-4 bg-green-50 text-green-700 border border-green-200 rounded-xl flex items-center gap-2 animate-fade-in">
+          <div className="p-4 bg-primary-pale text-primary border border-green-200 rounded-[var(--radius-md)] flex items-center gap-2 animate-fade-in">
               <CheckCircle size={20} />
               <span>{successMsg}</span>
           </div>
       )}
 
       <div className="flex flex-wrap justify-between items-center gap-4">
-        <h2 className="text-2xl font-bold text-slate-900">{t.paymentMethods}</h2>
+        <h2 className="text-2xl font-bold text-[var(--text-main)]">{t.paymentMethods}</h2>
         <div className="flex gap-2">
             <Button variant="outline" onClick={loadCards} disabled={loading} className="px-3" title="Refresh List">
                 <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
             </Button>
-            <Button variant="ghost" onClick={() => setShowDebug(!showDebug)} className="px-3 text-slate-400" title="Debug Info">
+            <Button variant="ghost" onClick={() => setShowDebug(!showDebug)} className="px-3 text-[var(--text-muted)]" title="Debug Info">
                 <Bug size={18} />
             </Button>
             <Button onClick={() => { setIsModalOpen(true); setApiErrors({}); }}>
@@ -146,7 +146,7 @@ export const PaymentMethodsTab: React.FC = () => {
       </div>
 
       {showDebug && (
-          <div className="bg-slate-900 text-green-400 p-4 rounded-xl text-xs font-mono overflow-auto max-h-60">
+          <div className="bg-slate-900 text-green-400 p-4 rounded-[var(--radius-md)] text-xs font-mono overflow-auto max-h-60">
               <p className="mb-2 text-white font-bold">Debug: Cards State ({Array.isArray(cards) ? cards.length : 'Not Array'})</p>
               <pre>{JSON.stringify(cards, null, 2)}</pre>
           </div>
@@ -155,11 +155,11 @@ export const PaymentMethodsTab: React.FC = () => {
       {loading ? (
           <div className="p-12 text-center">
               <Loader2 className="animate-spin mx-auto h-8 w-8 text-primary" />
-              <p className="text-slate-500 mt-2">Loading your cards...</p>
+              <p className="text-[var(--text-muted)] mt-2">Loading your cards...</p>
           </div>
       ) : (!Array.isArray(cards) || cards.length === 0) ? (
-        <div className="text-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-slate-500">
-          <CreditCard className="mx-auto h-12 w-12 text-slate-300 mb-3" />
+        <div className="text-center py-12 bg-[var(--light-bg)] rounded-[var(--radius-md)] border border-dashed border-[var(--border)] text-[var(--text-muted)]">
+          <CreditCard className="mx-auto h-12 w-12 text-[var(--text-muted)] mb-3" />
           <p>{t.noCards}</p>
         </div>
       ) : (
@@ -167,7 +167,7 @@ export const PaymentMethodsTab: React.FC = () => {
           {cards.map(card => {
             const brandName = getBrandName(card);
             return (
-                <div key={card.id} className={`relative p-6 rounded-2xl text-white shadow-xl ${getCardStyle(brandName)} aspect-[1.58/1] flex flex-col justify-between overflow-hidden group`}>
+                <div key={card.id} className={`relative p-6 rounded-[var(--radius-md)] text-white shadow-xl ${getCardStyle(brandName)} aspect-[1.58/1] flex flex-col justify-between overflow-hidden group`}>
                 <button onClick={() => handleDelete(card.id)} className="absolute top-4 right-4 p-2 bg-white/10 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/20 text-white z-10">
                     <Trash2 size={16} />
                 </button>

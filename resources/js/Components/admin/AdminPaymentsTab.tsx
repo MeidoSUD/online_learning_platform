@@ -90,15 +90,15 @@ export const AdminPaymentsTab: React.FC = () => {
 
     const getStatusBadge = (status: string) => {
         const map: Record<string, string> = {
-            completed: 'bg-green-100 text-green-700',
+            completed: 'bg-primary-pale text-primary',
             pending: 'bg-amber-100 text-amber-700',
-            processing: 'bg-blue-100 text-blue-700',
+            processing: 'bg-secondary-pale text-secondary',
             failed: 'bg-red-100 text-red-700',
-            refunded: 'bg-purple-100 text-purple-700',
-            initiated: 'bg-blue-100 text-blue-700',
+            refunded: 'bg-purple-100 text-[var(--accent)]',
+            initiated: 'bg-secondary-pale text-secondary',
         };
         return (
-            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${map[status] || 'bg-slate-100 text-slate-600'}`}>
+            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${map[status] || 'bg-[var(--light-bg)] text-[var(--text-muted)]'}`}>
                 {status}
             </span>
         );
@@ -119,7 +119,7 @@ export const AdminPaymentsTab: React.FC = () => {
     return (
         <div className="space-y-6 animate-fade-in">
             <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-slate-900">
+                <h2 className="text-2xl font-bold text-[var(--text-main)]">
                     {language === 'ar' ? 'إدارة المدفوعات' : 'Payments Management'}
                 </h2>
                 <Button variant="outline" onClick={fetchPayments} className="flex items-center gap-2">
@@ -127,24 +127,24 @@ export const AdminPaymentsTab: React.FC = () => {
                 </Button>
             </div>
 
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="bg-white p-4 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)]">
                 <div className="flex flex-col md:flex-row gap-4 mb-6">
                     <div className="relative flex-1">
-                        <Search className={`absolute top-1/2 -translate-y-1/2 text-slate-400 ${direction === 'rtl' ? 'right-3' : 'left-3'}`} size={20} />
+                        <Search className={`absolute top-1/2 -translate-y-1/2 text-[var(--text-muted)] ${direction === 'rtl' ? 'right-3' : 'left-3'}`} size={20} />
                         <input
                             type="text"
                             placeholder={language === 'ar' ? 'بحث عن مدفوعات...' : 'Search payments...'}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className={`w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-primary ${direction === 'rtl' ? 'pr-10 pl-4' : ''}`}
+                            className={`w-full pl-10 pr-4 py-2 rounded-lg border border-[var(--border)] focus:outline-none focus:border-primary ${direction === 'rtl' ? 'pr-10 pl-4' : ''}`}
                         />
                     </div>
                     <div className="flex items-center gap-2">
-                        <Filter size={18} className="text-slate-400" />
+                        <Filter size={18} className="text-[var(--text-muted)]" />
                         <select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
-                            className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                            className="bg-[var(--light-bg)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"
                         >
                             <option value="all">{language === 'ar' ? 'جميع الحالات' : 'All Status'}</option>
                             <option value="completed">{language === 'ar' ? 'مكتمل' : 'Completed'}</option>
@@ -159,47 +159,47 @@ export const AdminPaymentsTab: React.FC = () => {
 
                 <div className="overflow-x-auto min-h-[400px]">
                     <table className="w-full text-left text-sm">
-                        <thead className="bg-slate-50 border-b border-slate-200">
+                        <thead className="bg-[var(--light-bg)] border-b border-[var(--border)]">
                             <tr>
-                                <th className="px-4 py-3 font-semibold text-slate-700">#</th>
-                                <th className="px-4 py-3 font-semibold text-slate-700">{language === 'ar' ? 'المستخدم' : 'User'}</th>
-                                <th className="px-4 py-3 font-semibold text-slate-700">{language === 'ar' ? 'المبلغ' : 'Amount'}</th>
-                                <th className="px-4 py-3 font-semibold text-slate-700">{language === 'ar' ? 'الطريقة' : 'Method'}</th>
-                                <th className="px-4 py-3 font-semibold text-slate-700">{t.status || 'Status'}</th>
-                                <th className="px-4 py-3 font-semibold text-slate-700">{language === 'ar' ? 'مرجع الحجز' : 'Booking Ref'}</th>
-                                <th className="px-4 py-3 font-semibold text-slate-700">{language === 'ar' ? 'مسوى' : 'Reconciled'}</th>
-                                <th className="px-4 py-3 font-semibold text-slate-700">{t.date || 'Date'}</th>
-                                <th className="px-4 py-3 font-semibold text-slate-700 text-right">{t.actions || 'Actions'}</th>
+                                <th className="px-4 py-3 font-semibold text-navy">#</th>
+                                <th className="px-4 py-3 font-semibold text-navy">{language === 'ar' ? 'المستخدم' : 'User'}</th>
+                                <th className="px-4 py-3 font-semibold text-navy">{language === 'ar' ? 'المبلغ' : 'Amount'}</th>
+                                <th className="px-4 py-3 font-semibold text-navy">{language === 'ar' ? 'الطريقة' : 'Method'}</th>
+                                <th className="px-4 py-3 font-semibold text-navy">{t.status || 'Status'}</th>
+                                <th className="px-4 py-3 font-semibold text-navy">{language === 'ar' ? 'مرجع الحجز' : 'Booking Ref'}</th>
+                                <th className="px-4 py-3 font-semibold text-navy">{language === 'ar' ? 'مسوى' : 'Reconciled'}</th>
+                                <th className="px-4 py-3 font-semibold text-navy">{t.date || 'Date'}</th>
+                                <th className="px-4 py-3 font-semibold text-navy text-right">{t.actions || 'Actions'}</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
+                        <tbody className="divide-y divide-[var(--border)]">
                             {paginatedPayments.length === 0 && !loading ? (
                                 <tr>
-                                    <td colSpan={9} className="px-6 py-8 text-center text-slate-400">
+                                    <td colSpan={9} className="px-6 py-8 text-center text-[var(--text-muted)]">
                                         {language === 'ar' ? 'لا توجد مدفوعات' : 'No payments found'}
                                     </td>
                                 </tr>
                             ) : (
                                 paginatedPayments.map(payment => (
-                                    <tr key={payment.id} className="hover:bg-slate-50">
-                                        <td className="px-4 py-3 font-mono text-xs text-slate-500">#{payment.id}</td>
+                                    <tr key={payment.id} className="hover:bg-[var(--light-bg)]">
+                                        <td className="px-4 py-3 font-mono text-xs text-[var(--text-muted)]">#{payment.id}</td>
                                         <td className="px-4 py-3">
-                                            <span className="text-sm font-medium text-slate-700">
+                                            <span className="text-sm font-medium text-navy">
                                                 {payment.user ? `${payment.user.first_name} ${payment.user.last_name}` : '-'}
                                             </span>
                                         </td>
-                                        <td className="px-4 py-3 font-semibold text-slate-800">{payment.amount}</td>
+                                        <td className="px-4 py-3 font-semibold text-[var(--text-main)]">{payment.amount}</td>
                                         <td className="px-4 py-3 text-xs">{payment.payment_method || '-'}</td>
                                         <td className="px-4 py-3">{getStatusBadge(payment.status)}</td>
-                                        <td className="px-4 py-3 text-xs text-slate-500">{payment.booking?.reference || '-'}</td>
+                                        <td className="px-4 py-3 text-xs text-[var(--text-muted)]">{payment.booking?.reference || '-'}</td>
                                         <td className="px-4 py-3">
                                             {payment.reconciled ? (
                                                 <CheckCircle size={16} className="text-green-500" />
                                             ) : (
-                                                <XCircle size={16} className="text-slate-300" />
+                                                <XCircle size={16} className="text-[var(--text-muted)]" />
                                             )}
                                         </td>
-                                        <td className="px-4 py-3 text-xs text-slate-500">{formatDateTime(payment.created_at)}</td>
+                                        <td className="px-4 py-3 text-xs text-[var(--text-muted)]">{formatDateTime(payment.created_at)}</td>
                                         <td className="px-4 py-3 text-right">
                                             <Button
                                                 size="sm"
@@ -229,44 +229,44 @@ export const AdminPaymentsTab: React.FC = () => {
                 ) : paymentDetail ? (
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="p-3 rounded-xl bg-slate-50">
-                                <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">{language === 'ar' ? 'المبلغ' : 'Amount'}</div>
-                                <div className="text-lg font-bold text-slate-800">{paymentDetail.amount}</div>
+                            <div className="p-3 rounded-[var(--radius-md)] bg-[var(--light-bg)]">
+                                <div className="text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1">{language === 'ar' ? 'المبلغ' : 'Amount'}</div>
+                                <div className="text-lg font-bold text-[var(--text-main)]">{paymentDetail.amount}</div>
                             </div>
-                            <div className="p-3 rounded-xl bg-slate-50">
-                                <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">{t.status || 'Status'}</div>
+                            <div className="p-3 rounded-[var(--radius-md)] bg-[var(--light-bg)]">
+                                <div className="text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1">{t.status || 'Status'}</div>
                                 <div>{getStatusBadge(paymentDetail.status)}</div>
                             </div>
-                            <div className="p-3 rounded-xl bg-slate-50">
-                                <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">{language === 'ar' ? 'طريقة الدفع' : 'Payment Method'}</div>
-                                <div className="font-semibold text-slate-700">{paymentDetail.payment_method || '-'}</div>
+                            <div className="p-3 rounded-[var(--radius-md)] bg-[var(--light-bg)]">
+                                <div className="text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1">{language === 'ar' ? 'طريقة الدفع' : 'Payment Method'}</div>
+                                <div className="font-semibold text-navy">{paymentDetail.payment_method || '-'}</div>
                             </div>
-                            <div className="p-3 rounded-xl bg-slate-50">
-                                <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">{language === 'ar' ? 'رقم المعاملة' : 'Transaction ID'}</div>
-                                <div className="font-mono text-xs text-slate-700">{paymentDetail.transaction_id || '-'}</div>
+                            <div className="p-3 rounded-[var(--radius-md)] bg-[var(--light-bg)]">
+                                <div className="text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1">{language === 'ar' ? 'رقم المعاملة' : 'Transaction ID'}</div>
+                                <div className="font-mono text-xs text-navy">{paymentDetail.transaction_id || '-'}</div>
                             </div>
-                            <div className="p-3 rounded-xl bg-slate-50">
-                                <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">{language === 'ar' ? 'المستخدم' : 'User'}</div>
-                                <div className="font-semibold text-slate-700">
+                            <div className="p-3 rounded-[var(--radius-md)] bg-[var(--light-bg)]">
+                                <div className="text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1">{language === 'ar' ? 'المستخدم' : 'User'}</div>
+                                <div className="font-semibold text-navy">
                                     {paymentDetail.user ? `${paymentDetail.user.first_name} ${paymentDetail.user.last_name}` : '-'}
                                 </div>
                                 {paymentDetail.user?.email && (
-                                    <div className="text-xs text-slate-400">{paymentDetail.user.email}</div>
+                                    <div className="text-xs text-[var(--text-muted)]">{paymentDetail.user.email}</div>
                                 )}
                             </div>
-                            <div className="p-3 rounded-xl bg-slate-50">
-                                <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">{language === 'ar' ? 'مرجع الحجز' : 'Booking Reference'}</div>
-                                <div className="font-semibold text-slate-700">{paymentDetail.booking?.reference || '-'}</div>
+                            <div className="p-3 rounded-[var(--radius-md)] bg-[var(--light-bg)]">
+                                <div className="text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1">{language === 'ar' ? 'مرجع الحجز' : 'Booking Reference'}</div>
+                                <div className="font-semibold text-navy">{paymentDetail.booking?.reference || '-'}</div>
                             </div>
-                            <div className="p-3 rounded-xl bg-slate-50">
-                                <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">{language === 'ar' ? 'التاريخ' : 'Date'}</div>
-                                <div className="text-sm text-slate-700">{formatDateTime(paymentDetail.created_at)}</div>
+                            <div className="p-3 rounded-[var(--radius-md)] bg-[var(--light-bg)]">
+                                <div className="text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1">{language === 'ar' ? 'التاريخ' : 'Date'}</div>
+                                <div className="text-sm text-navy">{formatDateTime(paymentDetail.created_at)}</div>
                             </div>
-                            <div className="p-3 rounded-xl bg-slate-50">
-                                <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">{language === 'ar' ? 'مسوى' : 'Reconciled'}</div>
+                            <div className="p-3 rounded-[var(--radius-md)] bg-[var(--light-bg)]">
+                                <div className="text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1">{language === 'ar' ? 'مسوى' : 'Reconciled'}</div>
                                 <div className="flex items-center gap-1">
                                     {paymentDetail.reconciled ? (
-                                        <><CheckCircle size={16} className="text-green-500" /> <span className="text-green-700 text-sm font-medium">{language === 'ar' ? 'تمت التسوية' : 'Reconciled'}</span></>
+                                        <><CheckCircle size={16} className="text-green-500" /> <span className="text-primary text-sm font-medium">{language === 'ar' ? 'تمت التسوية' : 'Reconciled'}</span></>
                                     ) : (
                                         <><XCircle size={16} className="text-amber-500" /> <span className="text-amber-700 text-sm font-medium">{language === 'ar' ? 'غير مسوى' : 'Unreconciled'}</span></>
                                     )}
@@ -275,7 +275,7 @@ export const AdminPaymentsTab: React.FC = () => {
                         </div>
 
                         {!paymentDetail.reconciled && (
-                            <div className="pt-4 border-t border-slate-200">
+                            <div className="pt-4 border-t border-[var(--border)]">
                                 <Button
                                     onClick={() => handleReconcile(paymentDetail)}
                                     className="w-full flex items-center justify-center gap-2"
@@ -286,7 +286,7 @@ export const AdminPaymentsTab: React.FC = () => {
                         )}
                     </div>
                 ) : (
-                    <p className="text-center text-slate-400 py-8">{language === 'ar' ? 'لا توجد تفاصيل' : 'No details found'}</p>
+                    <p className="text-center text-[var(--text-muted)] py-8">{language === 'ar' ? 'لا توجد تفاصيل' : 'No details found'}</p>
                 )}
             </Modal>
         </div>

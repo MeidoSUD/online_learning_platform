@@ -18,12 +18,12 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({ user }) => {
 
   if (user && !user.verified) {
       return (
-          <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-slate-200 animate-fade-in">
+          <div className="flex flex-col items-center justify-center py-16 bg-white rounded-[var(--radius-md)] border border-[var(--border)] animate-fade-in">
               <div className="h-16 w-16 bg-amber-100 rounded-full flex items-center justify-center mb-4 text-amber-600">
                   <Lock size={32} />
               </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Verification Required</h3>
-              <p className="text-slate-500 max-w-md text-center">
+              <h3 className="text-xl font-bold text-[var(--text-main)] mb-2">Verification Required</h3>
+              <p className="text-[var(--text-muted)] max-w-md text-center">
                   You must verify your account and select a service before managing your schedule.
               </p>
           </div>
@@ -166,30 +166,30 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({ user }) => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-        <div className="flex bg-slate-100 p-1 rounded-xl shadow-inner border border-slate-200/50">
+        <div className="flex bg-[var(--light-bg)] p-1 rounded-[var(--radius-md)] shadow-inner border border-[var(--border)]">
             <button 
                 onClick={() => setActiveView('sessions')}
-                className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeView === 'sessions' ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeView === 'sessions' ? 'bg-white text-primary shadow-[var(--shadow-sm)]' : 'text-[var(--text-muted)] hover:text-navy'}`}
             >
                 {language === 'ar' ? 'جلساتي' : 'My Sessions'}
             </button>
             <button 
                 onClick={() => setActiveView('availability')}
-                className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeView === 'availability' ? 'bg-white text-primary shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeView === 'availability' ? 'bg-white text-primary shadow-[var(--shadow-sm)]' : 'text-[var(--text-muted)] hover:text-navy'}`}
             >
                 {language === 'ar' ? 'إعدادات التوفر' : 'Availability Settings'}
             </button>
         </div>
         
         {activeView === 'availability' && (
-            <Button onClick={() => setIsModalOpen(true)} className="shadow-lg shadow-primary/20">
+            <Button onClick={() => setIsModalOpen(true)} className="shadow-[var(--shadow-lg)]">
                 <Plus size={18} className="mr-2" /> {language === 'ar' ? 'إضافة موعد' : 'Add Time Slot'}
             </Button>
         )}
       </div>
 
       {loading && sessions.length === 0 && availability.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-20 text-slate-400">
+          <div className="flex flex-col items-center justify-center p-20 text-[var(--text-muted)]">
             <Loader2 className="animate-spin text-primary h-10 w-10 mb-4" />
             <p className="font-medium">Syncing Schedule...</p>
           </div>
@@ -198,14 +198,14 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({ user }) => {
               {days.map(day => {
                   const slots = getTimesForDay(day.id);
                   return (
-                      <div key={day.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-                          <div className="bg-slate-50/80 px-5 py-4 border-b border-slate-100 flex justify-between items-center">
-                              <span className="font-bold text-slate-800 text-lg">{day.name}</span>
-                              <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-200 px-2 py-0.5 rounded text-slate-500">{slots.length} Slots</span>
+                      <div key={day.id} className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] overflow-hidden flex flex-col">
+                          <div className="bg-[var(--light-bg)] px-5 py-4 border-b border-[var(--border)] flex justify-between items-center">
+                              <span className="font-bold text-[var(--text-main)] text-lg">{day.name}</span>
+                              <span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--border)] px-2 py-0.5 rounded text-[var(--text-muted)]">{slots.length} Slots</span>
                           </div>
                           <div className="p-4 space-y-3 flex-1">
                               {slots.length === 0 ? (
-                                  <div className="text-center py-10 text-slate-400 text-sm italic">
+                                  <div className="text-center py-10 text-[var(--text-muted)] text-sm italic">
                                       <Calendar className="mx-auto h-8 w-8 opacity-20 mb-2" />
                                       No slots added
                                   </div>
@@ -217,14 +217,14 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({ user }) => {
                                       return (
                                       <div 
                                           key={slot.id} 
-                                          className={`flex justify-between items-center p-3 rounded-xl border-2 transition-all group ${
+                                          className={`flex justify-between items-center p-3 rounded-[var(--radius-md)] border-2 transition-all group ${
                                               isAvailable 
-                                                ? 'bg-green-50/50 border-green-100 shadow-sm' 
+                                                ? 'bg-primary-pale border-green-100 shadow-[var(--shadow-sm)]' 
                                                 : 'bg-red-50/50 border-red-100 grayscale-[0.3]'
                                           }`}
                                       >
                                           <div className="flex items-center gap-3">
-                                              <div className={`h-8 w-8 rounded-full flex items-center justify-center ${isAvailable ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                                              <div className={`h-8 w-8 rounded-full flex items-center justify-center ${isAvailable ? 'bg-primary-pale text-primary' : 'bg-red-100 text-red-600'}`}>
                                                   <Clock size={16} />
                                               </div>
                                               <span className={`font-bold text-sm ${isAvailable ? 'text-green-800' : 'text-red-800'}`}>{slot.time}</span>
@@ -235,13 +235,13 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({ user }) => {
                                                   {isConfirming ? (
                                                       <div className="flex gap-1 animate-fade-in items-center">
                                                           <span className="text-[9px] font-bold text-red-600 uppercase mr-1">{language === 'ar' ? 'حذف؟' : 'Del?'}</span>
-                                                          <button onClick={() => handleDeleteSlot(slot.id)} className="h-7 w-7 bg-red-500 text-white rounded-md flex items-center justify-center hover:bg-red-600 shadow-sm"><Check size={14}/></button>
-                                                          <button onClick={() => setConfirmDeleteId(null)} className="h-7 w-7 bg-slate-200 text-slate-600 rounded-md flex items-center justify-center hover:bg-slate-300"><X size={14}/></button>
+                                                          <button onClick={() => handleDeleteSlot(slot.id)} className="h-7 w-7 bg-red-500 text-white rounded-md flex items-center justify-center hover:bg-red-600 shadow-[var(--shadow-sm)]"><Check size={14}/></button>
+                                                          <button onClick={() => setConfirmDeleteId(null)} className="h-7 w-7 bg-[var(--border)] text-[var(--text-muted)] rounded-md flex items-center justify-center hover:bg-[var(--border)]"><X size={14}/></button>
                                                       </div>
                                                   ) : (
                                                       <button 
                                                           onClick={() => setConfirmDeleteId(slot.id)} 
-                                                          className="text-slate-300 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-red-50"
+                                                          className="text-[var(--text-muted)] hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-red-50"
                                                       >
                                                           <Trash2 size={18} />
                                                       </button>
@@ -263,8 +263,8 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({ user }) => {
       ) : (
           <div className="space-y-4">
               {sessions.length === 0 ? (
-                  <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200 text-slate-500">
-                      <Calendar className="mx-auto h-16 w-16 text-slate-300 mb-4" />
+                  <div className="text-center py-20 bg-white rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] text-[var(--text-muted)]">
+                      <Calendar className="mx-auto h-16 w-16 text-[var(--text-muted)] mb-4" />
                       <p className="text-lg font-medium">No scheduled sessions found.</p>
                       <p className="text-sm opacity-70">New bookings will appear here automatically.</p>
                   </div>
@@ -276,22 +276,22 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({ user }) => {
                       const isReady = sessionState === 'ready';
 
                       return (
-                      <div key={session.id} className={`bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-6 transition-opacity ${isPast ? 'opacity-50 grayscale' : ''}`}>
+                      <div key={session.id} className={`bg-white p-6 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] flex flex-col md:flex-row justify-between items-center gap-6 transition-opacity ${isPast ? 'opacity-50 grayscale' : ''}`}>
                           <div className="flex items-center gap-4 w-full md:w-auto">
-                              <div className={`h-16 w-16 rounded-2xl flex flex-col items-center justify-center font-bold border ${isPast ? 'bg-slate-50 border-slate-200 text-slate-400' : 'bg-blue-50 border-blue-100 text-primary'}`}>
+                              <div className={`h-16 w-16 rounded-[var(--radius-md)] flex flex-col items-center justify-center font-bold border ${isPast ? 'bg-[var(--light-bg)] border-[var(--border)] text-[var(--text-muted)]' : 'bg-secondary-pale border-secondary/30 text-primary'}`}>
                                   <span className="text-xl">{new Date(session.session_date).getDate()}</span>
                                   <span className="text-[10px] uppercase">{new Date(session.session_date).toLocaleString('default', { month: 'short' })}</span>
                               </div>
                               <div>
                                   <div className="flex items-center gap-2 mb-1">
-                                      <h4 className="text-lg font-bold text-slate-900 leading-none">
+                                      <h4 className="text-lg font-bold text-[var(--text-main)] leading-none">
                                           {session.subject ? (language === 'ar' ? session.subject.name_ar : session.subject.name_en) : 'Private Session'}
                                       </h4>
-                                      {isPast && <span className="bg-slate-200 text-slate-500 px-2 py-0.5 rounded text-[10px] font-bold uppercase">Past</span>}
+                                      {isPast && <span className="bg-[var(--border)] text-[var(--text-muted)] px-2 py-0.5 rounded text-[10px] font-bold uppercase">Past</span>}
                                   </div>
-                                  <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">
-                                      <span className="flex items-center gap-1.5"><Clock size={14} className="text-slate-400" /> {session.start_time} - {session.end_time}</span>
-                                      <span className="flex items-center gap-1.5"><User size={14} className="text-slate-400" /> {session.student?.name || 'Student'}</span>
+                                  <div className="flex flex-wrap items-center gap-4 text-sm text-[var(--text-muted)]">
+                                      <span className="flex items-center gap-1.5"><Clock size={14} className="text-[var(--text-muted)]" /> {session.start_time} - {session.end_time}</span>
+                                      <span className="flex items-center gap-1.5"><User size={14} className="text-[var(--text-muted)]" /> {session.student?.name || 'Student'}</span>
                                   </div>
                               </div>
                           </div>
@@ -299,7 +299,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({ user }) => {
                           <div className="flex flex-col md:items-end gap-2 w-full md:w-auto">
                               {isUpcoming ? (
                                   <div className="flex flex-col items-end">
-                                      <Button disabled className="bg-slate-200 text-slate-400 cursor-not-allowed border-0">
+                                      <Button disabled className="bg-[var(--border)] text-[var(--text-muted)] cursor-not-allowed border-0">
                                           Start Class
                                       </Button>
                                       <span className="text-[10px] text-amber-600 font-bold mt-1 flex items-center gap-1">
@@ -308,7 +308,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({ user }) => {
                                   </div>
                               ) : isReady && session.status !== 'completed' && session.status !== 'finished' ? (
                                   <Button 
-                                    className="bg-green-600 hover:bg-green-700 shadow-lg shadow-green-200" 
+                                    className="bg-primary hover:bg-primary shadow-[var(--shadow-lg)] shadow-green-200" 
                                     isLoading={sessionActionLoading === session.id}
                                     onClick={() => handleStartClass(session.id)}
                                   >
@@ -316,9 +316,9 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({ user }) => {
                                   </Button>
                               ) : null}
 
-                              <div className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 ${
+                              <div className={`px-4 py-2 rounded-[var(--radius-md)] font-bold text-xs flex items-center gap-2 ${
                                   session.status === 'live' ? 'bg-red-100 text-red-700 animate-pulse' : 
-                                  session.status === 'completed' || session.status === 'finished' ? 'bg-slate-100 text-slate-600' : 'bg-green-50 text-green-700'
+                                  session.status === 'completed' || session.status === 'finished' ? 'bg-[var(--light-bg)] text-[var(--text-muted)]' : 'bg-primary-pale text-primary'
                               }`}>
                                   {session.status === 'live' ? <AlertCircle size={14} /> : <CheckCircle size={14} />}
                                   <span className="capitalize">{session.status.replace(/_/g, ' ')}</span>
@@ -334,11 +334,11 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({ user }) => {
           <div className="space-y-4">
               <Select label="Day of Week" options={days.map(d => ({ value: String(d.id), label: d.name }))} value={selectedDay} onChange={(e) => setSelectedDay(Number(e.target.value))} />
               <Input label="Start Time" type="time" value={selectedTime} onChange={(e) => setSelectedTime(e.target.value)} />
-              <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 text-xs text-blue-700 flex gap-2">
+              <div className="p-3 bg-secondary-pale rounded-lg border border-secondary/30 text-xs text-secondary flex gap-2">
                   <AlertCircle size={16} className="shrink-0" />
                   <p>Slots are created for 1 hour duration. Ensure this doesn't overlap with existing slots.</p>
               </div>
-              <Button className="w-full h-12 shadow-lg shadow-primary/20" onClick={handleAddSlot} isLoading={saving}><Save size={18} className="mr-2" /> Save Slot</Button>
+              <Button className="w-full h-12 shadow-[var(--shadow-lg)]" onClick={handleAddSlot} isLoading={saving}><Save size={18} className="mr-2" /> Save Slot</Button>
           </div>
       </Modal>
 

@@ -119,14 +119,14 @@ export const BankAccountsPage: React.FC<BankAccountsPageProps> = ({ user, onNavi
                 {onNavigate && (
                     <button
                         onClick={() => onNavigate('wallet')}
-                        className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-all"
+                        className="p-2 rounded-[var(--radius-md)] hover:bg-[var(--light-bg)] text-[var(--text-muted)] hover:text-navy transition-all"
                     >
                         <ArrowLeft size={22} />
                     </button>
                 )}
                 <div>
-                    <h2 className="text-2xl font-bold text-slate-900">{t.bankAccounts}</h2>
-                    <p className="text-sm text-slate-500">{language === 'ar' ? 'إدارة حساباتك البنكية' : 'Manage your bank accounts'}</p>
+                    <h2 className="text-2xl font-bold text-[var(--text-main)]">{t.bankAccounts}</h2>
+                    <p className="text-sm text-[var(--text-muted)]">{language === 'ar' ? 'إدارة حساباتك البنكية' : 'Manage your bank accounts'}</p>
                 </div>
                 <div className="ml-auto">
                     <Button onClick={() => { resetForm(); setShowForm(true); }} className="flex items-center gap-2">
@@ -141,10 +141,10 @@ export const BankAccountsPage: React.FC<BankAccountsPageProps> = ({ user, onNavi
                 <>
                     {/* Bank Accounts Grid */}
                     {bankAccounts.length === 0 && !showForm ? (
-                        <div className="text-center py-16 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                            <Building size={48} className="mx-auto text-slate-300 mb-4" />
-                            <p className="text-slate-500 font-medium">{language === 'ar' ? 'لا توجد حسابات بنكية' : 'No bank accounts yet'}</p>
-                            <p className="text-sm text-slate-400 mt-1">
+                        <div className="text-center py-16 bg-[var(--light-bg)] rounded-[var(--radius-md)] border border-dashed border-[var(--border)]">
+                            <Building size={48} className="mx-auto text-[var(--text-muted)] mb-4" />
+                            <p className="text-[var(--text-muted)] font-medium">{language === 'ar' ? 'لا توجد حسابات بنكية' : 'No bank accounts yet'}</p>
+                            <p className="text-sm text-[var(--text-muted)] mt-1">
                                 {language === 'ar' ? 'أضف حساب بنكي لسحب أرباحك' : 'Add a bank account to withdraw your earnings'}
                             </p>
                             <Button onClick={() => setShowForm(true)} variant="outline" className="mt-4">
@@ -160,30 +160,30 @@ export const BankAccountsPage: React.FC<BankAccountsPageProps> = ({ user, onNavi
                                 return (
                                     <div
                                         key={acc.id}
-                                        className={`p-5 rounded-xl border transition-all group ${acc.is_default ? 'bg-blue-50 border-blue-300 shadow-sm' : 'bg-white border-slate-200 hover:border-primary/30'}`}
+                                        className={`p-5 rounded-[var(--radius-md)] border transition-all group ${acc.is_default ? 'bg-secondary-pale border-blue-300 shadow-[var(--shadow-sm)]' : 'bg-white border-[var(--border)] hover:border-primary/30'}`}
                                     >
                                         <div className="flex justify-between items-start">
                                             <div className="flex items-center gap-4">
-                                                <div className={`p-3 rounded-xl ${acc.is_default ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-500'}`}>
+                                                <div className={`p-3 rounded-[var(--radius-md)] ${acc.is_default ? 'bg-secondary-pale text-secondary' : 'bg-[var(--light-bg)] text-[var(--text-muted)]'}`}>
                                                     <Building size={28} />
                                                 </div>
                                                 <div>
                                                     <div className="flex items-center gap-2">
-                                                        <h4 className="font-bold text-slate-900">{bankName}</h4>
+                                                        <h4 className="font-bold text-[var(--text-main)]">{bankName}</h4>
                                                         {acc.is_default && (
-                                                            <span className="text-blue-600"><CheckCircle size={16} /></span>
+                                                            <span className="text-secondary"><CheckCircle size={16} /></span>
                                                         )}
                                                     </div>
-                                                    <p className="text-sm font-mono text-slate-500 mt-0.5">**** {acc.account_number?.slice(-4) || '****'}</p>
-                                                    <p className="text-xs text-slate-400">{acc.account_holder_name}</p>
-                                                    {acc.iban && <p className="text-[10px] text-slate-400 font-mono mt-0.5">IBAN: {acc.iban}</p>}
+                                                    <p className="text-sm font-mono text-[var(--text-muted)] mt-0.5">**** {acc.account_number?.slice(-4) || '****'}</p>
+                                                    <p className="text-xs text-[var(--text-muted)]">{acc.account_holder_name}</p>
+                                                    {acc.iban && <p className="text-[10px] text-[var(--text-muted)] font-mono mt-0.5">IBAN: {acc.iban}</p>}
                                                 </div>
                                             </div>
                                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 {!acc.is_default && (
                                                     <button
                                                         onClick={() => handleSetDefault(acc.id)}
-                                                        className="p-1.5 rounded-lg hover:bg-blue-100 text-blue-600"
+                                                        className="p-1.5 rounded-lg hover:bg-secondary-pale text-secondary"
                                                         title={language === 'ar' ? 'تعيين افتراضي' : 'Set default'}
                                                     >
                                                         <CheckSquare size={16} />
@@ -191,7 +191,7 @@ export const BankAccountsPage: React.FC<BankAccountsPageProps> = ({ user, onNavi
                                                 )}
                                                 <button
                                                     onClick={() => handleEdit(acc)}
-                                                    className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500"
+                                                    className="p-1.5 rounded-lg hover:bg-[var(--light-bg)] text-[var(--text-muted)]"
                                                     title={language === 'ar' ? 'تعديل' : 'Edit'}
                                                 >
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -213,14 +213,14 @@ export const BankAccountsPage: React.FC<BankAccountsPageProps> = ({ user, onNavi
 
                     {/* Add/Edit Form */}
                     {showForm && (
-                        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                        <div className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] p-6 shadow-[var(--shadow-sm)]">
                             <div className="flex items-center justify-between mb-6">
-                                <h3 className="text-lg font-bold text-slate-900">
+                                <h3 className="text-lg font-bold text-[var(--text-main)]">
                                     {editingId
                                         ? (language === 'ar' ? 'تعديل الحساب البنكي' : 'Edit Bank Account')
                                         : (language === 'ar' ? 'إضافة حساب بنكي جديد' : 'Add New Bank Account')}
                                 </h3>
-                                <button onClick={resetForm} className="text-sm text-slate-400 hover:text-slate-600">
+                                <button onClick={resetForm} className="text-sm text-[var(--text-muted)] hover:text-[var(--text-muted)]">
                                     {language === 'ar' ? 'إلغاء' : 'Cancel'}
                                 </button>
                             </div>
@@ -265,11 +265,11 @@ export const BankAccountsPage: React.FC<BankAccountsPageProps> = ({ user, onNavi
                                     <input
                                         type="checkbox"
                                         id="isDefault"
-                                        className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                                        className="h-4 w-4 text-primary focus:ring-primary/20 border-gray-300 rounded"
                                         checked={form.is_default}
                                         onChange={(e) => setForm({ ...form, is_default: e.target.checked })}
                                     />
-                                    <label htmlFor="isDefault" className="ml-2 block text-sm text-slate-900">
+                                    <label htmlFor="isDefault" className="ml-2 block text-sm text-[var(--text-main)]">
                                         {language === 'ar' ? 'تعيين كحساب افتراضي' : 'Set as default payment method'}
                                     </label>
                                 </div>

@@ -14,18 +14,18 @@ interface NavbarProps {
 }
 
 const NOTIF_ICONS: Record<string, { icon: any; color: string; bg: string }> = {
-  payment_success: { icon: PaymentIcon, color: 'text-green-600', bg: 'bg-green-50' },
-  payment: { icon: PaymentIcon, color: 'text-green-600', bg: 'bg-green-50' },
-  booking_received: { icon: School, color: 'text-blue-600', bg: 'bg-blue-50' },
-  new_lesson: { icon: Video, color: 'text-purple-600', bg: 'bg-purple-50' },
-  lesson_update: { icon: Video, color: 'text-purple-600', bg: 'bg-purple-50' },
+  payment_success: { icon: PaymentIcon, color: 'text-primary', bg: 'bg-primary-pale' },
+  payment: { icon: PaymentIcon, color: 'text-primary', bg: 'bg-primary-pale' },
+  booking_received: { icon: School, color: 'text-secondary', bg: 'bg-secondary-pale' },
+  new_lesson: { icon: Video, color: 'text-[var(--accent)]', bg: 'bg-secondary-pale' },
+  lesson_update: { icon: Video, color: 'text-[var(--accent)]', bg: 'bg-secondary-pale' },
   reminder: { icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
   application_received: { icon: User, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-  application_accepted: { icon: Check, color: 'text-green-600', bg: 'bg-green-50' },
+  application_accepted: { icon: Check, color: 'text-primary', bg: 'bg-primary-pale' },
   application_rejected: { icon: X, color: 'text-red-600', bg: 'bg-red-50' },
-  system: { icon: BellRing, color: 'text-slate-600', bg: 'bg-slate-50' },
+  system: { icon: BellRing, color: 'text-[var(--text-muted)]', bg: 'bg-[var(--light-bg)]' },
 };
-const DEFAULT_ICON = { icon: BellRing, color: 'text-slate-600', bg: 'bg-slate-50' };
+const DEFAULT_ICON = { icon: BellRing, color: 'text-[var(--text-muted)]', bg: 'bg-[var(--light-bg)]' };
 
 function getRelativeTime(dateStr: string, language: string): string {
   const now = Date.now();
@@ -166,7 +166,7 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
   const navLinks = userRole === 'student' ? studentLinks : getTeacherLinks();
 
   return (
-    <nav className="sticky top-0 z-30 w-full bg-white border-b border-slate-200 shadow-sm">
+    <nav className="sticky top-0 z-30 w-full bg-white border-b border-[var(--border)] shadow-[var(--shadow-sm)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-20">
           {/* Logo & Desktop Nav */}
@@ -181,8 +181,8 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
                   onClick={() => setActiveTab(link.id)}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     activeTab === link.id 
-                      ? 'bg-primary/10 text-primary' 
-                      : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+                      ? 'bg-primary-pale text-primary' 
+                      : 'text-[var(--text-muted)] hover:text-primary hover:bg-[var(--light-bg)]'
                   }`}
                 >
                   {link.label}
@@ -196,7 +196,7 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
             {/* Language Switch */}
             <button 
               onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}
-              className="p-2 rounded-full text-slate-500 hover:bg-slate-100 transition-colors"
+              className="p-2 rounded-full text-[var(--text-muted)] hover:bg-[var(--light-bg)] transition-colors"
               title={t.language}
             >
               <Globe size={20} />
@@ -206,7 +206,7 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
             <div className="relative" ref={notifRef}>
               <button 
                 onClick={() => setShowNotifs(!showNotifs)}
-                className="p-2 rounded-full text-slate-500 hover:bg-slate-100 transition-colors relative"
+                className="p-2 rounded-full text-[var(--text-muted)] hover:bg-[var(--light-bg)] transition-colors relative"
               >
                 <Bell size={20} />
                 {unreadCount > 0 && (
@@ -217,12 +217,12 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
               </button>
 
               {showNotifs && (
-                <div className={`absolute top-12 w-80 sm:w-96 bg-white rounded-xl shadow-lg ring-1 ring-black ring-opacity-5 overflow-hidden ${direction === 'rtl' ? 'left-0' : 'right-0'}`}>
-                  <div className="px-4 py-3 border-b border-slate-100 flex justify-between items-center">
-                    <h3 className="text-sm font-semibold text-slate-900">
+                <div className={`absolute top-12 w-80 sm:w-96 bg-white rounded-[var(--radius-md)] shadow-[var(--shadow-lg)] ring-1 ring-black ring-opacity-5 overflow-hidden ${direction === 'rtl' ? 'left-0' : 'right-0'}`}>
+                  <div className="px-4 py-3 border-b border-[var(--border)] flex justify-between items-center">
+                    <h3 className="text-sm font-semibold text-[var(--text-main)]">
                       {t.notifications}
                       {unreadCount > 0 && (
-                        <span className="ml-2 text-[10px] font-normal text-slate-400">
+                        <span className="ml-2 text-[10px] font-normal text-[var(--text-muted)]">
                           {language === 'ar' ? `${unreadCount} غير مقروء` : `${unreadCount} unread`}
                         </span>
                       )}
@@ -240,8 +240,8 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
                       </div>
                     ) : notifError ? (
                       <div className="px-4 py-8 text-center">
-                        <AlertCircle size={32} className="mx-auto text-slate-300 mb-2" />
-                        <p className="text-sm text-slate-500">{notifError}</p>
+                        <AlertCircle size={32} className="mx-auto text-[var(--text-muted)] mb-2" />
+                        <p className="text-sm text-[var(--text-muted)]">{notifError}</p>
                         <button onClick={fetchNotifications} className="mt-2 text-xs text-primary hover:underline">
                           {language === 'ar' ? 'إعادة المحاولة' : 'Retry'}
                         </button>
@@ -249,11 +249,11 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
                     ) : notifications.length === 0 ? (
                       <div className="px-4 py-8 text-center">
                         <BellRing size={36} className="mx-auto text-slate-200 mb-3" />
-                        <p className="text-sm text-slate-500 font-medium">{t.noNotifications}</p>
-                        <p className="text-xs text-slate-400 mt-1">{t.notificationsEmpty}</p>
+                        <p className="text-sm text-[var(--text-muted)] font-medium">{t.noNotifications}</p>
+                        <p className="text-xs text-[var(--text-muted)] mt-1">{t.notificationsEmpty}</p>
                       </div>
                     ) : (
-                      <div className="divide-y divide-slate-50">
+                      <div className="divide-y divide-[var(--border)]">
                         {notifications.map(n => {
                           const iconDef = NOTIF_ICONS[n.type] || DEFAULT_ICON;
                           const IconComp = iconDef.icon;
@@ -261,26 +261,26 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
                             <div
                               key={n.id}
                               onClick={() => !n.is_read && handleMarkAsRead(n.id)}
-                              className={`px-4 py-3 flex gap-3 cursor-pointer transition-colors hover:bg-slate-50 ${!n.is_read ? 'bg-blue-50/40' : ''}`}
+                              className={`px-4 py-3 flex gap-3 cursor-pointer transition-colors hover:bg-[var(--light-bg)] ${!n.is_read ? 'bg-secondary-pale' : ''}`}
                             >
-                              <div className={`h-10 w-10 rounded-xl ${iconDef.bg} flex items-center justify-center shrink-0`}>
+                              <div className={`h-10 w-10 rounded-[var(--radius-md)] ${iconDef.bg} flex items-center justify-center shrink-0`}>
                                 <IconComp size={18} className={iconDef.color} />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-start justify-between gap-2">
-                                  <p className={`text-sm ${!n.is_read ? 'font-bold text-slate-900' : 'font-medium text-slate-600'}`}>
+                                  <p className={`text-sm ${!n.is_read ? 'font-bold text-[var(--text-main)]' : 'font-medium text-[var(--text-muted)]'}`}>
                                     {n.title}
                                   </p>
                                   {!n.is_read && (
-                                    <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0 mt-1.5"></span>
+                                    <span className="h-2 w-2 rounded-full bg-navy shrink-0 mt-1.5"></span>
                                   )}
                                 </div>
-                                <p className="text-xs text-slate-400 mt-0.5 line-clamp-2">{n.message}</p>
+                                <p className="text-xs text-[var(--text-muted)] mt-0.5 line-clamp-2">{n.message}</p>
                                 <div className="flex items-center justify-between mt-1.5">
-                                  <span className="text-[10px] text-slate-400">{getRelativeTime(n.created_at, language)}</span>
+                                  <span className="text-[10px] text-[var(--text-muted)]">{getRelativeTime(n.created_at, language)}</span>
                                   <button
                                     onClick={(e) => handleDelete(n.id, e)}
-                                    className="text-slate-300 hover:text-red-400 transition-colors"
+                                    className="text-[var(--text-muted)] hover:text-red-400 transition-colors"
                                   >
                                     <Trash2 size={12} />
                                   </button>
@@ -300,41 +300,41 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
             <div className="relative ml-3" ref={profileRef}>
               <button 
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
-                className="flex items-center gap-3 p-1 rounded-full hover:bg-slate-50 transition-colors focus:outline-none"
+                className="flex items-center gap-3 p-1 rounded-full hover:bg-[var(--light-bg)] transition-colors focus:outline-none"
               >
-                <div className="h-9 w-9 rounded-full bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center text-white font-bold shadow-md shadow-blue-200">
+                <div className="h-9 w-9 rounded-full bg-gradient-to-br from-primary-light to-primary flex items-center justify-center text-white font-bold shadow-[var(--shadow-md)]">
                    {(user.first_name?.charAt(0) || 'U').toUpperCase()}
                 </div>
                 <div className="hidden lg:block text-start">
-                  <p className="text-sm font-medium text-slate-700">{user.first_name}</p>
-                  <p className="text-xs text-slate-400 truncate max-w-[100px]">{userRole?.toUpperCase()}</p>
+                  <p className="text-sm font-medium text-navy">{user.first_name}</p>
+                  <p className="text-xs text-[var(--text-muted)] truncate max-w-[100px]">{userRole?.toUpperCase()}</p>
                 </div>
               </button>
 
               {showProfileMenu && (
-                <div className={`absolute top-12 w-56 bg-white rounded-xl shadow-lg ring-1 ring-black ring-opacity-5 py-1 ${direction === 'rtl' ? 'left-0' : 'right-0'}`}>
-                  <div className="px-4 py-2 border-b border-slate-100 lg:hidden">
-                    <p className="text-sm font-medium text-slate-900">{user.first_name} {user.last_name}</p>
-                    <p className="text-xs text-slate-500 truncate">{user.email}</p>
+                <div className={`absolute top-12 w-56 bg-white rounded-[var(--radius-md)] shadow-[var(--shadow-lg)] ring-1 ring-black ring-opacity-5 py-1 ${direction === 'rtl' ? 'left-0' : 'right-0'}`}>
+                  <div className="px-4 py-2 border-b border-[var(--border)] lg:hidden">
+                    <p className="text-sm font-medium text-[var(--text-main)]">{user.first_name} {user.last_name}</p>
+                    <p className="text-xs text-[var(--text-muted)] truncate">{user.email}</p>
                   </div>
                   
-                  <button onClick={() => { setActiveTab('profile'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                  <button onClick={() => { setActiveTab('profile'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-navy hover:bg-[var(--light-bg)]">
                     <User size={16} /> {t.profile}
                   </button>
                   
                   {/* Student Specific Menu Items */}
                   {userRole === 'student' && (
                     <>
-                      <button onClick={() => { setActiveTab('sessions'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                      <button onClick={() => { setActiveTab('sessions'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-navy hover:bg-[var(--light-bg)]">
                         <Video size={16} /> {language === 'ar' ? 'جلساتي' : 'My Sessions'}
                       </button>
-                      <button onClick={() => { setActiveTab('wallet'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                      <button onClick={() => { setActiveTab('wallet'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-navy hover:bg-[var(--light-bg)]">
                         <CreditCard size={16} /> {t.paymentMethods}
                       </button>
-                      <button onClick={() => { setActiveTab('transactions'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                      <button onClick={() => { setActiveTab('transactions'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-navy hover:bg-[var(--light-bg)]">
                         <FileText size={16} /> {t.myTransactions}
                       </button>
-                      <button onClick={() => { setActiveTab('certificates'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                      <button onClick={() => { setActiveTab('certificates'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-navy hover:bg-[var(--light-bg)]">
                         <Award size={16} /> {t.myCertificates}
                       </button>
                     </>
@@ -342,22 +342,22 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
 
                   {/* Teacher Specific Menu Items */}
                   {userRole === 'teacher' && (
-                      <button onClick={() => { setActiveTab('services'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                      <button onClick={() => { setActiveTab('services'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-navy hover:bg-[var(--light-bg)]">
                         <Layers size={16} /> {language === 'ar' ? 'الخدمات' : 'Services'}
                       </button>
                   )}
 
-                  <button onClick={() => { setActiveTab('support'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                  <button onClick={() => { setActiveTab('support'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-navy hover:bg-[var(--light-bg)]">
                     <Headphones size={16} /> {t.technicalSupport}
                   </button>
-                  <button className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                  <button className="flex w-full items-center gap-2 px-4 py-2 text-sm text-navy hover:bg-[var(--light-bg)]">
                     <Settings size={16} /> {t.settings}
                   </button>
-                   <button onClick={() => { setActiveTab('disputes'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                   <button onClick={() => { setActiveTab('disputes'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-navy hover:bg-[var(--light-bg)]">
                     <AlertCircle size={16} /> {t.disputes}
                   </button>
                   
-                  <div className="border-t border-slate-100 my-1"></div>
+                  <div className="border-t border-[var(--border)] my-1"></div>
                   <button onClick={onLogout} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50">
                     <LogOut size={16} /> {t.logout}
                   </button>
@@ -369,7 +369,7 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
             <div className="md:hidden flex items-center">
                <button 
                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                 className="p-2 rounded-md text-slate-400 hover:text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                 className="p-2 rounded-md text-[var(--text-muted)] hover:text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--light-bg)]"
                >
                  <Menu size={24} />
                </button>
@@ -380,7 +380,7 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
 
       {/* Mobile Nav */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-slate-200 bg-white">
+        <div className="md:hidden border-t border-[var(--border)] bg-white">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
             {navLinks.map(link => (
               <button
@@ -388,8 +388,8 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
                 onClick={() => { setActiveTab(link.id); setMobileMenuOpen(false); }}
                 className={`block w-full text-start px-3 py-2 rounded-md text-base font-medium ${
                   activeTab === link.id 
-                    ? 'bg-primary/10 text-primary' 
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    ? 'bg-primary-pale text-primary' 
+                    : 'text-[var(--text-muted)] hover:text-primary hover:bg-[var(--light-bg)]'
                 }`}
               >
                 {link.label}

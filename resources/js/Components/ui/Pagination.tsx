@@ -33,9 +33,9 @@ export const Pagination: React.FC<PaginationProps> = ({
     const isRtl = direction === 'rtl';
 
     return (
-        <div className="flex items-center justify-between px-6 py-3 border-t border-slate-200 bg-white">
-            <div className="flex items-center text-sm text-slate-500">
-                {t.page} <span className="font-medium mx-1 text-slate-900">{currentPage}</span> {t.of} <span className="font-medium mx-1 text-slate-900">{totalPages}</span>
+        <div className="flex items-center justify-between px-6 py-3 border-t border-[var(--border)] bg-white">
+            <div className="flex items-center text-sm text-[var(--text-muted)]">
+                {t.page} <span className="font-medium mx-1 text-navy">{currentPage}</span> {t.of} <span className="font-medium mx-1 text-navy">{totalPages}</span>
             </div>
             <div className="flex items-center gap-2">
                 <Button

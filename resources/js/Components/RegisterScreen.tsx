@@ -142,11 +142,11 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onSwitch, onVeri
   }
 
   return (
-    <div className="w-full max-w-lg space-y-6 bg-surface p-8 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 my-4">
+    <div className="w-full max-w-lg space-y-6 bg-surface p-8 rounded-[var(--radius-lg)] shadow-[var(--shadow-md)] border border-[var(--border)] my-4">
       <div className="flex justify-end">
         <button
           onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}
-          className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-primary transition-colors"
+          className="flex items-center gap-2 text-sm font-medium text-[var(--text-muted)] hover:text-primary transition-colors border border-[var(--border)] rounded-[50px] px-3 py-1.5"
         >
           <Globe size={16} />
           {language === 'en' ? 'العربية' : 'English'}
@@ -158,10 +158,10 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onSwitch, onVeri
       {step === 'role' ? (
         <div className="space-y-6">
           <div className="text-center">
-            <h2 className="mt-2 text-3xl font-bold tracking-tight text-text">
+            <h2 className="mt-2 text-3xl font-bold tracking-tight text-navy">
               {t.chooseAccount}
             </h2>
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-sm text-[var(--text-muted)]">
               {t.roleSelectionDesc}
             </p>
           </div>
@@ -169,16 +169,16 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onSwitch, onVeri
           <div className="grid grid-cols-1 gap-4 mt-6">
             <div
               onClick={() => setRoleId(4)}
-              className={`cursor-pointer p-6 rounded-2xl border-2 flex items-center gap-4 transition-all ${roleId === 4 ? 'border-primary bg-primary/5' : 'border-slate-100 bg-white hover:border-slate-200'}`}
+              className={`cursor-pointer p-6 rounded-[var(--radius-md)] border-2 flex items-center gap-4 transition-all ${roleId === 4 ? 'border-primary bg-primary/5' : 'border-[var(--border)] bg-white hover:border-[var(--border)]'}`}
             >
-              <div className={`p-3 rounded-xl ${roleId === 4 ? 'bg-primary text-white' : 'bg-slate-100 text-slate-500'}`}>
+              <div className={`p-3 rounded-[var(--radius-md)] ${roleId === 4 ? 'bg-primary text-white' : 'bg-[var(--light-bg)] text-[var(--text-muted)]'}`}>
                 <GraduationCap size={28} />
               </div>
               <div className="flex-1">
-                <p className={`font-bold text-lg ${roleId === 4 ? 'text-primary' : 'text-text'}`}>
+                <p className={`font-bold text-lg ${roleId === 4 ? 'text-primary' : 'text-navy'}`}>
                   {language === 'ar' ? 'طالب' : 'Student'}
                 </p>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-[var(--text-muted)] mt-1">
                   {t.studentDesc}
                 </p>
               </div>
@@ -186,16 +186,16 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onSwitch, onVeri
 
             <div
               onClick={() => setRoleId(3)}
-              className={`cursor-pointer p-6 rounded-2xl border-2 flex items-center gap-4 transition-all ${roleId === 3 ? 'border-primary bg-primary/5' : 'border-slate-100 bg-white hover:border-slate-200'}`}
+              className={`cursor-pointer p-6 rounded-[var(--radius-md)] border-2 flex items-center gap-4 transition-all ${roleId === 3 ? 'border-primary bg-primary/5' : 'border-[var(--border)] bg-white hover:border-[var(--border)]'}`}
             >
-              <div className={`p-3 rounded-xl ${roleId === 3 ? 'bg-primary text-white' : 'bg-slate-100 text-slate-500'}`}>
+              <div className={`p-3 rounded-[var(--radius-md)] ${roleId === 3 ? 'bg-primary text-white' : 'bg-[var(--light-bg)] text-[var(--text-muted)]'}`}>
                 <Briefcase size={28} />
               </div>
               <div className="flex-1">
-                <p className={`font-bold text-lg ${roleId === 3 ? 'text-primary' : 'text-text'}`}>
+                <p className={`font-bold text-lg ${roleId === 3 ? 'text-primary' : 'text-navy'}`}>
                   {t.teacherInstitute}
                 </p>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-[var(--text-muted)] mt-1">
                   {t.teacherInstituteDesc}
                 </p>
               </div>
@@ -203,15 +203,15 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onSwitch, onVeri
           </div>
 
           {roleId === 3 && (
-            <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl animate-fade-in">
-              <p className="text-sm text-blue-700 leading-relaxed">
+            <div className="p-4 bg-secondary-pale border border-secondary/30 rounded-[var(--radius-md)] animate-fade-in">
+              <p className="text-sm text-secondary leading-relaxed">
                 {t.teacherDetailedDesc}
               </p>
             </div>
           )}
 
           <div className="pt-4">
-            <Button onClick={() => setStep('info')} className="w-full py-4 text-lg shadow-lg shadow-primary/20">
+            <Button onClick={() => setStep('info')} className="w-full py-4 text-lg shadow-[var(--shadow-lg)]">
               {t.continue}
             </Button>
           </div>
@@ -220,17 +220,17 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onSwitch, onVeri
         <>
           <div className="text-center">
             <div className="flex items-center justify-between mb-2">
-              <button onClick={() => setStep('role')} className="text-sm text-slate-500 hover:text-primary flex items-center gap-1">
+              <button onClick={() => setStep('role')} className="text-sm text-[var(--text-muted)] hover:text-primary flex items-center gap-1">
                 ← {t.back}
               </button>
               <span className="text-xs font-bold text-primary uppercase tracking-wider">
                 {roleId === 4 ? t.studentRegistration : t.teacherRegistration}
               </span>
             </div>
-            <h2 className="text-3xl font-bold tracking-tight text-text">
+            <h2 className="text-3xl font-bold tracking-tight text-navy">
               {t.registerTitle}
             </h2>
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-sm text-[var(--text-muted)]">
               {t.registerSubtitle}
             </p>
           </div>
@@ -302,7 +302,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onSwitch, onVeri
             </div>
 
             <div className="pt-4">
-              <Button type="submit" className="w-full shadow-lg shadow-primary/20" isLoading={isLoading}>
+              <Button type="submit" className="w-full shadow-[var(--shadow-lg)]" isLoading={isLoading}>
                 {t.registerBtn}
               </Button>
             </div>
@@ -311,8 +311,8 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onSwitch, onVeri
       )}
 
       <div className="text-center text-sm pb-2">
-        <span className="text-slate-500">{t.haveAccount} </span>
-        <button onClick={onSwitch} className="font-semibold text-primary hover:text-blue-600 transition-colors">
+        <span className="text-[var(--text-muted)]">{t.haveAccount} </span>
+        <button onClick={onSwitch} className="font-semibold text-primary hover:text-primary-light transition-colors">
           {t.switchToLogin}
         </button>
       </div>

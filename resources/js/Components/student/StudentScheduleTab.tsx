@@ -106,20 +106,20 @@ export const StudentScheduleTab: React.FC<{ onViewList?: () => void }> = ({ onVi
   const renderCalendarDays = () => {
     const days = [];
     for (let i = 0; i < firstDayOfMonth; i++) {
-      days.push(<div key={`empty-${i}`} className="h-24 bg-slate-50/50 border border-slate-100"></div>);
+      days.push(<div key={`empty-${i}`} className="h-24 bg-[var(--light-bg)] border border-[var(--border)]"></div>);
     }
     for (let d = 1; d <= daysInMonth; d++) {
       const daySessions = getSessionsForDay(d);
       const isToday = new Date().getDate() === d && new Date().getMonth() === currentDate.getMonth();
       
       days.push(
-        <div key={d} className={`h-24 border border-slate-100 p-2 transition-colors hover:bg-slate-50 ${isToday ? 'bg-blue-50/30' : 'bg-white'}`}>
-          <span className={`text-sm font-medium ${isToday ? 'text-primary bg-blue-100 w-6 h-6 flex items-center justify-center rounded-full' : 'text-slate-700'}`}>{d}</span>
+        <div key={d} className={`h-24 border border-[var(--border)] p-2 transition-colors hover:bg-[var(--light-bg)] ${isToday ? 'bg-secondary-pale' : 'bg-white'}`}>
+          <span className={`text-sm font-medium ${isToday ? 'text-primary bg-secondary-pale w-6 h-6 flex items-center justify-center rounded-full' : 'text-navy'}`}>{d}</span>
           <div className="mt-1 space-y-1 overflow-y-auto max-h-[calc(100%-24px)] scrollbar-hide">
             {daySessions.map(s => (
               <button 
                 key={s.id} onClick={() => handleSessionClick(s.id)}
-                className={`w-full text-left text-[10px] px-1.5 py-1 rounded truncate font-medium ${s.status === 'live' ? 'bg-red-100 text-red-700 animate-pulse' : s.status === 'scheduled' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'}`}
+                className={`w-full text-left text-[10px] px-1.5 py-1 rounded truncate font-medium ${s.status === 'live' ? 'bg-red-100 text-red-700 animate-pulse' : s.status === 'scheduled' ? 'bg-primary-pale text-primary' : 'bg-[var(--light-bg)] text-navy'}`}
               >
                 {s.start_time.slice(0,5)} - {s.subject ? (direction === 'rtl' ? s.subject.name_ar : s.subject.name_en) : 'Session'}
               </button>
@@ -136,23 +136,23 @@ export const StudentScheduleTab: React.FC<{ onViewList?: () => void }> = ({ onVi
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-        <h2 className="text-2xl font-bold text-slate-900">{t.mySchedule}</h2>
+        <h2 className="text-2xl font-bold text-[var(--text-main)]">{t.mySchedule}</h2>
         <div className="flex gap-2">
-            <div className="flex items-center bg-white rounded-lg border border-slate-200 p-1 shadow-sm">
-                <button onClick={handlePrevMonth} className="p-2 hover:bg-slate-100 rounded-md"><ChevronLeft size={20} className={direction === 'rtl' ? 'rotate-180' : ''} /></button>
-                <span className="px-4 font-semibold text-slate-900 min-w-[140px] text-center">{currentDate.toLocaleString('en-US', { month: 'long', year: 'numeric' })}</span>
-                <button onClick={handleNextMonth} className="p-2 hover:bg-slate-100 rounded-md"><ChevronRight size={20} className={direction === 'rtl' ? 'rotate-180' : ''} /></button>
+            <div className="flex items-center bg-white rounded-lg border border-[var(--border)] p-1 shadow-[var(--shadow-sm)]">
+                <button onClick={handlePrevMonth} className="p-2 hover:bg-[var(--light-bg)] rounded-md"><ChevronLeft size={20} className={direction === 'rtl' ? 'rotate-180' : ''} /></button>
+                <span className="px-4 font-semibold text-[var(--text-main)] min-w-[140px] text-center">{currentDate.toLocaleString('en-US', { month: 'long', year: 'numeric' })}</span>
+                <button onClick={handleNextMonth} className="p-2 hover:bg-[var(--light-bg)] rounded-md"><ChevronRight size={20} className={direction === 'rtl' ? 'rotate-180' : ''} /></button>
             </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="grid grid-cols-7 bg-slate-50 border-b border-slate-200 text-center py-3">
+      <div className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] overflow-hidden">
+        <div className="grid grid-cols-7 bg-[var(--light-bg)] border-b border-[var(--border)] text-center py-3">
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-            <div key={day} className="text-xs font-bold text-slate-500 uppercase tracking-wider">{day}</div>
+            <div key={day} className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">{day}</div>
           ))}
         </div>
-        <div className="grid grid-cols-7 bg-slate-200 gap-px">{renderCalendarDays()}</div>
+        <div className="grid grid-cols-7 bg-[var(--border)] gap-px">{renderCalendarDays()}</div>
       </div>
 
       <Modal isOpen={!!selectedSessionId} onClose={handleCloseModal} title="Session Details">
@@ -160,23 +160,23 @@ export const StudentScheduleTab: React.FC<{ onViewList?: () => void }> = ({ onVi
             <div className="p-8 flex justify-center"><Loader2 className="animate-spin text-primary" /></div>
         ) : sessionDetails ? (
             <div className="space-y-6">
-                <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                <div className="flex items-center gap-4 p-4 bg-[var(--light-bg)] rounded-[var(--radius-md)] border border-[var(--border)]">
                     <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
                         {sessionDetails.teacher?.name?.charAt(0) || 'T'}
                     </div>
                     <div>
-                        <h4 className="font-bold text-slate-900 text-lg">{sessionDetails.teacher?.name || 'Teacher'}</h4>
-                        <p className="text-slate-500 text-sm">
+                        <h4 className="font-bold text-[var(--text-main)] text-lg">{sessionDetails.teacher?.name || 'Teacher'}</h4>
+                        <p className="text-[var(--text-muted)] text-sm">
                             {sessionDetails.subject ? (direction === 'rtl' ? sessionDetails.subject.name_ar : sessionDetails.subject.name_en) : 'Subject'}
                         </p>
                         {sessionDetails.booking?.reference && (
-                            <p className="text-[10px] text-slate-400 mt-1 uppercase font-mono">{sessionDetails.booking.reference}</p>
+                            <p className="text-[10px] text-[var(--text-muted)] mt-1 uppercase font-mono">{sessionDetails.booking.reference}</p>
                         )}
                     </div>
                 </div>
 
                 {waitingForTeacher && (
-                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 flex items-start gap-3 animate-fade-in">
+                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-[var(--radius-md)] text-amber-800 flex items-start gap-3 animate-fade-in">
                         <AlertCircle className="shrink-0 mt-0.5" size={20} />
                         <div>
                             <p className="font-bold">Teacher hasn't started yet</p>
@@ -189,19 +189,19 @@ export const StudentScheduleTab: React.FC<{ onViewList?: () => void }> = ({ onVi
                 )}
 
                 <div className="grid grid-cols-2 gap-4">
-                    <div className="p-3 rounded-lg border border-slate-100">
-                        <p className="text-xs text-slate-400 mb-1">{t.date}</p>
+                    <div className="p-3 rounded-lg border border-[var(--border)]">
+                        <p className="text-xs text-[var(--text-muted)] mb-1">{t.date}</p>
                         <div className="flex items-center gap-2 font-medium"><CalendarIcon size={16} className="text-primary" />{new Date(sessionDetails.session_date).toLocaleDateString()}</div>
                     </div>
-                    <div className="p-3 rounded-lg border border-slate-100">
-                        <p className="text-xs text-slate-400 mb-1">{t.time}</p>
+                    <div className="p-3 rounded-lg border border-[var(--border)]">
+                        <p className="text-xs text-[var(--text-muted)] mb-1">{t.time}</p>
                         <div className="flex items-center gap-2 font-medium"><Clock size={16} className="text-primary" />{sessionDetails.start_time} - {sessionDetails.end_time}</div>
                     </div>
                 </div>
                 
                 <div className="pt-2">
                     <Button 
-                        className="w-full h-12 shadow-lg shadow-primary/20" 
+                        className="w-full h-12 shadow-[var(--shadow-lg)]" 
                         onClick={() => handleJoinSession(sessionDetails.id)} 
                         isLoading={joining}
                         disabled={sessionDetails.status === 'completed'}

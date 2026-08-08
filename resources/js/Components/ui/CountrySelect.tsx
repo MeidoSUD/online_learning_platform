@@ -37,12 +37,12 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({ label, value, onCh
           type="button"
           onClick={() => setIsOpen(!isOpen)}
           className={`
-            w-full flex items-center justify-between rounded-lg border bg-white py-3 px-4 text-text shadow-sm transition-all
+            w-full flex items-center justify-between rounded-lg border bg-white py-3 px-4 text-text shadow-[var(--shadow-sm)] transition-all
             focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none
-            ${error ? 'border-error' : 'border-slate-200'}
+            ${error ? 'border-error' : 'border-[var(--border)]'}
           `}
         >
-          <span className={`flex items-center gap-2 ${!selectedCountry ? 'text-slate-400' : ''}`}>
+          <span className={`flex items-center gap-2 ${!selectedCountry ? 'text-[var(--text-muted)]' : ''}`}>
             {selectedCountry ? (
               <>
                 <span className="text-lg">{selectedCountry.flag}</span>
@@ -52,11 +52,11 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({ label, value, onCh
               label
             )}
           </span>
-          <ChevronDown size={20} className="text-slate-400" />
+          <ChevronDown size={20} className="text-[var(--text-muted)]" />
         </button>
 
         {isOpen && (
-          <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+          <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 shadow-[var(--shadow-lg)] ring-1 ring-black ring-opacity-5 focus:outline-none">
             {COUNTRIES.map((country) => (
               <div
                 key={country.code}
@@ -64,7 +64,7 @@ export const CountrySelect: React.FC<CountrySelectProps> = ({ label, value, onCh
                   onChange(country.label);
                   setIsOpen(false);
                 }}
-                className="flex cursor-pointer items-center justify-between py-2 px-4 hover:bg-slate-50"
+                className="flex cursor-pointer items-center justify-between py-2 px-4 hover:bg-[var(--light-bg)]"
               >
                 <div className="flex items-center gap-3">
                   <span className="text-xl">{country.flag}</span>

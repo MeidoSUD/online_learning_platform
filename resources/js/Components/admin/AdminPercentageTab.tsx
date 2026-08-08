@@ -104,13 +104,13 @@ export const AdminPercentageTab: React.FC = () => {
     return (
         <div className="space-y-6 animate-fade-in max-w-6xl mx-auto">
             <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-slate-900">{t.revenueManagement}</h2>
+                <h2 className="text-2xl font-bold text-[var(--text-main)]">{t.revenueManagement}</h2>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Current Status Card */}
                 <div className="lg:col-span-2 space-y-6">
-                    <div className="bg-gradient-to-br from-primary to-blue-600 rounded-3xl p-8 text-white shadow-xl shadow-primary/20 relative overflow-hidden">
+                    <div className="bg-gradient-to-br from-primary-light to-primary rounded-[var(--radius-lg)] p-8 text-white shadow-[var(--shadow-lg)] relative overflow-hidden">
                         <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                             <div>
                                 <p className="text-blue-100 font-medium mb-1">{language === 'ar' ? 'عمولة المنصة الحالية' : 'Current Platform Commission'}</p>
@@ -132,92 +132,92 @@ export const AdminPercentageTab: React.FC = () => {
                     {/* Analytics Overview Section */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {[
-                            { label: language === 'ar' ? 'إجمالي الإيرادات' : 'Total Revenue', value: `${analytics?.total_platform_revenue?.toLocaleString() || 0} ${language === 'ar' ? 'ريال' : 'SAR'}`, icon: DollarSign, color: 'text-green-600', bg: 'bg-green-50' },
-                            { label: language === 'ar' ? 'إجمالي الحجوزات' : 'Total Bookings', value: analytics?.total_bookings || 0, icon: BookOpen, color: 'text-blue-600', bg: 'bg-blue-50' },
+                            { label: language === 'ar' ? 'إجمالي الإيرادات' : 'Total Revenue', value: `${analytics?.total_platform_revenue?.toLocaleString() || 0} ${language === 'ar' ? 'ريال' : 'SAR'}`, icon: DollarSign, color: 'text-primary', bg: 'bg-primary-pale' },
+                            { label: language === 'ar' ? 'إجمالي الحجوزات' : 'Total Bookings', value: analytics?.total_bookings || 0, icon: BookOpen, color: 'text-secondary', bg: 'bg-secondary-pale' },
                             { label: language === 'ar' ? 'مدفوعات الطلاب' : 'Student Spent', value: `${analytics?.total_student_spent?.toLocaleString() || 0} ${language === 'ar' ? 'ريال' : 'SAR'}`, icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50' },
                             { label: language === 'ar' ? 'هامش المنصة' : 'Platform Margin', value: `${analytics?.average_percentage || activePercentage?.value || 0}%`, icon: BarChart3, color: 'text-orange-600', bg: 'bg-orange-50' },
                         ].map((stat, i) => (
-                            <div key={i} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4 transition-all hover:shadow-md">
-                                <div className={`p-3 rounded-xl ${stat.bg} ${stat.color}`}>
+                            <div key={i} className="bg-white p-5 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] flex items-center gap-4 transition-all hover:shadow-[var(--shadow-md)]">
+                                <div className={`p-3 rounded-[var(--radius-md)] ${stat.bg} ${stat.color}`}>
                                     <stat.icon size={24} />
                                 </div>
                                 <div>
-                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{stat.label}</p>
-                                    <p className="text-xl font-black text-slate-900">{stat.value}</p>
+                                    <p className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">{stat.label}</p>
+                                    <p className="text-xl font-black text-[var(--text-main)]">{stat.value}</p>
                                 </div>
                             </div>
                         ))}
                     </div>
 
                     {/* Calculator Section */}
-                    <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
+                    <div className="bg-white rounded-[var(--radius-lg)] border border-[var(--border)] p-6 shadow-[var(--shadow-sm)]">
                         <div className="flex items-center gap-3 mb-6">
                             <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
                                 <Calculator size={20} />
                             </div>
-                            <h3 className="font-bold text-slate-900">{language === 'ar' ? 'حاسبة الأسعار' : 'Pricing Calculator'}</h3>
+                            <h3 className="font-bold text-[var(--text-main)]">{language === 'ar' ? 'حاسبة الأسعار' : 'Pricing Calculator'}</h3>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
                             <div className="space-y-4">
                                 <div>
-                                    <label className="text-sm font-semibold text-slate-600 mb-2 block">{language === 'ar' ? 'سعر ساعة المعلم (ريال)' : 'Teacher Hourly Rate (SAR)'}</label>
+                                    <label className="text-sm font-semibold text-[var(--text-muted)] mb-2 block">{language === 'ar' ? 'سعر ساعة المعلم (ريال)' : 'Teacher Hourly Rate (SAR)'}</label>
                                     <div className="relative">
                                         <input
                                             type="number"
                                             value={teacherRate}
                                             onChange={(e) => setTeacherRate(Number(e.target.value))}
-                                            className={`w-full bg-slate-50 border border-slate-100 rounded-2xl ${language === 'ar' ? 'pr-6 pl-14' : 'px-6'} py-4 text-2xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20`}
+                                            className={`w-full bg-[var(--light-bg)] border border-[var(--border)] rounded-[var(--radius-md)] ${language === 'ar' ? 'pr-6 pl-14' : 'px-6'} py-4 text-2xl font-bold text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-primary/20`}
                                         />
-                                        <div className={`absolute ${language === 'ar' ? 'left-4' : 'right-4'} top-1/2 -translate-y-1/2 text-slate-400 font-bold`}>{language === 'ar' ? 'ريال' : 'SAR'}</div>
+                                        <div className={`absolute ${language === 'ar' ? 'left-4' : 'right-4'} top-1/2 -translate-y-1/2 text-[var(--text-muted)] font-bold`}>{language === 'ar' ? 'ريال' : 'SAR'}</div>
                                     </div>
                                 </div>
-                                <p className="text-xs text-slate-400 flex items-center gap-1.5 px-1">
+                                <p className="text-xs text-[var(--text-muted)] flex items-center gap-1.5 px-1">
                                     <Info size={12} /> {activePercentage 
                                         ? (language === 'ar' ? `هذا يحسب المبلغ الذي يدفعه الطالب بناءً على النسبة الحالية ${activePercentage.value}%.` : `This calculates how much the student pays based on the current ${activePercentage.value}% rate.`)
                                         : (language === 'ar' ? "لا توجد نسبة معدة. قم بتعيين استراتيجية نسبة لرؤية حسابات التأثير." : "No rate configured. Set a percentage strategy to see impact calculations.")}
                                 </p>
                             </div>
 
-                            <div className="space-y-4 p-6 bg-slate-50 rounded-2xl border border-slate-100">
-                                <div className="flex justify-between items-center pb-3 border-b border-slate-200">
-                                    <span className="text-sm text-slate-500">{language === 'ar' ? 'يحصل المعلم' : 'Teacher Gets'}</span>
-                                    <span className="font-bold text-slate-900">{teacherRate} {language === 'ar' ? 'ريال' : 'SAR'}</span>
+                            <div className="space-y-4 p-6 bg-[var(--light-bg)] rounded-[var(--radius-md)] border border-[var(--border)]">
+                                <div className="flex justify-between items-center pb-3 border-b border-[var(--border)]">
+                                    <span className="text-sm text-[var(--text-muted)]">{language === 'ar' ? 'يحصل المعلم' : 'Teacher Gets'}</span>
+                                    <span className="font-bold text-[var(--text-main)]">{teacherRate} {language === 'ar' ? 'ريال' : 'SAR'}</span>
                                 </div>
-                                <div className="flex justify-between items-center pb-3 border-b border-slate-200">
-                                    <span className="text-sm text-slate-500 font-medium">{language === 'ar' ? `إيرادات المنصة (${activePercentage?.value || '0.00'}%)` : `Platform Revenue (${activePercentage?.value || '0.00'}%)`}</span>
+                                <div className="flex justify-between items-center pb-3 border-b border-[var(--border)]">
+                                    <span className="text-sm text-[var(--text-muted)] font-medium">{language === 'ar' ? `إيرادات المنصة (${activePercentage?.value || '0.00'}%)` : `Platform Revenue (${activePercentage?.value || '0.00'}%)`}</span>
                                     <span className="font-bold text-primary">+{revenue.toFixed(2)} {language === 'ar' ? 'ريال' : 'SAR'}</span>
                                 </div>
                                 <div className="flex justify-between items-center pt-2">
-                                    <span className="font-bold text-slate-900">{language === 'ar' ? 'يدفع الطالب' : 'Student Pays'}</span>
-                                    <span className="text-2xl font-black text-slate-900">{studentPrice.toFixed(2)} {language === 'ar' ? 'ريال' : 'SAR'}</span>
+                                    <span className="font-bold text-[var(--text-main)]">{language === 'ar' ? 'يدفع الطالب' : 'Student Pays'}</span>
+                                    <span className="text-2xl font-black text-[var(--text-main)]">{studentPrice.toFixed(2)} {language === 'ar' ? 'ريال' : 'SAR'}</span>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     {/* History Section */}
-                    <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm overflow-hidden">
+                    <div className="bg-white rounded-[var(--radius-lg)] border border-[var(--border)] p-6 shadow-[var(--shadow-sm)] overflow-hidden">
                         <div className="flex items-center gap-3 mb-6">
-                            <div className="p-2 bg-slate-50 text-slate-600 rounded-lg">
+                            <div className="p-2 bg-[var(--light-bg)] text-[var(--text-muted)] rounded-lg">
                                 <History size={20} />
                             </div>
-                            <h3 className="font-bold text-slate-900">{language === 'ar' ? 'سجل النسب' : 'Percentage History'}</h3>
+                            <h3 className="font-bold text-[var(--text-main)]">{language === 'ar' ? 'سجل النسب' : 'Percentage History'}</h3>
                         </div>
 
                         <div className="space-y-4">
                             {history.length === 0 ? (
-                                <p className="text-center py-8 text-slate-400">{language === 'ar' ? 'لا تتوفر بيانات تاريخية.' : 'No historical data available.'}</p>
+                                <p className="text-center py-8 text-[var(--text-muted)]">{language === 'ar' ? 'لا تتوفر بيانات تاريخية.' : 'No historical data available.'}</p>
                             ) : (
                                 history.map((item, idx) => (
-                                    <div key={item.id} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${item.is_active ? 'border-primary/20 bg-primary/5 shadow-sm' : 'border-slate-100'}`}>
+                                    <div key={item.id} className={`flex items-center justify-between p-4 rounded-[var(--radius-md)] border transition-all ${item.is_active ? 'border-primary/20 bg-primary/5 shadow-[var(--shadow-sm)]' : 'border-[var(--border)]'}`}>
                                         <div className="flex items-center gap-4">
-                                            <div className={`h-12 w-12 rounded-xl flex items-center justify-center font-bold text-lg ${item.is_active ? 'bg-primary text-white' : 'bg-slate-100 text-slate-400'}`}>
+                                            <div className={`h-12 w-12 rounded-[var(--radius-md)] flex items-center justify-center font-bold text-lg ${item.is_active ? 'bg-primary text-white' : 'bg-[var(--light-bg)] text-[var(--text-muted)]'}`}>
                                                 {item.value}%
                                             </div>
                                             <div>
-                                                <p className="font-bold text-slate-900">{item.description || (language === 'ar' ? 'استراتيجية عامة' : 'General Strategy')}</p>
-                                                <p className="text-xs text-slate-500">{language === 'ar' ? 'تاريخ السريان:' : 'Effective:'} {item.effective_date}</p>
+                                                <p className="font-bold text-[var(--text-main)]">{item.description || (language === 'ar' ? 'استراتيجية عامة' : 'General Strategy')}</p>
+                                                <p className="text-xs text-[var(--text-muted)]">{language === 'ar' ? 'تاريخ السريان:' : 'Effective:'} {item.effective_date}</p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-3">
@@ -237,17 +237,17 @@ export const AdminPercentageTab: React.FC = () => {
 
                 {/* Update Form Sidebar */}
                 <div className="space-y-6">
-                    <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm sticky top-6">
+                    <div className="bg-white rounded-[var(--radius-lg)] border border-[var(--border)] p-6 shadow-[var(--shadow-sm)] sticky top-6">
                         <div className="flex items-center gap-3 mb-6">
                             <div className="p-2 bg-primary/5 text-primary rounded-lg">
                                 <TrendingUp size={20} />
                             </div>
-                            <h3 className="font-bold text-slate-900">{language === 'ar' ? 'تحديث النسبة' : 'Update Rate'}</h3>
+                            <h3 className="font-bold text-[var(--text-main)]">{language === 'ar' ? 'تحديث النسبة' : 'Update Rate'}</h3>
                         </div>
 
                         <form onSubmit={handleUpdatePercentage} className="space-y-5">
                             <div className="space-y-1.5">
-                                <label className="text-xs font-bold text-slate-500 uppercase px-1">{language === 'ar' ? 'النسبة الجديدة' : 'New Percentage'}</label>
+                                <label className="text-xs font-bold text-[var(--text-muted)] uppercase px-1">{language === 'ar' ? 'النسبة الجديدة' : 'New Percentage'}</label>
                                 <div className="relative">
                                     <input
                                         type="number"
@@ -257,36 +257,36 @@ export const AdminPercentageTab: React.FC = () => {
                                         step="0.01"
                                         value={newPercentage}
                                         onChange={(e) => setNewPercentage(e.target.value)}
-                                        className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 font-bold focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                        className="w-full bg-[var(--light-bg)] border border-[var(--border)] rounded-[var(--radius-md)] px-4 py-3 font-bold focus:outline-none focus:ring-2 focus:ring-primary/20"
                                         placeholder="0.00"
                                     />
-                                    <div className={`absolute ${language === 'ar' ? 'left-4' : 'right-4'} top-1/2 -translate-y-1/2 text-slate-400`}>%</div>
+                                    <div className={`absolute ${language === 'ar' ? 'left-4' : 'right-4'} top-1/2 -translate-y-1/2 text-[var(--text-muted)]`}>%</div>
                                 </div>
                             </div>
 
                             <div className="space-y-1.5">
-                                <label className="text-xs font-bold text-slate-500 uppercase px-1">{language === 'ar' ? 'تاريخ السريان' : 'Effective Date'}</label>
+                                <label className="text-xs font-bold text-[var(--text-muted)] uppercase px-1">{language === 'ar' ? 'تاريخ السريان' : 'Effective Date'}</label>
                                 <input
                                     type="date"
                                     required
                                     value={effectiveDate}
                                     onChange={(e) => setEffectiveDate(e.target.value)}
-                                    className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 font-medium focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                    className="w-full bg-[var(--light-bg)] border border-[var(--border)] rounded-[var(--radius-md)] px-4 py-3 font-medium focus:outline-none focus:ring-2 focus:ring-primary/20"
                                 />
-                                <p className="text-[10px] text-slate-400 px-1">{language === 'ar' ? 'سيبدأ تفعيل التغييرات المجدولة الساعة 00:00 في هذا التاريخ.' : 'Scheduled changes will activate at 00:00 on this date.'}</p>
+                                <p className="text-[10px] text-[var(--text-muted)] px-1">{language === 'ar' ? 'سيبدأ تفعيل التغييرات المجدولة الساعة 00:00 في هذا التاريخ.' : 'Scheduled changes will activate at 00:00 on this date.'}</p>
                             </div>
 
                             <div className="space-y-1.5">
-                                <label className="text-xs font-bold text-slate-500 uppercase px-1">{language === 'ar' ? 'الوصف / السبب' : 'Description / Reason'}</label>
+                                <label className="text-xs font-bold text-[var(--text-muted)] uppercase px-1">{language === 'ar' ? 'الوصف / السبب' : 'Description / Reason'}</label>
                                 <textarea
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
-                                    className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 min-h-[100px]"
+                                    className="w-full bg-[var(--light-bg)] border border-[var(--border)] rounded-[var(--radius-md)] px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 min-h-[100px]"
                                     placeholder={language === 'ar' ? 'مثلًا عرض الربع الثاني، زيادة قياسية...' : 'e.g. Q2 Promotion, Standard increase...'}
                                 />
                             </div>
 
-                            <Button className="w-full py-4 rounded-xl flex items-center justify-center gap-2" disabled={formLoading}>
+                            <Button className="w-full py-4 rounded-[var(--radius-md)] flex items-center justify-center gap-2" disabled={formLoading}>
                                 {formLoading ? <Loader2 className="animate-spin" size={20} /> : (
                                     <>
                                         <Save size={20} />
@@ -297,9 +297,9 @@ export const AdminPercentageTab: React.FC = () => {
                         </form>
                     </div>
 
-                    <div className="p-6 bg-amber-50 rounded-3xl border border-amber-100">
+                    <div className="p-6 bg-amber-50 rounded-[var(--radius-lg)] border border-amber-100">
                         <div className="flex items-start gap-4">
-                            <div className="p-2 bg-amber-100 text-amber-600 rounded-xl">
+                            <div className="p-2 bg-amber-100 text-amber-600 rounded-[var(--radius-md)]">
                                 <Info size={20} />
                             </div>
                             <div className="space-y-1">

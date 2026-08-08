@@ -124,7 +124,7 @@ export const AdminSettingsTab: React.FC = () => {
           <select
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+            className="w-full px-3 py-2 border border-[var(--border)] rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-transparent"
           >
             <option value="1">{language === 'ar' ? 'نعم' : 'Yes'}</option>
             <option value="0">{language === 'ar' ? 'لا' : 'No'}</option>
@@ -137,7 +137,7 @@ export const AdminSettingsTab: React.FC = () => {
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
             rows={3}
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+            className="w-full px-3 py-2 border border-[var(--border)] rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-transparent"
           />
         );
       }
@@ -153,7 +153,7 @@ export const AdminSettingsTab: React.FC = () => {
     if (setting.type === 'bool') {
       return (
         <span className={`px-3 py-1 rounded-full text-sm ${setting.value === '1' || setting.value === 'true' 
-          ? 'bg-green-100 text-green-700' 
+          ? 'bg-primary-pale text-primary' 
           : 'bg-red-100 text-red-700'}`}>
           {setting.value === '1' || setting.value === 'true' 
             ? (language === 'ar' ? 'مفعل' : 'Enabled')
@@ -162,14 +162,14 @@ export const AdminSettingsTab: React.FC = () => {
       );
     }
 
-    return <span className="text-slate-700">{setting.value}</span>;
+    return <span className="text-navy">{setting.value}</span>;
   };
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+        <h2 className="text-2xl font-bold text-[var(--text-main)] flex items-center gap-2">
           <SettingsIcon className="text-primary" />
           {language === 'ar' ? 'إعدادات النظام' : 'System Settings'}
         </h2>
@@ -194,7 +194,7 @@ export const AdminSettingsTab: React.FC = () => {
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               activeGroup === group
                 ? 'bg-primary text-white'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                : 'bg-[var(--light-bg)] text-[var(--text-muted)] hover:bg-[var(--border)]'
             }`}
           >
             {group === 'all' ? (language === 'ar' ? 'الكل' : 'All') : getGroupLabel(group)}
@@ -203,59 +203,59 @@ export const AdminSettingsTab: React.FC = () => {
       </div>
 
       {/* Settings Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] overflow-hidden">
         {loading ? (
           <div className="p-8 text-center">
             <RefreshCw className="animate-spin mx-auto text-primary" size={32} />
           </div>
         ) : settings.length === 0 ? (
-          <div className="p-8 text-center text-slate-500">
+          <div className="p-8 text-center text-[var(--text-muted)]">
             {language === 'ar' ? 'لا توجد إعدادات' : 'No settings found'}
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-slate-50 border-b border-slate-200">
+              <thead className="bg-[var(--light-bg)] border-b border-[var(--border)]">
                 <tr>
-                  <th className="px-4 py-3 text-start text-sm font-semibold text-slate-700">
+                  <th className="px-4 py-3 text-start text-sm font-semibold text-navy">
                     {language === 'ar' ? 'المفتاح' : 'Key'}
                   </th>
-                  <th className="px-4 py-3 text-start text-sm font-semibold text-slate-700">
+                  <th className="px-4 py-3 text-start text-sm font-semibold text-navy">
                     {language === 'ar' ? 'القيمة' : 'Value'}
                   </th>
-                  <th className="px-4 py-3 text-start text-sm font-semibold text-slate-700">
+                  <th className="px-4 py-3 text-start text-sm font-semibold text-navy">
                     {language === 'ar' ? 'النوع' : 'Type'}
                   </th>
-                  <th className="px-4 py-3 text-start text-sm font-semibold text-slate-700">
+                  <th className="px-4 py-3 text-start text-sm font-semibold text-navy">
                     {language === 'ar' ? 'المجموعة' : 'Group'}
                   </th>
-                  <th className="px-4 py-3 text-start text-sm font-semibold text-slate-700">
+                  <th className="px-4 py-3 text-start text-sm font-semibold text-navy">
                     {language === 'ar' ? 'الوصف' : 'Description'}
                   </th>
-                  <th className="px-4 py-3 text-start text-sm font-semibold text-slate-700">
+                  <th className="px-4 py-3 text-start text-sm font-semibold text-navy">
                     {language === 'ar' ? 'إجراءات' : 'Actions'}
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[var(--border)]">
                 {settings.map(setting => (
-                  <tr key={setting.id} className="hover:bg-slate-50">
+                  <tr key={setting.id} className="hover:bg-[var(--light-bg)]">
                     <td className="px-4 py-3">
-                      <code className="text-sm bg-slate-100 px-2 py-1 rounded">{setting.key}</code>
+                      <code className="text-sm bg-[var(--light-bg)] px-2 py-1 rounded">{setting.key}</code>
                     </td>
                     <td className="px-4 py-3 min-w-[200px]">
                       {renderValueInput(setting)}
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                      <span className="text-xs bg-secondary-pale text-secondary px-2 py-1 rounded">
                         {getTypeLabel(setting.type)}
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-sm text-slate-600">{getGroupLabel(setting.group)}</span>
+                      <span className="text-sm text-[var(--text-muted)]">{getGroupLabel(setting.group)}</span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-sm text-slate-500">{setting.description || '-'}</span>
+                      <span className="text-sm text-[var(--text-muted)]">{setting.description || '-'}</span>
                     </td>
                     <td className="px-4 py-3">
                       {editingId === setting.id ? (
@@ -307,13 +307,13 @@ export const AdminSettingsTab: React.FC = () => {
             onChange={(e) => setNewSetting({ ...newSetting, value: e.target.value })}
           />
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-navy mb-1">
               {language === 'ar' ? 'النوع' : 'Type'}
             </label>
             <select
               value={newSetting.type}
               onChange={(e) => setNewSetting({ ...newSetting, type: e.target.value })}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+              className="w-full px-3 py-2 border border-[var(--border)] rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-transparent"
             >
               <option value="string">{language === 'ar' ? 'نص' : 'Text'}</option>
               <option value="number">{language === 'ar' ? 'رقم' : 'Number'}</option>
@@ -323,13 +323,13 @@ export const AdminSettingsTab: React.FC = () => {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-navy mb-1">
               {language === 'ar' ? 'المجموعة' : 'Group'}
             </label>
             <select
               value={newSetting.group}
               onChange={(e) => setNewSetting({ ...newSetting, group: e.target.value })}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+              className="w-full px-3 py-2 border border-[var(--border)] rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-transparent"
             >
               <option value="app">{language === 'ar' ? 'التطبيق' : 'App'}</option>
               <option value="contact">{language === 'ar' ? 'معلومات الاتصال' : 'Contact'}</option>

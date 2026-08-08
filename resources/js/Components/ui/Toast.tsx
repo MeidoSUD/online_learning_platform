@@ -19,24 +19,24 @@ export const Toast: React.FC<ToastProps> = ({ message, type, onClose, duration =
     }, [onClose, duration]);
 
     const icons = {
-        success: <CheckCircle className="h-5 w-5 text-green-500" />,
+        success: <CheckCircle className="h-5 w-5 text-primary" />,
         error: <XCircle className="h-5 w-5 text-red-500" />,
         warning: <AlertCircle className="h-5 w-5 text-amber-500" />
     };
 
     const bgColors = {
-        success: 'bg-green-50 border-green-100',
+        success: 'bg-primary-pale border-primary/30',
         error: 'bg-red-50 border-red-100',
         warning: 'bg-amber-50 border-amber-100'
     };
 
     return (
-        <div className={`fixed bottom-4 right-4 z-50 flex items-center gap-3 p-4 rounded-xl border shadow-lg animate-in slide-in-from-right-full transition-all duration-300 ${bgColors[type]}`}>
+        <div className={`fixed bottom-4 right-4 z-50 flex items-center gap-3 p-4 rounded-[var(--radius-sm)] border shadow-[var(--shadow-lg)] animate-in slide-in-from-right-full transition-all duration-300 ${bgColors[type]}`}>
             {icons[type]}
-            <p className="text-sm font-medium text-slate-800">{message}</p>
+            <p className="text-sm font-medium text-[var(--text-main)]">{message}</p>
             <button
                 onClick={onClose}
-                className="ml-2 text-slate-400 hover:text-slate-600 transition-colors"
+                className="ml-2 text-[var(--text-muted)] hover:text-[var(--text-muted)] transition-colors"
             >
                 <X className="h-4 w-4" />
             </button>

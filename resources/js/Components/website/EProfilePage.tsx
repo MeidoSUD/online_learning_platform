@@ -18,15 +18,15 @@ export const ProfileView: React.FC = () => {
         <div className={`${s.container} grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-16 items-center`}>
           <motion.div initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} className={`${direction === 'rtl' ? 'text-right' : 'text-left'}`}>
             <div className="mb-6 md:mb-12">
-              <div className={`w-20 h-20 md:w-32 md:h-32 mb-4 md:mb-8 flex items-center justify-center text-brand-blue border-4 border-brand-blue rounded-2xl md:rounded-3xl animate-pulse ${direction === 'rtl' ? '' : 'ml-auto'}`}>
+              <div className={`w-20 h-20 md:w-32 md:h-32 mb-4 md:mb-8 flex items-center justify-center text-navy border-4 border-navy rounded-2xl md:rounded-3xl animate-pulse ${direction === 'rtl' ? '' : 'ml-auto'}`}>
                 <BookOpen size={32} className="md:size-16" strokeWidth={1.5} />
               </div>
-              <h1 className={s.heroTitle}>{language === 'ar' ? 'ايوان التعلم' : 'Ewan'} <br /> <span className="text-brand-blue border-b-[6px] md:border-b-[12px] border-brand-green">{language === 'ar' ? 'التعليم الذكي' : 'Smart Learning'}</span></h1>
+              <h1 className={s.heroTitle}>{language === 'ar' ? 'ايوان التعلم' : 'Ewan'} <br /> <span className="text-navy border-b-[6px] md:border-b-[12px] border-green">{language === 'ar' ? 'التعليم الذكي' : 'Smart Learning'}</span></h1>
               <p className={`text-base md:text-2xl text-slate-400 font-bold uppercase tracking-[0.15em] md:tracking-[0.2em] font-poppins pt-4 md:pt-8 ${direction === 'rtl' ? 'text-right' : 'text-left'}`}>ewan-geniuses.com</p>
             </div>
             <div className={`flex gap-3 md:gap-4 ${direction === 'rtl' ? 'justify-end' : 'justify-start'}`}>
-              <div className="w-8 h-2 md:w-12 md:h-3 rounded-full bg-brand-blue" />
-              <div className="w-8 h-2 md:w-12 md:h-3 rounded-full bg-brand-green" />
+              <div className="w-8 h-2 md:w-12 md:h-3 rounded-full bg-navy" />
+              <div className="w-8 h-2 md:w-12 md:h-3 rounded-full bg-green" />
               <div className="w-8 h-2 md:w-12 md:h-3 rounded-full bg-slate-200" />
             </div>
           </motion.div>
@@ -44,8 +44,8 @@ export const ProfileView: React.FC = () => {
                 </div>
               </div>
             </div>
-            <div className="absolute -top-6 -right-6 md:-top-10 md:-right-10 w-32 h-32 md:w-64 md:h-64 bg-brand-blue opacity-10 rounded-full blur-3xl animate-pulse" />
-            <div className={`absolute -bottom-6 md:-bottom-10 w-24 h-24 md:w-48 md:h-48 bg-brand-green rounded-[1.5rem] md:rounded-[3rem] -z-10 ${direction === 'rtl' ? '-left-6 md:-left-10' : '-right-6 md:-right-10'}`} />
+            <div className="absolute -top-6 -right-6 md:-top-10 md:-right-10 w-32 h-32 md:w-64 md:h-64 bg-navy opacity-10 rounded-full blur-3xl animate-pulse" />
+            <div className={`absolute -bottom-6 md:-bottom-10 w-24 h-24 md:w-48 md:h-48 bg-green rounded-[1.5rem] md:rounded-[3rem] -z-10 ${direction === 'rtl' ? '-left-6 md:-left-10' : '-right-6 md:-right-10'}`} />
           </motion.div>
         </div>
       </section>
@@ -55,12 +55,12 @@ export const ProfileView: React.FC = () => {
         <div className={s.container}>
           <div className="text-center mb-12 md:mb-20">
             <h2 className="text-3xl md:text-5xl font-black font-cairo mb-3 md:mb-4 text-slate-800">{language === 'ar' ? 'رسالتنا ورؤيتنا' : 'Mission & Vision'}</h2>
-            <div className="h-1 md:h-1.5 w-20 md:w-32 bg-brand-green mx-auto rounded-full" />
+            <div className="h-1 md:h-1.5 w-20 md:w-32 bg-green mx-auto rounded-full" />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
             <motion.div whileHover={{ y: -8 }} className={`bg-white rounded-[2rem] md:rounded-[4rem] p-8 md:p-16 shadow-xl border border-slate-100 ${direction === 'rtl' ? 'text-right' : 'text-left'}`}>
-              <div className="w-16 h-16 md:w-20 md:h-20 bg-brand-blue/10 rounded-2xl md:rounded-3xl flex items-center justify-center text-brand-blue mb-6 md:mb-10">
+              <div className="w-16 h-16 md:w-20 md:h-20 bg-navy/10 rounded-2xl md:rounded-3xl flex items-center justify-center text-navy mb-6 md:mb-10">
                 <Rocket size={28} className="md:size-10" />
               </div>
               <h3 className="text-2xl md:text-4xl font-black font-cairo mb-4 md:mb-6 text-slate-900">{language === 'ar' ? 'رسالتنا' : 'Our Mission'}</h3>
@@ -71,7 +71,7 @@ export const ProfileView: React.FC = () => {
               </p>
             </motion.div>
 
-            <motion.div whileHover={{ y: -8 }} className="bg-brand-green rounded-[2rem] md:rounded-[4rem] p-8 md:p-16 shadow-xl text-white">
+            <motion.div whileHover={{ y: -8 }} className="bg-green rounded-[2rem] md:rounded-[4rem] p-8 md:p-16 shadow-xl text-white">
               <div className="w-16 h-16 md:w-20 md:h-20 bg-white/20 rounded-2xl md:rounded-3xl flex items-center justify-center mb-6 md:mb-10">
                 <Eye size={28} className="md:size-10" />
               </div>
@@ -87,7 +87,7 @@ export const ProfileView: React.FC = () => {
       </section>
 
       {/* What is Ewan App? */}
-      <section className="py-12 md:py-24 bg-brand-blue text-white overflow-hidden relative">
+      <section className="py-12 md:py-24 bg-navy text-white overflow-hidden relative">
         <div className={`${s.container} grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-12 text-center items-center`}>
           <div className={`space-y-3 md:space-y-6 ${direction === 'rtl' ? 'text-right md:text-right' : 'text-left md:text-left'}`}>
             <h3 className="text-2xl md:text-4xl font-black font-cairo">{language === 'ar' ? 'تطبيق Ewan' : 'Ewan App'}</h3>
@@ -98,11 +98,11 @@ export const ProfileView: React.FC = () => {
             </p>
           </div>
           <motion.div whileHover={{ scale: 1.05 }} className="bg-white/10 backdrop-blur-3xl p-8 md:p-16 rounded-[2rem] md:rounded-[4rem] border border-white/20 shadow-[0_30px_60px_-12px_rgba(0,0,0,0.3)]">
-            <div className="w-12 h-12 md:w-20 md:h-20 bg-white rounded-2xl md:rounded-3xl mx-auto mb-4 md:mb-8 flex items-center justify-center text-brand-blue shadow-xl">
+            <div className="w-12 h-12 md:w-20 md:h-20 bg-white rounded-2xl md:rounded-3xl mx-auto mb-4 md:mb-8 flex items-center justify-center text-navy shadow-xl">
               <Smartphone size={24} className="md:size-10" />
             </div>
             <h2 className="text-4xl md:text-6xl font-black font-cairo mb-2 md:mb-4">{language === 'ar' ? 'ما هو Ewan؟' : 'WHAT IS EWAN?'}</h2>
-            <div className="h-1 md:h-2 w-16 md:w-24 bg-brand-green mx-auto mb-3 md:mb-6 rounded-full" />
+            <div className="h-1 md:h-2 w-16 md:w-24 bg-green mx-auto mb-3 md:mb-6 rounded-full" />
             <p className="text-lg md:text-2xl font-poppins font-bold uppercase tracking-tighter opacity-80">{language === 'ar' ? 'تطبيق تعليمي متكامل' : 'Integrated Learning App'}</p>
           </motion.div>
           <div className={`space-y-3 md:space-y-6 ${direction === 'rtl' ? 'text-right' : 'text-left'}`}>
@@ -121,13 +121,13 @@ export const ProfileView: React.FC = () => {
         <div className={s.container}>
           <div className="text-center mb-12 md:mb-24">
             <h2 className={s.heading}>{language === 'ar' ? 'ماذا نقدم' : 'What We Offer'}</h2>
-            <div className="h-1 md:h-1.5 w-20 md:w-32 bg-brand-green mx-auto rounded-full" />
+            <div className="h-1 md:h-1.5 w-20 md:w-32 bg-green mx-auto rounded-full" />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-12">
             {/* Private Lessons */}
             <div className={s.card}>
-              <div className="mb-6 md:mb-10 p-4 md:p-6 bg-brand-blue/5 rounded-2xl md:rounded-3xl w-fit text-brand-blue group-hover:bg-brand-blue group-hover:text-white transition-all"><Users size={28} className="md:size-12" /></div>
+              <div className="mb-6 md:mb-10 p-4 md:p-6 bg-navy/5 rounded-2xl md:rounded-3xl w-fit text-navy group-hover:bg-navy group-hover:text-white transition-all"><Users size={28} className="md:size-12" /></div>
               <h3 className="text-2xl md:text-3xl font-black font-cairo mb-4 md:mb-6 uppercase text-slate-900"> {language === 'ar' ? 'دروس خصوصية' : 'Private Lessons'} </h3>
               <p className={`text-base md:text-xl text-slate-600 mb-4 md:mb-6 font-medium leading-relaxed ${direction === 'rtl' ? '' : ''}`}>
                 {language === 'ar'
@@ -152,8 +152,8 @@ export const ProfileView: React.FC = () => {
               </p>
             </div>
             {/* Language Learning */}
-            <div className={`${s.card} border-brand-green/20 hover:border-brand-green`}>
-              <div className="mb-6 md:mb-10 p-4 md:p-6 bg-brand-green/5 rounded-2xl md:rounded-3xl w-fit text-brand-green group-hover:bg-brand-green group-hover:text-white transition-all"><Globe size={28} className="md:size-12" /></div>
+            <div className={`${s.card} border-green/20 hover:border-green`}>
+              <div className="mb-6 md:mb-10 p-4 md:p-6 bg-green/5 rounded-2xl md:rounded-3xl w-fit text-green group-hover:bg-green group-hover:text-white transition-all"><Globe size={28} className="md:size-12" /></div>
               <h3 className="text-2xl md:text-3xl font-black font-cairo mb-4 md:mb-6 uppercase text-slate-900"> {language === 'ar' ? 'تعلم اللغات' : 'Language Learning'} </h3>
               <p className={`text-base md:text-xl text-slate-600 mb-4 md:mb-6 font-medium leading-relaxed ${direction === 'rtl' ? '' : ''}`}>
                 {language === 'ar'
@@ -185,8 +185,8 @@ export const ProfileView: React.FC = () => {
                   { label: language === 'ar' ? 'ج' : 'C', t: language === 'ar' ? 'مكتبة رقمية شاملة' : 'Digital Library', desc: language === 'ar' ? 'كتب ومناهج تعليمية معتمدة' : 'Accredited books and curricula', icon: BookOpen },
                   { label: language === 'ar' ? 'د' : 'D', t: language === 'ar' ? 'كورسات تدريبية' : 'Training Courses', desc: language === 'ar' ? 'مهارات حديثة ونخبة من الخبراء' : 'Modern skills with elite experts', icon: Rocket },
                 ].map((f, i) => (
-                  <div key={i} className={`p-5 md:p-8 bg-slate-50 rounded-[1.5rem] md:rounded-[3rem] ${direction === 'rtl' ? 'border-r-4 md:border-r-8 border-brand-blue text-right' : 'border-l-4 md:border-l-8 border-brand-blue text-left'} flex flex-col hover:bg-white hover:shadow-2xl transition-all h-full`}>
-                    <div className={`w-10 h-10 md:w-14 md:h-14 bg-brand-blue/10 rounded-xl md:rounded-2xl flex items-center justify-center text-brand-blue font-black text-lg md:text-2xl mb-3 md:mb-6 ${direction === 'rtl' ? '' : ''}`}>{f.label}</div>
+                  <div key={i} className={`p-5 md:p-8 bg-slate-50 rounded-[1.5rem] md:rounded-[3rem] ${direction === 'rtl' ? 'border-r-4 md:border-r-8 border-navy text-right' : 'border-l-4 md:border-l-8 border-navy text-left'} flex flex-col hover:bg-white hover:shadow-2xl transition-all h-full`}>
+                    <div className={`w-10 h-10 md:w-14 md:h-14 bg-navy/10 rounded-xl md:rounded-2xl flex items-center justify-center text-navy font-black text-lg md:text-2xl mb-3 md:mb-6 ${direction === 'rtl' ? '' : ''}`}>{f.label}</div>
                     <h4 className="text-lg md:text-2xl font-black font-cairo mb-1 md:mb-3">{f.t}</h4>
                     <p className="text-sm md:text-base text-slate-500 font-medium">{f.desc}</p>
                   </div>
@@ -197,12 +197,12 @@ export const ProfileView: React.FC = () => {
               <div className="aspect-[4/5] bg-slate-900 rounded-[2rem] md:rounded-[4rem] overflow-hidden shadow-2xl relative z-10 flex flex-col items-center justify-center text-center p-6 md:p-12">
                 <img src="https://images.unsplash.com/photo-1577891721396-22c4b8505d9d?auto=format&fit=crop&q=80&w=1200" className="absolute inset-0 w-full h-full object-cover opacity-50" alt="feature bg" />
                 <div className="relative z-10">
-                  <Play size={40} className="md:size-20 text-brand-green fill-brand-green mx-auto mb-4 md:mb-10 animate-pulse" />
+                  <Play size={40} className="md:size-20 text-green fill-green mx-auto mb-4 md:mb-10 animate-pulse" />
                   <h3 className="text-3xl md:text-5xl font-black font-cairo text-white mb-3 md:mb-6">{language === 'ar' ? 'التجربة الذكية' : 'Smart Experience'}</h3>
                   <p className="text-lg md:text-2xl text-white/80 leading-relaxed font-medium">{language === 'ar' ? 'لأننا نؤمن أن التعليم يجب أن يكون فعالاً وبسيطاً ومتاحاً' : 'Because we believe learning should be effective, simple, and accessible'}</p>
                 </div>
               </div>
-              <div className={`absolute -bottom-6 md:-bottom-10 w-full h-full bg-brand-green/20 rounded-[2rem] md:rounded-[4rem] -z-10 ${direction === 'rtl' ? '-right-6 md:-right-10' : '-left-6 md:-left-10'}`} />
+              <div className={`absolute -bottom-6 md:-bottom-10 w-full h-full bg-green/20 rounded-[2rem] md:rounded-[4rem] -z-10 ${direction === 'rtl' ? '-right-6 md:-right-10' : '-left-6 md:-left-10'}`} />
             </div>
           </div>
         </div>
@@ -213,18 +213,18 @@ export const ProfileView: React.FC = () => {
         <div className={s.container}>
           <div className="text-center mb-12 md:mb-24">
             <h2 className="text-3xl md:text-5xl font-black font-cairo mb-3 md:mb-4 text-slate-800">{language === 'ar' ? 'المستخدمون' : 'Users'}</h2>
-            <div className="h-1 md:h-1.5 w-24 md:w-40 bg-brand-blue mx-auto rounded-full" />
+            <div className="h-1 md:h-1.5 w-24 md:w-40 bg-navy mx-auto rounded-full" />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10">
             {[
               { 
-                titleAr: 'الطالب', titleEn: 'Student', icon: UserCheck, color: 'brand-green',
+                titleAr: 'الطالب', titleEn: 'Student', icon: UserCheck, color: 'green',
                 descAr: 'يمكن للطالب التسجيل في الدروس، حضور المحاضرات المباشرة، متابعة تقدمه الأكاديمي، والحصول على شهادات معتمدة.',
                 descEn: 'Students can register for lessons, attend live lectures, track academic progress, and receive accredited certificates.'
               },
               { 
-                titleAr: 'المعلم / المدرب', titleEn: 'Teacher / Trainer', icon: GraduationCap, color: 'brand-blue',
+                titleAr: 'المعلم / المدرب', titleEn: 'Teacher / Trainer', icon: GraduationCap, color: 'navy',
                 descAr: 'يمكن للمعلم إنشاء الدروس، تحديد المواعيد، إدارة الطلاب، متابعة النتائج، وبناء مسيرته المهنية.',
                 descEn: 'Teachers can create lessons, set appointments, manage students, track results, and build their professional career.'
               },
@@ -250,7 +250,7 @@ export const ProfileView: React.FC = () => {
             <div className={`${direction === 'rtl' ? 'text-right' : 'text-left'} space-y-6 md:space-y-12`}>
               <div>
                 <h2 className="text-3xl md:text-5xl font-black font-cairo text-slate-900 mb-3 md:mb-4">{language === 'ar' ? 'بنية تقنية' : 'Technical'}</h2>
-                <p className="text-xl md:text-3xl font-cairo font-bold text-brand-green">{language === 'ar' ? 'بنية تقنية حديثة تدعم النمو والتوسع' : 'Modern technical infrastructure supporting growth'}</p>
+                <p className="text-xl md:text-3xl font-cairo font-bold text-green">{language === 'ar' ? 'بنية تقنية حديثة تدعم النمو والتوسع' : 'Modern technical infrastructure supporting growth'}</p>
               </div>
               <p className="text-lg md:text-2xl text-slate-600 leading-relaxed font-medium">
                 {language === 'ar'
@@ -258,7 +258,7 @@ export const ProfileView: React.FC = () => {
                   : 'The Ewan app is developed using the latest technologies to ensure security, reliability, and the flexibility needed for growth.'}
               </p>
               <div className={`grid grid-cols-3 md:grid-cols-4 gap-4 md:gap-8 grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all duration-700 ${direction === 'rtl' ? '' : ''}`}>
-                <div className="flex flex-col items-center gap-1 md:gap-2"><Smartphone size={24} className="md:size-10 text-brand-blue" /> <span className="font-bold text-xs md:text-base">Flutter</span></div>
+                <div className="flex flex-col items-center gap-1 md:gap-2"><Smartphone size={24} className="md:size-10 text-navy" /> <span className="font-bold text-xs md:text-base">Flutter</span></div>
                 <div className="flex flex-col items-center gap-1 md:gap-2"><Code size={24} className="md:size-10 text-blue-500" /> <span className="font-bold text-xs md:text-base">React</span></div>
                 <div className="flex flex-col items-center gap-1 md:gap-2"><Database size={24} className="md:size-10 text-slate-900" /> <span className="font-bold text-xs md:text-base">MySQL</span></div>
                 <div className="flex flex-col items-center gap-1 md:gap-2"><Server size={24} className="md:size-10 text-purple-600" /> <span className="font-bold text-xs md:text-base">PHP</span></div>
@@ -267,11 +267,11 @@ export const ProfileView: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-brand-green p-1 w-full rounded-[2rem] md:rounded-[4rem] shadow-2xl">
+            <div className="bg-green p-1 w-full rounded-[2rem] md:rounded-[4rem] shadow-2xl">
               <div className="bg-slate-900 rounded-[1.8rem] md:rounded-[3.8rem] p-6 md:p-16 text-white text-center relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-4 md:p-10 opacity-10"><Code size={60} className="md:size-[150px]" /></div>
                 <div className="relative z-10 py-4 md:py-10">
-                  <div className="w-12 h-12 md:w-20 md:h-20 bg-brand-green rounded-2xl md:rounded-3xl mx-auto mb-4 md:mb-10 flex items-center justify-center shadow-lg"><Zap size={24} className="md:size-10" /></div>
+                  <div className="w-12 h-12 md:w-20 md:h-20 bg-green rounded-2xl md:rounded-3xl mx-auto mb-4 md:mb-10 flex items-center justify-center shadow-lg"><Zap size={24} className="md:size-10" /></div>
                   <h3 className="text-xl md:text-3xl font-black font-cairo mb-3 md:mb-6">{language === 'ar' ? 'بنية تحتية تقنية حديثة' : 'Modern Technical Infrastructure'}</h3>
                   <p className="text-base md:text-xl opacity-80 leading-relaxed font-poppins mb-6 md:mb-10">
                     {language === 'ar' ? 'مبنية على الأمان والموثوقية والمرونة اللازمة للنجاح' : 'Built on security, reliability, and the flexibility required for success'}

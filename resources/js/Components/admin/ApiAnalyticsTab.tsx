@@ -92,32 +92,32 @@ export const ApiAnalyticsTab: React.FC = () => {
 
   const statusBadge = (code: number | null | undefined) => {
     if (code === null || code === undefined) return null;
-    if (code >= 200 && code < 300) return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">{code}</span>;
+    if (code >= 200 && code < 300) return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-primary-pale text-primary">{code}</span>;
     if (code >= 400 && code < 500) return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700">{code}</span>;
     if (code >= 500) return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700">{code}</span>;
-    return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">{code}</span>;
+    return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--light-bg)] text-[var(--text-muted)]">{code}</span>;
   };
 
   const summaryCards = stats
     ? [
-        { label: t.totalRequests, value: formatNumber(stats.total_requests), icon: Hash, color: 'text-blue-600', bg: 'bg-blue-50' },
-        { label: t.todayRequests, value: formatNumber(stats.today_requests), icon: Activity, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+        { label: t.totalRequests, value: formatNumber(stats.total_requests), icon: Hash, color: 'text-secondary', bg: 'bg-secondary-pale' },
+        { label: t.todayRequests, value: formatNumber(stats.today_requests), icon: Activity, color: 'text-primary', bg: 'bg-primary-pale' },
         { label: t.thisWeek, value: formatNumber(stats.this_week_requests), icon: BarChart3, color: 'text-violet-600', bg: 'bg-violet-50' },
         { label: t.thisMonth, value: formatNumber(stats.this_month_requests), icon: BarChart3, color: 'text-orange-600', bg: 'bg-orange-50' },
-        { label: t.successful, value: formatNumber(stats.successful_requests), icon: Activity, color: 'text-green-600', bg: 'bg-green-50' },
+        { label: t.successful, value: formatNumber(stats.successful_requests), icon: Activity, color: 'text-primary', bg: 'bg-primary-pale' },
         { label: t.failed, value: formatNumber(stats.failed_requests), icon: Activity, color: 'text-red-600', bg: 'bg-red-50' },
         { label: t.avgResponseTime, value: formatMs(stats.average_response_time_ms), icon: Clock, color: 'text-cyan-600', bg: 'bg-cyan-50' },
         { label: t.authenticated, value: formatNumber(stats.authenticated_count), icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-        { label: t.guest, value: formatNumber(stats.guest_count), icon: Users, color: 'text-slate-600', bg: 'bg-slate-50' },
+        { label: t.guest, value: formatNumber(stats.guest_count), icon: Users, color: 'text-[var(--text-muted)]', bg: 'bg-[var(--light-bg)]' },
       ]
     : [];
 
   const platformData = stats
     ? [
-        { label: 'Android', value: stats.android_usage, color: 'bg-emerald-500' },
-        { label: 'iOS', value: stats.ios_usage, color: 'bg-blue-500' },
+        { label: 'Android', value: stats.android_usage, color: 'bg-primary' },
+        { label: 'iOS', value: stats.ios_usage, color: 'bg-navy' },
         { label: t.web, value: stats.web_usage, color: 'bg-violet-500' },
-        { label: language === 'ar' ? 'أخرى' : 'Other', value: stats.other_platform_usage, color: 'bg-slate-400' },
+        { label: language === 'ar' ? 'أخرى' : 'Other', value: stats.other_platform_usage, color: 'bg-[var(--border)]' },
       ]
     : [];
 
@@ -127,8 +127,8 @@ export const ApiAnalyticsTab: React.FC = () => {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">{t.apiAnalytics}</h1>
-          <p className="text-sm text-slate-500 mt-1">{t.apiAnalyticsDesc}</p>
+          <h1 className="text-2xl font-bold text-[var(--text-main)]">{t.apiAnalytics}</h1>
+          <p className="text-sm text-[var(--text-muted)] mt-1">{t.apiAnalyticsDesc}</p>
         </div>
       </div>
 
@@ -137,7 +137,7 @@ export const ApiAnalyticsTab: React.FC = () => {
           <Loader2 className="w-8 h-8 text-primary animate-spin" />
         </div>
       ) : !stats ? (
-        <div className="text-center py-20 text-slate-400">
+        <div className="text-center py-20 text-[var(--text-muted)]">
           <Activity size={48} className="mx-auto mb-4 opacity-30" />
           <p>{language === 'ar' ? 'لا توجد بيانات' : t.noData}</p>
         </div>
@@ -146,13 +146,13 @@ export const ApiAnalyticsTab: React.FC = () => {
           {/* Summary Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             {summaryCards.map((card, i) => (
-              <div key={i} className="bg-white rounded-xl border border-slate-200 p-4 flex items-start gap-3">
+              <div key={i} className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] p-4 flex items-start gap-3">
                 <div className={`p-2.5 rounded-lg ${card.bg}`}>
                   <card.icon size={20} className={card.color} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-medium text-slate-500 truncate">{card.label}</p>
-                  <p className="text-lg font-bold text-slate-900 mt-0.5">{card.value}</p>
+                  <p className="text-xs font-medium text-[var(--text-muted)] truncate">{card.label}</p>
+                  <p className="text-lg font-bold text-[var(--text-main)] mt-0.5">{card.value}</p>
                 </div>
               </div>
             ))}
@@ -160,10 +160,10 @@ export const ApiAnalyticsTab: React.FC = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Platform Usage */}
-            <div className="bg-white rounded-xl border border-slate-200 p-5">
+            <div className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] p-5">
               <div className="flex items-center gap-2 mb-4">
-                <Smartphone size={18} className="text-slate-500" />
-                <h3 className="font-semibold text-slate-800">{t.platformUsage}</h3>
+                <Smartphone size={18} className="text-[var(--text-muted)]" />
+                <h3 className="font-semibold text-[var(--text-main)]">{t.platformUsage}</h3>
               </div>
               <div className="space-y-3">
                 {platformData.map((p) => {
@@ -172,10 +172,10 @@ export const ApiAnalyticsTab: React.FC = () => {
                   return (
                     <div key={p.label}>
                       <div className="flex justify-between text-sm mb-1">
-                        <span className="text-slate-600">{p.label}</span>
-                        <span className="font-semibold text-slate-800">{formatNumber(p.value)}</span>
+                        <span className="text-[var(--text-muted)]">{p.label}</span>
+                        <span className="font-semibold text-[var(--text-main)]">{formatNumber(p.value)}</span>
                       </div>
-                      <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="w-full h-2 bg-[var(--light-bg)] rounded-full overflow-hidden">
                         <div
                           className={`h-full rounded-full transition-all duration-500 ${p.color}`}
                           style={{ width: `${Math.max(pct, 4)}%` }}
@@ -188,22 +188,22 @@ export const ApiAnalyticsTab: React.FC = () => {
             </div>
 
             {/* Endpoint Rankings */}
-            <div className="bg-white rounded-xl border border-slate-200 p-5">
+            <div className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] p-5">
               <div className="flex items-center gap-2 mb-4">
-                <Target size={18} className="text-slate-500" />
-                <h3 className="font-semibold text-slate-800">{t.rankings}</h3>
+                <Target size={18} className="text-[var(--text-muted)]" />
+                <h3 className="font-semibold text-[var(--text-main)]">{t.rankings}</h3>
               </div>
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-green-50">
-                    <Zap size={16} className="text-green-600" />
+                  <div className="p-2 rounded-lg bg-primary-pale">
+                    <Zap size={16} className="text-primary" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium text-slate-500">{t.mostUsed}</p>
-                    <p className="text-sm font-semibold text-slate-800 truncate">
+                    <p className="text-xs font-medium text-[var(--text-muted)]">{t.mostUsed}</p>
+                    <p className="text-sm font-semibold text-[var(--text-main)] truncate">
                       {stats.most_popular_endpoint?.endpoint ?? '—'}
                     </p>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-[var(--text-muted)]">
                       {formatNumber(stats.most_popular_endpoint?.hits)} {t.hits}
                     </p>
                   </div>
@@ -213,11 +213,11 @@ export const ApiAnalyticsTab: React.FC = () => {
                     <Globe size={16} className="text-red-500" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium text-slate-500">{t.leastUsed}</p>
-                    <p className="text-sm font-semibold text-slate-800 truncate">
+                    <p className="text-xs font-medium text-[var(--text-muted)]">{t.leastUsed}</p>
+                    <p className="text-sm font-semibold text-[var(--text-main)] truncate">
                       {stats.least_popular_endpoint?.endpoint ?? '—'}
                     </p>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-[var(--text-muted)]">
                       {formatNumber(stats.least_popular_endpoint?.hits)} {t.hits}
                     </p>
                   </div>
@@ -227,11 +227,11 @@ export const ApiAnalyticsTab: React.FC = () => {
                     <Clock size={16} className="text-cyan-600" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium text-slate-500">{t.fastestEndpoint}</p>
-                    <p className="text-sm font-semibold text-slate-800 truncate">
+                    <p className="text-xs font-medium text-[var(--text-muted)]">{t.fastestEndpoint}</p>
+                    <p className="text-sm font-semibold text-[var(--text-main)] truncate">
                       {stats.fastest_endpoint?.endpoint ?? '—'}
                     </p>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-[var(--text-muted)]">
                       {formatMs(stats.fastest_endpoint?.min_response_time)}
                     </p>
                   </div>
@@ -241,11 +241,11 @@ export const ApiAnalyticsTab: React.FC = () => {
                     <Clock size={16} className="text-orange-600" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium text-slate-500">{t.slowestEndpoint}</p>
-                    <p className="text-sm font-semibold text-slate-800 truncate">
+                    <p className="text-xs font-medium text-[var(--text-muted)]">{t.slowestEndpoint}</p>
+                    <p className="text-sm font-semibold text-[var(--text-main)] truncate">
                       {stats.slowest_endpoint?.endpoint ?? '—'}
                     </p>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-[var(--text-muted)]">
                       {formatMs(stats.slowest_endpoint?.max_response_time)}
                     </p>
                   </div>
@@ -256,34 +256,34 @@ export const ApiAnalyticsTab: React.FC = () => {
 
           {/* Error Breakdown */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-white rounded-xl border border-slate-200 p-4">
-              <p className="text-xs font-medium text-slate-500">{t.clientErrors}</p>
+            <div className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] p-4">
+              <p className="text-xs font-medium text-[var(--text-muted)]">{t.clientErrors}</p>
               <p className="text-xl font-bold text-amber-600 mt-1">{formatNumber(stats.client_errors)}</p>
-              <div className="w-full h-1.5 bg-slate-100 rounded-full mt-2 overflow-hidden">
+              <div className="w-full h-1.5 bg-[var(--light-bg)] rounded-full mt-2 overflow-hidden">
                 <div
                   className="h-full rounded-full bg-amber-500"
                   style={{ width: `${stats.total_requests > 0 ? (stats.client_errors / stats.total_requests) * 100 : 0}%` }}
                 />
               </div>
             </div>
-            <div className="bg-white rounded-xl border border-slate-200 p-4">
-              <p className="text-xs font-medium text-slate-500">{t.serverErrors}</p>
+            <div className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] p-4">
+              <p className="text-xs font-medium text-[var(--text-muted)]">{t.serverErrors}</p>
               <p className="text-xl font-bold text-red-600 mt-1">{formatNumber(stats.server_errors)}</p>
-              <div className="w-full h-1.5 bg-slate-100 rounded-full mt-2 overflow-hidden">
+              <div className="w-full h-1.5 bg-[var(--light-bg)] rounded-full mt-2 overflow-hidden">
                 <div
                   className="h-full rounded-full bg-red-500"
                   style={{ width: `${stats.total_requests > 0 ? (stats.server_errors / stats.total_requests) * 100 : 0}%` }}
                 />
               </div>
             </div>
-            <div className="bg-white rounded-xl border border-slate-200 p-4">
-              <p className="text-xs font-medium text-slate-500">{t.highestMemoryUsage}</p>
-              <p className="text-xl font-bold text-slate-800 mt-1">
+            <div className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] p-4">
+              <p className="text-xs font-medium text-[var(--text-muted)]">{t.highestMemoryUsage}</p>
+              <p className="text-xl font-bold text-[var(--text-main)] mt-1">
                 {stats.highest_memory_usage_kb
                   ? `${(stats.highest_memory_usage_kb.max_memory_usage / 1024).toFixed(1)} MB`
                   : '—'}
               </p>
-              <p className="text-xs text-slate-400 truncate mt-1">
+              <p className="text-xs text-[var(--text-muted)] truncate mt-1">
                 {stats.highest_memory_usage_kb?.endpoint ?? ''}
               </p>
             </div>
@@ -292,24 +292,24 @@ export const ApiAnalyticsTab: React.FC = () => {
       )}
 
       {/* Records Table */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <div className="p-4 border-b border-slate-100">
+      <div className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] overflow-hidden">
+        <div className="p-4 border-b border-[var(--border)]">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
-              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSearch()}
                 placeholder={language === 'ar' ? 'بحث في النقاط...' : 'Search endpoints...'}
-                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full pl-10 pr-4 py-2 border border-[var(--border)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
             <div className="relative">
               <button
                 onClick={() => setFilterOpen(!filterOpen)}
-                className="flex items-center gap-2 px-4 py-2 border border-slate-300 rounded-lg text-sm bg-white hover:bg-slate-50 w-full sm:w-auto"
+                className="flex items-center gap-2 px-4 py-2 border border-[var(--border)] rounded-lg text-sm bg-white hover:bg-[var(--light-bg)] w-full sm:w-auto"
               >
                 {methodFilter === 'all'
                   ? (language === 'ar' ? 'كل الطرق' : 'All Methods')
@@ -317,12 +317,12 @@ export const ApiAnalyticsTab: React.FC = () => {
                 <ChevronDown size={16} />
               </button>
               {filterOpen && (
-                <div className={`absolute z-20 mt-1 w-40 bg-white border border-slate-200 rounded-lg shadow-lg ${direction === 'rtl' ? 'left-0' : 'right-0'}`}>
+                <div className={`absolute z-20 mt-1 w-40 bg-white border border-[var(--border)] rounded-lg shadow-[var(--shadow-lg)] ${direction === 'rtl' ? 'left-0' : 'right-0'}`}>
                   {methods.map(m => (
                     <button
                       key={m}
                       onClick={() => { setMethodFilter(m); setFilterOpen(false); setCurrentPage(1); }}
-                      className={`w-full text-left px-4 py-2 text-sm hover:bg-slate-50 ${methodFilter === m ? 'bg-slate-50 font-medium' : ''}`}
+                      className={`w-full text-left px-4 py-2 text-sm hover:bg-[var(--light-bg)] ${methodFilter === m ? 'bg-[var(--light-bg)] font-medium' : ''}`}
                     >
                       {m === 'all' ? (language === 'ar' ? 'الكل' : 'All') : m}
                     </button>
@@ -332,7 +332,7 @@ export const ApiAnalyticsTab: React.FC = () => {
             </div>
             <button
               onClick={() => { setCurrentPage(1); fetchRecords(); }}
-              className="flex items-center gap-2 px-4 py-2 border border-slate-300 rounded-lg text-sm bg-white hover:bg-slate-50"
+              className="flex items-center gap-2 px-4 py-2 border border-[var(--border)] rounded-lg text-sm bg-white hover:bg-[var(--light-bg)]"
             >
               <RefreshCw size={16} />
             </button>
@@ -344,7 +344,7 @@ export const ApiAnalyticsTab: React.FC = () => {
             <Loader2 className="w-8 h-8 text-primary animate-spin" />
           </div>
         ) : records.length === 0 ? (
-          <div className="text-center py-16 text-slate-400">
+          <div className="text-center py-16 text-[var(--text-muted)]">
             <BarChart3 size={48} className="mx-auto mb-4 opacity-30" />
             <p>{language === 'ar' ? 'لا توجد سجلات' : 'No records found'}</p>
           </div>
@@ -352,7 +352,7 @@ export const ApiAnalyticsTab: React.FC = () => {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="bg-slate-50 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                <tr className="bg-[var(--light-bg)] text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">
                   <th className="text-right pr-4 py-3">{language === 'ar' ? 'النقطة' : 'Endpoint'}</th>
                   <th className="text-right px-4 py-3">{language === 'ar' ? 'الطريقة' : 'Method'}</th>
                   <th className="text-right px-4 py-3 hidden md:table-cell">{language === 'ar' ? 'الوحدة' : 'Module'}</th>
@@ -363,33 +363,33 @@ export const ApiAnalyticsTab: React.FC = () => {
                   <th className="text-right pr-4 py-3 hidden sm:table-cell">{language === 'ar' ? 'آخر مرة' : 'Last Hit'}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[var(--border)]">
                 {records.map(rec => (
-                  <tr key={rec.id} className="hover:bg-slate-50 transition-colors text-sm">
-                    <td className="pr-4 py-3 font-medium text-slate-900 max-w-[200px] truncate" title={rec.endpoint}>
+                  <tr key={rec.id} className="hover:bg-[var(--light-bg)] transition-colors text-sm">
+                    <td className="pr-4 py-3 font-medium text-[var(--text-main)] max-w-[200px] truncate" title={rec.endpoint}>
                       {rec.endpoint}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex px-2 py-0.5 rounded text-xs font-bold ${
-                        rec.method === 'GET' ? 'bg-green-50 text-green-700' :
-                        rec.method === 'POST' ? 'bg-blue-50 text-blue-700' :
+                        rec.method === 'GET' ? 'bg-primary-pale text-primary' :
+                        rec.method === 'POST' ? 'bg-secondary-pale text-secondary' :
                         rec.method === 'PUT' || rec.method === 'PATCH' ? 'bg-orange-50 text-orange-700' :
                         rec.method === 'DELETE' ? 'bg-red-50 text-red-700' :
-                        'bg-slate-100 text-slate-600'
+                        'bg-[var(--light-bg)] text-[var(--text-muted)]'
                       }`}>
                         {rec.method}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-slate-600 hidden md:table-cell">
+                    <td className="px-4 py-3 text-[var(--text-muted)] hidden md:table-cell">
                       {rec.module ?? '—'}
                     </td>
-                    <td className="px-4 py-3 text-slate-600 whitespace-nowrap text-xs">
+                    <td className="px-4 py-3 text-[var(--text-muted)] whitespace-nowrap text-xs">
                       {rec.date}
                     </td>
                     <td className="px-4 py-3">
-                      <span className="font-semibold text-slate-900">{formatNumber(rec.hits)}</span>
+                      <span className="font-semibold text-[var(--text-main)]">{formatNumber(rec.hits)}</span>
                     </td>
-                    <td className="px-4 py-3 text-slate-600 hidden lg:table-cell whitespace-nowrap">
+                    <td className="px-4 py-3 text-[var(--text-muted)] hidden lg:table-cell whitespace-nowrap">
                       {rec.average_response_time !== null && rec.average_response_time !== undefined
                         ? `${rec.average_response_time.toFixed(2)} ${t.ms}`
                         : '—'}
@@ -397,7 +397,7 @@ export const ApiAnalyticsTab: React.FC = () => {
                     <td className="px-4 py-3">
                       {statusBadge(rec.last_status_code)}
                     </td>
-                    <td className="pr-4 py-3 text-slate-400 text-xs hidden sm:table-cell whitespace-nowrap">
+                    <td className="pr-4 py-3 text-[var(--text-muted)] text-xs hidden sm:table-cell whitespace-nowrap">
                       {rec.last_hit_at ? formatDate(rec.last_hit_at) : '—'}
                     </td>
                   </tr>

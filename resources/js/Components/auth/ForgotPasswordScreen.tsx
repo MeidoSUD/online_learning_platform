@@ -108,18 +108,18 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ onBa
   };
 
   return (
-    <div className="w-full max-w-md space-y-8 bg-white p-8 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 relative">
-      <button onClick={onBack} className="absolute top-6 left-6 text-slate-400 hover:text-slate-600">
+    <div className="w-full max-w-md space-y-8 bg-white p-8 rounded-[var(--radius-lg)] shadow-[var(--shadow-md)] border border-[var(--border)] relative">
+      <button onClick={onBack} className="absolute top-6 left-6 text-[var(--text-muted)] hover:text-[var(--text-muted)]">
         <ArrowLeft size={24} />
       </button>
 
       <Logo />
 
       <div className="text-center">
-        <h2 className="mt-4 text-2xl font-bold tracking-tight text-slate-900">
+        <h2 className="mt-4 text-2xl font-bold tracking-tight text-[var(--text-main)]">
           {language === 'ar' ? 'نسيت كلمة المرور؟' : 'Forgot Password?'}
         </h2>
-        <p className="mt-2 text-sm text-slate-500">
+        <p className="mt-2 text-sm text-[var(--text-muted)]">
           {step === 1
             ? (language === 'ar' ? 'أدخل رقم هاتفك لاستعادة حسابك' : 'Enter your phone number to reset password')
             : (language === 'ar' ? 'أدخل رمز التحقق' : 'Enter verification code')}
@@ -132,7 +132,7 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ onBa
         </div>
       )}
       {success && (
-        <div className="p-3 bg-green-50 text-green-700 text-sm rounded-lg flex items-center gap-2">
+        <div className="p-3 bg-primary-pale text-primary text-sm rounded-lg flex items-center gap-2">
           <CheckCircle size={16} /> {success}
         </div>
       )}
@@ -167,7 +167,7 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ onBa
             <button
               type="button"
               onClick={handleSendCodeRevised}
-              className={`text-sm font-medium ${timer > 0 ? 'text-slate-400 cursor-not-allowed' : 'text-primary hover:underline'}`}
+              className={`text-sm font-medium ${timer > 0 ? 'text-[var(--text-muted)] cursor-not-allowed' : 'text-primary hover:underline'}`}
               disabled={loading || timer > 0}
             >
               {language === 'ar'

@@ -20,12 +20,12 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({ user }) => {
 
   if (user && !isVerified) {
       return (
-          <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-slate-200">
+          <div className="flex flex-col items-center justify-center py-16 bg-white rounded-[var(--radius-md)] border border-[var(--border)]">
               <div className="h-16 w-16 bg-amber-100 rounded-full flex items-center justify-center mb-4 text-amber-600">
                   <Lock size={32} />
               </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Verification Required</h3>
-              <p className="text-slate-500 max-w-md text-center">
+              <h3 className="text-xl font-bold text-[var(--text-main)] mb-2">Verification Required</h3>
+              <p className="text-[var(--text-muted)] max-w-md text-center">
                   You must verify your account and select Private Lessons as your service before managing subjects.
               </p>
           </div>
@@ -148,14 +148,14 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({ user }) => {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 relative overflow-hidden">
+      <div className="bg-white p-6 rounded-[var(--radius-md)] shadow-[var(--shadow-sm)] border border-[var(--border)] relative overflow-hidden">
         {isLoading && (
             <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center">
                 <Loader2 className="animate-spin text-primary h-8 w-8" />
             </div>
         )}
         
-        <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+        <h2 className="text-xl font-bold text-[var(--text-main)] mb-6 flex items-center gap-2">
           <Plus className="text-primary" /> 
           {language === 'ar' ? 'إضافة مادة جديدة' : 'Add New Subject'}
         </h2>
@@ -215,14 +215,14 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({ user }) => {
       </div>
 
       <div>
-        <h3 className="text-lg font-bold text-slate-900 mb-4">
+        <h3 className="text-lg font-bold text-[var(--text-main)] mb-4">
           {language === 'ar' ? 'المواد التي أدرسها' : 'My Teaching Subjects'}
         </h3>
         
         {mySubjects.length === 0 && !isLoading ? (
-            <div className="text-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-slate-500">
-                <BookOpen className="mx-auto h-12 w-12 text-slate-300 mb-3" />
-                <p className="text-slate-500">
+            <div className="text-center py-12 bg-[var(--light-bg)] rounded-[var(--radius-md)] border border-dashed border-[var(--border)] text-[var(--text-muted)]">
+                <BookOpen className="mx-auto h-12 w-12 text-[var(--text-muted)] mb-3" />
+                <p className="text-[var(--text-muted)]">
                   {language === 'ar' ? 'لم تقم بإضافة أي مواد بعد.' : "You haven't added any subjects yet."}
                 </p>
             </div>
@@ -235,7 +235,7 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({ user }) => {
                const isConfirming = confirmDeleteId === item.id;
 
                return (
-                <div key={item.id || index} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all overflow-hidden group relative">
+                <div key={item.id || index} className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] transition-all overflow-hidden group relative">
                     <div className="h-2 bg-primary w-full"></div>
                     <div className="p-5">
                         <div className="flex justify-between items-start mb-4">
@@ -247,14 +247,14 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({ user }) => {
                                 {isConfirming ? (
                                     <div className="flex gap-1 animate-fade-in items-center">
                                         <span className="text-[10px] font-bold text-red-500 uppercase mr-1">{language === 'ar' ? 'حذف؟' : 'Del?'}</span>
-                                        <button onClick={(e) => { e.stopPropagation(); handleDeleteSubject(item.id); }} className="h-8 w-8 bg-red-500 text-white rounded-lg flex items-center justify-center hover:bg-red-600 shadow-sm transition-colors" title="Yes"><Check size={14}/></button>
-                                        <button onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); }} className="h-8 w-8 bg-slate-100 text-slate-500 rounded-lg flex items-center justify-center hover:bg-slate-200 transition-colors" title="No"><X size={14}/></button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleDeleteSubject(item.id); }} className="h-8 w-8 bg-red-500 text-white rounded-lg flex items-center justify-center hover:bg-red-600 shadow-[var(--shadow-sm)] transition-colors" title="Yes"><Check size={14}/></button>
+                                        <button onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); }} className="h-8 w-8 bg-[var(--light-bg)] text-[var(--text-muted)] rounded-lg flex items-center justify-center hover:bg-[var(--border)] transition-colors" title="No"><X size={14}/></button>
                                     </div>
                                 ) : (
                                     <button 
                                         type="button"
                                         onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(item.id); }}
-                                        className="text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all p-2 rounded-full cursor-pointer relative" 
+                                        className="text-[var(--text-muted)] hover:text-red-500 hover:bg-red-50 transition-all p-2 rounded-full cursor-pointer relative" 
                                         title="Delete Subject"
                                     >
                                         <Trash2 size={18} />
@@ -263,15 +263,15 @@ export const SubjectsTab: React.FC<SubjectsTabProps> = ({ user }) => {
                             </div>
                         </div>
                         
-                        <h4 className="text-lg font-bold text-slate-900 mb-1 leading-tight">{subjectName}</h4>
+                        <h4 className="text-lg font-bold text-[var(--text-main)] mb-1 leading-tight">{subjectName}</h4>
                         
                         <div className="space-y-2 mt-4">
-                            <div className="flex items-center text-xs text-slate-600">
-                                <GraduationCap size={14} className={`shrink-0 text-slate-400 ${language === 'ar' ? 'ml-2' : 'mr-2'}`} />
+                            <div className="flex items-center text-xs text-[var(--text-muted)]">
+                                <GraduationCap size={14} className={`shrink-0 text-[var(--text-muted)] ${language === 'ar' ? 'ml-2' : 'mr-2'}`} />
                                 {levelName || (language === 'ar' ? 'المرحلة غير محددة' : 'Level N/A')}
                             </div>
-                            <div className="flex items-center text-xs text-slate-600">
-                                <Layers size={14} className={`shrink-0 text-slate-400 ${language === 'ar' ? 'ml-2' : 'mr-2'}`} />
+                            <div className="flex items-center text-xs text-[var(--text-muted)]">
+                                <Layers size={14} className={`shrink-0 text-[var(--text-muted)] ${language === 'ar' ? 'ml-2' : 'mr-2'}`} />
                                 {className || (language === 'ar' ? 'الصف غير محدد' : 'Class N/A')}
                             </div>
                         </div>
