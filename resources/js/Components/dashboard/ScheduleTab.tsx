@@ -306,7 +306,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({ user }) => {
                                           <AlertCircle size={10} /> Allowed 15m before start
                                       </span>
                                   </div>
-                              ) : isReady && session.status !== 'completed' && session.status !== 'finished' ? (
+                              ) : isReady ? (
                                   <Button 
                                     className="bg-primary hover:bg-primary shadow-[var(--shadow-lg)] shadow-green-200" 
                                     isLoading={sessionActionLoading === session.id}
@@ -316,12 +316,22 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({ user }) => {
                                   </Button>
                               ) : null}
 
-                              <div className={`px-4 py-2 rounded-[var(--radius-md)] font-bold text-xs flex items-center gap-2 ${
-                                  session.status === 'live' ? 'bg-red-100 text-red-700 animate-pulse' : 
-                                  session.status === 'completed' || session.status === 'finished' ? 'bg-[var(--light-bg)] text-[var(--text-muted)]' : 'bg-primary-pale text-primary'
-                              }`}>
+                              <div
+                                title={
+                                    session.status === 'wait_for_teacher'
+                                        ? (language === 'ar' ? 'بانتظار جدولة الجلسة - لا يمكن بدؤها حالياً' : 'Awaiting scheduling - cannot be started yet')
+                                        : undefined
+                                }
+                                className={`px-4 py-2 rounded-[var(--radius-md)] font-bold text-xs flex items-center gap-2 ${
+                                    session.status === 'live' ? 'bg-red-100 text-red-700 animate-pulse' : 
+                                    session.status === 'completed' || session.status === 'finished' ? 'bg-[var(--light-bg)] text-[var(--text-muted)]' : 'bg-primary-pale text-primary'
+                                }`}>
                                   {session.status === 'live' ? <AlertCircle size={14} /> : <CheckCircle size={14} />}
-                                  <span className="capitalize">{session.status.replace(/_/g, ' ')}</span>
+                                  <span className="capitalize">
+                                      {session.status === 'wait_for_teacher'
+                                          ? (language === 'ar' ? 'بانتظار الجدولة' : 'Awaiting Scheduling')
+                                          : session.status.replace(/_/g, ' ')}
+                                  </span>
                               </div>
                           </div>
                       </div>

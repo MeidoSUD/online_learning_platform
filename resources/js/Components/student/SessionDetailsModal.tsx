@@ -48,7 +48,7 @@ export const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({
     if (!isOpen || !session) return null;
 
     const isFinished = session.status === 'ended' || session.status === 'completed';
-    const isLive = session.status === 'live';
+    const isLive = session.status === 'live' || session.status === 'wait_for_teacher';
     const isScheduled = session.status === 'scheduled';
     const status = session.status?.toLowerCase() || '';
 

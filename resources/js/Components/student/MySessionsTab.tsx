@@ -400,7 +400,7 @@ export const MySessionsTab: React.FC = () => {
                                             </p>
                                         </div>
                                         <div className="shrink-0">
-                                            {session.status === 'live' ? (
+                                            {session.status === 'live' || session.status === 'wait_for_teacher' ? (
                                                 <button
                                                     onClick={() => handleJoinSession(session.id)}
                                                     disabled={joining === session.id}

@@ -3,6 +3,8 @@ import { useLanguage } from '../../Contexts/LanguageContext';
 import { Clock, Users, DollarSign, Calendar, PersonStanding, Loader2, CheckCircle2, Play, X, FilterX } from 'lucide-react';
 import { teacherService, Session } from '../../Services/api';
 import { SessionDetailsModal } from '../dashboard/SessionDetailsModal';
+import { SessionRoomModal } from '../dashboard/SessionRoomModal';
+import { getSessionState } from '../../Utils/sessionStatus';
 
 interface TeacherLessonsTabProps {
     user?: any;
@@ -68,6 +70,7 @@ export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = ({ user }) =>
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
     const [selectedSession, setSelectedSession] = useState<Session | null>(null);
     const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+    const [agoraData, setAgoraData] = useState<any>(null);
 
     const loadSessions = async () => {
         setLoading(true);
@@ -132,10 +135,33 @@ export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = ({ user }) =>
 
     const handleStartSession = async (sessionId: number) => {
         try {
-            await teacherService.startSession(sessionId);
-            loadSessions();
+            const response = await teacherService.startSession(sessionId);
+            if (response.success && response.data?.agora) {
+                setAgoraData({
+                    ...response.data.agora,
+                    session_id: sessionId,
+                    role: 'host'
+                });
+                setDetailsModalOpen(false);
+            } else {
+                alert(response.message || (language === 'ar' ? 'فشل بدء الجلسة' : 'Failed to start session'));
+            }
         } catch (e: any) {
-            console.error(e);
+            alert(e.message || (language === 'ar' ? 'فشل بدء الجلسة' : 'Failed to start session'));
+        }
+    };
+
+    const handleEndSession = async (sessionId: number) => {
+        try {
+            const response = await teacherService.endSession(sessionId);
+            if (response.success) {
+                setDetailsModalOpen(false);
+                loadSessions();
+            } else {
+                alert(response.message || (language === 'ar' ? 'فشل إنهاء الجلسة' : 'Failed to end session'));
+            }
+        } catch (e: any) {
+            alert(e.message || (language === 'ar' ? 'فشل إنهاء الجلسة' : 'Failed to end session'));
         }
     };
 
@@ -367,6 +393,7 @@ export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = ({ user }) =>
                             const subjectName = language === 'ar'
                                 ? (session.subject?.name_ar || session.subject?.name_en || '')
                                 : (session.subject?.name_en || session.subject?.name_ar || '');
+                            const actionState = getSessionState(session);
 
                             return (
                                 <div
@@ -429,8 +456,8 @@ export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = ({ user }) =>
                                                     </div>
                                                 </div>
 
-                                                {/* Status/Action - مطابق Android lines 312-432 */}
-                                                {(session.status === 'ended' || session.status === 'completed') && (
+                                                {/* Status/Action - مطابق Android TeacherSessionCard (time-based + status fins) */}
+                                                {(session.status === 'ended' || session.status === 'completed' || session.status === 'finished') && (
                                                     <div className="flex items-center gap-1 bg-[var(--border)] rounded-lg px-2.5 py-1 shrink-0">
                                                         <CheckCircle2 size={13} className="text-[var(--text-muted)]" />
                                                         <span className="text-[var(--text-muted)] text-xs font-bold">
@@ -446,15 +473,7 @@ export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = ({ user }) =>
                                                         </span>
                                                     </div>
                                                 )}
-                                                {(session.status === 'scheduled' || session.status === '') && (
-                                                    <div className="flex items-center gap-1 bg-orange-50 border border-orange-300 rounded-lg px-2.5 py-1 shrink-0">
-                                                        <Clock size={13} className="text-orange-600" />
-                                                        <span className="text-orange-700 text-xs font-bold">
-                                                            {language === 'ar' ? 'قادمة' : 'Upcoming'}
-                                                        </span>
-                                                    </div>
-                                                )}
-                                                {(session.status === 'live' || session.status === 'wait_for_teacher') && (
+                                                {actionState === 'live' && (
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); handleStartSession(session.id); }}
                                                         className="flex items-center gap-1 bg-primary hover:bg-primary text-white text-xs font-bold px-4 py-1.5 rounded-lg shadow-[var(--shadow-sm)] transition-colors shrink-0"
@@ -462,6 +481,22 @@ export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = ({ user }) =>
                                                         <Play size={13} />
                                                         {language === 'ar' ? 'بدء' : 'Start'}
                                                     </button>
+                                                )}
+                                                {actionState === 'upcoming' && (
+                                                    <div className="flex items-center gap-1 bg-orange-50 border border-orange-300 rounded-lg px-2.5 py-1 shrink-0">
+                                                        <Clock size={13} className="text-orange-600" />
+                                                        <span className="text-orange-700 text-xs font-bold">
+                                                            {language === 'ar' ? 'قادمة' : 'Upcoming'}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                {actionState === 'finished' && (
+                                                    <div className="flex items-center gap-1 bg-[var(--border)] rounded-lg px-2.5 py-1 shrink-0">
+                                                        <CheckCircle2 size={13} className="text-[var(--text-muted)]" />
+                                                        <span className="text-[var(--text-muted)] text-xs font-bold">
+                                                            {language === 'ar' ? 'منتهية' : 'Finished'}
+                                                        </span>
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>
@@ -482,6 +517,15 @@ export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = ({ user }) =>
                     handleStartSession(id);
                     setDetailsModalOpen(false);
                 }}
+                onEndSession={(id) => {
+                    handleEndSession(id);
+                }}
+            />
+
+            <SessionRoomModal
+                isOpen={!!agoraData}
+                onClose={() => { setAgoraData(null); loadSessions(); }}
+                agora={agoraData}
             />
         </div>
     );

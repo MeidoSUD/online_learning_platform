@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
 import { studentService, Session } from '../../Services/api';
 import { Calendar, CheckCircle, Clock, Video, ArrowLeft, Star, Loader2, MessageSquare } from 'lucide-react';
+import { getSessionState } from '../../Utils/sessionStatus';
 
 interface SessionDetailsModalProps {
     session: Session | null;
     isOpen: boolean;
     onClose: () => void;
     onStartSession?: (sessionId: number) => void;
+    onEndSession?: (sessionId: number) => void;
 }
 
 interface ReviewData {
@@ -34,6 +36,8 @@ function isSessionLive(session: Session): boolean {
     return session.status === 'live' || session.status === 'wait_for_teacher';
 }
 
+// Mirrors Android DateTimeHelper.getSessionStatus: action is driven by the time window (15m buffer).
+
 function isSessionEnded(session: Session): boolean {
     const status = (session.status || '').toLowerCase();
     return ['ended', 'completed', 'cancelled', 'finished'].includes(status);
@@ -44,6 +48,7 @@ export const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({
     isOpen,
     onClose,
     onStartSession,
+    onEndSession,
 }) => {
     const { language, direction } = useLanguage();
     const [visible, setVisible] = useState(false);
@@ -90,6 +95,7 @@ export const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({
     if (!isOpen || !session) return null;
 
     const live = isSessionLive(session);
+    const actionState = getSessionState(session);
     const ended = isSessionEnded(session);
     const subjectName = language === 'ar'
         ? (session.subject?.name_ar || session.subject?.name_en || '')
@@ -291,44 +297,56 @@ export const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({
                     )}
                 </div>
 
-                {/* ===== BOTTOM ACTION ===== */}
+{/* ===== BOTTOM ACTION - مطابق Android SessionJoinAction ===== */}
                 <div className="px-6 py-4 bg-white border-t border-[var(--border)]">
                     {!ended ? (
                         <div>
-                            <button
-                                onClick={() => live && onStartSession?.(session.id)}
-                                disabled={!live}
-                                className={`w-full h-12 rounded-[var(--radius-md)] font-bold text-sm flex items-center justify-center gap-2.5 transition-all duration-200 ${
-                                    live
-                                        ? 'bg-primary text-white hover:bg-primary/90 shadow-[var(--shadow-lg)] active:scale-[0.98]'
-                                        : 'bg-[var(--light-bg)] text-[var(--text-muted)] cursor-not-allowed'
-                                }`}
-                            >
-                                {live ? (
-                                    <>
+                            {actionState === 'live' ? (
+                                <>
+                                    <button
+                                        onClick={() => onStartSession?.(session.id)}
+                                        className="w-full h-12 rounded-[var(--radius-md)] font-bold text-sm flex items-center justify-center gap-2.5 bg-primary text-white hover:bg-primary/90 shadow-[var(--shadow-lg)] active:scale-[0.98] transition-all duration-200"
+                                    >
                                         <Video size={18} />
-                                        {language === 'ar' ? 'إنشاء الغرفة والانضمام' : 'Create Room & Join'}
-                                    </>
-                                ) : (
-                                    <>
-                                        <Clock size={18} />
-                                        {language === 'ar' ? 'الدرس غير متاح بعد' : 'Lesson Not Available Yet'}
-                                    </>
-                                )}
-                            </button>
+                                        {language === 'ar' ? 'بدء الجلسة الآن' : 'Start Session Now'}
+                                    </button>
+                                    {onEndSession && (
+                                        <button
+                                            onClick={() => onEndSession(session.id)}
+                                            className="mt-3 w-full h-12 rounded-[var(--radius-md)] font-bold text-sm flex items-center justify-center gap-2.5 border-2 border-red-500 text-red-500 hover:bg-red-50 active:scale-[0.98] transition-all duration-200"
+                                        >
+                                            <span className="text-lg leading-none">■</span>
+                                            {language === 'ar' ? 'إنهاء الجلسة' : 'End Session'}
+                                        </button>
+                                    )}
+                                </>
+                            ) : (
+                                <button
+                                    disabled
+                                    className="w-full h-12 rounded-[var(--radius-md)] font-bold text-sm flex items-center justify-center gap-2.5 bg-[var(--light-bg)] text-[var(--text-muted)] cursor-not-allowed"
+                                >
+                                    {actionState === 'upcoming' ? (
+                                        <>
+                                            <Clock size={18} />
+                                            {language === 'ar' ? 'الجلسة قادمة' : 'Session Upcoming'}
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CheckCircle size={18} />
+                                            {language === 'ar' ? 'انتهت الجلسة' : 'Session Ended'}
+                                        </>
+                                    )}
+                                </button>
+                            )}
                             <p className="text-[11px] text-[var(--text-muted)] text-center mt-2.5">
-                                {live
-                                    ? (language === 'ar' ? 'انقر لبدء الجلسة والدخول إلى الغرفة' : 'Click to start the session and join the room')
-                                    : (language === 'ar' ? 'سيصبح متاحاً عند وقت الدرس المحدد' : 'Will be available at the scheduled lesson time')
-                                }
+                                {actionState === 'live'
+                                    ? (language === 'ar' ? 'انقر لبدء الجلسة وفتح الغرفة' : 'Click to start the session and open the room')
+                                    : actionState === 'upcoming'
+                                        ? (language === 'ar' ? 'سيتاح قبل وقت الدرس بـ ١٥ دقيقة' : 'Available 15 minutes before the scheduled time')
+                                        : (language === 'ar' ? 'انتهى وقت الجلسة المحدد' : 'The scheduled time for this session has passed')}
                             </p>
                         </div>
-                    ) : (
-                        <div className="w-full h-12 rounded-[var(--radius-md)] bg-[var(--light-bg)] flex items-center justify-center text-[var(--text-muted)] text-sm font-semibold gap-2">
-                            <CheckCircle size={16} className="text-[var(--text-muted)]" />
-                            {language === 'ar' ? 'تم الانتهاء من هذه الجلسة' : 'This session has ended'}
-                        </div>
-                    )}
+) : null}
                 </div>
             </div>
         </div>

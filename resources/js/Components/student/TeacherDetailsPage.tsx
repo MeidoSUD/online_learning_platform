@@ -4,6 +4,7 @@ import { Star, Clock, Users, School, Copy, Check, BookOpen, Globe, Award, Messag
 import { studentService, getStorageUrl, Session } from '../../Services/api';
 import { SessionDetailsModal } from './SessionDetailsModal';
 import { BookingFlowModal } from './BookingFlowModal';
+import { SessionRoomModal } from '../dashboard/SessionRoomModal';
 import { COUNTRIES } from '../../Utils/constants';
 
 interface TeacherDetailsPageProps {
@@ -50,6 +51,7 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({ teacher:
   const [selectedSession, setSelectedSession] = useState<any>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [joining, setJoining] = useState(false);
+  const [agoraData, setAgoraData] = useState<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const openSessionDetails = (session: any) => {
@@ -60,7 +62,21 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({ teacher:
   const handleJoinSession = async (sessionId: number) => {
     setJoining(true);
     try {
-      await studentService.joinSession(sessionId);
+      const response = await studentService.joinSession(sessionId);
+      if (response.success && response.data?.agora) {
+        setAgoraData({
+          ...response.data.agora,
+          session_id: sessionId,
+          role: 'participant'
+        });
+        setModalOpen(false);
+      } else if (response.data?.session_status === 'waiting_for_teacher') {
+        alert(language === 'ar'
+          ? 'المعلم لم يبدأ الجلسة بعد، يرجى الانتظار'
+          : "Teacher hasn't started the session yet, please wait");
+      } else {
+        alert(response.message || (language === 'ar' ? 'لا يمكن الانضمام للجلسة حالياً' : 'Cannot join session at this time'));
+      }
     } catch (e: any) {
       alert(e.message || (language === 'ar' ? 'فشل الانضمام للجلسة' : 'Failed to join session'));
     } finally {
@@ -587,6 +603,13 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({ teacher:
         onClose={() => setModalOpen(false)}
         onJoinSession={handleJoinSession}
         joining={joining}
+      />
+
+      {/* Session Room */}
+      <SessionRoomModal
+        isOpen={!!agoraData}
+        onClose={() => setAgoraData(null)}
+        agora={agoraData}
       />
     </div>
   );
