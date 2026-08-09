@@ -101,13 +101,14 @@ export const LoginScreen = ({ onSwitch, onLoginSuccess }) => {
   }
 
   return (
-    <div className="w-full max-w-md space-y-8 bg-surface p-8 rounded-[var(--radius-lg)] shadow-[var(--shadow-md)] border border-[var(--border)] relative">
+    <div className="w-full max-w-md space-y-8 bg-surface p-8 rounded-[var(--radius-lg)] shadow-[var(--shadow-md)] border border-[var(--border)] relative overflow-hidden">
+      <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-green-light to-green" />
 
       <div className="flex justify-between items-center">
 
         <button
           onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}
-          className="flex items-center gap-2 text-sm font-medium text-[var(--text-muted)] hover:text-primary transition-colors border border-[var(--border)] rounded-[50px] px-3 py-1.5"
+          className="flex items-center gap-2 text-sm font-bold text-navy transition-all border-2 border-navy rounded-[50px] px-3 py-1.5 shadow-sm hover:bg-navy hover:text-white"
         >
           <Globe size={16} />
           {language === 'en' ? 'العربية' : 'English'}
@@ -124,7 +125,7 @@ export const LoginScreen = ({ onSwitch, onLoginSuccess }) => {
 
       <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
         {apiError && (
-          <div className="p-4 rounded-lg bg-red-50 border border-red-200 space-y-3">
+          <div className="p-4 rounded-[var(--radius-sm)] bg-red-50 border border-red-200 space-y-3">
             <div className="flex items-start gap-3">
               <AlertCircle className="text-red-500 shrink-0 mt-0.5" size={20} />
               <p className="text-xs text-red-700 whitespace-pre-wrap font-medium">{apiError}</p>
@@ -159,8 +160,8 @@ export const LoginScreen = ({ onSwitch, onLoginSuccess }) => {
 
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <input id="remember-me" type="checkbox" checked={formData.rememberMe} onChange={(e) => setFormData({ ...formData, rememberMe: e.target.checked })} className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20" />
-            <label htmlFor="remember-me" className="ms-2 block text-sm text-text">{t.rememberMe}</label>
+            <input id="remember-me" type="checkbox" checked={formData.rememberMe} onChange={(e) => setFormData({ ...formData, rememberMe: e.target.checked })} className="h-4 w-4 rounded border-[var(--border)] text-primary focus:ring-primary/20" />
+            <label htmlFor="remember-me" className="ms-2 block text-sm font-medium text-navy">{t.rememberMe}</label>
           </div>
           <button type="button" onClick={() => setShowForgotPassword(true)} className="text-sm font-medium text-primary hover:text-primary-light">
             {t.forgotPassword}

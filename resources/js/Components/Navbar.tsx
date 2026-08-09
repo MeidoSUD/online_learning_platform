@@ -166,7 +166,7 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
   const navLinks = userRole === 'student' ? studentLinks : getTeacherLinks();
 
   return (
-    <nav className="sticky top-0 z-30 w-full bg-white border-b border-[var(--border)] shadow-[var(--shadow-sm)]">
+    <nav className="sticky top-0 z-30 w-full bg-gradient-to-br from-[var(--navy-dark)] via-[var(--navy)] to-[var(--navy-mid)] shadow-[var(--shadow-md)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-20">
           {/* Logo & Desktop Nav */}
@@ -179,10 +179,10 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
                 <button
                   key={link.id}
                   onClick={() => setActiveTab(link.id)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`px-4 py-2 rounded-[50px] text-sm font-medium transition-all ${
                     activeTab === link.id 
-                      ? 'bg-primary-pale text-primary' 
-                      : 'text-[var(--text-muted)] hover:text-primary hover:bg-[var(--light-bg)]'
+                      ? 'bg-white/15 text-[var(--green-light)]'
+                      : 'text-white/70 hover:text-white hover:bg-white/10'
                   }`}
                 >
                   {link.label}
@@ -196,7 +196,7 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
             {/* Language Switch */}
             <button 
               onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}
-              className="p-2 rounded-full text-[var(--text-muted)] hover:bg-[var(--light-bg)] transition-colors"
+              className="p-2 rounded-full text-white/80 hover:bg-white/10 transition-colors"
               title={t.language}
             >
               <Globe size={20} />
@@ -206,7 +206,7 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
             <div className="relative" ref={notifRef}>
               <button 
                 onClick={() => setShowNotifs(!showNotifs)}
-                className="p-2 rounded-full text-[var(--text-muted)] hover:bg-[var(--light-bg)] transition-colors relative"
+                className="p-2 rounded-full text-white/80 hover:bg-white/10 transition-colors relative"
               >
                 <Bell size={20} />
                 {unreadCount > 0 && (
@@ -302,12 +302,12 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
                 className="flex items-center gap-3 p-1 rounded-full hover:bg-[var(--light-bg)] transition-colors focus:outline-none"
               >
-                <div className="h-9 w-9 rounded-full bg-gradient-to-br from-primary-light to-primary flex items-center justify-center text-white font-bold shadow-[var(--shadow-md)]">
+                <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[var(--green-light)] to-[var(--green)] flex items-center justify-center text-white font-bold shadow-[var(--shadow-md)]">
                    {(user.first_name?.charAt(0) || 'U').toUpperCase()}
                 </div>
                 <div className="hidden lg:block text-start">
-                  <p className="text-sm font-medium text-navy">{user.first_name}</p>
-                  <p className="text-xs text-[var(--text-muted)] truncate max-w-[100px]">{userRole?.toUpperCase()}</p>
+                  <p className="text-sm font-medium text-white">{user.first_name}</p>
+                  <p className="text-xs text-white/60 truncate max-w-[100px]">{userRole?.toUpperCase()}</p>
                 </div>
               </button>
 
@@ -318,23 +318,23 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
                     <p className="text-xs text-[var(--text-muted)] truncate">{user.email}</p>
                   </div>
                   
-                  <button onClick={() => { setActiveTab('profile'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-navy hover:bg-[var(--light-bg)]">
+                  <button onClick={() => { setActiveTab('profile'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">
                     <User size={16} /> {t.profile}
                   </button>
                   
                   {/* Student Specific Menu Items */}
                   {userRole === 'student' && (
                     <>
-                      <button onClick={() => { setActiveTab('sessions'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-navy hover:bg-[var(--light-bg)]">
+                      <button onClick={() => { setActiveTab('sessions'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">
                         <Video size={16} /> {language === 'ar' ? 'جلساتي' : 'My Sessions'}
                       </button>
-                      <button onClick={() => { setActiveTab('wallet'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-navy hover:bg-[var(--light-bg)]">
+                      <button onClick={() => { setActiveTab('wallet'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">
                         <CreditCard size={16} /> {t.paymentMethods}
                       </button>
-                      <button onClick={() => { setActiveTab('transactions'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-navy hover:bg-[var(--light-bg)]">
+                      <button onClick={() => { setActiveTab('transactions'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">
                         <FileText size={16} /> {t.myTransactions}
                       </button>
-                      <button onClick={() => { setActiveTab('certificates'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-navy hover:bg-[var(--light-bg)]">
+                      <button onClick={() => { setActiveTab('certificates'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">
                         <Award size={16} /> {t.myCertificates}
                       </button>
                     </>
@@ -342,18 +342,18 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
 
                   {/* Teacher Specific Menu Items */}
                   {userRole === 'teacher' && (
-                      <button onClick={() => { setActiveTab('services'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-navy hover:bg-[var(--light-bg)]">
+                      <button onClick={() => { setActiveTab('services'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">
                         <Layers size={16} /> {language === 'ar' ? 'الخدمات' : 'Services'}
                       </button>
                   )}
 
-                  <button onClick={() => { setActiveTab('support'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-navy hover:bg-[var(--light-bg)]">
+                  <button onClick={() => { setActiveTab('support'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">
                     <Headphones size={16} /> {t.technicalSupport}
                   </button>
-                  <button className="flex w-full items-center gap-2 px-4 py-2 text-sm text-navy hover:bg-[var(--light-bg)]">
+                  <button className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">
                     <Settings size={16} /> {t.settings}
                   </button>
-                   <button onClick={() => { setActiveTab('disputes'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-navy hover:bg-[var(--light-bg)]">
+                   <button onClick={() => { setActiveTab('disputes'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">
                     <AlertCircle size={16} /> {t.disputes}
                   </button>
                   
@@ -369,7 +369,7 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
             <div className="md:hidden flex items-center">
                <button 
                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                 className="p-2 rounded-md text-[var(--text-muted)] hover:text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--light-bg)]"
+                 className="p-2 rounded-md text-white/80 hover:text-white hover:bg-white/10"
                >
                  <Menu size={24} />
                </button>
@@ -380,16 +380,16 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
 
       {/* Mobile Nav */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-[var(--border)] bg-white">
+        <div className="md:hidden border-t border-white/10 bg-gradient-to-br from-[var(--navy-dark)] via-[var(--navy)] to-[var(--navy-mid)]">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
             {navLinks.map(link => (
               <button
                 key={link.id}
                 onClick={() => { setActiveTab(link.id); setMobileMenuOpen(false); }}
-                className={`block w-full text-start px-3 py-2 rounded-md text-base font-medium ${
+                className={`block w-full text-start px-3 py-2 rounded-[50px] text-base font-medium ${
                   activeTab === link.id 
-                    ? 'bg-primary-pale text-primary' 
-                    : 'text-[var(--text-muted)] hover:text-primary hover:bg-[var(--light-bg)]'
+                    ? 'bg-white/15 text-[var(--green-light)]' 
+                    : 'text-white/70 hover:text-white hover:bg-white/10'
                 }`}
               >
                 {link.label}

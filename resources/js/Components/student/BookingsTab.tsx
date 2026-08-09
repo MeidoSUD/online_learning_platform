@@ -79,10 +79,10 @@ export const BookingsTab: React.FC<{ onViewCalendar?: () => void }> = ({ onViewC
   const getStatusBadge = (status: string) => {
     const colors: Record<string, string> = {
       pending_payment: 'bg-yellow-100 text-yellow-800',
-      confirmed: 'bg-primary-pale text-green-800',
-      completed: 'bg-secondary-pale text-blue-800',
+      confirmed: 'bg-[var(--green-pale)] text-primary',
+      completed: 'bg-[var(--accent-pale)] text-secondary',
       cancelled: 'bg-red-100 text-red-800',
-      in_progress: 'bg-purple-100 text-purple-800',
+      in_progress: 'bg-[var(--green-pale)] text-primary',
     };
     const labels: Record<string, string> = {
       pending_payment: language === 'ar' ? 'في انتظار الدفع' : 'Pending Payment',
@@ -125,7 +125,7 @@ export const BookingsTab: React.FC<{ onViewCalendar?: () => void }> = ({ onViewC
           {STATUS_FILTERS.map(f => (
             <button key={f} onClick={() => { setFilter(f); setPage(1); }}
               className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                filter === f ? 'bg-slate-900 text-white' : 'bg-[var(--light-bg)] text-[var(--text-muted)] hover:bg-[var(--light-bg)]'
+                filter === f ? 'bg-navy text-white' : 'bg-[var(--light-bg)] text-[var(--text-muted)] hover:bg-[var(--light-bg)]'
               }`}
             >
               {f === 'all' ? (language === 'ar' ? 'الكل' : 'All') :
@@ -323,7 +323,7 @@ export const BookingsTab: React.FC<{ onViewCalendar?: () => void }> = ({ onViewC
                       </div>
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                         session.status === 'completed' ? 'bg-primary-pale text-primary' :
-                        session.status === 'live' ? 'bg-purple-100 text-[var(--accent)]' :
+                        session.status === 'live' ? 'bg-secondary-pale text-[var(--accent)]' :
                         session.status === 'cancelled' ? 'bg-red-100 text-red-700' :
                         'bg-yellow-100 text-yellow-700'
                       }`}>

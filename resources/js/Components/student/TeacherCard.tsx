@@ -196,7 +196,7 @@ export const TeacherCard: React.FC<TeacherCardProps> = ({
       <div className="p-4 pt-0">
         <button
           onClick={() => onViewDetails?.(teacher)}
-          className="w-full py-3 px-4 bg-primary text-white text-sm font-semibold rounded-[var(--radius-md)] hover:bg-primary/90 transition-colors"
+          className="w-full py-3 px-4 bg-gradient-to-br from-[var(--green-light)] to-[var(--green)] text-white text-sm font-bold rounded-[50px] shadow-[0_6px_20px_rgba(61,139,55,.35)] hover:-translate-y-[3px] hover:shadow-[0_10px_28px_rgba(61,139,55,.45)] transition-all"
         >
           {(t.viewDetails || 'View Details') + ' & ' + (t.bookNow || 'Book')}
         </button>

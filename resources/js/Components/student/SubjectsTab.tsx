@@ -313,7 +313,7 @@ export const SubjectsTab: React.FC = () => {
 
                     {/* Category Badge */}
                     {categoryName && (
-                      <span className="absolute top-3 right-3 px-3 py-1 bg-purple-600 text-white rounded-full text-[10px] font-semibold">
+                      <span className="absolute top-3 right-3 px-3 py-1 bg-[var(--navy)] text-white rounded-full text-[10px] font-semibold">
                         {categoryName}
                       </span>
                     )}
@@ -571,7 +571,7 @@ const CourseDetailsModal: React.FC<{
             </div>
           )}
           {categoryName && (
-            <span className="absolute top-3 right-3 px-3 py-1 bg-purple-600 text-white rounded-full text-xs font-semibold">
+            <span className="absolute top-3 right-3 px-3 py-1 bg-[var(--navy)] text-white rounded-full text-xs font-semibold">
               {categoryName}
             </span>
           )}
@@ -616,7 +616,7 @@ const CourseDetailsModal: React.FC<{
         </div>
 
         {/* Price */}
-        <div className="bg-gradient-to-r from-green-400 to-green-600 rounded-[var(--radius-md)] p-4 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-[var(--green-light)] to-[var(--green)] rounded-[var(--radius-md)] p-4 flex items-center justify-between shadow-[0_6px_20px_rgba(61,139,55,.35)]">
           <div>
             <p className="text-white text-sm font-medium">{language === 'ar' ? 'سعر الدورة' : 'Course Price'}</p>
             <p className="text-white/70 text-xs">{language === 'ar' ? 'شامل الشهادة' : 'Certificate included'}</p>

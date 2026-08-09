@@ -48,7 +48,7 @@ export const MyCertificates: React.FC = () => {
                                 <Award size={100} />
                             </div>
                             <div className="relative z-10">
-                                <div className="h-12 w-12 bg-yellow-100 rounded-full flex items-center justify-center text-yellow-600 mb-4">
+                                <div className="h-12 w-12 bg-[var(--green-pale)] rounded-full flex items-center justify-center text-primary mb-4">
                                     <Award size={24} />
                                 </div>
                                 <h3 className="font-bold text-lg text-[var(--text-main)] mb-2">{cert.course_name}</h3>

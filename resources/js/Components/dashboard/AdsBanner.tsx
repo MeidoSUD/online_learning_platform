@@ -87,7 +87,7 @@ export const AdsBanner: React.FC = () => {
                                         href={currentAd.link_url}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-2 bg-primary hover:bg-primary text-white px-4 py-2 md:px-6 md:py-2.5 rounded-full text-xs md:text-sm font-bold transition-all transform hover:scale-105 shadow-[var(--shadow-lg)]"
+                                        className="inline-flex items-center gap-2 bg-gradient-to-br from-[var(--green-light)] to-[var(--green)] text-white px-4 py-2 md:px-6 md:py-2.5 rounded-[50px] text-xs md:text-sm font-bold transition-all transform hover:-translate-y-[2px] hover:scale-105 shadow-[0_6px_20px_rgba(61,139,55,.35)]"
                                     >
                                         {currentAd.cta_text || t.bookNow}
                                         <ExternalLink size={14} />

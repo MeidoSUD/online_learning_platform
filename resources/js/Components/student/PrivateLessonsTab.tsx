@@ -240,11 +240,11 @@ export const PrivateLessonsTab: React.FC<PrivateLessonsTabProps> = ({ onTeacherS
       </div>
 
       <div className={`
-        fixed inset-y-0 z-40 w-64 bg-white transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-auto lg:w-72 lg:block lg:bg-transparent
+        fixed inset-y-0 z-40 w-64 bg-[var(--navy-dark)] transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-auto lg:w-72 lg:block lg:bg-transparent
         ${showMobileFilters ? 'translate-x-0' : (direction === 'rtl' ? 'translate-x-full' : '-translate-x-full')}
         ${direction === 'rtl' ? 'right-0 left-auto' : 'left-0 right-auto'}
       `}>
-        <div className="h-full overflow-y-auto p-6 bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] lg:sticky lg:top-24">
+        <div className="h-full overflow-y-auto p-6 bg-gradient-to-br from-[var(--navy)] to-[var(--navy-dark)] rounded-[var(--radius-md)] border border-white/10 shadow-[var(--shadow-md)] lg:sticky lg:top-24 filters-sidebar-dark">
           <div className="flex justify-between items-center mb-6 lg:hidden">
             <h3 className="font-bold text-lg">{t.filters}</h3>
             <button onClick={() => setShowMobileFilters(false)}><X size={24} /></button>
@@ -341,7 +341,7 @@ export const PrivateLessonsTab: React.FC<PrivateLessonsTabProps> = ({ onTeacherS
             </div>
 
             <Button className="w-full mt-4" onClick={handleApplyFilters}>{t.applyFilters}</Button>
-            <Button variant="ghost" className="w-full text-[var(--text-muted)] hover:text-navy" onClick={clearAllFilters}>
+            <Button variant="ghost" className="w-full text-white/70 hover:text-[var(--green-light)]" onClick={clearAllFilters}>
               {t.clearFilters}
             </Button>
           </div>
@@ -379,7 +379,7 @@ export const PrivateLessonsTab: React.FC<PrivateLessonsTabProps> = ({ onTeacherS
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-medium text-[var(--text-muted)]">{t.activeFilters || (language === 'ar' ? 'التصفية النشطة' : 'Active Filters')}:</span>
             {activeFilters.map(f => (
-              <span key={f.key} className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary/10 text-primary text-sm font-medium rounded-full">
+              <span key={f.key} className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary-pale text-primary text-sm font-medium rounded-full">
                 {f.label}
                 <button onClick={() => removeFilter(f.key)} className="hover:text-primary/70">
                   <X size={14} />
@@ -405,8 +405,8 @@ export const PrivateLessonsTab: React.FC<PrivateLessonsTabProps> = ({ onTeacherS
         ) : teachers.length === 0 ? (
           <div className="text-center py-20 bg-[var(--light-bg)] rounded-[var(--radius-md)] border border-dashed border-[var(--border)]">
             <div className="flex justify-center mb-4">
-              <div className="w-20 h-20 rounded-full bg-[var(--light-bg)] flex items-center justify-center">
-                <Search size={36} className="text-[var(--text-muted)]" />
+              <div className="w-20 h-20 rounded-full bg-[var(--green-pale)] flex items-center justify-center">
+                <Search size={36} className="text-primary" />
               </div>
             </div>
             <p className="text-lg font-semibold text-navy mb-2">{t.noTeachersFound || (language === 'ar' ? 'لم يتم العثور على معلمين' : 'No teachers found')}</p>

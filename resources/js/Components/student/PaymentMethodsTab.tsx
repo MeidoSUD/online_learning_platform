@@ -114,10 +114,10 @@ export const PaymentMethodsTab: React.FC = () => {
 
   const getCardStyle = (brandName: string) => {
     const lower = String(brandName).toLowerCase();
-    if (lower.includes('visa')) return 'bg-gradient-to-br from-blue-600 to-blue-800';
-    if (lower.includes('master')) return 'bg-gradient-to-br from-slate-800 to-black';
-    if (lower.includes('mada')) return 'bg-gradient-to-br from-teal-600 to-teal-800';
-    return 'bg-gradient-to-br from-slate-600 to-slate-800';
+    if (lower.includes('visa')) return 'bg-gradient-to-br from-[var(--navy-mid)] to-[var(--navy)]';
+    if (lower.includes('master')) return 'bg-gradient-to-br from-[var(--navy)] to-[var(--navy-dark)]';
+    if (lower.includes('mada')) return 'bg-gradient-to-br from-[var(--green-light)] to-[var(--green)]';
+    return 'bg-gradient-to-br from-[var(--navy)] to-[var(--navy-dark)]';
   };
 
   return (

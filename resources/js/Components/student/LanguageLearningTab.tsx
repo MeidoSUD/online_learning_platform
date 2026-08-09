@@ -41,8 +41,10 @@ export const LanguageLearningTab: React.FC = () => {
       <h2 className="text-2xl font-bold text-[var(--text-main)]">{t.languageLearning}</h2>
 
       {teachers.length === 0 ? (
-        <div className="text-center py-16 bg-[var(--light-bg)] rounded-[var(--radius-md)] border border-dashed border-[var(--border)] text-[var(--text-muted)]">
-          <Globe className="mx-auto h-12 w-12 text-[var(--text-muted)] mb-3" />
+        <div className="text-center py-16 bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] text-[var(--text-muted)]">
+          <div className="mx-auto h-16 w-16 bg-[var(--green-pale)] rounded-full flex items-center justify-center mb-3">
+            <Globe className="h-8 w-8 text-primary" />
+          </div>
           <p>{language === 'ar' ? 'لا يوجد معلمون متاحون حالياً' : 'No language teachers available at the moment.'}</p>
         </div>
       ) : (

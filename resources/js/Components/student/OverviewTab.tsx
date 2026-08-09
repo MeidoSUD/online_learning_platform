@@ -74,9 +74,16 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
 
   return (
     <div className="space-y-8 animate-fade-in">
-      <div className="bg-gradient-to-r from-primary to-blue-600 rounded-[var(--radius-md)] p-8 text-white shadow-[var(--shadow-lg)] shadow-blue-200">
-        <h1 className="text-3xl font-bold mb-2">{t.welcomeBack} {user.first_name}!</h1>
-        <p className="text-blue-100 opacity-90">Ready to learn something new today?</p>
+      <div className="relative overflow-hidden bg-gradient-to-br from-[var(--navy-dark)] via-[var(--navy)] to-[var(--navy-mid)] rounded-[var(--radius-lg)] p-8 text-white shadow-[var(--shadow-lg)]">
+        <div className="absolute -top-16 -left-16 w-64 h-64 rounded-full bg-[var(--green-light)] opacity-10 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-20 -right-10 w-72 h-72 rounded-full bg-[var(--accent)] opacity-10 blur-3xl pointer-events-none" />
+        <div className="relative">
+          <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-[50px] bg-white/10 text-[var(--green-light)] text-xs font-bold mb-4 border border-white/10">
+            {t.overview}
+          </span>
+          <h1 className="text-3xl font-bold mb-2">{t.welcomeBack} {user.first_name}!</h1>
+          <p className="text-[var(--green-light)] opacity-90">Ready to learn something new today?</p>
+        </div>
       </div>
 
       {/* Last Booking Section */}
@@ -89,9 +96,10 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
         </div>
 
         {lastBooking ? (
-          <div className="bg-white p-6 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="relative overflow-hidden bg-white p-6 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-[var(--green-light)] to-[var(--green)]" />
             <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-full bg-primary-pale text-primary flex items-center justify-center">
+              <div className="h-12 w-12 rounded-[var(--radius-sm)] bg-[var(--green-pale)] text-primary flex items-center justify-center">
                 <Clock size={24} />
               </div>
               <div>
@@ -99,7 +107,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
                 <p className="text-[var(--text-muted)] text-sm">with {lastBooking.teacher?.first_name} {lastBooking.teacher?.last_name}</p>
                 <div className="flex items-center gap-2 mt-1 text-xs text-[var(--text-muted)]">
                   <span>{new Date(lastBooking.created_at || Date.now()).toLocaleDateString()}</span>
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${lastBooking.status === 'confirmed' ? 'bg-primary-pale text-primary' : 'bg-yellow-100 text-yellow-700'}`}>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${lastBooking.status === 'confirmed' ? 'bg-[var(--green-pale)] text-primary' : 'bg-[var(--accent-pale)] text-[var(--accent)]'}`}>
                     {lastBooking.status}
                   </span>
                 </div>
@@ -145,9 +153,10 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
               return (
                 <div
                   key={teacher.id}
-                  className="bg-white p-4 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] transition-all group cursor-pointer"
+                  className="relative overflow-hidden bg-white p-4 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-[3px] transition-all group cursor-pointer"
                   onClick={() => onNavigate('private-lessons')}
                 >
+                  <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-[var(--green-light)] to-[var(--green)]" />
                   <div className="flex items-start justify-between mb-3">
                     <div className="h-12 w-12 rounded-full bg-[var(--light-bg)] flex items-center justify-center text-[var(--text-muted)] font-bold overflow-hidden shrink-0">
                       {profileImage ? (
@@ -192,7 +201,8 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {courses.map((course) => (
-              <div key={course.id} className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] overflow-hidden hover:shadow-[var(--shadow-md)] transition-shadow">
+              <div key={course.id} className="relative overflow-hidden bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-[3px] transition-all">
+                <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-[var(--green-light)] to-[var(--green)] z-10" />
                 <div className="h-32 bg-[var(--light-bg)] flex items-center justify-center text-[var(--text-muted)] overflow-hidden">
                   {course.cover_image ? (
                     <img src={getStorageUrl(course.cover_image)} alt={course.name} className="w-full h-full object-cover" />
@@ -204,7 +214,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
                   <h3 className="font-bold text-[var(--text-main)] mb-1 truncate">{course.name}</h3>
                   <p className="text-sm text-[var(--text-muted)] mb-4 truncate">by {course.teacher_basic?.first_name} {course.teacher_basic?.last_name}</p>
                   <div className="flex items-center justify-between mb-4 text-xs text-[var(--text-muted)] font-medium bg-[var(--light-bg)] p-2 rounded-lg">
-                    <span className="flex items-center gap-1"><PlayCircle size={14} /> {course.duration_hours || 'N/A'} Hours</span>
+                    <span className="flex items-center gap-1"><PlayCircle size={14} className="text-primary" /> {course.duration_hours || 'N/A'} Hours</span>
                     <span>{course.course_type}</span>
                   </div>
                   <div className="flex items-center justify-between">

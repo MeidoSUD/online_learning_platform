@@ -345,7 +345,7 @@ export const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({
                                     </p>
                                     <button
                                         onClick={() => setShowReviewForm(true)}
-                                        className="w-full flex items-center justify-center gap-2 py-3 bg-primary text-white rounded-[var(--radius-md)] font-bold text-sm hover:bg-primary-dark transition-colors shadow-[var(--shadow-sm)]"
+                                        className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-br from-[var(--green-light)] to-[var(--green)] text-white rounded-[50px] font-bold text-sm hover:-translate-y-[2px] transition-all shadow-[0_6px_20px_rgba(61,139,55,.35)]"
                                     >
                                         <Star size={16} />
                                         {language === 'ar' ? 'إضافة تقييم' : 'Add Review'}
@@ -389,7 +389,7 @@ export const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({
                                         <button
                                             onClick={handleSubmitReview}
                                             disabled={reviewSubmitting}
-                                            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-primary text-white rounded-[var(--radius-md)] font-bold text-sm hover:bg-primary-dark transition-colors disabled:opacity-50 shadow-[var(--shadow-sm)]"
+                                            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-gradient-to-br from-[var(--green-light)] to-[var(--green)] text-white rounded-[50px] font-bold text-sm hover:-translate-y-[2px] transition-all disabled:opacity-50 shadow-[0_6px_20px_rgba(61,139,55,.35)]"
                                         >
                                             {reviewSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
                                             {language === 'ar' ? 'إرسال' : 'Send'}
@@ -474,7 +474,7 @@ export const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({
                                         <button
                                             onClick={handleSubmitComplaint}
                                             disabled={complaintSubmitting || !complaintReason.trim()}
-                                            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-navy-mid text-white rounded-[var(--radius-md)] font-bold text-sm hover:bg-orange-600 transition-colors disabled:opacity-50 shadow-[var(--shadow-sm)]"
+                                            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-gradient-to-br from-[var(--navy)] to-[var(--navy-dark)] text-white rounded-[50px] font-bold text-sm hover:-translate-y-[2px] transition-all disabled:opacity-50 shadow-[0_6px_20px_rgba(27,58,107,.35)]"
                                         >
                                             {complaintSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
                                             {language === 'ar' ? 'إرسال' : 'Submit'}
@@ -494,7 +494,7 @@ export const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({
                         <button
                             onClick={() => onJoinSession(session.id)}
                             disabled={joining}
-                            className="w-full flex items-center justify-center gap-2 py-3 bg-primary text-white rounded-[var(--radius-md)] font-bold text-sm hover:bg-primary-dark transition-colors shadow-[var(--shadow-lg)] disabled:opacity-50"
+                            className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-br from-[var(--green-light)] to-[var(--green)] text-white rounded-[50px] font-bold text-sm hover:-translate-y-[2px] transition-all shadow-[0_6px_20px_rgba(61,139,55,.35)] disabled:opacity-50"
                         >
                             {joining ? (
                                 <Loader2 size={18} className="animate-spin" />

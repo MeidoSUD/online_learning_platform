@@ -21,11 +21,11 @@ function getNationalityFlag(nationality?: string | null): string {
 
 function getServiceIcon(keyName: string, id: number): { icon: string; color: string } {
   const key = (keyName || '').toLowerCase();
-  if (key === 'private_lesson' || key.includes('private') || id === 3) return { icon: 'person', color: '#3B82F6' };
-  if (key === 'language_learning' || key.includes('language') || id === 2) return { icon: 'globe', color: '#F59E0B' };
-  if (key === 'courses' || key === 'training_courses' || id === 4) return { icon: 'users', color: '#10B981' };
-  if (key === 'sessions' || key === 'consultation' || id === 5) return { icon: 'video', color: '#8B5CF6' };
-  return { icon: 'star', color: '#6B7280' };
+  if (key === 'private_lesson' || key.includes('private') || id === 3) return { icon: 'person', color: '#1B3A6B' };
+  if (key === 'language_learning' || key.includes('language') || id === 2) return { icon: 'globe', color: '#00AEEF' };
+  if (key === 'courses' || key === 'training_courses' || id === 4) return { icon: 'users', color: '#3D8B37' };
+  if (key === 'sessions' || key === 'consultation' || id === 5) return { icon: 'video', color: '#2352A0' };
+  return { icon: 'star', color: '#687788' };
 }
 
 function getServiceNameKey(keyName: string, id: number): string {
@@ -166,7 +166,7 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({ teacher:
   return (
     <div className="animate-fade-in pb-24" ref={scrollRef}>
       {/* ===== Cover + Profile Header ===== */}
-      <div className="relative h-64 bg-gradient-to-br from-primary to-blue-600 overflow-hidden">
+      <div className="relative h-64 bg-gradient-to-br from-[var(--navy-dark)] via-[var(--navy)] to-[var(--navy-mid)] overflow-hidden">
         {coverImage && (
           <img src={getStorageUrl(coverImage)} alt="" className="w-full h-full object-cover opacity-40" />
         )}
@@ -202,7 +202,7 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({ teacher:
               <h1 className="text-2xl font-bold text-[var(--text-main)]">{fullName}</h1>
               {verified && <span className="text-secondary"><Star size={20} fill="currentColor" /></span>}
             </div>
-            <span className="inline-block mt-2 px-4 py-1.5 bg-primary/10 text-primary text-sm font-semibold rounded-full">
+            <span className="inline-block mt-2 px-4 py-1.5 bg-primary-pale text-primary text-sm font-semibold rounded-full">
               {specialization}
             </span>
           </div>
@@ -315,13 +315,13 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({ teacher:
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {teachIndividual && (
-                    <div className="p-4 rounded-[var(--radius-md)] bg-primary text-white">
+                    <div className="p-4 rounded-[var(--radius-md)] bg-gradient-to-br from-[var(--green-light)] to-[var(--green)] text-white shadow-[0_6px_20px_rgba(61,139,55,.35)]">
                       <p className="text-sm opacity-80">{language === 'ar' ? 'درس فردي' : 'Private Lesson'}</p>
                       <p className="text-2xl font-bold mt-1">{Number(individualHourPrice).toFixed(2)} <span className="text-sm font-normal opacity-80">{t.sar}</span></p>
                     </div>
                   )}
                   {teachGroup && (
-                    <div className="p-4 rounded-[var(--radius-md)] bg-primary text-white">
+                    <div className="p-4 rounded-[var(--radius-md)] bg-gradient-to-br from-[var(--green-light)] to-[var(--green)] text-white shadow-[0_6px_20px_rgba(61,139,55,.35)]">
                       <p className="text-sm opacity-80">{language === 'ar' ? 'درس جماعي' : 'Group Lesson'}</p>
                       <p className="text-2xl font-bold mt-1">{Number(groupHourPrice).toFixed(2)} <span className="text-sm font-normal opacity-80">{t.sar}</span></p>
                     </div>
@@ -334,7 +334,7 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({ teacher:
             {teacherSubjects.length > 0 && (
               <div className="bg-white p-5 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)]">
                 <h3 className="font-bold text-[var(--text-main)] mb-3 flex items-center gap-2">
-                  <BookOpen size={18} className="text-purple-500" />
+                  <BookOpen size={18} className="text-primary" />
                   {language === 'ar' ? 'المواد الدراسية' : 'Subjects'}
                 </h3>
                 <div className="flex flex-wrap gap-2">
@@ -351,12 +351,12 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({ teacher:
             {languages.length > 0 && (
               <div className="bg-white p-5 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)]">
                 <h3 className="font-bold text-[var(--text-main)] mb-3 flex items-center gap-2">
-                  <Globe size={18} className="text-orange-500" />
+                  <Globe size={18} className="text-[var(--accent)]" />
                   {language === 'ar' ? 'اللغات' : 'Languages'}
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {languages.map((lang: any, idx: number) => (
-                    <span key={lang.id || idx} className="px-3 py-1.5 rounded-lg bg-orange-50 text-orange-700 text-sm font-medium border border-orange-100">
+                    <span key={lang.id || idx} className="px-3 py-1.5 rounded-lg bg-[var(--accent-pale)] text-[var(--accent)] text-sm font-medium border border-[var(--accent)]/20">
                       {language === 'ar' ? (lang.name_ar || lang.name_en) : (lang.name_en || lang.name_ar)}
                     </span>
                   ))}
@@ -459,12 +459,12 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({ teacher:
                   ? `${Math.floor(durationMin / 60)}h ${durationMin % 60}m`
                   : `${durationMin}m`;
                 const statusColors: Record<string, { bg: string, text: string, label: string }> = {
-                  completed: { bg: 'from-green-500 to-emerald-600', text: 'text-primary', label: language === 'ar' ? 'مكتمل' : 'Completed' },
-                  ended: { bg: 'from-green-500 to-emerald-600', text: 'text-primary', label: language === 'ar' ? 'منتهي' : 'Ended' },
-                  live: { bg: 'from-red-500 to-rose-600', text: 'text-red-700', label: language === 'ar' ? 'مباشر' : 'Live' },
-                  cancelled: { bg: 'from-gray-400 to-gray-500', text: 'text-gray-500', label: language === 'ar' ? 'ملغي' : 'Cancelled' },
+                  completed: { bg: 'from-[var(--green-light)] to-[var(--green)]', text: 'text-primary', label: language === 'ar' ? 'مكتمل' : 'Completed' },
+                  ended: { bg: 'from-[var(--green-light)] to-[var(--green)]', text: 'text-primary', label: language === 'ar' ? 'منتهي' : 'Ended' },
+                  live: { bg: 'from-[var(--accent)] to-[var(--navy-mid)]', text: 'text-[var(--accent)]', label: language === 'ar' ? 'مباشر' : 'Live' },
+                  cancelled: { bg: 'from-[var(--border)] to-[var(--text-muted)]', text: 'text-[var(--text-muted)]', label: language === 'ar' ? 'ملغي' : 'Cancelled' },
                 };
-                const statusInfo = statusColors[s.status] || { bg: 'from-blue-500 to-indigo-600', text: 'text-secondary', label: language === 'ar' ? 'مجدول' : 'Scheduled' };
+                const statusInfo = statusColors[s.status] || { bg: 'from-[var(--navy)] to-[var(--navy-dark)]', text: 'text-secondary', label: language === 'ar' ? 'مجدول' : 'Scheduled' };
                 const statusLabel = s.status_label || statusInfo.label;
                 const statusColorClass = statusInfo.text;
                 return (
@@ -498,9 +498,9 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({ teacher:
                         {/* Status Badge */}
                         <span className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap ${
                           s.status === 'completed' || s.status === 'ended' ? 'bg-primary-pale text-primary' :
-                          s.status === 'live' ? 'bg-red-50 text-red-700' :
-                          s.status === 'cancelled' ? 'bg-gray-100 text-gray-500' :
-                          'bg-secondary-pale text-secondary'
+                          s.status === 'live' ? 'bg-[var(--accent-pale)] text-[var(--accent)]' :
+                          s.status === 'cancelled' ? 'bg-[var(--light-bg)] text-[var(--text-muted)]' :
+                          'bg-[var(--green-pale)] text-primary'
                         }`}>
                           {statusLabel}
                         </span>
@@ -527,11 +527,11 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({ teacher:
                             {language === 'ar' ? 'منتهية' : 'Finished'}
                           </span>
                         ) : s.status === 'live' ? (
-                          <button className="px-4 py-1.5 rounded-lg bg-primary text-white text-xs font-bold shadow-[var(--shadow-lg)] hover:bg-primary/90 transition-colors whitespace-nowrap">
+                          <button className="px-4 py-1.5 rounded-[50px] bg-gradient-to-br from-[var(--green-light)] to-[var(--green)] text-white text-xs font-bold shadow-[0_6px_20px_rgba(61,139,55,.35)] hover:-translate-y-[2px] hover:shadow-[0_10px_28px_rgba(61,139,55,.45)] transition-all whitespace-nowrap">
                             {language === 'ar' ? 'انضمام' : 'Join'}
                           </button>
                         ) : (
-                          <span className="px-3 py-1.5 rounded-lg bg-orange-50 border border-orange-200 text-orange-700 text-xs font-bold flex items-center gap-1 whitespace-nowrap">
+                          <span className="px-3 py-1.5 rounded-lg bg-[var(--accent-pale)] border border-[var(--accent)]/20 text-[var(--accent)] text-xs font-bold flex items-center gap-1 whitespace-nowrap">
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
@@ -564,7 +564,7 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({ teacher:
           </button>
           <button
             onClick={handleBook}
-            className="flex-1 py-3 bg-primary text-white font-semibold rounded-[var(--radius-md)] hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 shadow-[var(--shadow-lg)]"
+            className="flex-1 py-3 bg-gradient-to-br from-[var(--green-light)] to-[var(--green)] text-white font-bold rounded-[50px] hover:-translate-y-[2px] hover:shadow-[0_10px_28px_rgba(61,139,55,.45)] transition-all flex items-center justify-center gap-2 shadow-[0_6px_20px_rgba(61,139,55,.35)]"
           >
             <Calendar size={20} />
             {language === 'ar' ? 'حجز موعد' : 'Book Now'}

@@ -624,6 +624,21 @@ select.form-input { cursor: pointer; }
   color: rgba(255,255,255,.4);
 }
 
+/* ─── Filters sidebar (dark) ──────────────────────────────────── */
+.filters-sidebar-dark {
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-dark) 100%);
+  border-color: rgba(255,255,255,.1);
+  color: rgba(255,255,255,.85);
+}
+.filters-sidebar-dark label { color: var(--green-light) !important; }
+.filters-sidebar-dark h3,
+.filters-sidebar-dark h4 { color: rgba(255,255,255,.9) !important; }
+.filters-sidebar-dark p,
+.filters-sidebar-dark span { color: rgba(255,255,255,.6) !important; }
+.filters-sidebar-dark input[type="radio"] { accent-color: var(--green-light); border-color: rgba(255,255,255,.4) !important; }
+.filters-sidebar-dark input[type="range"] { background: rgba(255,255,255,.15); accent-color: var(--green-light); }
+.filters-sidebar-dark button svg { color: rgba(255,255,255,.8); }
+
 /* ─── Misc helpers ────────────────────────────────────────────── */
 .text-green { color: var(--green) !important; }
 .text-navy  { color: var(--navy) !important; }

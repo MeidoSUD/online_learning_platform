@@ -187,7 +187,7 @@ export const MyTransactions: React.FC = () => {
                                                     {isPending ? (
                                                         <Button 
                                                             size="sm" 
-                                                            className="h-8 text-xs bg-primary hover:bg-blue-700" 
+                                                            className="h-8 text-xs bg-gradient-to-br from-[var(--green-light)] to-[var(--green)] rounded-[50px] shadow-[0_6px_20px_rgba(61,139,55,.35)]" 
                                                             onClick={() => handleOpenPayment(booking)}
                                                         >
                                                             <CreditCard size={14} className="mr-1" /> Pay Now

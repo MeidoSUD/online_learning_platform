@@ -95,7 +95,7 @@ export default function Dashboard() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 gap-4">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--light-bg)] gap-4">
         <Loader2 className="animate-spin text-primary h-12 w-12" />
         <p className="text-slate-500 font-medium animate-pulse">Loading Dashboard...</p>
       </div>

@@ -152,7 +152,7 @@ export const MySessionsTab: React.FC = () => {
         switch (s) {
             case 'live':
                 return (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary-pale text-primary text-[10px] font-bold rounded-md border border-green-200">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[var(--green-pale)] text-primary text-[10px] font-bold rounded-md border border-primary/20">
                         <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                         {language === 'ar' ? 'مباشر' : 'Live'}
                     </span>
@@ -351,7 +351,7 @@ export const MySessionsTab: React.FC = () => {
                                 className="mx-3 my-3 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] overflow-hidden hover:shadow-[var(--shadow-md)] transition-shadow bg-white cursor-pointer"
                             >
                                 {/* Gradient Time Header */}
-                                <div className="bg-gradient-to-br from-primary to-blue-600 px-4 py-3 flex items-center gap-3">
+                                <div className="bg-gradient-to-br from-[var(--navy-dark)] via-[var(--navy)] to-[var(--navy-mid)] px-4 py-3 flex items-center gap-3">
                                     <div className="p-1.5 rounded-lg bg-white/20">
                                         <Clock size={16} className="text-white" />
                                     </div>
@@ -404,7 +404,7 @@ export const MySessionsTab: React.FC = () => {
                                                 <button
                                                     onClick={() => handleJoinSession(session.id)}
                                                     disabled={joining === session.id}
-                                                    className="flex items-center gap-1.5 px-4 py-2 bg-primary text-white text-xs font-bold rounded-lg hover:bg-primary-dark transition-colors shadow-[var(--shadow-sm)] shadow-[var(--shadow-md)] disabled:opacity-50"
+                                                    className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-br from-[var(--green-light)] to-[var(--green)] text-white text-xs font-bold rounded-[50px] hover:-translate-y-[2px] hover:shadow-[0_10px_28px_rgba(61,139,55,.45)] transition-all shadow-[0_6px_20px_rgba(61,139,55,.35)] disabled:opacity-50"
                                                 >
                                                     {joining === session.id ? (
                                                         <Loader2 size={14} className="animate-spin" />

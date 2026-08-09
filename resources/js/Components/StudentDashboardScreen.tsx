@@ -86,18 +86,20 @@ export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ 
   };
 
   return (
-    <div className="min-h-screen bg-[var(--light-bg)] font-sans pb-10">
-      <Navbar
-        userData={data}
-        onLogout={onLogout}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-      />
+    <div className="relative min-h-screen bg-[var(--light-bg)] font-sans pb-10">
+      <div className="relative">
+        <Navbar
+          userData={data}
+          onLogout={onLogout}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+        />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <AdsBanner />
-        {renderContent()}
-      </main>
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <AdsBanner />
+          {renderContent()}
+        </main>
+      </div>
     </div>
   );
 };

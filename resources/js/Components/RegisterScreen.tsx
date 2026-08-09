@@ -142,11 +142,12 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onSwitch, onVeri
   }
 
   return (
-    <div className="w-full max-w-lg space-y-6 bg-surface p-8 rounded-[var(--radius-lg)] shadow-[var(--shadow-md)] border border-[var(--border)] my-4">
+    <div className="w-full max-w-lg space-y-6 bg-surface p-8 rounded-[var(--radius-lg)] shadow-[var(--shadow-md)] border border-[var(--border)] my-4 relative overflow-hidden">
+      <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-green-light to-green" />
       <div className="flex justify-end">
         <button
           onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}
-          className="flex items-center gap-2 text-sm font-medium text-[var(--text-muted)] hover:text-primary transition-colors border border-[var(--border)] rounded-[50px] px-3 py-1.5"
+          className="flex items-center gap-2 text-sm font-bold text-navy transition-all border-2 border-navy rounded-[50px] px-3 py-1.5 shadow-sm hover:bg-navy hover:text-white"
         >
           <Globe size={16} />
           {language === 'en' ? 'العربية' : 'English'}
@@ -169,9 +170,9 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onSwitch, onVeri
           <div className="grid grid-cols-1 gap-4 mt-6">
             <div
               onClick={() => setRoleId(4)}
-              className={`cursor-pointer p-6 rounded-[var(--radius-md)] border-2 flex items-center gap-4 transition-all ${roleId === 4 ? 'border-primary bg-primary/5' : 'border-[var(--border)] bg-white hover:border-[var(--border)]'}`}
+              className={`cursor-pointer p-6 rounded-[var(--radius-md)] border-2 flex items-center gap-4 transition-all hover:-translate-y-[3px] ${roleId === 4 ? 'border-primary bg-primary/5 shadow-[var(--shadow-md)]' : 'border-[var(--border)] bg-white hover:border-[var(--border)] hover:shadow-[var(--shadow-sm)]'}`}
             >
-              <div className={`p-3 rounded-[var(--radius-md)] ${roleId === 4 ? 'bg-primary text-white' : 'bg-[var(--light-bg)] text-[var(--text-muted)]'}`}>
+              <div className={`p-3 rounded-[var(--radius-sm)] transition-all ${roleId === 4 ? 'bg-primary text-white' : 'bg-[var(--green-pale)] text-primary'}`}>
                 <GraduationCap size={28} />
               </div>
               <div className="flex-1">
@@ -186,9 +187,9 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onSwitch, onVeri
 
             <div
               onClick={() => setRoleId(3)}
-              className={`cursor-pointer p-6 rounded-[var(--radius-md)] border-2 flex items-center gap-4 transition-all ${roleId === 3 ? 'border-primary bg-primary/5' : 'border-[var(--border)] bg-white hover:border-[var(--border)]'}`}
+              className={`cursor-pointer p-6 rounded-[var(--radius-md)] border-2 flex items-center gap-4 transition-all hover:-translate-y-[3px] ${roleId === 3 ? 'border-primary bg-primary/5 shadow-[var(--shadow-md)]' : 'border-[var(--border)] bg-white hover:border-[var(--border)] hover:shadow-[var(--shadow-sm)]'}`}
             >
-              <div className={`p-3 rounded-[var(--radius-md)] ${roleId === 3 ? 'bg-primary text-white' : 'bg-[var(--light-bg)] text-[var(--text-muted)]'}`}>
+              <div className={`p-3 rounded-[var(--radius-sm)] transition-all ${roleId === 3 ? 'bg-primary text-white' : 'bg-[var(--green-pale)] text-primary'}`}>
                 <Briefcase size={28} />
               </div>
               <div className="flex-1">

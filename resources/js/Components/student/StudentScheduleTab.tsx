@@ -113,13 +113,13 @@ export const StudentScheduleTab: React.FC<{ onViewList?: () => void }> = ({ onVi
       const isToday = new Date().getDate() === d && new Date().getMonth() === currentDate.getMonth();
       
       days.push(
-        <div key={d} className={`h-24 border border-[var(--border)] p-2 transition-colors hover:bg-[var(--light-bg)] ${isToday ? 'bg-secondary-pale' : 'bg-white'}`}>
-          <span className={`text-sm font-medium ${isToday ? 'text-primary bg-secondary-pale w-6 h-6 flex items-center justify-center rounded-full' : 'text-navy'}`}>{d}</span>
+          <div key={d} className={`h-24 border border-[var(--border)] p-2 transition-colors hover:bg-[var(--light-bg)] ${isToday ? 'bg-[var(--green-pale)]' : 'bg-white'}`}>
+            <span className={`text-sm font-medium ${isToday ? 'text-primary bg-[var(--green-pale)] w-6 h-6 flex items-center justify-center rounded-full' : 'text-navy'}`}>{d}</span>
           <div className="mt-1 space-y-1 overflow-y-auto max-h-[calc(100%-24px)] scrollbar-hide">
             {daySessions.map(s => (
               <button 
                 key={s.id} onClick={() => handleSessionClick(s.id)}
-                className={`w-full text-left text-[10px] px-1.5 py-1 rounded truncate font-medium ${s.status === 'live' ? 'bg-red-100 text-red-700 animate-pulse' : s.status === 'scheduled' ? 'bg-primary-pale text-primary' : 'bg-[var(--light-bg)] text-navy'}`}
+                className={`w-full text-left text-[10px] px-1.5 py-1 rounded truncate font-medium ${s.status === 'live' ? 'bg-[var(--accent-pale)] text-[var(--accent)] animate-pulse' : s.status === 'scheduled' ? 'bg-primary-pale text-primary' : 'bg-[var(--light-bg)] text-navy'}`}
               >
                 {s.start_time.slice(0,5)} - {s.subject ? (direction === 'rtl' ? s.subject.name_ar : s.subject.name_en) : 'Session'}
               </button>
@@ -146,10 +146,11 @@ export const StudentScheduleTab: React.FC<{ onViewList?: () => void }> = ({ onVi
         </div>
       </div>
 
-      <div className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] overflow-hidden">
+      <div className="relative overflow-hidden bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)]">
+        <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-[var(--green-light)] to-[var(--green)] z-10" />
         <div className="grid grid-cols-7 bg-[var(--light-bg)] border-b border-[var(--border)] text-center py-3">
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-            <div key={day} className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">{day}</div>
+            <div key={day} className="text-xs font-bold text-navy uppercase tracking-wider">{day}</div>
           ))}
         </div>
         <div className="grid grid-cols-7 bg-[var(--border)] gap-px">{renderCalendarDays()}</div>
@@ -176,12 +177,12 @@ export const StudentScheduleTab: React.FC<{ onViewList?: () => void }> = ({ onVi
                 </div>
 
                 {waitingForTeacher && (
-                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-[var(--radius-md)] text-amber-800 flex items-start gap-3 animate-fade-in">
+                    <div className="p-4 bg-[var(--accent-pale)] border border-[var(--accent)]/20 rounded-[var(--radius-md)] text-[var(--accent)] flex items-start gap-3 animate-fade-in">
                         <AlertCircle className="shrink-0 mt-0.5" size={20} />
                         <div>
                             <p className="font-bold">Teacher hasn't started yet</p>
                             <p className="text-sm opacity-90">Please wait for your teacher to initiate the session. We will notify you once the room is live.</p>
-                            <button onClick={() => handleJoinSession(sessionDetails.id)} className="mt-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-900 bg-amber-200/50 px-3 py-1.5 rounded-lg hover:bg-amber-200">
+                            <button onClick={() => handleJoinSession(sessionDetails.id)} className="mt-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--accent)] bg-white border border-[var(--accent)]/20 px-3 py-1.5 rounded-[50px] hover:bg-white/70">
                                 <RefreshCw size={14} className={joining ? 'animate-spin' : ''} /> Check Again
                             </button>
                         </div>
@@ -201,7 +202,7 @@ export const StudentScheduleTab: React.FC<{ onViewList?: () => void }> = ({ onVi
                 
                 <div className="pt-2">
                     <Button 
-                        className="w-full h-12 shadow-[var(--shadow-lg)]" 
+                        className="w-full h-12" 
                         onClick={() => handleJoinSession(sessionDetails.id)} 
                         isLoading={joining}
                         disabled={sessionDetails.status === 'completed'}
