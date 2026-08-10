@@ -1336,9 +1336,15 @@ class UserController extends Controller
             )
             ->first();
 
-        // Get current platform percentage to apply to teacher rates
+        // TeacherInfo always stores the teacher's own rate. Apply the platform
+        // percentage only when another user (typically a student) views it.
         $platformPercentage = PlatformPercentage::getActive();
         $percentageValue = $platformPercentage ? ($platformPercentage->value / 100) : 0;
+        $authenticatedUser = request()->user();
+        $isOwnTeacherProfile = $authenticatedUser
+            && (int) $authenticatedUser->id === (int) $teacher->id
+            && (int) $authenticatedUser->role_id === 3;
+        $priceMultiplier = $isOwnTeacherProfile ? 1 : (1 + $percentageValue);
 
         // Current lessons count
         $currentLessons = DB::table('bookings')
@@ -1467,9 +1473,9 @@ class UserController extends Controller
                 'courses_count' => (int) count($courses),
                 'teach_individual' => (bool) optional($teacher->teacherInfo)->teach_individual,
                 'package_on_off' => (bool) optional($teacher->teacherInfo)->package_on_off,
-                'individual_hour_price' => (float) ((optional($teacher->teacherInfo)->individual_hour_price ?? 0) * (1 + $percentageValue)),
+                'individual_hour_price' => (float) ((optional($teacher->teacherInfo)->individual_hour_price ?? 0) * $priceMultiplier),
                 'teach_group' => (bool) optional($teacher->teacherInfo)->teach_group,
-                'group_hour_price' => (float) ((optional($teacher->teacherInfo)->group_hour_price ?? 0) * (1 + $percentageValue)),
+                'group_hour_price' => (float) ((optional($teacher->teacherInfo)->group_hour_price ?? 0) * $priceMultiplier),
                 'max_group_size' => (int) (optional($teacher->teacherInfo)->max_group_size ?? 0),
                 'min_group_size' => (int) (optional($teacher->teacherInfo)->min_group_size ?? 0),
                 'code' => optional($teacher->teacherInfo)->code,
