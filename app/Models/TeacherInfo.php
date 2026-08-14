@@ -12,6 +12,7 @@ class TeacherInfo extends Model
     protected $fillable = [
         'teacher_id',
         'bio',
+        'founder',
         'package_on_off',
         'teach_individual',
         'individual_hour_price',
@@ -26,6 +27,7 @@ class TeacherInfo extends Model
         'group_hour_price' => 'float',
         'individual_hour_price' => 'float',
         'package_on_off' => 'boolean',
+        'founder' => 'boolean',
     ];
 
     protected static function boot()

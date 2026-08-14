@@ -1453,6 +1453,7 @@ class UserController extends Controller
                 'reviews' => $reviews,
                 'rating' => $rating,
                 'bio' => optional($teacher->profile)->bio,
+                'founder' => $teacher->teacherInfo ? (bool) $teacher->teacherInfo->founder : false,
                 'offer_packages' => $teacher->teacherInfo ? (bool) $teacher->teacherInfo->offer_packages : false,
                 'package_on_off' => $teacher->teacherInfo ? (bool) $teacher->teacherInfo->package_on_off : false,
                 'packages_approved' => $teacher->teacherInfo ? (bool) $teacher->teacherInfo->packages_approved : false,
