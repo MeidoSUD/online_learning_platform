@@ -332,8 +332,8 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({ teacher:
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {teachIndividual && (
                     <div className="p-4 rounded-[var(--radius-md)] bg-gradient-to-br from-[var(--green-light)] to-[var(--green)] text-white shadow-[0_6px_20px_rgba(61,139,55,.35)]">
-                      <p className="text-sm opacity-80">{language === 'ar' ? 'درس فردي' : 'Private Lesson'}</p>
-                      <p className="text-2xl font-bold mt-1">{Number(individualHourPrice).toFixed(2)} <span className="text-sm font-normal opacity-80">{t.sar}</span></p>
+                      <p className="text-sm text-white">{language === 'ar' ? 'درس فردي' : 'Private Lesson'}</p>
+                      <p className="text-2xl font-bold mt-1 text-white">{Number(individualHourPrice).toFixed(2)} <span className="text-sm font-normal text-white">{t.sar}</span></p>
                     </div>
                   )}
                   {teachGroup && (
