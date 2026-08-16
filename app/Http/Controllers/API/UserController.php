@@ -1012,6 +1012,12 @@ class UserController extends Controller
 
         // ✅ Update profile completion status after changes
         \App\Helpers\TeacherProfileHelper::checkAndUpdateProfileCompleted($teacher->id);
+        // Sync profile complete table
+        try {
+            \App\Helpers\ProfileCompleteHelper::sync($teacher->id);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('Failed to sync ProfileComplete after teacher info update', ['teacher_id' => $teacher->id, 'error' => $e->getMessage()]);
+        }
 
         return response()->json([
             'success' => true,

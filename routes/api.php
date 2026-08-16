@@ -14,6 +14,7 @@ use App\Http\Controllers\API\ServicesController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
 use App\Http\Controllers\API\EducationLevelController;
 use App\Http\Controllers\API\UserController;
+use App\Http\Controllers\API\ProfileCompleteController;
 use App\Http\Controllers\API\OrdersController;
 use App\Http\Controllers\API\TeacherApplicationController;
 use App\Http\Controllers\API\DisputeController;
@@ -133,6 +134,7 @@ Route::get('subjectsClasses/{class_id}', [EducationLevelController::class, 'getS
 // Public: list all available packages
 Route::get('/packages', [StudentPackageController::class, 'index']);
 // Terms and Conditions privacy policy
+Route::get('/teacher-contract', [TermsConditionsAdminController::class, 'teacherContract']);
 Route::get('teacher-terms' , [TermsConditionsAdminController::class, 'teacherTerms']);
 Route::get('/teacher-policy', [TermsConditionsAdminController::class, 'teachersPrivacyPolicy']);
 Route::get('/student-policy', [TermsConditionsAdminController::class, 'studentsPrivacyPolicy']);
@@ -221,6 +223,7 @@ Route::prefix('profile')->middleware('auth:sanctum')->group(function () {
     Route::put('/profile/update', [UserController::class, 'updateProfile']);
     Route::post('/profile', [UserController::class, 'storeProfile']);
     Route::get('/profile', [UserController::class, 'showProfile']);
+    Route::get('/complete', [ProfileCompleteController::class, 'show']);
     Route::get('/education-levels', [UserController::class, 'educationLevels']);
     Route::get('/classes/{education_level_id}', [UserController::class, 'classes']);
     Route::delete('/delete', [UserController::class, 'deleteAccount']);

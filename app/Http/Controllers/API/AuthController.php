@@ -302,6 +302,12 @@ class AuthController extends Controller
             }
 
             DB::commit();
+            // Ensure profile_complete record exists and is synced
+            try {
+                \App\Helpers\ProfileCompleteHelper::sync($user->id);
+            } catch (\Exception $e) {
+                Log::warning('Failed to sync ProfileComplete after registration', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+            }
 
             // Send verification code
             $smsPhone = PhoneHelper::normalizeForSMS($normalizedPhone);
@@ -803,6 +809,13 @@ class AuthController extends Controller
             $user->verified = true;
             $user->verification_code = null;
             $user->save();
+
+            // Sync profile complete after phone verification
+            try {
+                \App\Helpers\ProfileCompleteHelper::sync($user->id);
+            } catch (\Exception $e) {
+                Log::warning('Failed to sync ProfileComplete after verification', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+            }
 
             // Send welcome notification if teacher
             if ($user->role_id == 3) { // Teacher role
