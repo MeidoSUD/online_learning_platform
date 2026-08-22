@@ -25,8 +25,8 @@ class EducationLevelController extends Controller
 
         if ($subjects->isEmpty()) {
             return response()->json([
-                'message' => 'Class not found'
-            ], 404);
+                'subject' => []
+            ]);
         }
 
         return response()->json([
@@ -45,10 +45,10 @@ class EducationLevelController extends Controller
 
     public function levelsWithClassesAndSubjects()
     {
-        $educationLevels = EducationLevel::select('id', 'name_en', 'name_ar') ->with([
-       'classes:id,name_en,name_ar,education_level_id',
-       'classes.subjects:id,name_en,name_ar,class_id'
-   ])   ->get();
+        $educationLevels = EducationLevel::select('id', 'name_en', 'name_ar')->with([
+            'classes:id,name_en,name_ar,education_level_id',
+            'classes.subjects:id,name_en,name_ar,class_id'
+        ])->get();
 
         return response()->json([
             'education_levels' => $educationLevels
