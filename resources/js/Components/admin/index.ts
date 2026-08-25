@@ -22,3 +22,4 @@ export * from './ApiAnalyticsTab';
 export * from './ActivityRecordsTab';
 export * from './SystemLogsTab';
 export * from './CertificatesTab';
+export * from './InstructionsTab';

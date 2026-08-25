@@ -91,7 +91,8 @@ import {
    TermsConditions, TermsConditionsPayload, SessionsPackage, UserFullProfile, AdminPayment,
   ApiAnalyticsStats, ApiStatistic, SystemLogEntry, ActivityRecord, ActivityRecordStats, ActivityRecordGroupedStats,
   AppNotification, BooksModel, SavedCard, StudentSubscription, StudentPackage,
-  CheckoutResponse, PaymentStatusResponse, StudentOrder, BookingDetails
+  CheckoutResponse, PaymentStatusResponse, StudentOrder, BookingDetails,
+  Instruction, InstructionPayload
 } from '../Utils/types';
 
 export type {
@@ -105,7 +106,8 @@ export type {
   TermsConditions, TermsConditionsPayload, SessionsPackage, UserFullProfile, AdminPayment,
   ApiAnalyticsStats, ApiStatistic, SystemLogEntry, ActivityRecord, ActivityRecordStats, ActivityRecordGroupedStats,
   AppNotification, BooksModel, SavedCard, StudentSubscription, StudentPackage,
-  CheckoutResponse, PaymentStatusResponse, StudentOrder, BookingDetails
+  CheckoutResponse, PaymentStatusResponse, StudentOrder, BookingDetails,
+  Instruction, InstructionPayload
 };
 
 export const AUTH_SESSION_EXPIRED = 'auth:session-expired';
@@ -647,6 +649,21 @@ export const adminService = {
     fetchWithAuth(`/admin/activity-records/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteActivityRecord: (id: number) => fetchWithAuth(`/admin/activity-records/${id}`, { method: 'DELETE' }),
   clearActivityRecords: () => fetchWithAuth('/admin/activity-records', { method: 'DELETE' }),
+
+  // Instructions Management
+  getInstructions: (filters: Record<string, string> = {}) => {
+    const query = new URLSearchParams(filters).toString();
+    return fetchWithAuth(`/admin/instructions${query ? `?${query}` : ''}`);
+  },
+  getInstruction: (id: number) => fetchWithAuth(`/admin/instructions/${id}`),
+  createInstruction: (data: InstructionPayload) =>
+    fetchWithAuth('/admin/instructions', { method: 'POST', body: JSON.stringify(data) }),
+  updateInstruction: (id: number, data: Partial<InstructionPayload>) =>
+    fetchWithAuth(`/admin/instructions/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteInstruction: (id: number) =>
+    fetchWithAuth(`/admin/instructions/${id}`, { method: 'DELETE' }),
+  toggleInstruction: (id: number) =>
+    fetchWithAuth(`/admin/instructions/${id}/toggle`, { method: 'PUT' }),
 };
 
 export const adsService = {

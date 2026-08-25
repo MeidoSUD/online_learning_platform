@@ -923,6 +923,26 @@ export interface ActivityRecord {
   updated_at: string;
 }
 
+export interface Instruction {
+  id: number;
+  title: string;
+  content: string;
+  type: string;
+  target_audience: 'student' | 'teacher' | 'both';
+  is_active: boolean;
+  lines: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InstructionPayload {
+  title: string;
+  content: string;
+  type: string;
+  target_audience: 'student' | 'teacher' | 'both';
+  is_active: boolean;
+}
+
 export interface AppNotification {
   id: number;
   title: string;

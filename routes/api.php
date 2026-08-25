@@ -42,6 +42,7 @@ use App\Http\Controllers\API\Admin\SystemLogController;
 use App\Http\Controllers\API\Admin\ActivityRecordController;
 
 
+use App\Http\Controllers\API\Admin\InstructionAdminController;
 use App\Http\Controllers\API\Admin\InstituteController;
 // Agora token route for sessions
 
@@ -523,4 +524,12 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     Route::post('/certificates/issue', [AdminCertificateController::class, 'issue']);
     Route::get('/certificates/{id}', [AdminCertificateController::class, 'show']);
     Route::delete('/certificates/{id}', [AdminCertificateController::class, 'revoke']);
+
+    // Instructions Management
+    Route::get('/instructions', [InstructionAdminController::class, 'index']);
+    Route::post('/instructions', [InstructionAdminController::class, 'store']);
+    Route::get('/instructions/{id}', [InstructionAdminController::class, 'show']);
+    Route::put('/instructions/{id}', [InstructionAdminController::class, 'update']);
+    Route::delete('/instructions/{id}', [InstructionAdminController::class, 'destroy']);
+    Route::put('/instructions/{id}/toggle', [InstructionAdminController::class, 'toggleActive']);
 });

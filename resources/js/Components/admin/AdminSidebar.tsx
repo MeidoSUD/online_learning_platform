@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
-import { LayoutDashboard, Users, Layers, DollarSign, CheckSquare, AlertCircle, LogOut, Globe, Calendar, BookOpen, Settings, Package, Box, ShoppingBag, Percent, Cog, ChevronDown, ChevronRight, Video, Monitor, FileText, CreditCard, Activity, BarChart3, Terminal, Award } from 'lucide-react';
+import { LayoutDashboard, Users, Layers, DollarSign, CheckSquare, AlertCircle, LogOut, Globe, Calendar, BookOpen, Settings, Package, Box, ShoppingBag, Percent, Cog, ChevronDown, ChevronRight, Video, Monitor, FileText, CreditCard, Activity, BarChart3, Terminal, Award, ClipboardList } from 'lucide-react';
 import { Logo } from '../Logo';
 
 interface AdminSidebarProps {
@@ -78,6 +78,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ activeTab, setActive
             children: [
                 { id: 'ads', label: t.adsManagement, icon: Monitor },
                 { id: 'terms', label: language === 'ar' ? 'الشروط والأحكام' : 'Terms & Conditions', icon: FileText },
+                { id: 'instructions', label: language === 'ar' ? 'التعليمات' : 'Instructions', icon: ClipboardList },
                 { id: 'appConfig', label: language === 'ar' ? 'إعدادات التطبيق' : 'App Config', icon: Cog },
                 { id: 'settings', label: language === 'ar' ? 'الإعدادات' : 'Settings', icon: Settings },
                 { id: 'apiAnalytics', label: language === 'ar' ? 'تحليلات API' : 'API Analytics', icon: BarChart3 },
