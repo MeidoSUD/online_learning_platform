@@ -1,26 +1,19 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\AvailabilityController;
 use App\Http\Controllers\API\CourseController;
 use App\Http\Controllers\API\LessonController;
 use App\Http\Controllers\API\BookingController;
-use App\Http\Controllers\API\PaymentController;
-use App\Http\Controllers\API\WalletController;
 use App\Http\Controllers\API\ReviewController;
 use App\Http\Controllers\API\ServicesController;
-use App\Http\Controllers\Auth\ConfirmablePasswordController;
 use App\Http\Controllers\API\EducationLevelController;
 use App\Http\Controllers\API\UserController;
 use App\Http\Controllers\API\ProfileCompleteController;
-use App\Http\Controllers\API\OrdersController;
 use App\Http\Controllers\API\TeacherApplicationController;
-use App\Http\Controllers\API\DisputeController;
 use App\Http\Controllers\API\TeacherController;
 use App\Http\Controllers\API\PaymentMethodController;
-use App\Http\Controllers\API\UserPaymentMethodController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\API\SessionsController;
 use App\Http\Controllers\API\AiAssistantController;
@@ -31,7 +24,6 @@ use App\Http\Controllers\API\Admin\DashboardController;
 use App\Http\Controllers\API\Admin\UsersController;
 use App\Http\Controllers\API\Admin\PayoutAdminController;
 use App\Http\Controllers\API\Admin\SystemController;
-use App\Http\Controllers\API\Admin\ServiceController;
 use App\Http\Controllers\API\Admin\ServiceAdminController;
 use App\Http\Controllers\API\Admin\GalleryController;
 use App\Http\Controllers\API\Admin\DisputeAdminController;
@@ -51,13 +43,8 @@ use App\Http\Controllers\API\Admin\ActivityRecordController;
 
 
 use App\Http\Controllers\API\Admin\InstituteController;
-use App\Models\Payment;
-use App\Models\User;
 // Agora token route for sessions
-use App\Services\AgoraService;
-use Illuminate\Support\Facades\Lang;
 
-use App\Http\Controllers\API\BookingCourseController;
 use App\Http\Controllers\API\AppVersionController;
 use App\Http\Controllers\API\AppConfigController;
 use App\Http\Controllers\API\AdsController;
