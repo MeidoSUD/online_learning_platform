@@ -429,7 +429,10 @@ class SessionsController extends Controller
         }
 
         // 3. Start session — sets status to LIVE + started_at (can_start must pass)
-        if (!$session->start()) {
+        // If session is already live, teacher is rejoining — skip start() and regenerate token
+        if ($session->status === \App\Models\Sessions::STATUS_LIVE) {
+            Log::info('Teacher rejoining already-live session', ['session_id' => $session->id]);
+        } elseif (!$session->start()) {
             Log::error('Failed to start session — can_start check failed', ['session_id' => $session->id]);
             return response()->json(['success' => false, 'message' => 'Cannot start session. It may have already started or be outside the allowed window.'], 400);
         }

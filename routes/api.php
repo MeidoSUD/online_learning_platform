@@ -160,7 +160,9 @@ Route::get('banks', [PaymentMethodController::class, 'banks']);
 // ======================
 // App Config & Version Management (Public - no auth required)
 // ======================
-Route::get('config', [AppVersionController::class, 'getConfig']); // Get latest app version info
+Route::get('config', [AppVersionController::class, 'getConfig']);
+
+Route::get('instructions', [\App\Http\Controllers\InstructionController::class, 'index']);
 
 // ======================
 // Ads Panel (Public - accessible to all, role-based filtering)
