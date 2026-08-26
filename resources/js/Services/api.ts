@@ -415,6 +415,20 @@ export const studentService = {
 };
 
 export const adminService = {
+  // Marketing notifications
+  getMarketingNotifications: (params: Record<string, string | number> = {}) => {
+    const query = new URLSearchParams(params as any).toString();
+    return fetchWithAuth(`/admin/marketing/notifications${query ? `?${query}` : ''}`);
+  },
+  getMarketingAudienceCount: (target_type: string, target_user_id?: number) => {
+    const params: Record<string, string> = { target_type };
+    if (target_user_id) params.target_user_id = String(target_user_id);
+    return fetchWithAuth(`/admin/marketing/notifications/audience-count?${new URLSearchParams(params).toString()}`);
+  },
+  searchMarketingUsers: (query: string) => fetchWithAuth(`/admin/marketing/users/search?q=${encodeURIComponent(query)}`),
+  sendMarketingNotification: (data: Record<string, unknown>) =>
+    fetchWithAuth('/admin/marketing/notifications/send', { method: 'POST', body: JSON.stringify(data) }),
+
   getDashboardData: () => fetchWithAuth('/admin/dashboard'),
   getStats: () => fetchWithAuth('/admin/stats'),
   getUsers: (filters: any = {}) => {

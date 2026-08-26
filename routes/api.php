@@ -40,6 +40,7 @@ use App\Http\Controllers\API\Admin\OrderAdminController;
 use App\Http\Controllers\API\Admin\TermsConditionsAdminController;
 use App\Http\Controllers\API\Admin\SystemLogController;
 use App\Http\Controllers\API\Admin\ActivityRecordController;
+use App\Http\Controllers\API\Admin\MarketingNotificationController;
 
 
 use App\Http\Controllers\API\Admin\InstructionAdminController;
@@ -312,6 +313,12 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin,support'])->grou
 });
 
 Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(function () {
+    // Marketing notifications
+    Route::get('/marketing/notifications', [MarketingNotificationController::class, 'index']);
+    Route::post('/marketing/notifications/send', [MarketingNotificationController::class, 'send']);
+    Route::get('/marketing/notifications/audience-count', [MarketingNotificationController::class, 'audienceCount']);
+    Route::get('/marketing/users/search', [MarketingNotificationController::class, 'usersSearch']);
+
     // Admin language management routes
 
 

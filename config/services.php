@@ -30,7 +30,8 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
     'sms' => [
-        'provider' => 'dreamsSms',
+        'provider' => env('SMS_PROVIDER', 'dreamsSms'),
+        'url' => env('SMS_PROVIDER_URL'),
         'user' => env('SMS_USER'),
         'secret_key' => env('SMS_SECRET_KEY'),
         'sender' => env('SMS_SENDER'),
