@@ -308,6 +308,7 @@ export const UsersTab: React.FC = () => {
                         <thead className="bg-[var(--light-bg)] border-b border-[var(--border)]">
                             <tr>
                                 <th className="px-6 py-3 font-semibold text-navy">{t.name}</th>
+                                <th className="px-6 py-3 font-semibold text-navy">{t.phone}</th>
                                 <th className="px-6 py-3 font-semibold text-navy">{t.role}</th>
                                 <th className="px-6 py-3 font-semibold text-navy">{t.verifiedStatus}</th>
                                 <th className="px-6 py-3 font-semibold text-navy">{t.status}</th>
@@ -317,7 +318,7 @@ export const UsersTab: React.FC = () => {
                         <tbody className="divide-y divide-[var(--border)]">
                             {paginatedUsers.length === 0 && !loading ? (
                                 <tr>
-                                    <td colSpan={5} className="px-6 py-8 text-center text-[var(--text-muted)]">{t.noResults}</td>
+                                    <td colSpan={6} className="px-6 py-8 text-center text-[var(--text-muted)]">{t.noResults}</td>
                                 </tr>
                             ) : (
                                 paginatedUsers.map(user => (
@@ -326,6 +327,11 @@ export const UsersTab: React.FC = () => {
                                             <div>
                                                 <div className="font-bold text-[var(--text-main)]">{user.first_name} {user.last_name}</div>
                                                 <div className="text-xs text-[var(--text-muted)]">{user.email}</div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm font-medium text-[var(--text-main)]" dir="ltr">
+                                                {user.phone_number || '—'}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">

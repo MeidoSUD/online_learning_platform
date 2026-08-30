@@ -173,9 +173,9 @@ class UsersController extends Controller
         $zip->open($tempFile, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
 
         $sheetRows = collect([$headers, ...$rows])->map(function (array $row, int $rowIndex) {
-            $cells = collect($row)->map(function ($value, int $columnIndex) {
-                $column = '';
+            $cells = collect($row)->map(function ($value, int $columnIndex) use ($rowIndex) {
                 $number = $columnIndex + 1;
+                $column = '';
                 while ($number > 0) {
                     $number--;
                     $column = chr(65 + ($number % 26)) . $column;
