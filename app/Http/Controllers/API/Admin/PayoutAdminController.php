@@ -39,6 +39,12 @@ class PayoutAdminController extends Controller
     public function approve(Request $request, $id, TeacherWalletService $walletService)
     {
         $payout = Payout::findOrFail($id);
+        if ($payout->status !== Payout::STATUS_PENDING) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only pending payouts can be approved.',
+            ], 422);
+        }
         $data = [];
 
         if ($request->hasFile('receipt')) {

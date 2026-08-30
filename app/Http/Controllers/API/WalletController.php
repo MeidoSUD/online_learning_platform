@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\Wallet;
 use App\Models\Payout;
 use App\Models\UserPaymentMethod;
+use App\Models\PlatformPercentage;
 use App\Helpers\Helpers;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -58,6 +59,11 @@ class WalletController extends Controller
         Helpers::getPendingBalance($teacher->id);
         $wallet->refresh();
 
+        $teacherPercentage = PlatformPercentage::getActive(PlatformPercentage::TYPE_TEACHER);
+        $commissionRate = $teacherPercentage ? (float) $teacherPercentage->value : 0.0;
+        $netBalance = $this->netAmount((float) $wallet->balance, $commissionRate);
+        $netPendingBalance = $this->netAmount((float) $wallet->pending_balance, $commissionRate);
+
         // Get withdrawal requests (pending, completed, failed, rejected)
         $withdrawals = Payout::where('teacher_id', $teacher->id)
             ->with('paymentMethod')
@@ -67,9 +73,15 @@ class WalletController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
-                'balance' => (float) $wallet->balance,
-                'pending_balance' => (float) $wallet->pending_balance,
-                'total_balance' => (float) ($wallet->balance + $wallet->pending_balance),
+                // These are the amounts the teacher can actually receive.
+                'balance' => $netBalance,
+                'pending_balance' => $netPendingBalance,
+                'total_balance' => round($netBalance + $netPendingBalance, 2),
+                'company_percentage' => $commissionRate,
+                'company_fee_on_available_balance' => round((float) $wallet->balance - $netBalance, 2),
+                // Gross amounts are supplied for transparent reconciliation only.
+                'gross_balance' => (float) $wallet->balance,
+                'gross_pending_balance' => (float) $wallet->pending_balance,
                 'withdrawals' => $withdrawals
             ]
         ]);
@@ -130,18 +142,22 @@ class WalletController extends Controller
             ], 422);
         }
 
-        // Check if teacher has sufficient balance
-        if ($wallet->balance < $amount) {
+        $teacherPercentage = PlatformPercentage::getActive(PlatformPercentage::TYPE_TEACHER);
+        $commissionRate = $teacherPercentage ? (float) $teacherPercentage->value : 0.0;
+        $netAvailableBalance = $this->netAmount((float) $wallet->balance, $commissionRate);
+
+        // The requested payout is a net amount. Commission is deducted before it is paid.
+        if ($amount > $netAvailableBalance) {
             return response()->json([
                 'success' => false,
                 'message' => 'Insufficient wallet balance',
                 'errors' => [
                     'amount' => [
-                        "Insufficient balance. Available: {$wallet->balance}, Requested: {$amount}"
+                        "Insufficient balance. Available after company percentage: {$netAvailableBalance}, Requested: {$amount}"
                     ]
                 ],
                 'data' => [
-                    'available_balance' => (float) $wallet->balance,
+                    'available_balance' => $netAvailableBalance,
                     'requested_amount' => $amount
                 ]
             ], 422);
@@ -152,17 +168,17 @@ class WalletController extends Controller
             ->where('status', Payout::STATUS_PENDING)
             ->sum('amount');
 
-        if (($pendingTotal + $amount) > $wallet->balance) {
+        if (($pendingTotal + $amount) > $netAvailableBalance) {
             return response()->json([
                 'success' => false,
                 'message' => 'Total pending withdrawal requests exceed available balance',
                 'errors' => [
                     'amount' => [
-                        "Total pending withdrawals ({$pendingTotal}) plus this request ({$amount}) exceeds available balance ({$wallet->balance})"
+                        "Total pending withdrawals ({$pendingTotal}) plus this request ({$amount}) exceeds available balance after company percentage ({$netAvailableBalance})"
                     ]
                 ],
                 'data' => [
-                    'available_balance' => (float) $wallet->balance,
+                    'available_balance' => $netAvailableBalance,
                     'pending_withdrawals_total' => (float) $pendingTotal,
                     'requested_amount' => $amount
                 ]
@@ -211,7 +227,8 @@ class WalletController extends Controller
                     'status' => $payout->status,
                     'payment_method_id' => $payout->payment_method_id,
                     'requested_at' => $payout->requested_at,
-                    'remaining_balance' => (float) $wallet->balance
+                    'remaining_balance' => round($netAvailableBalance - $pendingTotal - $amount, 2),
+                    'company_percentage' => $commissionRate
                 ]
             ], 201);
         } catch (\Exception $e) {
@@ -227,6 +244,11 @@ class WalletController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    private function netAmount(float $grossAmount, float $percentage): float
+    {
+        return round($grossAmount * (1 - ($percentage / 100)), 2);
     }
 
     /**

@@ -12,6 +12,7 @@ use App\Models\Payment;
 use App\Models\Wallet;
 use App\Models\SessionsPackages;
 use App\Models\Subscription;
+use App\Models\PlatformPercentage;
 
 class DashboardController extends Controller
 {
@@ -48,7 +49,7 @@ class DashboardController extends Controller
             $totalBookings = Booking::count();
             
             // Confirmed Bookings
-            $confirmedBookings = Booking::where('status', 'confirmed')->count();
+            $confirmedBookings = Booking::where('status', Booking::STATUS_CONFIRMED)->count();
             
             // Pending Payment Bookings
             $pendingPaymentBookings = Booking::where('status', 'pending_payment')->count();
@@ -59,12 +60,30 @@ class DashboardController extends Controller
             // Total Payments
             $totalPayments = Payment::count();
             
-            // Successful Payments
-            $successfulPayments = Payment::where('status', 'success')->count();
+            // Payment uses "completed" (and legacy integrations may use "paid").
+            $successfulPaymentQuery = Payment::whereIn('status', [
+                Payment::STATUS_COMPLETED,
+                'paid',
+                'success',
+            ]);
+            $successfulPayments = (clone $successfulPaymentQuery)->count();
             
             // Total Revenue (sum of successful payments)
-            $totalRevenue = Payment::where('status', 'success')
-                ->sum('amount') ?? 0;
+            $totalRevenue = (clone $successfulPaymentQuery)->sum('amount') ?? 0;
+            $totalRefunds = Payment::where('refund_status', Payment::REFUND_COMPLETED)
+                ->sum('refund_amount') ?? 0;
+            $netRevenue = max(0, $totalRevenue - $totalRefunds);
+
+            // Both commissions are independently editable through the revenue
+            // percentage endpoint using the matching type.
+            $percentages = [
+                PlatformPercentage::TYPE_STUDENT => $this->formatPercentage(
+                    PlatformPercentage::getActive(PlatformPercentage::TYPE_STUDENT)
+                ),
+                PlatformPercentage::TYPE_TEACHER => $this->formatPercentage(
+                    PlatformPercentage::getActive(PlatformPercentage::TYPE_TEACHER)
+                ),
+            ];
             
             // Teachers Wallet Total (sum of all teacher wallets) - with error handling
             $teachersWalletTotal = 0;
@@ -128,13 +147,18 @@ class DashboardController extends Controller
                 'confirmed' => $confirmedBookings,
                 'pending_payment' => $pendingPaymentBookings,
                 'cancelled' => $cancelledBookings,
+                'in_progress' => Booking::where('status', Booking::STATUS_IN_PROGRESS)->count(),
+                'completed' => Booking::where('status', Booking::STATUS_COMPLETED)->count(),
             ];
             
             // Payment Status Distribution
             $paymentsByStatus = [
                 'success' => $successfulPayments,
+                'completed' => $successfulPayments,
                 'pending' => Payment::where('status', 'pending')->count(),
+                'processing' => Payment::where('status', Payment::STATUS_PROCESSING)->count(),
                 'failed' => Payment::where('status', 'failed')->count(),
+                'refunded' => Payment::where('status', Payment::STATUS_REFUNDED)->count(),
             ];
             
             Log::info('Admin dashboard accessed', [
@@ -158,7 +182,9 @@ class DashboardController extends Controller
                         'total_students' => $totalStudents,
                         'inactive_users' => $inactiveUsers,
                         'total_bookings' => $totalBookings,
-                        'total_revenue' => (float) $totalRevenue,
+                        'total_revenue' => (float) $netRevenue,
+                        'gross_revenue' => (float) $totalRevenue,
+                        'total_refunds' => (float) $totalRefunds,
                         'teachers_wallet_total' => (float) $teachersWalletTotal,
                     ],
                     'bookings' => [
@@ -171,9 +197,12 @@ class DashboardController extends Controller
                     'payments' => [
                         'total' => $totalPayments,
                         'successful' => $successfulPayments,
-                        'total_amount' => (float) $totalRevenue,
+                        'total_amount' => (float) $netRevenue,
+                        'gross_amount' => (float) $totalRevenue,
+                        'refund_amount' => (float) $totalRefunds,
                         'by_status' => $paymentsByStatus,
                     ],
+                    'percentages' => $percentages,
                     'users_by_role' => $usersByRole,
                     'monthly_metrics' => [
                         'new_users_this_month' => $newUsersThisMonth,
@@ -189,7 +218,7 @@ class DashboardController extends Controller
                         'active_packages' => SessionsPackages::where('is_active', true)->count(),
                         'total_subscriptions' => Subscription::count(),
                         'active_subscriptions' => Subscription::where('status', 'active')->count(),
-                        'total_revenue' => (float) Subscription::sum('total_paid'),
+                        'total_revenue' => (float) Subscription::whereIn('status', ['active', 'completed'])->sum('total_paid'),
                     ],
                 ],
             ], 200);
@@ -208,6 +237,22 @@ class DashboardController extends Controller
                 'message_ar' => 'خطأ في جلب بيانات لوحة التحكم',
             ], 500);
         }
+    }
+
+    private function formatPercentage(?PlatformPercentage $percentage): ?array
+    {
+        if (!$percentage) {
+            return null;
+        }
+
+        return [
+            'id' => (string) $percentage->id,
+            'type' => $percentage->type,
+            'value' => (float) $percentage->value,
+            'effective_date' => $percentage->effective_date?->format('Y-m-d'),
+            'is_active' => (bool) $percentage->is_active,
+            'description' => $percentage->description,
+        ];
     }
 
     public function stats(Request $request)

@@ -52,6 +52,24 @@ use Carbon\Carbon;
 class RevenuePercentageController extends Controller
 {
     /**
+     * Get both independently configurable commission percentages.
+     */
+    public function getCurrentPercentages()
+    {
+        return response()->json([
+            'success' => true,
+            'data' => [
+                PlatformPercentage::TYPE_STUDENT => $this->formatPercentageResponse(
+                    PlatformPercentage::getActive(PlatformPercentage::TYPE_STUDENT)
+                ),
+                PlatformPercentage::TYPE_TEACHER => $this->formatPercentageResponse(
+                    PlatformPercentage::getActive(PlatformPercentage::TYPE_TEACHER)
+                ),
+            ],
+        ]);
+    }
+
+    /**
      * ========================================================================
      * GET /api/admin/revenue/percentage
      * ========================================================================
@@ -89,7 +107,9 @@ class RevenuePercentageController extends Controller
     public function getCurrentPercentage()
     {
         try {
-            $percentage = PlatformPercentage::getActive();
+            $type = request()->input('type', PlatformPercentage::TYPE_STUDENT);
+            $this->validateType($type);
+            $percentage = PlatformPercentage::getActive($type);
 
             if (!$percentage) {
                 return response()->json([
@@ -107,6 +127,7 @@ class RevenuePercentageController extends Controller
                 'success' => true,
                 'message' => 'Active percentage retrieved',
                 'data' => $this->formatPercentageResponse($percentage),
+                'type' => $type,
                 'price_example' => [
                     'teacher_rate' => $exampleTeacherRate,
                     'student_pays' => round($studentPrice, 2),
@@ -173,8 +194,11 @@ class RevenuePercentageController extends Controller
     public function getPercentageHistory(Request $request)
     {
         try {
+            $type = $request->input('type', PlatformPercentage::TYPE_STUDENT);
+            $this->validateType($type);
             $perPage = $request->input('per_page', 20);
-            $history = PlatformPercentage::orderByDesc('effective_date')
+            $history = PlatformPercentage::where('type', $type)
+                ->orderByDesc('effective_date')
                 ->paginate($perPage);
 
             $formattedHistory = $history->map(function ($item) {
@@ -185,6 +209,7 @@ class RevenuePercentageController extends Controller
                 'success' => true,
                 'message' => 'Percentage history retrieved',
                 'data' => $formattedHistory,
+                'type' => $type,
                 'total_changes' => $history->total()
             ]);
 
@@ -236,14 +261,16 @@ class RevenuePercentageController extends Controller
         try {
             $validated = $request->validate([
                 'value' => 'required|numeric|min:0|max:100',
+                'type' => 'nullable|in:' . PlatformPercentage::TYPE_STUDENT . ',' . PlatformPercentage::TYPE_TEACHER,
                 'effective_date' => 'nullable|date|date_format:Y-m-d',
                 'description' => 'nullable|string|max:500'
             ]);
 
             DB::beginTransaction();
 
-            // Get current percentage
-            $current = PlatformPercentage::getActive();
+            $type = $validated['type'] ?? PlatformPercentage::TYPE_STUDENT;
+            // Get current percentage for the selected commission.
+            $current = PlatformPercentage::getActive($type);
             $oldValue = $current ? $current->value : null;
 
             // Set effective date (default to today)
@@ -259,6 +286,7 @@ class RevenuePercentageController extends Controller
             // Create new percentage record
             $percentage = PlatformPercentage::create([
                 'value' => $validated['value'],
+                'type' => $type,
                 'effective_date' => $effectiveDate,
                 'is_active' => true,
                 'description' => $validated['description'] ?? null
@@ -286,6 +314,7 @@ class RevenuePercentageController extends Controller
                 'success' => true,
                 'message' => 'Percentage updated successfully',
                 'data' => $this->formatPercentageResponse($percentage),
+                'type' => $type,
                 'impact' => [
                     'percentage_change' => $impactMessage,
                     'effective' => $dateMessage,
@@ -351,7 +380,8 @@ class RevenuePercentageController extends Controller
         try {
             $request->validate([
                 'teacher_rate' => 'required|numeric|min:0',
-                'percentage_id' => 'nullable|exists:platform_percentages,id'
+                'percentage_id' => 'nullable|exists:platform_percentages,id',
+                'type' => 'nullable|in:' . PlatformPercentage::TYPE_STUDENT . ',' . PlatformPercentage::TYPE_TEACHER
             ]);
 
             $teacherRate = $request->input('teacher_rate');
@@ -359,8 +389,11 @@ class RevenuePercentageController extends Controller
             // Get percentage
             if ($request->filled('percentage_id')) {
                 $percentage = PlatformPercentage::findOrFail($request->input('percentage_id'));
+                $this->validateType($percentage->type);
             } else {
-                $percentage = PlatformPercentage::getActive();
+                $type = $request->input('type', PlatformPercentage::TYPE_STUDENT);
+                $this->validateType($type);
+                $percentage = PlatformPercentage::getActive($type);
                 if (!$percentage) {
                     return response()->json([
                         'success' => false,
@@ -376,6 +409,7 @@ class RevenuePercentageController extends Controller
                 'success' => true,
                 'teacher_rate' => (float) $teacherRate,
                 'current_percentage' => number_format($percentage->value, 2) . '%',
+                'type' => $percentage->type,
                 'student_price' => round($studentPrice, 2),
                 'platform_revenue' => round($revenue, 2),
                 'percentage_breakdown' => [
@@ -424,7 +458,7 @@ class RevenuePercentageController extends Controller
     public function getRevenueAnalytics()
     {
         try {
-            $current = PlatformPercentage::getActive();
+            $current = PlatformPercentage::getActive(PlatformPercentage::TYPE_STUDENT);
 
             if (!$current) {
                 return response()->json([
@@ -433,9 +467,25 @@ class RevenuePercentageController extends Controller
                 ], 404);
             }
 
-            // Get booking totals (you'd integrate with actual booking data)
-            $totalBookings = 0; // $booking_model::count()
-            $totalRevenue = 0;  // Calculate from actual data
+            $successfulPayments = \App\Models\Payment::whereIn('status', [
+                \App\Models\Payment::STATUS_COMPLETED,
+                'paid',
+                'success',
+            ])->with('booking:id,teacher_rate_per_session,sessions_count,total_amount')->get();
+            $totalBookings = $successfulPayments->pluck('booking_id')->filter()->unique()->count();
+            $grossRevenue = (float) $successfulPayments->sum('amount');
+            $refunds = (float) \App\Models\Payment::where('refund_status', \App\Models\Payment::REFUND_COMPLETED)
+                ->sum('refund_amount');
+            $totalRevenue = max(0, $grossRevenue - $refunds);
+            $platformRevenue = (float) $successfulPayments->sum(function ($payment) {
+                $booking = $payment->booking;
+                if (!$booking) {
+                    return 0;
+                }
+
+                $teacherCost = (float) $booking->teacher_rate_per_session * (int) $booking->sessions_count;
+                return (float) $payment->amount - $teacherCost;
+            });
 
             return response()->json([
                 'success' => true,
@@ -443,6 +493,9 @@ class RevenuePercentageController extends Controller
                     'current_percentage' => number_format($current->value, 2) . '%',
                     'active_since' => $current->effective_date->format('Y-m-d'),
                     'total_revenue' => $totalRevenue,
+                    'gross_revenue' => $grossRevenue,
+                    'refunds' => $refunds,
+                    'platform_revenue' => round($platformRevenue, 2),
                     'average_revenue_per_booking' => $totalBookings > 0 ? round($totalRevenue / $totalBookings, 2) : 0,
                     'bookings_count' => $totalBookings
                 ],
@@ -467,16 +520,34 @@ class RevenuePercentageController extends Controller
      * HELPER METHOD: Format Percentage Response
      * ========================================================================
      */
-    private function formatPercentageResponse($percentage)
+    private function formatPercentageResponse($percentage): ?array
     {
+        if (!$percentage) {
+            return null;
+        }
+
         return [
             'id' => (string) $percentage->id,
             'value' => number_format($percentage->value, 2),
+            'type' => $percentage->type,
             'effective_date' => $percentage->effective_date->format('Y-m-d'),
             'is_active' => (bool) $percentage->is_active,
             'description' => $percentage->description,
             'created_at' => $percentage->created_at->format('Y-m-d H:i:s'),
             'updated_at' => $percentage->updated_at->format('Y-m-d H:i:s')
         ];
+    }
+
+    private function validateType(string $type): void
+    {
+        if (!in_array($type, [
+            PlatformPercentage::TYPE_STUDENT,
+            PlatformPercentage::TYPE_TEACHER,
+        ], true)) {
+            abort(response()->json([
+                'success' => false,
+                'message' => 'Invalid percentage type',
+            ], 422));
+        }
     }
 }

@@ -28,6 +28,15 @@ class UsersController extends Controller
     {
         $q = User::query()->select(['id','first_name','last_name','email','created_at','phone_number','gender','role_id','is_active','nationality']);
         if ($request->filled('role_id')) $q->where('role_id', $request->role_id);
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $q->where(function ($query) use ($search) {
+                $query->where('first_name', 'like', "%{$search}%")
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('phone_number', 'like', "%{$search}%");
+            });
+        }
 
         // Filter by is_active if provided (accepts true/false or 1/0)
         if ($request->has('is_active')) {
@@ -88,6 +97,104 @@ class UsersController extends Controller
         });
 
         return response()->json(['success' => true, 'data' => $paginated]);
+    }
+
+    public function export(Request $request)
+    {
+        $format = $request->input('format', 'xlsx');
+        if (!in_array($format, ['xlsx', 'pdf'], true)) {
+            return response()->json(['success' => false, 'message' => 'Unsupported export format'], 422);
+        }
+
+        $query = User::query()
+            ->select(['id', 'first_name', 'last_name', 'email', 'phone_number', 'role_id', 'is_active', 'nationality', 'created_at'])
+            ->orderByDesc('id');
+
+        if ($request->filled('role_id')) {
+            $query->where('role_id', $request->input('role_id'));
+        }
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('phone_number', 'like', "%{$search}%");
+            });
+        }
+        if ($request->has('is_active')) {
+            $isActive = filter_var($request->input('is_active'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            if ($isActive !== null) {
+                $query->where('is_active', $isActive);
+            }
+        }
+        if ($request->has('verified')) {
+            $verified = filter_var($request->input('verified'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            if ($verified !== null) {
+                $query->whereHas('profile', fn ($q) => $q->where('verified', $verified));
+            }
+        }
+
+        $users = $query->get();
+        $rows = $users->map(fn ($user) => [
+            $user->id,
+            trim($user->first_name . ' ' . $user->last_name),
+            $user->email,
+            $user->phone_number,
+            match ((int) $user->role_id) {
+                1 => 'Admin',
+                3 => 'Teacher',
+                4 => 'Student',
+                default => 'Other',
+            },
+            $user->is_active ? 'Active' : 'Inactive',
+            $user->nationality,
+            optional($user->created_at)->format('Y-m-d H:i:s'),
+        ])->all();
+
+        $headers = ['ID', 'Name', 'Email', 'Phone', 'Role', 'Status', 'Nationality', 'Created At'];
+
+        if ($format === 'pdf') {
+            $htmlRows = collect([$headers, ...$rows])->map(function (array $row) {
+                return '<tr>' . collect($row)->map(fn ($cell) => '<td>' . e((string) $cell) . '</td>')->implode('') . '</tr>';
+            })->implode('');
+
+            return response()->view('admin.users-export', compact('htmlRows'))
+                ->header('Content-Disposition', 'inline; filename="users-export.html"');
+        }
+
+        return $this->xlsxResponse($headers, $rows);
+    }
+
+    private function xlsxResponse(array $headers, array $rows)
+    {
+        $tempFile = tempnam(sys_get_temp_dir(), 'users-export-');
+        $zip = new \ZipArchive();
+        $zip->open($tempFile, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+
+        $sheetRows = collect([$headers, ...$rows])->map(function (array $row, int $rowIndex) {
+            $cells = collect($row)->map(function ($value, int $columnIndex) {
+                $column = '';
+                $number = $columnIndex + 1;
+                while ($number > 0) {
+                    $number--;
+                    $column = chr(65 + ($number % 26)) . $column;
+                    $number = intdiv($number, 26);
+                }
+                return '<c r="' . $column . ($rowIndex + 1) . '" t="inlineStr"><is><t>' . e((string) $value) . '</t></is></c>';
+            })->implode('');
+
+            return '<row r="' . ($rowIndex + 1) . '">' . $cells . '</row>';
+        })->implode('');
+
+        $zip->addFromString('[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>');
+        $zip->addFromString('_rels/.rels', '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>');
+        $zip->addFromString('xl/workbook.xml', '<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Users" sheetId="1" r:id="rId1"/></sheets></workbook>');
+        $zip->addFromString('xl/_rels/workbook.xml.rels', '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>');
+        $zip->addFromString('xl/worksheets/sheet1.xml', '<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>' . $sheetRows . '</sheetData></worksheet>');
+        $zip->close();
+
+        return response()->download($tempFile, 'users-export.xlsx')->deleteFileAfterSend(true);
     }
 
     public function teachers(Request $request)

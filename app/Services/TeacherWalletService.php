@@ -6,6 +6,7 @@ use App\Models\Payout;
 use App\Models\Sessions;
 use App\Models\Wallet;
 use App\Models\Booking;
+use App\Models\PlatformPercentage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -56,22 +57,33 @@ class TeacherWalletService
                 $payout->update($updateData);
             }
 
-            $wallet = Wallet::firstOrCreate(
-                ['user_id' => $payout->teacher_id],
-                ['balance' => 0]
-            );
+            $wallet = Wallet::where('user_id', $payout->teacher_id)->lockForUpdate()->first();
+            if (!$wallet) {
+                $wallet = Wallet::create(['user_id' => $payout->teacher_id, 'balance' => 0]);
+            }
+
+            $teacherPercentage = PlatformPercentage::getActive(PlatformPercentage::TYPE_TEACHER);
+            $grossAmount = $teacherPercentage
+                ? $teacherPercentage->calculateTeacherGrossAmount((float) $payout->amount)
+                : (float) $payout->amount;
+            $companyFee = $grossAmount - (float) $payout->amount;
 
             $reason = 'Payout Approved: ' . $payout->amount;
             $meta = [
                 'payout_id' => $payout->id,
                 'teacher_id' => $payout->teacher_id,
+                'net_payout_amount' => (float) $payout->amount,
+                'gross_wallet_amount' => round($grossAmount, 2),
+                'company_fee' => round($companyFee, 2),
+                'teacher_percentage' => $teacherPercentage ? (float) $teacherPercentage->value : 0,
             ];
 
-            $wallet->debit($payout->amount, $reason, $meta);
+            $wallet->debit(round($grossAmount, 2), $reason, $meta);
 
             Log::info('Teacher wallet debited for payout', [
                 'teacher_id' => $payout->teacher_id,
-                'amount' => $payout->amount,
+                'net_amount' => $payout->amount,
+                'gross_amount' => round($grossAmount, 2),
                 'payout_id' => $payout->id,
             ]);
 

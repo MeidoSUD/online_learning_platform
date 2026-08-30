@@ -179,6 +179,9 @@ const fetchWithAuth = async (endpoint: string, options: RequestInit = {}) => {
 
     // Check for HTML response (Cloudflare/Firewall)
     const contentType = response.headers.get('content-type');
+    if ((options.headers as Record<string, string> | undefined)?.['X-Download'] === 'true') {
+      return await response.blob();
+    }
     if (contentType && contentType.includes('text/html')) {
       throw new Error("The API returned HTML. Cloudflare or a firewall might be blocking the request.");
     }
@@ -435,6 +438,12 @@ export const adminService = {
     const query = new URLSearchParams(filters).toString();
     return fetchWithAuth(`/admin/users${query ? `?${query}` : ''}`).then(extractArray);
   },
+  exportUsers: (filters: Record<string, string>) => {
+    const query = new URLSearchParams(filters).toString();
+    return fetchWithAuth(`/admin/users/export?${query}`, {
+      headers: { 'X-Download': 'true' }
+    });
+  },
   createUser: (data: any) => fetchWithAuth('/admin/users', { method: 'POST', body: JSON.stringify(data) }),
   updateUser: (id: number, data: any) => fetchWithAuth(`/admin/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteUser: (id: number) => fetchWithAuth(`/admin/users/${id}`, { method: 'DELETE' }),
@@ -553,11 +562,12 @@ export const adminService = {
 
   // Revenue & Percentage
   getActivePercentage: () => fetchWithAuth('/admin/revenue/percentage'),
+  getActivePercentages: () => fetchWithAuth('/admin/revenue/percentages'),
   getPercentageHistory: (filters: any = {}) => {
     const query = new URLSearchParams(filters).toString();
     return fetchWithAuth(`/admin/revenue/history${query ? `?${query}` : ''}`).then(extractArray);
   },
-  updatePercentage: (data: { value: number; effective_date: string; description?: string }) => 
+  updatePercentage: (data: { value: number; type: 'student_percentage' | 'teacher_percentage'; effective_date: string; description?: string }) =>
     fetchWithAuth('/admin/revenue/percentage', { method: 'POST', body: JSON.stringify(data) }),
   getRevenueAnalytics: (filters: any = {}) => {
     const query = new URLSearchParams(filters).toString();

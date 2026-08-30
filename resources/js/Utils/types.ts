@@ -558,6 +558,7 @@ export interface AdminDashboardData {
     average_per_teacher: number;
   };
   packages?: PackagesStats;
+  percentages?: Record<string, PlatformPercentage | null>;
 }
 
 export interface AdminService extends Service {
@@ -622,6 +623,7 @@ export interface TeacherApplication {
 
 export interface PlatformPercentage {
   id: number;
+  type: 'student_percentage' | 'teacher_percentage';
   value: string;
   effective_date: string;
   is_active: boolean;
@@ -1116,4 +1118,3 @@ export interface BookingDetails {
     can_join_session: boolean;
   };
 }
-

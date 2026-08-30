@@ -9,7 +9,8 @@ import { useToast } from '../../Contexts/ToastContext';
 export const AdminPercentageTab: React.FC = () => {
     const { t, language, direction } = useLanguage();
     const { showToast } = useToast();
-    const [activePercentage, setActivePercentage] = useState<PlatformPercentage | null>(null);
+    const [activePercentages, setActivePercentages] = useState<Record<string, PlatformPercentage | null>>({});
+    const [percentageType, setPercentageType] = useState<'student_percentage' | 'teacher_percentage'>('student_percentage');
     const [history, setHistory] = useState<PlatformPercentage[]>([]);
     const [analytics, setAnalytics] = useState<RevenueAnalytics | null>(null);
     const [loading, setLoading] = useState(true);
@@ -30,22 +31,27 @@ export const AdminPercentageTab: React.FC = () => {
     }, []);
 
     useEffect(() => {
+        const activePercentage = activePercentages[percentageType];
         if (activePercentage) {
             calculateImpact(teacherRate, Number(activePercentage.value));
         }
-    }, [teacherRate, activePercentage]);
+    }, [teacherRate, activePercentages, percentageType]);
 
     const fetchData = async () => {
         setLoading(true);
         try {
             // Fetch Active Percentage
             try {
-                const activeRes = await adminService.getActivePercentage();
-                setActivePercentage(activeRes.data);
+                const activeRes = await adminService.getActivePercentages();
+                setActivePercentages(activeRes.data || {});
             } catch (activeErr: any) {
                 console.warn("Active percentage not found or not configured", activeErr);
-                // Default to null, will handle in UI
-                setActivePercentage(null);
+                try {
+                    const activeRes = await adminService.getActivePercentage();
+                    setActivePercentages({ student_percentage: activeRes.data });
+                } catch {
+                    setActivePercentages({});
+                }
             }
 
             // Fetch History
@@ -85,6 +91,7 @@ export const AdminPercentageTab: React.FC = () => {
         try {
             await adminService.updatePercentage({
                 value: Number(newPercentage),
+                type: percentageType,
                 effective_date: effectiveDate,
                 description: description
             });
@@ -101,6 +108,10 @@ export const AdminPercentageTab: React.FC = () => {
 
     if (loading) return <div className="flex justify-center p-12"><Loader2 className="animate-spin text-primary" /></div>;
 
+    const activePercentage = activePercentages[percentageType];
+    const studentPercentage = activePercentages.student_percentage;
+    const teacherPercentage = activePercentages.teacher_percentage;
+
     return (
         <div className="space-y-6 animate-fade-in max-w-6xl mx-auto">
             <div className="flex justify-between items-center">
@@ -113,7 +124,11 @@ export const AdminPercentageTab: React.FC = () => {
                     <div className="bg-gradient-to-br from-primary-light to-primary rounded-[var(--radius-lg)] p-8 text-white shadow-[var(--shadow-lg)] relative overflow-hidden">
                         <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                             <div>
-                                <p className="text-blue-100 font-medium mb-1">{language === 'ar' ? 'عمولة المنصة الحالية' : 'Current Platform Commission'}</p>
+                                <p className="text-blue-100 font-medium mb-1">
+                                    {percentageType === 'teacher_percentage'
+                                        ? (language === 'ar' ? 'عمولة المعلم الحالية' : 'Current Teacher Commission')
+                                        : (language === 'ar' ? 'عمولة الطالب الحالية' : 'Current Student Commission')}
+                                </p>
                                 <div className="flex items-baseline gap-2">
                                     <span className="text-6xl font-black tracking-tight">{activePercentage?.value || '0.00'}%</span>
                                     <span className="text-blue-100 text-sm">{language === 'ar' ? 'لكل حجز' : 'per booking'}</span>
@@ -121,6 +136,24 @@ export const AdminPercentageTab: React.FC = () => {
                                 <div className="flex items-center gap-2 mt-4 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-full text-xs">
                                     <CalendarIcon size={14} />
                                     {activePercentage ? `${language === 'ar' ? 'نشط منذ:' : 'Active since:'} ${activePercentage.effective_date}` : (language === 'ar' ? 'لم يتم العثور على إعداد نشط' : 'No active configuration found')}
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {[
+                                        { type: 'student_percentage' as const, label: language === 'ar' ? 'نسبة الطالب' : 'Student Percentage', percentage: studentPercentage },
+                                        { type: 'teacher_percentage' as const, label: language === 'ar' ? 'نسبة المعلم' : 'Teacher Percentage', percentage: teacherPercentage },
+                                    ].map(({ type, label, percentage }) => (
+                                        <button
+                                            type="button"
+                                            key={type}
+                                            onClick={() => setPercentageType(type)}
+                                            className={`text-left bg-white p-5 rounded-[var(--radius-md)] border ${percentageType === type ? 'border-primary ring-2 ring-primary/10' : 'border-[var(--border)]'} shadow-[var(--shadow-sm)]`}
+                                        >
+                                            <p className="text-xs font-bold text-[var(--text-muted)] uppercase">{label}</p>
+                                            <p className="text-3xl font-black text-[var(--text-main)] mt-2">{percentage?.value || '0.00'}%</p>
+                                            <p className="text-xs text-[var(--text-muted)] mt-1">{percentage?.effective_date || (language === 'ar' ? 'غير معدة' : 'Not configured')}</p>
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
                             <div className="hidden md:block opacity-20 pointer-events-none">
@@ -246,6 +279,18 @@ export const AdminPercentageTab: React.FC = () => {
                         </div>
 
                         <form onSubmit={handleUpdatePercentage} className="space-y-5">
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-[var(--text-muted)] uppercase px-1">{language === 'ar' ? 'نوع النسبة' : 'Percentage Type'}</label>
+                                <select
+                                    value={percentageType}
+                                    onChange={(e) => setPercentageType(e.target.value as 'student_percentage' | 'teacher_percentage')}
+                                    className="w-full bg-[var(--light-bg)] border border-[var(--border)] rounded-[var(--radius-md)] px-4 py-3 font-medium focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                >
+                                    <option value="student_percentage">{language === 'ar' ? 'نسبة الطالب' : 'Student Percentage'}</option>
+                                    <option value="teacher_percentage">{language === 'ar' ? 'نسبة المعلم' : 'Teacher Percentage'}</option>
+                                </select>
+                            </div>
+
                             <div className="space-y-1.5">
                                 <label className="text-xs font-bold text-[var(--text-muted)] uppercase px-1">{language === 'ar' ? 'النسبة الجديدة' : 'New Percentage'}</label>
                                 <div className="relative">

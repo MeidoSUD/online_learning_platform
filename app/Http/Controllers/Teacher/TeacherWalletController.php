@@ -4,13 +4,12 @@ namespace App\Http\Controllers\Teacher;
 
 use App\Http\Controllers\Controller;
 use App\Models\Payout;
-use App\Models\PaymentMethod;
 use App\Models\Wallet;
-use App\Models\WalletTransaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Models\UserPaymentMethod;
+use App\Models\PlatformPercentage;
 
 class TeacherWalletController extends Controller
 {
@@ -21,7 +20,7 @@ class TeacherWalletController extends Controller
     {
         $teacher = Auth::user();
         $wallet = Wallet::where('user_id', $teacher->id)->first();
-        $walletBalance = $wallet ? $wallet->balance : 0;
+        $walletBalance = $this->netWalletBalance($wallet);
 
         $payouts = Payout::where('teacher_id', $teacher->id)
             ->orderBy('created_at', 'desc')
@@ -38,7 +37,7 @@ class TeacherWalletController extends Controller
     {
         $teacher = Auth::user();
         $wallet = Wallet::where('user_id', $teacher->id)->first();
-        $walletBalance = $wallet ? $wallet->balance : 0;
+        $walletBalance = $this->netWalletBalance($wallet);
 
         // Get teacher's bank accounts instead of payment methods
         $paymentMethods = UserPaymentMethod::where('user_id', $teacher->id)
@@ -56,7 +55,7 @@ class TeacherWalletController extends Controller
     {
         $request->validate([
             'amount' => 'required|numeric|min:1',
-            'payment_method_id' => 'required|exists:payment_methods,id',
+            'payment_method_id' => 'required|exists:user_payment_methods,id',
         ]);
 
         $teacher = Auth::user();
@@ -68,8 +67,13 @@ class TeacherWalletController extends Controller
                 : 'Wallet not found');
         }
 
-        // Check if sufficient balance
-        if ($wallet->balance < $request->amount) {
+        $netBalance = $this->netWalletBalance($wallet);
+        $pendingTotal = Payout::where('teacher_id', $teacher->id)
+            ->where('status', Payout::STATUS_PENDING)
+            ->sum('amount');
+
+        // The requested amount is the net amount the teacher will receive.
+        if ($pendingTotal + $request->amount > $netBalance) {
             return redirect()->back()->with('error', app()->getLocale() == 'ar'
                 ? 'رصيد المحفظة غير كافٍ'
                 : 'Insufficient wallet balance');
@@ -87,26 +91,6 @@ class TeacherWalletController extends Controller
                 'requested_at' => now(),
             ]);
 
-            // Store balance before deduction
-            $balanceBefore = $wallet->balance;
-
-            // Deduct amount from wallet
-            $wallet->balance -= $request->amount;
-            $wallet->save();
-
-            // Record wallet transaction
-            WalletTransaction::create([
-                'wallet_id' => $wallet->id,
-                'type' => 'withdrawal',
-                'amount' => $request->amount,
-                'balance_before' => $balanceBefore,
-                'balance_after' => $wallet->balance,
-                'description' => app()->getLocale() == 'ar'
-                    ? 'طلب سحب رصيد'
-                    : 'Payout request',
-                'related_payment_id' => $payout->id,
-            ]);
-
             DB::commit();
 
             return redirect()->route('teacher.wallet.index')->with('success', app()->getLocale() == 'ar'
@@ -119,6 +103,19 @@ class TeacherWalletController extends Controller
                 ? 'حدث خطأ أثناء معالجة طلبك'
                 : 'An error occurred while processing your request');
         }
+
+    }
+
+    private function netWalletBalance(?Wallet $wallet): float
+    {
+        if (!$wallet) {
+            return 0;
+        }
+
+        $percentage = PlatformPercentage::getActive(PlatformPercentage::TYPE_TEACHER);
+        $rate = $percentage ? (float) $percentage->value : 0;
+
+        return round((float) $wallet->balance * (1 - $rate / 100), 2);
     }
     /**
      * Display list of teacher's bank accounts

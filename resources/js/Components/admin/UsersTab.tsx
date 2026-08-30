@@ -3,7 +3,7 @@ import { useLanguage } from '../../Contexts/LanguageContext';
 import {
     Search, MoreVertical, Shield, User, GraduationCap, Loader2,
     Trash2, Ban, Eye, Key, CheckCircle, X, Plus, Filter,
-    UserPlus, Edit, CheckSquare, Square, Mail, Phone, Globe
+    UserPlus, Edit, CheckSquare, Square, Mail, Phone, Globe, FileSpreadsheet, FileText
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
@@ -33,6 +33,7 @@ export const UsersTab: React.FC = () => {
     const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
     const [openMenuId, setOpenMenuId] = useState<number | null>(null);
     const [formLoading, setFormLoading] = useState(false);
+    const [exportLoading, setExportLoading] = useState<'xlsx' | 'pdf' | null>(null);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -68,6 +69,35 @@ export const UsersTab: React.FC = () => {
             showToast(t.error, 'error');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const exportUsers = async (format: 'xlsx' | 'pdf') => {
+        setExportLoading(format);
+        try {
+            const filters: Record<string, string> = { format };
+            if (roleFilter !== 'all') filters.role_id = roleFilter;
+            if (statusFilter !== 'all') filters.is_active = statusFilter === 'active' ? 'true' : 'false';
+            if (verifiedFilter !== 'all') filters.verified = verifiedFilter === 'verified' ? 'true' : 'false';
+            if (searchTerm.trim()) filters.search = searchTerm.trim();
+
+            const blob = await adminService.exportUsers(filters);
+            const url = URL.createObjectURL(blob);
+            if (format === 'pdf') {
+                const printWindow = window.open(url, '_blank');
+                if (!printWindow) throw new Error('Popup blocked');
+                printWindow.onload = () => printWindow.print();
+            } else {
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'users-export.xlsx';
+                link.click();
+            }
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } catch (e: any) {
+            showToast(e.message || t.error, 'error');
+        } finally {
+            setExportLoading(null);
         }
     };
 
@@ -211,9 +241,19 @@ export const UsersTab: React.FC = () => {
         <div className="space-y-6 animate-fade-in" onClick={() => setOpenMenuId(null)}>
             <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-bold text-[var(--text-main)]">{t.users}</h2>
-                <Button onClick={handleOpenCreate} className="flex items-center gap-2">
-                    <UserPlus size={20} /> {t.createUser}
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                    <Button variant="outline" onClick={() => exportUsers('xlsx')} disabled={!!exportLoading} className="flex items-center gap-2">
+                        {exportLoading === 'xlsx' ? <Loader2 className="animate-spin" size={18} /> : <FileSpreadsheet size={18} />}
+                        Export XLSX
+                    </Button>
+                    <Button variant="outline" onClick={() => exportUsers('pdf')} disabled={!!exportLoading} className="flex items-center gap-2">
+                        {exportLoading === 'pdf' ? <Loader2 className="animate-spin" size={18} /> : <FileText size={18} />}
+                        Export PDF
+                    </Button>
+                    <Button onClick={handleOpenCreate} className="flex items-center gap-2">
+                        <UserPlus size={20} /> {t.createUser}
+                    </Button>
+                </div>
             </div>
 
             <div className="bg-white p-4 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)]">

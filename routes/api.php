@@ -292,6 +292,7 @@ Route::prefix('teacher')->middleware(['auth:sanctum', 'role:teacher'])->group(fu
 // Users & Teachers management (shared between admin and support roles)
 Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin,support'])->group(function () {
     Route::get('/users', [UsersController::class, 'index']);
+    Route::get('/users/export', [UsersController::class, 'export']);
     Route::get('/users/{id}', [UsersController::class, 'show']);
     Route::get('/users/{id}/profile', [UsersController::class, 'profile']);
     Route::post('/users', [UsersController::class, 'store']);
@@ -354,6 +355,7 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     // ======================
     // ADMIN REVENUE & PERCENTAGE MANAGEMENT
     // ======================
+    Route::get('/revenue/percentages', [RevenuePercentageController::class, 'getCurrentPercentages']); // Get student and teacher percentages
     Route::get('/revenue/percentage', [RevenuePercentageController::class, 'getCurrentPercentage']); // Get current percentage
     Route::get('/revenue/history', [RevenuePercentageController::class, 'getPercentageHistory']); // Get percentage history
     Route::post('/revenue/percentage', [RevenuePercentageController::class, 'setPercentage']); // Set new percentage
