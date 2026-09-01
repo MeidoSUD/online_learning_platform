@@ -19,6 +19,7 @@ use App\Http\Controllers\API\Admin\TermsConditionsAdminController;
 use App\Http\Controllers\API\BookingCourseController;
 use App\Http\Controllers\API\FavoriteController;
 use App\Http\Controllers\API\StudentPackageController;
+use App\Http\Controllers\API\ConsultationController;
 
 // Student routes with 'student' role middleware
 Route::prefix('student')->middleware(['auth:sanctum', 'role:student'])->group(function () {
@@ -114,6 +115,13 @@ Route::prefix('student')->middleware(['auth:sanctum', 'role:student'])->group(fu
     Route::post('/favorites/{teacher}/toggle', [FavoriteController::class, 'toggle']);
     Route::get('/favorites', [FavoriteController::class, 'index']);
     Route::get('/favorites/{teacher}/status', [FavoriteController::class, 'status']);
+
+    // Consultations
+    Route::get('/consultation/categories', [ConsultationController::class, 'categories']);
+    Route::post('/consultations', [ConsultationController::class, 'store']); // submit a consultation request
+    Route::get('/consultations', [ConsultationController::class, 'index']); // my consultation requests
+    Route::get('/consultations/{id}', [ConsultationController::class, 'show']); // consultation details
+    Route::post('/consultations/{id}/cancel', [ConsultationController::class, 'cancel']); // cancel my request
 
     // Packages & Subscriptions
     Route::post('/packages/purchase', [StudentPackageController::class, 'purchase']);

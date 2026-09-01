@@ -21,6 +21,7 @@ use App\Http\Controllers\API\SessionsController;
 use App\Http\Controllers\API\LanguageStudyController;
 use App\Http\Controllers\FCMTokenController;
 use App\Http\Controllers\API\TeacherPackageController;
+use App\Http\Controllers\API\ConsultationController;
 
 Route::prefix('teacher')->middleware(['auth:sanctum', 'role:teacher'])->group(function () {
     Route::get('/education-levels', [EducationLevelController::class, 'levelsWithClassesAndSubjects']);
@@ -111,4 +112,9 @@ Route::prefix('teacher')->middleware(['auth:sanctum', 'role:teacher'])->group(fu
 
     // switch on/off package availability
     Route::match(['PUT', 'POST'], '/packages/on-off', [TeacherPackageController::class, 'switchPackageOnOff']);
+
+    // Consultations
+    Route::get('/consultations', [ConsultationController::class, 'teacherIndex']); // consultations assigned to me
+    Route::get('/consultations/{id}', [ConsultationController::class, 'teacherShow']); // consultation details
+    Route::post('/consultations/{id}/schedule', [ConsultationController::class, 'schedule']); // set session time -> creates booking + online session
 });

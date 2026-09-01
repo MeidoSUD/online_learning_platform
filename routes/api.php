@@ -37,6 +37,7 @@ use App\Http\Controllers\API\Admin\SupportTicketController;
 use App\Http\Controllers\API\Admin\SettingController;
 use App\Http\Controllers\API\Admin\RevenuePercentageController;
 use App\Http\Controllers\API\Admin\OrderAdminController;
+use App\Http\Controllers\API\Admin\ConsultationAdminController;
 use App\Http\Controllers\API\Admin\TermsConditionsAdminController;
 use App\Http\Controllers\API\Admin\SystemLogController;
 use App\Http\Controllers\API\Admin\ActivityRecordController;
@@ -370,6 +371,20 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     Route::get('/orders/{id}/applications', [OrderAdminController::class, 'viewApplications']); // Get applications for order
     Route::post('/orders/{id}/assign-teacher', [OrderAdminController::class, 'assignTeacher']); // Assign teacher to order
     Route::put('/orders/{id}/status', [OrderAdminController::class, 'updateStatus']); // Update order status
+
+    // ======================
+    // ADMIN CONSULTATION SERVICE
+    // ======================
+    Route::get('/consultations', [ConsultationAdminController::class, 'index']); // List all consultations
+    Route::get('/consultations/stats', [ConsultationAdminController::class, 'stats']); // Status counts
+    Route::get('/consultations/teachers', [ConsultationAdminController::class, 'teachers']); // Candidate teachers for assignment
+    Route::get('/consultations/{id}', [ConsultationAdminController::class, 'show']); // Consultation details
+    Route::post('/consultations/{id}/assign-teacher', [ConsultationAdminController::class, 'assignTeacher']); // Assign teacher
+    Route::put('/consultations/{id}/status', [ConsultationAdminController::class, 'updateStatus']); // Update status
+    Route::get('/consultation-categories', [ConsultationAdminController::class, 'categories']); // List categories
+    Route::post('/consultation-categories', [ConsultationAdminController::class, 'storeCategory']); // Create category
+    Route::put('/consultation-categories/{id}', [ConsultationAdminController::class, 'updateCategory']); // Update category
+    Route::delete('/consultation-categories/{id}', [ConsultationAdminController::class, 'destroyCategory']); // Delete category
 
     Route::get('/services-list', [ServicesController::class, 'listServices']);
     Route::get('/services/search', [ServicesController::class, 'searchServices']);

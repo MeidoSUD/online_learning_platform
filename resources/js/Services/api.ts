@@ -145,6 +145,25 @@ const extractArray = (response: any): any[] => {
   return [];
 };
 
+const extractPaginatedData = (response: any) => {
+  if (!response) return { items: [], total: 0, currentPage: 1, lastPage: 1, perPage: 25 };
+
+  if (Array.isArray(response)) {
+    return { items: response, total: response.length, currentPage: 1, lastPage: 1, perPage: response.length || 25 };
+  }
+
+  const payload = response?.data ?? response;
+  const items = payload?.data && Array.isArray(payload.data) ? payload.data : Array.isArray(payload) ? payload : [];
+
+  return {
+    items,
+    total: Number(payload?.total ?? items.length ?? 0),
+    currentPage: Number(payload?.current_page ?? 1),
+    lastPage: Number(payload?.last_page ?? Math.max(1, Math.ceil((Number(payload?.total ?? items.length) || 0) / (Number(payload?.per_page) || 25)))),
+    perPage: Number(payload?.per_page ?? 25),
+  };
+};
+
 const fetchWithAuth = async (endpoint: string, options: RequestInit = {}) => {
   const token = tokenService.getToken();
 
@@ -435,8 +454,18 @@ export const adminService = {
   getDashboardData: () => fetchWithAuth('/admin/dashboard'),
   getStats: () => fetchWithAuth('/admin/stats'),
   getUsers: (filters: any = {}) => {
-    const query = new URLSearchParams(filters).toString();
-    return fetchWithAuth(`/admin/users${query ? `?${query}` : ''}`).then(extractArray);
+    const params = { ...filters, per_page: Number(filters.per_page ?? 25) };
+    const query = new URLSearchParams(params).toString();
+    return fetchWithAuth(`/admin/users${query ? `?${query}` : ''}`).then((response) => {
+      const paginated = extractPaginatedData(response);
+      return {
+        items: paginated.items,
+        total: paginated.total,
+        currentPage: paginated.currentPage,
+        lastPage: paginated.lastPage,
+        perPage: paginated.perPage,
+      };
+    });
   },
   exportUsers: (filters: Record<string, string>) => {
     const query = new URLSearchParams(filters).toString();

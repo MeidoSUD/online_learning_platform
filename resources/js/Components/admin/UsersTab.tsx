@@ -21,10 +21,12 @@ export const UsersTab: React.FC = () => {
     const [roleFilter, setRoleFilter] = useState<string>('all');
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [verifiedFilter, setVerifiedFilter] = useState<string>('all');
+    const [totalPages, setTotalPages] = useState(1);
+    const [pageSize, setPageSize] = useState(25);
     
     // Pagination State
     const [currentPage, setCurrentPage] = useState(1);
-    const ITEMS_PER_PAGE = 10;
+    const ITEMS_PER_PAGE = 25;
 
     // UI State
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -52,18 +54,22 @@ export const UsersTab: React.FC = () => {
 
     useEffect(() => {
         fetchUsers();
-    }, [roleFilter, statusFilter, verifiedFilter]);
+    }, [roleFilter, statusFilter, verifiedFilter, searchTerm, currentPage]);
 
     const fetchUsers = async () => {
         setLoading(true);
         try {
-            const filters: any = {};
+            const filters: any = { page: currentPage, per_page: ITEMS_PER_PAGE };
             if (roleFilter !== 'all') filters.role_id = roleFilter;
             if (statusFilter !== 'all') filters.is_active = statusFilter === 'active' ? 'true' : 'false';
             if (verifiedFilter !== 'all') filters.verified = verifiedFilter === 'verified' ? 'true' : 'false';
+            if (searchTerm.trim()) filters.search = searchTerm.trim();
 
-            const data = await adminService.getUsers(filters);
-            setUsers(Array.isArray(data) ? data : []);
+            const result = await adminService.getUsers(filters);
+            const items = Array.isArray(result?.items) ? result.items : Array.isArray(result) ? result : [];
+            setUsers(items);
+            setPageSize(Number(result?.perPage ?? ITEMS_PER_PAGE));
+            setTotalPages(Number(result?.lastPage ?? 1));
         } catch (e) {
             console.error(e);
             showToast(t.error, 'error');
@@ -211,21 +217,11 @@ export const UsersTab: React.FC = () => {
         } catch (e: any) { showToast(t.error, 'error'); }
     };
 
-    const filteredUsers = users.filter(user => {
-        const full = `${user.first_name ?? ''} ${user.last_name ?? ''}`.toLowerCase();
-        const term = searchTerm.toLowerCase();
-        return full.includes(term) || (user.email ?? '').toLowerCase().includes(term) || (user.phone_number ?? '').includes(term);
-    });
-
     useEffect(() => {
         setCurrentPage(1);
     }, [searchTerm, roleFilter, statusFilter, verifiedFilter]);
 
-    const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
-    const paginatedUsers = filteredUsers.slice(
-        (currentPage - 1) * ITEMS_PER_PAGE,
-        currentPage * ITEMS_PER_PAGE
-    );
+    const paginatedUsers = users;
 
     const getRoleIcon = (roleId: number) => {
         switch (roleId) {
@@ -404,7 +400,16 @@ export const UsersTab: React.FC = () => {
                     </table>
                     {loading && <div className="flex justify-center p-8"><Loader2 className="animate-spin text-primary/30" /></div>}
                 </div>
-                
+
+                <div className="flex items-center justify-between px-6 py-3 border-t border-[var(--border)] bg-white text-sm text-[var(--text-muted)]">
+                    <span>
+                        {t.page} <span className="font-medium mx-1 text-navy">{currentPage}</span> {t.of} <span className="font-medium mx-1 text-navy">{totalPages}</span>
+                    </span>
+                    <span>
+                        {pageSize} {t.perPage || 'per page'}
+                    </span>
+                </div>
+
                 <Pagination
                     currentPage={currentPage}
                     totalPages={totalPages}
