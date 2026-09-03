@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
-import { Calendar, Loader2, Filter, X } from 'lucide-react';
+import { Calendar, Loader2, Filter, X, FileSpreadsheet, FileText } from 'lucide-react';
 import { adminService, AdminBooking } from '../../Services/api';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
@@ -12,6 +12,7 @@ export const BookingsTab: React.FC = () => {
     const { t } = useLanguage();
     const [bookings, setBookings] = useState<AdminBooking[]>([]);
     const [loading, setLoading] = useState(true);
+    const [exportLoading, setExportLoading] = useState<'xlsx' | 'pdf' | null>(null);
 
     // Filters
     const [filterTeacher, setFilterTeacher] = useState('');
@@ -25,7 +26,8 @@ export const BookingsTab: React.FC = () => {
     useEffect(() => {
         const fetch = async () => {
             try {
-                const data = await adminService.getBookings();
+                const response = await adminService.getBookings(1, 1000);
+                const data = response?.data?.data ?? response?.data ?? response;
                 setBookings(Array.isArray(data) ? data : []);
             } catch (e) {
                 console.error(e);
@@ -59,11 +61,20 @@ export const BookingsTab: React.FC = () => {
         setFilterStatus('');
     };
 
+    const exportBookings = async (format: 'xlsx' | 'pdf') => {
+        setExportLoading(format);
+        try { const blob = await adminService.exportBookings(format, filterStatus); const url = URL.createObjectURL(blob); if (format === 'pdf') window.open(url, '_blank')?.print(); else { const link = document.createElement('a'); link.href = url; link.download = 'bookings-export.xlsx'; link.click(); } setTimeout(() => URL.revokeObjectURL(url), 60000); }
+        catch (e) { console.error(e); } finally { setExportLoading(null); }
+    };
+
     if (loading) return <div className="flex justify-center p-12"><Loader2 className="animate-spin text-primary" /></div>;
 
     return (
         <div className="space-y-6 animate-fade-in">
-            <h2 className="text-2xl font-bold text-[var(--text-main)]">{t.allBookings}</h2>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <h2 className="text-2xl font-bold text-[var(--text-main)]">{t.allBookings}</h2>
+                <div className="flex gap-2"><button onClick={() => exportBookings('xlsx')} disabled={!!exportLoading} className="px-3 py-2 border rounded-lg flex items-center gap-2"><FileSpreadsheet size={16} /> XLSX</button><button onClick={() => exportBookings('pdf')} disabled={!!exportLoading} className="px-3 py-2 border rounded-lg flex items-center gap-2"><FileText size={16} /> PDF</button></div>
+            </div>
 
             {/* Filters Bar */}
             <div className="bg-white p-4 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] flex flex-col md:flex-row gap-4 items-end">

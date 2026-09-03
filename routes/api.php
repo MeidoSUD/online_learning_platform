@@ -307,9 +307,15 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin,support'])->grou
     Route::put('/users/{id}/activate', [UsersController::class, 'activate']);
 
     // Bookings & Sessions (shared between admin and support roles)
+    Route::get('/teachers/export', function (\Illuminate\Http\Request $request, UsersController $controller) {
+        $request->merge(['role_id' => 3]);
+        return $controller->export($request);
+    });
     Route::get('/bookings', [BookingAdminController::class, 'index']);
+    Route::get('/bookings/export', [BookingAdminController::class, 'export']);
     Route::get('/bookings/{id}', [BookingAdminController::class, 'show']);
     Route::get('/sessions', [SessionsAdminController::class, 'index']);
+    Route::get('/sessions/export', [SessionsAdminController::class, 'export']);
     Route::put('/sessions/{id}/reschedule', [SessionsAdminController::class, 'reschedule']);
     Route::get('/users/{userId}/sessions', [SessionsAdminController::class, 'userSessions']);
 });

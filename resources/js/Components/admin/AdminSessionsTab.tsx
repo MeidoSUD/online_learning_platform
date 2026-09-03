@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
-import { Video, Loader2, Filter, X, Printer, Calendar as CalendarIcon, User, ChevronRight } from 'lucide-react';
+import { Video, Loader2, Filter, X, Printer, Calendar as CalendarIcon, User, ChevronRight, FileSpreadsheet, FileText } from 'lucide-react';
 import { adminService } from '../../Services/api';
 import { Pagination } from '../ui/Pagination';
 
@@ -22,6 +22,7 @@ export const AdminSessionsTab: React.FC = () => {
     const { t, language, direction } = useLanguage();
     const [sessions, setSessions] = useState<AdminSession[]>([]);
     const [loading, setLoading] = useState(true);
+    const [exportLoading, setExportLoading] = useState<'xlsx' | 'pdf' | null>(null);
 
     // Filters
     const [filterTeacher, setFilterTeacher] = useState('');
@@ -66,6 +67,12 @@ export const AdminSessionsTab: React.FC = () => {
     useEffect(() => {
         fetchSessions();
     }, []);
+
+    const exportSessions = async (format: 'xlsx' | 'pdf') => {
+        setExportLoading(format);
+        try { const blob = await adminService.exportSessions(format, { status: filterStatus, date: filterDate, teacher_name: filterTeacher, student_name: filterStudent }); const url = URL.createObjectURL(blob); if (format === 'pdf') window.open(url, '_blank')?.print(); else { const link = document.createElement('a'); link.href = url; link.download = 'sessions-export.xlsx'; link.click(); } setTimeout(() => URL.revokeObjectURL(url), 60000); }
+        catch (e) { console.error(e); } finally { setExportLoading(null); }
+    };
 
     const handlePrint = () => {
         const printContent = printRef.current;
@@ -154,13 +161,13 @@ export const AdminSessionsTab: React.FC = () => {
                     <Video className="text-primary" size={28} />
                     {language === 'ar' ? 'إدارة الجلسات' : 'Sessions Management'}
                 </h2>
-                <button
+                <div className="flex gap-2"><button onClick={() => exportSessions('xlsx')} disabled={!!exportLoading} className="flex items-center gap-2 px-3 py-2 border rounded-lg"><FileSpreadsheet size={16} /> XLSX</button><button onClick={() => exportSessions('pdf')} disabled={!!exportLoading} className="flex items-center gap-2 px-3 py-2 border rounded-lg"><FileText size={16} /> PDF</button><button
                     onClick={handlePrint}
                     className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors shadow-[var(--shadow-sm)]"
                 >
                     <Printer size={18} />
                     {language === 'ar' ? 'طباعة / PDF' : 'Print / Save PDF'}
-                </button>
+                </button></div>
             </div>
 
             {/* Filters Bar */}

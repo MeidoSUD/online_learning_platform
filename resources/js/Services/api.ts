@@ -493,10 +493,12 @@ export const adminService = {
   activateUser: (id: number) => fetchWithAuth(`/admin/users/${id}/activate`, { method: 'PUT' }),
   resetUserPassword: (id: number, data: { new_password?: string }) => fetchWithAuth(`/admin/users/${id}/reset-password`, { method: 'PUT', body: JSON.stringify(data) }),
   verifyUser: (id: number, verified: boolean) => fetchWithAuth(`/admin/users/${id}/verify-teacher`, { method: 'PUT', body: JSON.stringify({ verified }) }),
-  getTeachers: () => fetchWithAuth('/admin/teachers').then(extractArray),
+  getTeachers: (page: number = 1, perPage: number = 25) => fetchWithAuth(`/admin/teachers?page=${page}&per_page=${perPage}`),
+  exportTeachers: (format: 'xlsx' | 'pdf') => fetchWithAuth(`/admin/teachers/export?format=${format}`, { headers: { 'X-Download': 'true' } }),
   getTeacherDetails: (id: number) => fetchWithAuth(`/admin/teachers/${id}`),
   rejectUser: (id: number) => fetchWithAuth(`/admin/users/${id}/reject-teacher`, { method: 'PUT' }),
-  getBookings: () => fetchWithAuth('/admin/bookings').then(extractArray),
+  getBookings: (page: number = 1, perPage: number = 25) => fetchWithAuth(`/admin/bookings?page=${page}&per_page=${perPage}`),
+  exportBookings: (format: 'xlsx' | 'pdf', status = '') => fetchWithAuth(`/admin/bookings/export?format=${format}${status ? `&status=${encodeURIComponent(status)}` : ''}`, { headers: { 'X-Download': 'true' } }),
   getDisputes: () => fetchWithAuth('/admin/disputes').then(extractArray),
   getPayouts: () => fetchWithAuth('/admin/payout-requests').then(extractArray),
   approvePayout: (id: number, receipt: File) => {
@@ -649,6 +651,10 @@ export const adminService = {
   getSessions: (filters: any = {}) => {
     const query = new URLSearchParams(filters).toString();
     return fetchWithAuth(`/admin/sessions${query ? `?${query}` : ''}`).then(extractArray);
+  },
+  exportSessions: (format: 'xlsx' | 'pdf', filters: any = {}) => {
+    const query = new URLSearchParams({ ...filters, format }).toString();
+    return fetchWithAuth(`/admin/sessions/export?${query}`, { headers: { 'X-Download': 'true' } });
   },
   updateSessionDate: (id: number, data: { session_date: string; start_time?: string; end_time?: string }) => 
     fetchWithAuth(`/admin/sessions/${id}/reschedule`, { method: 'PUT', body: JSON.stringify(data) }),

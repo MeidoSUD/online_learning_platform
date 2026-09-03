@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
-import { CheckCircle, XCircle, FileText, ExternalLink, Loader2, Eye, Printer, Download } from 'lucide-react';
+import { CheckCircle, XCircle, FileText, ExternalLink, Loader2, Eye, Printer, Download, FileSpreadsheet } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 import { Pagination } from '../ui/Pagination';
@@ -14,6 +14,7 @@ export const VerificationsTab: React.FC = () => {
     const [services, setServices] = useState<Service[]>([]);
     const [loading, setLoading] = useState(true);
     const [verifyingId, setVerifyingId] = useState<number | null>(null);
+    const [exportLoading, setExportLoading] = useState<'xlsx' | 'pdf' | null>(null);
 
     // Pagination State
     const [currentPage, setCurrentPage] = useState(1);
@@ -27,15 +28,17 @@ export const VerificationsTab: React.FC = () => {
         fetchData();
     }, []);
 
-    const fetchData = async () => {
+    const fetchData = async (page = currentPage) => {
         setLoading(true);
         try {
             // Using adminService.getServices for admin context
             const [teachersData, servicesData] = await Promise.all([
-                adminService.getTeachers(),
+                adminService.getTeachers(page, ITEMS_PER_PAGE),
                 adminService.getServices()
             ]);
-            setTeachers(Array.isArray(teachersData) ? teachersData : []);
+            const paginated = teachersData?.data ?? teachersData;
+            setTeachers(Array.isArray(paginated?.data) ? paginated.data : []);
+            setTotalPages(Number(paginated?.last_page ?? 1));
             setServices(Array.isArray(servicesData) ? servicesData : []);
         } catch (e) {
             console.error(e);
@@ -80,7 +83,7 @@ export const VerificationsTab: React.FC = () => {
             }
 
             // Re-fetch to ensure sync with server
-            fetchData();
+            fetchData(currentPage);
             showToast(t.updatedSuccessfully, 'success');
         } catch (e: any) {
             console.error("[VerificationsTab] Verification Failed:", e);
@@ -88,6 +91,20 @@ export const VerificationsTab: React.FC = () => {
         } finally {
             setVerifyingId(null);
         }
+    };
+
+    const [totalPages, setTotalPages] = useState(1);
+
+    const exportTeachers = async (format: 'xlsx' | 'pdf') => {
+        setExportLoading(format);
+        try {
+            const blob = await adminService.exportTeachers(format);
+            const url = URL.createObjectURL(blob);
+            if (format === 'pdf') window.open(url, '_blank')?.print();
+            else { const link = document.createElement('a'); link.href = url; link.download = 'teachers-export.xlsx'; link.click(); }
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } catch (e: any) { showToast(e.message || t.error, 'error'); }
+        finally { setExportLoading(null); }
     };
 
     const handleReject = async (userId: number) => {
@@ -120,17 +137,19 @@ export const VerificationsTab: React.FC = () => {
         return t.na;
     };
 
-    const totalPages = Math.ceil(teachers.length / ITEMS_PER_PAGE);
-    const paginatedTeachers = teachers.slice(
-        (currentPage - 1) * ITEMS_PER_PAGE,
-        currentPage * ITEMS_PER_PAGE
-    );
+    const paginatedTeachers = teachers;
 
     if (loading) return <div className="flex justify-center p-12"><Loader2 className="animate-spin text-primary" /></div>;
 
     return (
         <div className="space-y-6 animate-fade-in print:hidden">
-            <h2 className="text-2xl font-bold text-[var(--text-main)]">{t.verifications} / {t.teacherManagement}</h2>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <h2 className="text-2xl font-bold text-[var(--text-main)]">{t.verifications} / {t.teacherManagement}</h2>
+                <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => exportTeachers('xlsx')} disabled={!!exportLoading}><FileSpreadsheet size={16} /> XLSX</Button>
+                    <Button variant="outline" onClick={() => exportTeachers('pdf')} disabled={!!exportLoading}><FileText size={16} /> PDF</Button>
+                </div>
+            </div>
 
             <div className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] overflow-hidden">
                 <table className="w-full text-left text-sm">
@@ -233,7 +252,7 @@ export const VerificationsTab: React.FC = () => {
                 <Pagination
                     currentPage={currentPage}
                     totalPages={totalPages}
-                    onPageChange={setCurrentPage}
+                    onPageChange={(page) => { setCurrentPage(page); fetchData(page); }}
                 />
             </div>
 
