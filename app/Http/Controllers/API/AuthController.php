@@ -214,7 +214,7 @@ class AuthController extends Controller
                 'phone_number' => $normalizedPhone,
                 'gender' => $validated['gender'] ?? null,
                 'nationality' => $validated['nationality'] ?? null,
-                'notional_id'=> $validated['notional_id'] ?? null,
+                // 'notional_id'=> $validated['notional_id'] ?? null,
                 'password' => Hash::make($validated['password']),
                 'role_id' => 3, // Teacher
                 'verified' => false,
@@ -852,7 +852,7 @@ class AuthController extends Controller
     {
         $titleAr = 'مرحباً بك في منصة تعليمية';
         $titleEn = 'Welcome to Our Teaching Platform';
-        
+
         $messageAr = 'تم تسجيلك بنجاح، وأصبحت الآن جزءًا من منصة تعليمية تهدف لربطك بالطلاب وتحويل خبرتك إلى دخل حقيقي
 
 نحن حاليًا في مرحلة تجهيز المعلمين استعدادًا للإطلاق الرسمي، فاستعد لاستقبال طلابك قريبًا وابدأ رحلتك نحو زيادة دخلك وبناء مستقبلك التعليمي معنا';
@@ -876,7 +876,9 @@ We are currently in the teacher preparation phase ahead of our official launch. 
         // Send push notification
         try {
             $ns = new \App\Services\NotificationService();
-            $ns->send($user, 'teacher_welcome', 
+            $ns->send(
+                $user,
+                'teacher_welcome',
                 app()->getLocale() == 'ar' ? $titleAr : $titleEn,
                 app()->getLocale() == 'ar' ? $messageAr : $messageEn,
                 ['user_id' => $user->id, 'role' => 'teacher']
@@ -894,7 +896,7 @@ We are currently in the teacher preparation phase ahead of our official launch. 
                 $normalizedPhone = \App\Helpers\PhoneHelper::normalizeForSMS($user->phone_number);
                 $ns = new \App\Services\NotificationService();
                 $ns->sendBilingualSMS($normalizedPhone, $messageAr . "\n\n" . $messageEn);
-                
+
                 Log::info('Teacher welcome SMS sent', ['user_id' => $user->id]);
             }
         } catch (\Exception $e) {
@@ -1132,7 +1134,7 @@ We are currently in the teacher preparation phase ahead of our official launch. 
                 'nationality' => $user->nationality,
                 'phone_number' => $user->phone_number,
                 'role_id' => $user->role_id,
-                
+
                 'profile' =>
                     ['profile_photo' => $profilePhoto]
             ];
@@ -1142,7 +1144,7 @@ We are currently in the teacher preparation phase ahead of our official launch. 
             'data' => $user
         ]);
     }
-    
+
     /**
      * Delete user account and all associated data
      * 

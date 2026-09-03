@@ -1434,7 +1434,43 @@ class UserController extends Controller
             ];
         }
 
-        // Return complete teacher data structure
+        $bookingStudentIds = DB::table('bookings')
+            ->where('teacher_id', $teacher->id)
+            ->where('status', '!=', 'cancelled')
+            ->pluck('student_id');
+
+        $sessionStudentIds = DB::table('sessions')
+            ->where('teacher_id', $teacher->id)
+            ->where('status', '!=', 'cancelled')
+            ->pluck('student_id');
+
+        $courseStudentIds = DB::table('enrollments')
+            ->join('courses', 'enrollments.course_id', '=', 'courses.id')
+            ->where('courses.teacher_id', $teacher->id)
+            ->where('enrollments.status', '!=', 'cancelled')
+            ->pluck('enrollments.student_id');
+
+        $totalStudents = $bookingStudentIds
+            ->concat($sessionStudentIds)
+            ->concat($courseStudentIds)
+            ->unique()
+            ->filter()
+            ->count();
+
+        $completedLessons = DB::table('sessions')
+            ->where('teacher_id', $teacher->id)
+            ->where('status', 'completed')
+            ->count();
+
+        $totalLessons = DB::table('sessions')
+            ->where('teacher_id', $teacher->id)
+            ->where('status', '!=', 'cancelled')
+            ->count();
+
+        if ($totalLessons === 0) {
+            $totalLessons = (int) $totalBookings;
+        }
+
         return [
             'id' => $teacher->id,
             'first_name' => $teacher->first_name,
@@ -1451,6 +1487,11 @@ class UserController extends Controller
             'social_provider' => $teacher->social_provider,
             'social_provider_id' => (string) ($teacher->social_provider_id ?? ''),
             'phone_number' => (string) $teacher->phone_number,
+            'total_students' => (int) $totalStudents,
+            'students_count' => (int) $totalStudents,
+            'total_lessons' => (int) $totalLessons,
+            'completed_lessons' => (int) $completedLessons,
+            'lessons_count' => (int) $totalLessons,
             'profile' => [
                 'is_active' => (int) $teacher->is_active,
                 'profile_photo' => $profilePhoto,
@@ -1463,7 +1504,11 @@ class UserController extends Controller
                 'offer_packages' => $teacher->teacherInfo ? (bool) $teacher->teacherInfo->offer_packages : false,
                 'package_on_off' => $teacher->teacherInfo ? (bool) $teacher->teacherInfo->package_on_off : false,
                 'packages_approved' => $teacher->teacherInfo ? (bool) $teacher->teacherInfo->packages_approved : false,
-                'total_students' => (int) (optional($teacher->teacherInfo)->total_students ?? 0),
+                'total_students' => (int) $totalStudents,
+                'students_count' => (int) $totalStudents,
+                'total_lessons' => (int) $totalLessons,
+                'completed_lessons' => (int) $completedLessons,
+                'lessons_count' => (int) $totalLessons,
                 'verified' => (bool) optional($teacher->profile)->verified,
                 'service' => $primaryServiceId,
                 'services' => $teacherServices,
@@ -1473,7 +1518,6 @@ class UserController extends Controller
                 'certificate_attachment' => $certificateAttachment,
                 'earnings' => $earnings,
                 'currentLessons' => $currentLessons,
-                // Counts requested by client
                 'bookings_count' => (int) $totalBookings,
                 'subjects_count' => (int) count($teacherSubjects),
                 'languages_count' => (int) count($languages),
