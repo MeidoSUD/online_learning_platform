@@ -621,6 +621,69 @@ export interface TeacherApplication {
   is_preferred: boolean;
 }
 
+export interface ConsultationCategoryView {
+  id: number;
+  name_en: string;
+  name_ar: string;
+  description_en?: string;
+  description_ar?: string;
+  icon?: string;
+  is_active: boolean;
+  sort_order: number;
+  consultations_count?: number;
+}
+
+export interface ConsultationTeacherOption {
+  id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone_number: string;
+  verified: boolean;
+  hourly_rate: number;
+}
+
+export interface AdminConsultation {
+  id: number;
+  consultation_reference: string;
+  category: {
+    id: number;
+    name_en: string;
+    name_ar: string;
+  } | null;
+  student: {
+    id: number;
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone_number: string;
+  };
+  teacher?: {
+    id: number;
+    first_name: string;
+    last_name: string;
+    email: string;
+  } | null;
+  title: string | null;
+  description: string;
+  preferred_slots: { date: string; start_time: string; end_time: string }[] | null;
+  duration_minutes: number;
+  sessions_count: number;
+  budget_min: string | null;
+  budget_max: string | null;
+  price_per_session: string | null;
+  status: string;
+  status_label: string;
+  admin_notes: string | null;
+  scheduled_date: string | null;
+  scheduled_start_time: string | null;
+  scheduled_end_time: string | null;
+  booking_id: string | null;
+  assigned_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface PlatformPercentage {
   id: number;
   type: 'student_percentage' | 'teacher_percentage';

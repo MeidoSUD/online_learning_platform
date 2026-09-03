@@ -123,6 +123,7 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
     const links = [
         { id: 'overview', label: t.overview },
         { id: 'my-lessons', label: language === 'ar' ? 'دروسي' : 'My Lessons' },
+        { id: 'consultations', label: language === 'ar' ? 'الاستشارات' : 'Consultations' },
         { id: 'schedule', label: t.schedule },
         { id: 'wallet', label: t.wallet },
     ];
@@ -160,6 +161,7 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
     { id: 'private-lessons', label: t.privateLessons },
     { id: 'courses', label: t.courses },
     { id: 'language-learning', label: t.languageLearning },
+    { id: 'consultations', label: language === 'ar' ? 'الاستشارات' : 'Consultations' },
     { id: 'schedule', label: t.mySchedule },
   ];
 

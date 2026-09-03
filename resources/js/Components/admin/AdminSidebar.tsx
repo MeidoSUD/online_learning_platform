@@ -45,6 +45,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ activeTab, setActive
             children: [
                 { id: 'bookings', label: t.bookings, icon: Calendar },
                 { id: 'sessions', label: language === 'ar' ? 'الجلسات' : 'Sessions', icon: Video },
+                { id: 'consultations', label: language === 'ar' ? 'الاستشارات' : 'Consultations', icon: MessageSquare },
             ]
         },
         {

@@ -12,6 +12,7 @@ import { TeacherServicesTab } from './teacher/TeacherServicesTab';
 import { TeacherCoursesTab } from './teacher/TeacherCoursesTab';
 import { TeacherLanguagesTab } from './teacher/TeacherLanguagesTab';
 import { TeacherLessonsTab } from './teacher/TeacherLessonsTab';
+import { ConsultationTab } from './teacher/ConsultationTab';
 import { DisputesTab } from './student/DisputesTab';
 import { SettingsTab } from './dashboard/SettingsTab';
 import { SupportTab } from './dashboard/SupportTab';
@@ -143,6 +144,8 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
         return <TeacherCoursesTab user={user} />;
       case 'my-lessons':
         return <TeacherLessonsTab user={user} />;
+      case 'consultations':
+        return <ConsultationTab />;
       case 'languages':
         return <TeacherLanguagesTab user={user} />;
       case 'wallet':

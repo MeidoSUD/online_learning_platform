@@ -92,7 +92,8 @@ import {
   ApiAnalyticsStats, ApiStatistic, SystemLogEntry, ActivityRecord, ActivityRecordStats, ActivityRecordGroupedStats,
   AppNotification, BooksModel, SavedCard, StudentSubscription, StudentPackage,
   CheckoutResponse, PaymentStatusResponse, StudentOrder, BookingDetails,
-  Instruction, InstructionPayload
+  Instruction, InstructionPayload,
+  AdminConsultation, ConsultationCategoryView, ConsultationTeacherOption
 } from '../Utils/types';
 
 export type {
@@ -320,6 +321,11 @@ export const teacherService = {
   deletePaymentMethod: (id: number) => fetchWithAuth(`/teacher/payment-methods/${id}`, { method: 'DELETE' }),
   setDefaultPaymentMethod: (id: number) => fetchWithAuth(`/teacher/payment-methods/set-default/${id}`, { method: 'PUT' }),
   togglePackageOnOff: (value: boolean) => fetchWithAuth('/teacher/packages/on-off', { method: 'PUT', body: JSON.stringify({ package_on_off: value ? '1' : '0' }) }),
+  // Consultations assigned to me
+  getConsultations: () => fetchWithAuth('/teacher/consultations').then(res => res.data || []),
+  getConsultationDetails: (id: number) => fetchWithAuth(`/teacher/consultations/${id}`).then(res => res.data || res),
+  scheduleConsultation: (id: number, data: { scheduled_date: string; scheduled_start_time: string; scheduled_end_time: string; admin_notes?: string }) =>
+    fetchWithAuth(`/teacher/consultations/${id}/schedule`, { method: 'POST', body: JSON.stringify(data) }),
 };
 
 export const studentService = {
@@ -412,6 +418,13 @@ export const studentService = {
   joinSession: (id: number) => fetchWithAuth(`/student/sessions/${id}/join`, { method: 'POST' }),
   getChatToken: (sessionId: number) => fetchWithAuth(`/student/sessions/${sessionId}/chat-token`, { method: 'POST' }),
   getSessionDetails: (id: number) => fetchWithAuth(`/student/sessions/${id}`),
+  // --- Consultations ---
+  getConsultationCategories: (): Promise<ConsultationCategoryView[]> =>
+    fetchWithAuth('/student/consultation/categories').then(extractArray),
+  createConsultation: (data: any) => fetchWithAuth('/student/consultations', { method: 'POST', body: JSON.stringify(data) }),
+  getConsultations: () => fetchWithAuth('/student/consultations').then(res => res.data || []),
+  getConsultationDetails: (id: number) => fetchWithAuth(`/student/consultations/${id}`).then(res => res.data || res),
+  cancelConsultation: (id: number) => fetchWithAuth(`/student/consultations/${id}/cancel`, { method: 'POST' }),
   toggleFavorite: (teacherId: number) => fetchWithAuth(`/student/favorites/${teacherId}/toggle`, { method: 'POST' }),
   getTeacherSessions: (teacherId: number) => fetchWithAuth(`/student/teachers/${teacherId}/sessions`).then(extractArray),
   getPaymentMethods: () => fetchWithAuth('/student/payment-methods').then(extractArray),
@@ -588,6 +601,23 @@ export const adminService = {
     fetchWithAuth(`/admin/orders/${orderId}/assign`, { method: 'POST', body: JSON.stringify(data) }),
   updateOrderStatus: (orderId: number, data: { status: string; notes?: string }) => 
     fetchWithAuth(`/admin/orders/${orderId}/status`, { method: 'PUT', body: JSON.stringify(data) }),
+
+  // Consultation Service
+  getConsultations: (filters: any = {}) => {
+    const query = new URLSearchParams(filters).toString();
+    return fetchWithAuth(`/admin/consultations${query ? `?${query}` : ''}`).then(extractArray);
+  },
+  getConsultationDetails: (id: number) => fetchWithAuth(`/admin/consultations/${id}`),
+  getConsultationTeachers: () => fetchWithAuth('/admin/consultations/teachers').then(extractArray),
+  getConsultationStats: () => fetchWithAuth('/admin/consultations/stats').then(res => res.data || res),
+  assignConsultationTeacher: (id: number, data: { teacher_id: number; admin_notes?: string }) =>
+    fetchWithAuth(`/admin/consultations/${id}/assign-teacher`, { method: 'POST', body: JSON.stringify(data) }),
+  updateConsultationStatus: (id: number, data: { status: string; admin_notes?: string }) =>
+    fetchWithAuth(`/admin/consultations/${id}/status`, { method: 'PUT', body: JSON.stringify(data) }),
+  getConsultationCategories: () => fetchWithAuth('/admin/consultation-categories').then(extractArray),
+  createConsultationCategory: (data: any) => fetchWithAuth('/admin/consultation-categories', { method: 'POST', body: JSON.stringify(data) }),
+  updateConsultationCategory: (id: number, data: any) => fetchWithAuth(`/admin/consultation-categories/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteConsultationCategory: (id: number) => fetchWithAuth(`/admin/consultation-categories/${id}`, { method: 'DELETE' }),
 
   // Revenue & Percentage
   getActivePercentage: () => fetchWithAuth('/admin/revenue/percentage'),

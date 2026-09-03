@@ -18,6 +18,7 @@ import { MyCertificates } from './student/MyCertificates';
 import { SettingsTab } from './dashboard/SettingsTab';
 import { MySessionsTab } from './student/MySessionsTab';
 import { SupportTab } from './dashboard/SupportTab';
+import { ConsultationTab } from './student/ConsultationTab';
 import { useLanguage } from '../Contexts/LanguageContext';
 import { AdsBanner } from './dashboard/AdsBanner';
 
@@ -66,6 +67,8 @@ export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ 
         return <MySessionsTab />;
       case 'bookings':
         return <BookingsTab onViewCalendar={() => setActiveTab('schedule')} />;
+      case 'consultations':
+        return <ConsultationTab />;
       case 'disputes':
         return <DisputesTab />;
       case 'wallet':
