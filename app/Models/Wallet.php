@@ -24,7 +24,6 @@ class Wallet extends Model
     {
         $balanceBefore = $this->balance;
         $this->balance += $amount;
-        $this->pending_balance -= $amount;
         $this->save();
 
         return $this->transactions()->create([

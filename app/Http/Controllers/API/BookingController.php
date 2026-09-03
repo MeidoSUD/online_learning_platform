@@ -296,7 +296,12 @@ class BookingController extends Controller
 
             // ── Package booking: price = 0 (paid via subscription) ──
             if ($isPackageBooking) {
-                $teacherRatePerSession = 0;
+                // The student has already paid for the subscription, but the
+                // teacher still earns the package price allocated to each session.
+                $packageTotalSessions = $subscription->total_sessions ?: $sessionsCount;
+                $teacherRatePerSession = $packageTotalSessions > 0
+                    ? round((float) $subscription->total_paid / $packageTotalSessions, 2)
+                    : 0;
                 $pricePerSession = 0;
                 $platformPercentageValue = 0;
                 $discount = 0;

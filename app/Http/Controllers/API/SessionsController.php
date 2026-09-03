@@ -660,7 +660,21 @@ class SessionsController extends Controller
                 $query->where('student_id', $user->id);
             }
 
-            $affected = $query->update(['status' => Sessions::STATUS_ENDED]);
+            $overdueSessions = $query->with('booking')->get();
+            $affected = 0;
+
+            foreach ($overdueSessions as $session) {
+                if (!$session->update([
+                    'status' => Sessions::STATUS_ENDED,
+                    'ended_at' => $session->ended_at ?? now(),
+                ])) {
+                    continue;
+                }
+
+                $session->booking?->incrementCompletedSessions();
+                app(TeacherWalletService::class)->creditTeacherForSession($session);
+                $affected++;
+            }
 
             if ($affected > 0) {
                 Log::info("Auto-updated {$affected} overdue sessions to 'ended' for user {$user->id}");

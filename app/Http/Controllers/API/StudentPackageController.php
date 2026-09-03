@@ -388,7 +388,9 @@ class StudentPackageController extends Controller
                 'first_session_end_time' => $slotEndDateTime->format('H:i:s'),
                 'session_duration' => $slot->duration,
                 'price_per_session' => 0,
-                'teacher_rate_per_session' => 0,
+                'teacher_rate_per_session' => $subscription->total_sessions > 0
+                    ? round((float) $subscription->total_paid / $subscription->total_sessions, 2)
+                    : 0,
                 'subtotal' => 0,
                 'total_amount' => 0,
                 'currency' => 'SAR',

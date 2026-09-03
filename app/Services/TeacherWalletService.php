@@ -22,13 +22,26 @@ class TeacherWalletService
                 return false;
             }
 
-            $amount = $booking->teacher_rate_per_session;
             $teacherId = $session->teacher_id;
 
             $wallet = Wallet::firstOrCreate(
                 ['user_id' => $teacherId],
-                ['balance' => 0]
+                ['balance' => 0, 'pending_balance' => 0]
             );
+            $wallet = Wallet::whereKey($wallet->id)->lockForUpdate()->first();
+
+            // Session completion can be retried by the API or scheduler. Never
+            // pay the same session twice.
+            $alreadyCredited = $wallet->transactions()
+                ->where('type', 'credit')
+                ->where('meta->session_id', $session->id)
+                ->exists();
+
+            if ($alreadyCredited) {
+                return true;
+            }
+
+            $amount = round((float) $booking->teacher_rate_per_session, 2);
 
             $reason = 'Session Completed: ' . $session->session_title;
             $meta = [
