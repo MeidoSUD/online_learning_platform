@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from '@inertiajs/react';
 import { useLanguage } from '../../Contexts/LanguageContext';
 import { Footer } from './Footer';
-import { BookOpen, Globe, Users, GraduationCap, Smartphone, Monitor, Sparkles, ChevronLeft } from 'lucide-react';
+import { BookOpen, Globe, Users, GraduationCap, Smartphone, Monitor, Sparkles, ChevronLeft, Library, Bot } from 'lucide-react';
 
 const cardThemes = ['green', 'navy', 'accent', 'orange', 'purple', 'teal'];
 
@@ -51,8 +51,29 @@ export const ServicePage: React.FC = () => {
       desc: language === 'ar' ? 'نقدم استشارات متخصصة للمؤسسات التعليمية في مجال التحول الرقمي وتطوير المناهج وتحسين الأداء التعليمي.' : 'Specialized consulting for educational institutions in digital transformation, curriculum development, and performance improvement.',
       features: language === 'ar' ? ['تحول رقمي', 'تطوير مناهج', 'تحليل أداء', 'تدريب كوادر'] : ['Digital transformation', 'Curriculum development', 'Performance analysis', 'Staff training'],
       color: 'from-orange-500 to-orange-600'
+    },
+    {
+      icon: Bot,
+      title: language === 'ar' ? 'المساعد الذكي' : 'AI Assistant',
+      desc: language === 'ar' ? 'مساعد تعليمي ذكي يعتمد على الذكاء الاصطناعي لشرح الدروس وحل المسائل خطوة بخطوة على مدار الساعة.' : 'An AI-powered educational assistant that explains lessons and solves problems step by step around the clock.',
+      features: language === 'ar' ? ['شروحات فورية', 'حل خطوة بخطوة', 'بالعربية والإنجليزية', 'متاح دائماً'] : ['Instant explanations', 'Step-by-step solutions', 'Arabic & English', 'Always available'],
+      color: 'from-blue-600 to-indigo-600'
+    },
+    {
+      icon: Library,
+      title: language === 'ar' ? 'الكتب الدراسية' : 'Study Books',
+      desc: language === 'ar' ? 'مكتبة رقمية من الكتب والحلول والملخصات لجميع المراحل الدراسية، من الابتدائية حتى الثانوية، مرتبة حسب الصف الدراسي.' : 'A digital library of textbooks, solutions and summaries for all school stages, from primary to secondary, organized by grade.',
+      features: language === 'ar' ? ['جميع المراحل', 'حلول المناهج', 'ملخصات واختبارات', 'من الابتدائي للثانوي'] : ['All stages', 'Curriculum solutions', 'Summaries & tests', 'Primary to secondary'],
+      color: 'from-teal-500 to-emerald-600'
     }
   ];
+
+  const stageName = (stage: string, lang: string) => {
+    if (lang === 'ar') {
+      return stage === 'primary' ? 'المرحلة الابتدائية' : stage === 'middle' ? 'المرحلة المتوسطة' : 'المرحلة الثانوية';
+    }
+    return stage === 'primary' ? 'Primary Stage' : stage === 'middle' ? 'Intermediate Stage' : 'Secondary Stage';
+  };
 
   return (
     <div className="min-h-screen bg-white" dir={direction}>
@@ -108,6 +129,67 @@ export const ServicePage: React.FC = () => {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* كتبي-style Books By Grade */}
+      <section className="section-pad bg-[var(--light-bg)]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <div className="inline-flex items-center gap-2 hero-badge mb-4">
+              <Library size={14} />
+              {language === 'ar' ? 'مكتبة الكتب' : 'Book Library'}
+            </div>
+            <h2 className="text-3xl font-bold text-navy mb-3">
+              {language === 'ar' ? 'تصفح الكتب حسب المرحلة الدراسية' : 'Browse Books by Grade'}
+            </h2>
+            <p className="text-[var(--text-muted)] max-w-2xl mx-auto">
+              {language === 'ar'
+                ? 'جميع الكتب والحلول والملخصات مرتبة حسب الصف الدراسي لتجد ما تحتاجه بضغطة زر.'
+                : 'All books, solutions and summaries organized by grade so you can find what you need at the click of a button.'}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+            {[
+              { ar: 'الصف الأول الابتدائي', en: '1st Primary', stage: 'primary' },
+              { ar: 'الصف الثاني الابتدائي', en: '2nd Primary', stage: 'primary' },
+              { ar: 'الصف الثالث الابتدائي', en: '3rd Primary', stage: 'primary' },
+              { ar: 'الصف الرابع الابتدائي', en: '4th Primary', stage: 'primary' },
+              { ar: 'الصف الخامس الابتدائي', en: '5th Primary', stage: 'primary' },
+              { ar: 'الصف السادس الابتدائي', en: '6th Primary', stage: 'primary' },
+              { ar: 'الأول المتوسط', en: '1st Intermediate', stage: 'middle' },
+              { ar: 'الثاني المتوسط', en: '2nd Intermediate', stage: 'middle' },
+              { ar: 'الثالث المتوسط', en: '3rd Intermediate', stage: 'middle' },
+              { ar: 'الأول الثانوي', en: '1st Secondary', stage: 'secondary' },
+              { ar: 'الثاني الثانوي', en: '2nd Secondary', stage: 'secondary' },
+              { ar: 'الثالث الثانوي', en: '3rd Secondary', stage: 'secondary' },
+            ].map((grade, idx) => (
+              <div key={grade.en} className="service-card cursor-pointer">
+                <div className={`service-card-top ${cardThemes[(idx + 1) % cardThemes.length]}`}>
+                  <div className="text-center">
+                    <p className="text-white text-3xl font-extrabold">{idx + 1}</p>
+                    <p className="text-white/70 text-xs font-semibold mt-1">{grade.en}</p>
+                  </div>
+                </div>
+                <div className="service-card-body text-center">
+                  <h3 className="text-base font-bold text-navy">{grade.ar}</h3>
+                  <p className="text-xs text-[var(--text-muted)] mt-1">
+                    {stageName(grade.stage, language)}
+                  </p>
+                  <span className="service-link inline-flex items-center justify-center mt-3">
+                    {language === 'ar' ? 'تصفح الكتب' : 'Browse Books'} <ChevronLeft size={14} className="rtl:rotate-180" />
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <p className="text-center text-xs text-[var(--text-muted)] mt-8">
+            {language === 'ar'
+              ? 'مكتبة الكتب متاحة عبر خدمة «الكتب الدراسية» في التطبيق والموقع.'
+              : 'The book library is available through the "Study Books" service in the app and website.'}
+          </p>
         </div>
       </section>
 

@@ -489,8 +489,11 @@ class AvailabilitySlot extends Model
         });
 
         static::deleting(function ($slot) {
-            // Prevent deletion of booked slots
-            if ($slot->is_booked) {
+            // Prevent deletion of slots with an actual booking attached.
+            // A slot is only truly protected when linked to a real booking;
+            // the is_booked flag alone may be stale (orphaned) and shouldn't
+            // lock the slot forever.
+            if ($slot->booking_id !== null) {
                 throw new \InvalidArgumentException('Cannot delete booked slot');
             }
         });

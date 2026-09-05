@@ -153,16 +153,18 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
         links.push({ id: 'languages', label: language === 'ar' ? 'لغات' : 'Languages' });
     }
 
+    // AI Educational Assistant
+    links.push({ id: 'ai', label: language === 'ar' ? 'الذكاء الاصطناعي' : 'AI Assistant' });
+
     return links;
   };
 
   const studentLinks = [
-    { id: 'overview', label: t.overview },
-    { id: 'private-lessons', label: t.privateLessons },
-    { id: 'courses', label: t.courses },
-    { id: 'language-learning', label: t.languageLearning },
-    { id: 'consultations', label: language === 'ar' ? 'الاستشارات' : 'Consultations' },
+    { id: 'overview', label: language === 'ar' ? 'الرئيسية' : 'Home' },
     { id: 'schedule', label: t.mySchedule },
+    { id: 'favorites', label: language === 'ar' ? 'المفضلة' : 'My Favorites' },
+    { id: 'ai', label: language === 'ar' ? 'الذكاء الاصطناعي' : 'AI Assistant' },
+    { id: 'profile', label: t.profile },
   ];
 
   const navLinks = userRole === 'student' ? studentLinks : getTeacherLinks();

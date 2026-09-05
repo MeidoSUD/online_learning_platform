@@ -298,6 +298,9 @@ export const teacherService = {
   getClassesByLevel: (levelId: number) => fetchWithAuth(`/teacher/classes/${levelId}`).then(extractArray),
   getSubjectsByClass: (classId: number) => fetchWithAuth(`/teacher/subjectsClasses/${classId}`).then(extractArray),
   getServicesList: () => fetchWithAuth('/teacher/services').then(extractArray),
+  getTeacherServices: () => fetchWithAuth('/teacher/get-services').then(res => res.data || res),
+  addTeacherService: (payload: { service_id: number }) => fetchWithAuth('/teacher/teacher-service', { method: 'POST', body: JSON.stringify(payload) }),
+  uploadTeacherCertificate: (formData: FormData) => fetchWithAuth('/teacher/teacher-upload-certificate', { method: 'POST', body: formData }),
   updateInfo: (data: any) => fetchWithAuth('/profile/teacher/info', { method: 'POST', body: JSON.stringify(data) }),
   addSubjects: (subject_ids: number[]) => fetchWithAuth('/teacher/subjects', { method: 'POST', body: JSON.stringify({ subjects_id: subject_ids }) }),
   getSubjects: () => fetchWithAuth('/teacher/subjects').then(extractArray),
@@ -426,6 +429,7 @@ export const studentService = {
   getConsultationDetails: (id: number) => fetchWithAuth(`/student/consultations/${id}`).then(res => res.data || res),
   cancelConsultation: (id: number) => fetchWithAuth(`/student/consultations/${id}/cancel`, { method: 'POST' }),
   toggleFavorite: (teacherId: number) => fetchWithAuth(`/student/favorites/${teacherId}/toggle`, { method: 'POST' }),
+  getFavorites: () => fetchWithAuth('/student/favorites'),
   getTeacherSessions: (teacherId: number) => fetchWithAuth(`/student/teachers/${teacherId}/sessions`).then(extractArray),
   getPaymentMethods: () => fetchWithAuth('/student/payment-methods').then(extractArray),
   addPaymentMethod: (data: any) => fetchWithAuth('/student/payment-methods', { method: 'POST', body: JSON.stringify(data) }),
@@ -447,6 +451,18 @@ export const studentService = {
     const url = `${API_BASE_URL}/student/certificates/${id}/download?token=${token}`;
     window.open(url, '_blank');
   },
+};
+
+export const aiService = {
+  send: (message: string) => fetchWithAuth('/ai/assistant', { method: 'POST', body: JSON.stringify({ message }) }),
+  history: () => fetchWithAuth('/ai/assistant/history').then(res => {
+    const data = Array.isArray(res.data) ? res.data : [];
+    return data
+      .slice()
+      .reverse()
+      .filter((m: any) => m && m.role && m.content);
+  }),
+  clear: () => fetchWithAuth('/ai/assistant', { method: 'DELETE' }),
 };
 
 export const adminService = {

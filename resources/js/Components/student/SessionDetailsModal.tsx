@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
 import { studentService, Session } from '../../Services/api';
+import { getSessionState } from '../../Utils/sessionStatus';
 import {
     X, Calendar, Clock, Star, StarHalf, Video, User, School,
     Info, Timer, Tag, PieChart, Hash, ChevronRight,
@@ -51,6 +52,9 @@ export const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({
     const isLive = session.status === 'live' || session.status === 'wait_for_teacher';
     const isScheduled = session.status === 'scheduled';
     const status = session.status?.toLowerCase() || '';
+
+    const canJoinSession = isLive || getSessionState(session, 15) === 'live';
+    const isPastSession = !isFinished && getSessionState(session, 15) === 'finished';
 
     const loadReview = async () => {
         setReviewLoading(true);
@@ -490,7 +494,7 @@ export const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({
 
                 {/* Bottom Action Bar */}
                 <div className="px-6 py-4 border-t border-[var(--border)] bg-white">
-                    {isLive ? (
+                    {canJoinSession ? (
                         <button
                             onClick={() => onJoinSession(session.id)}
                             disabled={joining}
@@ -503,12 +507,12 @@ export const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({
                             )}
                             {language === 'ar' ? 'انضمام للجلسة' : 'Join Session'}
                         </button>
-                    ) : isScheduled ? (
+                    ) : isScheduled && !isPastSession ? (
                         <div className="flex items-center justify-center gap-2 py-3 bg-secondary-pale text-secondary rounded-[var(--radius-md)] font-bold text-sm border border-secondary/30">
                             <Clock size={16} />
                             {language === 'ar' ? 'جلسة قادمة' : 'Upcoming Session'}
                         </div>
-                    ) : isFinished ? (
+                    ) : isFinished || isPastSession ? (
                         <div className="flex items-center justify-center gap-2 py-3 bg-[var(--light-bg)] text-[var(--text-muted)] rounded-[var(--radius-md)] font-bold text-sm">
                             <CheckCircle size={16} />
                             {language === 'ar' ? 'جلسة منتهية' : 'Session Ended'}

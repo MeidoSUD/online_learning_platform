@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { profileService, AuthResponse } from '../Services/api';
+import React, { useState, useEffect } from 'react';
+import { authService, AuthResponse, UserData } from '../Services/api';
 import { Navbar } from './Navbar';
 import { OverviewTab } from './dashboard/OverviewTab';
 import { ScheduleTab } from './dashboard/ScheduleTab';
@@ -16,11 +16,11 @@ import { ConsultationTab } from './teacher/ConsultationTab';
 import { DisputesTab } from './student/DisputesTab';
 import { SettingsTab } from './dashboard/SettingsTab';
 import { SupportTab } from './dashboard/SupportTab';
-import { Bug, User, Briefcase, ArrowRight, Loader2, AlertTriangle } from 'lucide-react';
+import { AiAssistantTab } from './dashboard/AiAssistantTab';
+import { ArrowRight, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { useLanguage } from '../Contexts/LanguageContext';
-import { useToast } from '../Contexts/ToastContext';
-import { Button } from './ui/Button';
 import { AdsBanner } from './dashboard/AdsBanner';
+import { getTeacherProfileCompleteness } from '../Utils/teacherProfileCompleteness';
 
 interface TeacherDashboardScreenProps {
   data: AuthResponse;
@@ -29,33 +29,25 @@ interface TeacherDashboardScreenProps {
 
 export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ data, onLogout }) => {
   const [activeTab, setActiveTab] = useState('overview');
-  const [showDebug, setShowDebug] = useState(false);
-  const [isUpdatingType, setIsUpdatingType] = useState(false);
+  const [freshUser, setFreshUser] = useState<UserData | null>(null);
   const { t, language } = useLanguage();
-  const { showToast } = useToast();
 
-  const user = data.user.data;
+  const user = data.user.data as UserData;
 
-  // Requirement: Teacher profile completion screen must allow selecting Individual vs Institute
-  const [showCompletion, setShowCompletion] = useState(!user.teacher_type);
-
-  const handleSelectType = async (type: 'individual' | 'institute') => {
-    setIsUpdatingType(true);
-    try {
-      const formData = new FormData();
-      formData.append('teacher_type', type);
-      // We use profile update API as per requirements
-      await profileService.updateProfile(formData);
-
-      // Refresh to get updated user data
-      window.location.reload();
-    } catch (e) {
-      console.error("Failed to update teacher type", e);
-      showToast("Failed to update profile. Please try again.", 'error');
-    } finally {
-      setIsUpdatingType(false);
-    }
-  };
+  // Refresh profile data whenever the teacher switches tabs so the
+  // completion alert always reflects the latest saved state.
+  useEffect(() => {
+    let cancelled = false;
+    authService.getUserDetails()
+      .then(res => {
+        if (cancelled) return;
+        const fresh = res.user?.data || res.data || res;
+        if (fresh && fresh.id === user.id) setFreshUser(fresh);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   // =========================================================
   // !! CRITICAL VERIFICATION RULE !!
@@ -63,95 +55,30 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
   // Do NOT check profile.verified, profile.is_active, or services.
   // =========================================================
 
-  const isVerifiedRaw = user.verified;
-  const isVerified =
-    isVerifiedRaw === true ||
-    isVerifiedRaw === 1 ||
-    String(isVerifiedRaw) === '1' ||
-    String(isVerifiedRaw).toLowerCase() === 'true';
-
-  if (showCompletion) {
-    return (
-      <div className="min-h-screen bg-[var(--light-bg)] flex items-center justify-center p-4">
-        <div className="max-w-4xl w-full space-y-8 bg-white p-10 rounded-[var(--radius-lg)] shadow-xl border border-[var(--border)] animate-fade-in">
-          <div className="text-center space-y-4">
-            <h1 className="text-4xl font-extrabold text-[var(--text-main)] tracking-tight">
-              {t.completeProfile}
-            </h1>
-            <p className="text-lg text-[var(--text-muted)] max-w-2xl mx-auto">
-              {t.welcomeToEwan}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-10">
-            {/* Individual Teacher */}
-            <div
-              onClick={() => !isUpdatingType && handleSelectType('individual')}
-              className="group cursor-pointer relative bg-white border-2 border-[var(--border)] rounded-[var(--radius-lg)] p-8 hover:border-primary hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300"
-            >
-              <div className="h-16 w-16 bg-primary/10 text-primary rounded-[var(--radius-md)] flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <User size={32} />
-              </div>
-              <h3 className="text-2xl font-bold text-[var(--text-main)] mb-3">
-                {t.individualTeacher}
-              </h3>
-              <p className="text-[var(--text-muted)] leading-relaxed">
-                {t.individualTeacherDesc}
-              </p>
-              <div className="mt-6 flex items-center text-primary font-bold">
-                {t.selectThisType} <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
-              </div>
-            </div>
-
-            {/* Institute / Training Center */}
-            <div
-              onClick={() => !isUpdatingType && handleSelectType('institute')}
-              className="group cursor-pointer relative bg-white border-2 border-[var(--border)] rounded-[var(--radius-lg)] p-8 hover:border-blue-600 hover:shadow-2xl hover:shadow-[var(--shadow-sm)] transition-all duration-300"
-            >
-              <div className="h-16 w-16 bg-secondary-pale text-secondary rounded-[var(--radius-md)] flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <Briefcase size={32} />
-              </div>
-              <h3 className="text-2xl font-bold text-[var(--text-main)] mb-3">
-                {t.trainingInstitute}
-              </h3>
-              <p className="text-[var(--text-muted)] leading-relaxed">
-                {t.trainingInstituteDesc}
-              </p>
-              <div className="mt-6 flex items-center text-secondary font-bold">
-                {t.selectThisType} <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-col items-center gap-3 py-4">
-            <span className="animate-spin text-primary h-8 w-8 border-4 border-t-transparent rounded-full" />
-            <p className="text-[var(--text-muted)] font-medium">{t.updating}</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const currentUser: UserData = freshUser || user;
+  const completeness = getTeacherProfileCompleteness(currentUser);
+  const isVerified = completeness.verified;
 
   const renderContent = () => {
     switch (activeTab) {
       case 'overview':
-        return <OverviewTab user={user} onNavigate={setActiveTab} />;
+        return <OverviewTab user={currentUser} onNavigate={setActiveTab} />;
       case 'schedule':
-        return <ScheduleTab user={user} />;
+        return <ScheduleTab user={currentUser} />;
       case 'private-lessons':
-        return <SubjectsTab user={user} />;
+        return <SubjectsTab user={currentUser} />;
       case 'courses':
-        return <TeacherCoursesTab user={user} />;
+        return <TeacherCoursesTab user={currentUser} />;
       case 'my-lessons':
-        return <TeacherLessonsTab user={user} />;
+        return <TeacherLessonsTab user={currentUser} />;
       case 'consultations':
         return <ConsultationTab />;
       case 'languages':
-        return <TeacherLanguagesTab user={user} />;
+        return <TeacherLanguagesTab user={currentUser} />;
       case 'wallet':
-        return <WalletTab user={user} onNavigate={setActiveTab} />;
+        return <WalletTab user={currentUser} onNavigate={setActiveTab} />;
       case 'bank-accounts':
-        return <BankAccountsPage user={user} onNavigate={setActiveTab} />;
+        return <BankAccountsPage user={currentUser} onNavigate={setActiveTab} />;
       case 'profile':
         return <ProfileTab />;
       case 'services':
@@ -160,6 +87,8 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
         return <SupportTab />;
       case 'disputes':
         return <DisputesTab />;
+      case 'ai':
+        return <AiAssistantTab />;
       case 'settings':
         return <SettingsTab />;
       default:
@@ -178,7 +107,7 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <AdsBanner />
-        {!isVerified && (
+        {completeness.missing.length > 0 && (
           <div className="mb-6 bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-lg shadow-[var(--shadow-sm)] animate-fade-in">
             <div className="flex items-start">
               <div className="flex-shrink-0">
@@ -186,15 +115,48 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
               </div>
               <div className="ml-3 flex-1">
                 <h3 className="text-sm font-medium text-amber-800">
-                  {language === 'ar' ? 'الحساب غير موثق' : 'Account Not Verified'}
+                  {language === 'ar' ? 'أكمل ملفك الشخصي' : 'Complete Your Profile'}
                 </h3>
                 <div className="mt-2 text-sm text-amber-700">
                   <p>
                     {language === 'ar'
-                      ? 'يرجى اختيار خدمة واحدة ورفع الشهادة الأكاديمية المطلوبة لتفعيل حسابك والبدء في استخدام المنصة.'
-                      : 'Please choose a service and upload your certificate to verify your account. You cannot manage subjects or courses until verified.'}
+                      ? 'ملفك الشخصي غير مكتمل بعد. أكمل الخطوات التالية حتى تتمكن من تفعيل الحزم وبدء العمل:'
+                      : 'Your profile is not complete yet. Complete the steps below so you can enable packages and start working:'}
                   </p>
                 </div>
+
+                <ul className="mt-3 space-y-1.5">
+                  {completeness.missing.map(m => (
+                    <li key={m.key} className="flex items-center justify-between gap-3 bg-white/70 rounded-lg px-3 py-2">
+                      <span className="text-xs font-semibold text-amber-800">
+                        {language === 'ar' ? m.textAr : m.textEn}
+                      </span>
+                      {m.lockedBeforeVerification && !isVerified ? (
+                        <span className="text-[10px] font-semibold text-amber-500 uppercase">
+                          {language === 'ar' ? 'بعد التوثيق' : 'After verification'}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab(m.tab)}
+                          className="text-[10px] font-bold text-amber-700 bg-amber-100 hover:bg-amber-200 rounded-md px-2 py-1 inline-flex items-center gap-1"
+                        >
+                          {language === 'ar' ? 'اذهب' : 'Go'}
+                          {language === 'ar' ? <ArrowLeft size={11} /> : <ArrowRight size={11} />}
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+
+                {!isVerified && (
+                  <p className="mt-3 text-[11px] text-amber-600">
+                    {language === 'ar'
+                      ? 'بعد إتمام الخطوات أعلاه، سيراجع فريق الإدارة حسابك للتوثيق قبل تفعيل الحزم.'
+                      : 'After completing the steps above, our admin team will review your account for verification before packages can be enabled.'}
+                  </p>
+                )}
+
                 <div className="mt-4 flex gap-3">
                   <button
                     type="button"
@@ -203,27 +165,7 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
                   >
                     {language === 'ar' ? 'الذهاب للخدمات' : 'Go to Services'}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowDebug(!showDebug)}
-                    className="inline-flex items-center px-2 py-1 text-xs text-amber-600/60 hover:text-amber-800"
-                  >
-                    <Bug size={12} className="mr-1" /> Debug Info
-                  </button>
                 </div>
-
-                {/* DEBUG BLOCK - Helps identify exactly what value is being received */}
-                {showDebug && (
-                  <div className="mt-4 p-3 bg-white/80 rounded border border-amber-200 text-xs font-mono text-[var(--text-muted)] overflow-x-auto">
-                    <p className="font-bold text-red-500 mb-1">VERIFICATION DEBUG:</p>
-                    <ul className="list-disc pl-4 mb-2 space-y-1">
-                      <li>Raw value (user.verified): <strong>{String(isVerifiedRaw)}</strong> (Type: {typeof isVerifiedRaw})</li>
-                      <li>Calculated isVerified: <strong>{String(isVerified)}</strong></li>
-                    </ul>
-                    <p className="font-bold text-navy mt-2">Full User Object:</p>
-                    <pre>{JSON.stringify(user, null, 2)}</pre>
-                  </div>
-                )}
               </div>
             </div>
           </div>
