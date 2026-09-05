@@ -69,6 +69,7 @@ class OrdersController extends Controller
             DB::commit();
             // Find candidate teachers by subject (and class if provided)
             $candidateTeachersQuery = User::where('role_id', 3)
+                ->where('is_active', 1)
                 ->whereIn('id', function ($query) use ($order) {
                     $query->select('teacher_id')
                         ->from('teacher_subjects')

@@ -1295,8 +1295,16 @@ class UserController extends Controller
             $key = strtolower($svc->key_name ?? '');
 
             // Private lessons: include subjects and courses
-            if (str_contains($key, 'private') || $key === 'private_lessons') {
-                $isPrivateService = true;
+            // Course services (courses / training_courses): include courses
+            $isCourseService = (bool) (
+                $key === 'courses'
+                || $key === 'training_courses'
+                || str_contains($key, 'course')
+                || str_contains($key, 'training')
+            );
+            $isPrivateService = str_contains($key, 'private') || $key === 'private_lessons';
+
+            if ($isPrivateService || $isCourseService) {
                 // $teacherSubjects already contains subject details
                 // Fetch courses with basic fields and cover image, but only those matching the primary service
                 if ($primaryServiceId) {

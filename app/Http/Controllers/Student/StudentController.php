@@ -27,6 +27,7 @@ class StudentController extends Controller
 
         // Get featured teachers (top rated, limit 5)
         $featuredTeachers = User::where('role_id', 3)
+            ->where('is_active', 1)
             ->with([
                 'profile.profilePhoto',
                 'teacherInfo',
@@ -61,6 +62,7 @@ class StudentController extends Controller
             ->pluck('id');
         
         $query = User::where('role_id', 3)
+            ->where('is_active', 1)
             ->with([
                 'profile.profilePhoto',
                 'teacherInfo',
@@ -174,6 +176,7 @@ class StudentController extends Controller
     public function showTeacher($id)
     {
         $teacher = User::where('role_id', 3)
+            ->where('is_active', 1)
             ->with([
                 'profile.profilePhoto',
                 'teacherInfo',
@@ -277,6 +280,7 @@ class StudentController extends Controller
             ->first();
 
         $query = User::where('role_id', 3)
+            ->where('is_active', 1)
             ->with([
                 'profile.profilePhoto',
                 'teacherInfo',

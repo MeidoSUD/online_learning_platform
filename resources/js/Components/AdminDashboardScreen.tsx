@@ -4,7 +4,7 @@ import {
   AdminSidebar, UsersTab, EducationTab, PayoutsTab, VerificationsTab, 
   BookingsTab, AdminDisputesTab, CoursesTab, AdminOverviewTab, 
   AdsTab, AdminSettingsTab, AdminServicesTab, AdminOrdersTab, AdminPercentageTab, AdminAppConfigTab, AdminSessionsTab,
-  TermsTab, PackagesTab, AdminPaymentsTab, ApiAnalyticsTab, ActivityRecordsTab, SystemLogsTab, CertificatesTab, InstructionsTab, MarketingNotificationsTab, ConsultationTab
+  TermsTab, PackagesTab, AdminPaymentsTab, ApiAnalyticsTab, ActivityRecordsTab, SystemLogsTab, CertificatesTab, InstructionsTab, MarketingNotificationsTab, ConsultationTab, AdminTeacherDetails
 } from './admin';
 import { Menu } from 'lucide-react';
 
@@ -20,13 +20,22 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ data
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState(role === 'support' ? 'users' : 'overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [teacherDetailsId, setTeacherDetailsId] = useState<number | null>(null);
+
+  const handleBackToUsers = () => {
+    setTeacherDetailsId(null);
+    setActiveTab(prev => prev === 'teacher-details' ? 'users' : prev);
+  };
 
   const renderContent = () => {
+    if (teacherDetailsId) {
+      return <AdminTeacherDetails userId={teacherDetailsId} onBack={handleBackToUsers} />;
+    }
     switch (activeTab) {
       case 'overview':
         return <AdminOverviewTab />;
       case 'users':
-        return <UsersTab />;
+        return <UsersTab onViewTeacher={(id: number) => { setActiveTab('teacher-details'); setTeacherDetailsId(id); }} />;
       case 'services':
         return <AdminServicesTab />;
       case 'orders':
@@ -82,8 +91,8 @@ export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ data
     <div className="h-screen bg-[var(--light-bg)] flex overflow-hidden font-sans">
       <AdminSidebar
         role={role}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        activeTab={activeTab === 'teacher-details' ? 'users' : activeTab}
+        setActiveTab={(tab: string) => { setActiveTab(tab); if (tab !== 'users') setTeacherDetailsId(null); }}
         onLogout={onLogout}
         isOpen={sidebarOpen}
         setIsOpen={setSidebarOpen}

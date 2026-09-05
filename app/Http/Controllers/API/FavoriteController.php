@@ -38,6 +38,7 @@ class FavoriteController extends Controller
         $perPage = $request->get('per_page', 10);
         $teachers = $user->getFavoriteItems(User::class)
             ->where('role_id', 3)
+            ->where('is_active', 1)
             ->paginate($perPage);
 
         $userController = new UserController();

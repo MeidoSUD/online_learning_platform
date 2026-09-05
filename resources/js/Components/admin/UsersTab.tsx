@@ -12,7 +12,11 @@ import { adminService, AdminUser } from '../../Services/api';
 import { useToast } from '../../Contexts/ToastContext';
 import { UserProfileModal } from './UserProfileModal';
 
-export const UsersTab: React.FC = () => {
+interface UsersTabProps {
+    onViewTeacher?: (id: number) => void;
+}
+
+export const UsersTab: React.FC<UsersTabProps> = ({ onViewTeacher }) => {
     const { t, direction, language } = useLanguage();
     const { showToast } = useToast();
     const [users, setUsers] = useState<AdminUser[]>([]);
@@ -221,6 +225,16 @@ export const UsersTab: React.FC = () => {
         setCurrentPage(1);
     }, [searchTerm, roleFilter, statusFilter, verifiedFilter]);
 
+    const openUserProfile = (user: AdminUser) => {
+        if (user.role_id === 3 && onViewTeacher) {
+            onViewTeacher(user.id);
+            setOpenMenuId(null);
+            return;
+        }
+        setProfileModalUserId(user.id);
+        setOpenMenuId(null);
+    };
+
     const paginatedUsers = users;
 
     const getRoleIcon = (roleId: number) => {
@@ -318,7 +332,7 @@ export const UsersTab: React.FC = () => {
                                 </tr>
                             ) : (
                                 paginatedUsers.map(user => (
-                                    <tr key={user.id} className="hover:bg-[var(--light-bg)] cursor-pointer" onClick={() => setProfileModalUserId(user.id)}>
+                                    <tr key={user.id} className="hover:bg-[var(--light-bg)] cursor-pointer" onClick={() => openUserProfile(user)}>
                                         <td className="px-6 py-4">
                                             <div>
                                                 <div className="font-bold text-[var(--text-main)]">{user.first_name} {user.last_name}</div>
@@ -362,7 +376,7 @@ export const UsersTab: React.FC = () => {
 
                                             {openMenuId === user.id && (
                                                 <div className={`absolute z-20 w-48 bg-white rounded-[var(--radius-md)] shadow-[var(--shadow-lg)] ring-1 ring-black ring-opacity-5 py-1 ${direction === 'rtl' ? 'left-8' : 'right-8'} top-8`}>
-                                                    <button onClick={(e) => { e.stopPropagation(); setProfileModalUserId(user.id); setOpenMenuId(null); }} className="w-full text-left px-4 py-2 text-sm hover:bg-[var(--light-bg)] flex items-center gap-2 text-navy">
+                                                    <button onClick={(e) => { e.stopPropagation(); openUserProfile(user); }} className="w-full text-left px-4 py-2 text-sm hover:bg-[var(--light-bg)] flex items-center gap-2 text-navy">
                                                         <Eye size={16} /> {t.viewDetails}
                                                     </button>
 

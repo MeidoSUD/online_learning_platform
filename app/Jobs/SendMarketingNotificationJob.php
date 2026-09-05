@@ -52,6 +52,14 @@ class SendMarketingNotificationJob implements ShouldQueue
                 });
 
             $campaign->update(['total_sent' => $sent, 'status' => $sent > 0 ? 'sent' : 'failed']);
+
+            Log::info('Marketing campaign delivery summary', [
+                'campaign_id' => $campaign->id,
+                'channel' => $campaign->channel,
+                'total_recipients' => $service->recipientsQuery($campaign)->count(),
+                'delivered' => $sent,
+                'status' => $campaign->fresh()->status,
+            ]);
         } catch (\Throwable $exception) {
             $campaign->update(['total_sent' => $sent, 'status' => 'failed']);
             Log::error('Marketing campaign failed', ['campaign_id' => $campaign->id, 'error' => $exception->getMessage()]);
