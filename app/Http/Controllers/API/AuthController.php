@@ -145,8 +145,8 @@ class AuthController extends Controller
                 'notional_id' => 'nullable|string|max:255',
                 'service_id' => 'nullable|exists:services,id',
                 'bio' => 'nullable|string|max:2000',
-                'certificate' => 'nullable|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:5120', // 5MB
-                'cv' => 'nullable|file|mimes:pdf,doc,docx|max:5120', // 5MB
+                'certificate' => 'nullable|file|max:5120', // 5MB - any file type accepted
+                'cv' => 'nullable|file|max:5120', // 5MB - any file type accepted
             ]);
 
             // Check if email already exists
@@ -249,7 +249,10 @@ class AuthController extends Controller
             if ($request->hasFile('certificate')) {
                 try {
                     $certificateFile = $request->file('certificate');
-                    $certificatePath = $certificateFile->store('teacher-certificates', 'public');
+                    $originalName = $certificateFile->getClientOriginalName();
+                    $safeName = \Illuminate\Support\Str::slug(pathinfo($originalName, PATHINFO_FILENAME)) ?: 'certificate';
+                    $fileName = time() . '_' . $safeName . '.' . $certificateFile->getClientOriginalExtension();
+                    $certificatePath = $certificateFile->storeAs('teacher-certificates', $fileName, 'public');
 
                     Attachment::create([
                         'user_id' => $user->id,
@@ -265,7 +268,7 @@ class AuthController extends Controller
                         'file_path' => $certificatePath
                     ]);
                 } catch (\Exception $e) {
-                    Log::error('Failed to upload certificate', [
+                    Log::warning('Failed to upload certificate (non-fatal)', [
                         'user_id' => $user->id,
                         'error' => $e->getMessage()
                     ]);

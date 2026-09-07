@@ -6,8 +6,10 @@ namespace App\Services;
 
 use App\Enums\Platform;
 use App\Models\ApiStatistic;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 class ApiAnalyticsService
@@ -35,15 +37,39 @@ class ApiAnalyticsService
         $isAuthenticated = $request->user() !== null;
         $timestamp = now();
 
-        $record = ApiStatistic::where('endpoint', $endpoint)
-            ->where('method', $method)
-            ->where('date', $date)
-            ->first();
+        $attempts = 0;
 
-        if ($record) {
-            $this->updateExistingRecord($record, $uri, $statusCode, $responseTime, $memoryUsage, $platform, $isAuthenticated, $timestamp);
-        } else {
-            $this->createNewRecord($endpoint, $uri, $method, $module, $date, $statusCode, $responseTime, $memoryUsage, $platform, $isAuthenticated, $timestamp);
+        while (true) {
+            $record = ApiStatistic::where('endpoint', $endpoint)
+                ->where('method', $method)
+                ->where('date', $date)
+                ->first();
+
+            if ($record) {
+                $this->updateExistingRecord($record, $uri, $statusCode, $responseTime, $memoryUsage, $platform, $isAuthenticated, $timestamp);
+                return;
+            }
+
+            try {
+                $this->createNewRecord($endpoint, $uri, $method, $module, $date, $statusCode, $responseTime, $memoryUsage, $platform, $isAuthenticated, $timestamp);
+                return;
+            } catch (QueryException $e) {
+                // Two concurrent requests can pass the SELECT above at the same
+                // time; the unique (endpoint, method, date) index rejects the
+                // second INSERT. Re-fetch the winning row and update instead.
+                if ((int) (($e->errorInfo[1] ?? null) ?? 0) !== 1062) {
+                    throw $e;
+                }
+
+                if (++$attempts >= 3) {
+                    Log::warning('Failed to record API analytics after concurrent retries', [
+                        'endpoint' => $endpoint,
+                        'method' => $method,
+                        'date' => $date,
+                    ]);
+                    return;
+                }
+            }
         }
     }
 

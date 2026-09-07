@@ -24,10 +24,7 @@ class TeacherWalletService
 
             $teacherId = $session->teacher_id;
 
-            $wallet = Wallet::firstOrCreate(
-                ['user_id' => $teacherId],
-                ['balance' => 0, 'pending_balance' => 0]
-            );
+            $wallet = Wallet::getOrCreateForUser($teacherId);
             $wallet = Wallet::whereKey($wallet->id)->lockForUpdate()->first();
 
             // Session completion can be retried by the API or scheduler. Never
@@ -70,10 +67,8 @@ class TeacherWalletService
                 $payout->update($updateData);
             }
 
-            $wallet = Wallet::where('user_id', $payout->teacher_id)->lockForUpdate()->first();
-            if (!$wallet) {
-                $wallet = Wallet::create(['user_id' => $payout->teacher_id, 'balance' => 0]);
-            }
+            $wallet = Wallet::getOrCreateForUser($payout->teacher_id);
+            $wallet = Wallet::whereKey($wallet->id)->lockForUpdate()->first();
 
             $teacherPercentage = PlatformPercentage::getActive(PlatformPercentage::TYPE_TEACHER);
             $grossAmount = $teacherPercentage

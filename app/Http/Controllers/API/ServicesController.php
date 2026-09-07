@@ -240,7 +240,7 @@ class ServicesController extends Controller
     {
         try {
             $request->validate([
-                'certificate' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
+                'certificate' => 'required|file|max:5120', // 5MB - any file type accepted
             ]);
 
             $teacher = auth()->user();
@@ -250,7 +250,8 @@ class ServicesController extends Controller
             try {
                 $file = $request->file('certificate');
                 $originalName = $file->getClientOriginalName();
-                $fileName = time() . '_' . $originalName;
+                $safeName = \Illuminate\Support\Str::slug(pathinfo($originalName, PATHINFO_FILENAME)) ?: 'certificate';
+                $fileName = time() . '_' . $safeName . '.' . $file->getClientOriginalExtension();
                 
                 // Store file in public storage
                 $path = $file->storeAs('certificates', $fileName, 'public');

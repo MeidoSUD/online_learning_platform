@@ -20,6 +20,7 @@ use App\Models\Review;
 use App\Models\Complaint;
 use App\Models\Dispute;
 use App\Models\Enrollment;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class UsersController extends Controller
@@ -384,8 +385,29 @@ class UsersController extends Controller
     public function destroy(Request $request, $id)
     {
         $user = User::findOrFail($id);
-        $user->delete();
-        return response()->json(['success' => true]);
+
+        try {
+            DB::beginTransaction();
+            $user->delete();
+            DB::commit();
+
+            return response()->json(['success' => true]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            DB::rollBack();
+
+            // 1451/1217 = a foreign key constraint blocks hard deletion
+            // (e.g. payouts, bookings, sessions, payments, orders ...).
+            // Hard-deleting financial or service history would corrupt records,
+            // so tell the admin to suspend the account instead.
+            if (in_array((int) ($e->errorInfo[1] ?? null), [1451, 1217], true)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot delete this user while they have payouts, bookings, sessions or other service history linked to their account. Use "Suspend" to deactivate them instead.',
+                ], 422);
+            }
+
+            throw $e;
+        }
     }
 
     public function resetPassword(Request $request, $id)

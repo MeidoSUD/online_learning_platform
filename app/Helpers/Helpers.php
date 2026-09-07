@@ -169,10 +169,7 @@ class Helpers
                 return $booking->teacher_rate_per_session * ($booking->sessions_count - $booking->sessions_completed);
             });
 
-        $wallet = Wallet::firstOrCreate(
-            ['user_id' => $teacherId],
-            ['balance' => 0, 'pending_balance' => 0]
-        );
+        $wallet = Wallet::getOrCreateForUser($teacherId);
         $wallet->pending_balance = $pending;
         $wallet->save();
 
