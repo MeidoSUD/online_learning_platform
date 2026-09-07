@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -22,9 +23,29 @@ class SendMarketingNotificationRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->merge([
-            'scheduled_at' => filled($this->input('scheduled_at')) ? $this->input('scheduled_at') : null,
             'target_user_id' => filled($this->input('target_user_id')) ? $this->input('target_user_id') : null,
+            'scheduled_at' => $this->normalizeScheduledAt($this->input('scheduled_at')),
         ]);
+    }
+
+    /**
+     * Blank or past dates mean "send now". Only a genuine future timestamp is
+     * kept as a schedule, so picking a time before "now" never fails with a
+     * 422 — it is treated as an immediate send instead.
+     */
+    private function normalizeScheduledAt(mixed $value): ?string
+    {
+        if (! filled($value)) {
+            return null;
+        }
+
+        try {
+            $parsed = Carbon::parse($value);
+        } catch (\Throwable) {
+            return (string) $value; // let the date rule surface an invalid format
+        }
+
+        return $parsed->gt(now()) ? (string) $parsed : null;
     }
 
     public function rules(): array
@@ -37,7 +58,7 @@ class SendMarketingNotificationRequest extends FormRequest
             'target_user_id' => [
                 'nullable', 'integer', 'required_if:target_type,single_user', 'exists:users,id',
             ],
-            'scheduled_at' => ['nullable', 'date', 'after:now'],
+            'scheduled_at' => ['nullable', 'date'],
         ];
     }
 

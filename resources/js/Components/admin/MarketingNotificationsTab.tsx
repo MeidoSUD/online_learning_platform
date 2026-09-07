@@ -1,5 +1,5 @@
 import React, { FormEvent, useEffect, useState } from 'react';
-import { Loader2, RefreshCw, Search, Send, Smartphone, Bell, Users } from 'lucide-react';
+import { CalendarClock, Loader2, RefreshCw, Search, Send, Smartphone, Bell, Users } from 'lucide-react';
 import { adminService } from '../../Services/api';
 import { useLanguage } from '../../Contexts/LanguageContext';
 import { useToast } from '../../Contexts/ToastContext';
@@ -21,6 +21,7 @@ export const MarketingNotificationsTab: React.FC = () => {
   const [body, setBody] = useState('');
   const [channel, setChannel] = useState<Channel>('push');
   const [targetType, setTargetType] = useState<TargetType>('all');
+  const [mode, setMode] = useState<'now' | 'schedule'>('now');
   const [scheduledAt, setScheduledAt] = useState('');
   const [search, setSearch] = useState('');
   const [users, setUsers] = useState<SearchUser[]>([]);
@@ -35,14 +36,14 @@ export const MarketingNotificationsTab: React.FC = () => {
     heading: 'الإشعارات التسويقية', intro: 'أنشئ رسائل موجهة وتابع حالة تسليمها.', title: 'عنوان الإشعار', body: 'محتوى الإشعار',
     channel: 'قناة الإرسال', target: 'الجمهور المستهدف', push: 'إشعار فوري', sms: 'رسالة نصية', both: 'كلاهما',
     all: 'جميع المستخدمين', teachers: 'المعلمون فقط', students: 'الطلاب فقط', single: 'مستخدم محدد', search: 'ابحث بالاسم أو البريد أو الجوال',
-    schedule: 'جدولة الإرسال (اختياري)', send: 'مراجعة وإرسال', history: 'سجل الحملات', sent: 'تم الإرسال', pending: 'قيد الانتظار', failed: 'فشل',
-    confirm: 'تأكيد الإرسال', confirmation: 'هل أنت متأكد من إرسال هذا الإشعار إلى', users: 'مستخدم؟', cancel: 'إلغاء', confirmSend: 'إرسال الآن', noCampaigns: 'لا توجد حملات بعد.', smsCount: 'حرفًا (الحد المقترح للرسالة النصية: 160)', date: 'تاريخ الإرسال', status: 'الحالة',
+    timing: 'توقيت الإرسال', sendNow: 'إرسال الآن', schedule: 'الجدولة لاحقًا', send: 'مراجعة وإرسال', history: 'سجل الحملات', sent: 'تم الإرسال', pending: 'قيد الانتظار', failed: 'فشل',
+    confirm: 'تأكيد الإرسال', confirmation: 'هل أنت متأكد من إرسال هذا الإشعار إلى', users: 'مستخدم؟', cancel: 'إلغاء', confirmSend: 'إرسال الآن', noCampaigns: 'لا توجد حملات بعد.', smsCount: 'حرفًا (الحد المقترح للرسالة النصية: 160)', date: 'تاريخ الإرسال', status: 'الحالة', sendOk: 'تم إرسال الحملة الآن', scheduleOk: 'تمت جدولة الحملة بنجاح', pickTime: 'اختر وقتًا أو فعّل الإرسال الآن',
   } : {
     heading: 'Marketing Notifications', intro: 'Create targeted messages and track their delivery.', title: 'Notification title', body: 'Notification content',
     channel: 'Delivery channel', target: 'Target audience', push: 'Push notification', sms: 'SMS', both: 'Both',
     all: 'All users', teachers: 'Teachers only', students: 'Students only', single: 'Specific user', search: 'Search by name, email, or phone',
-    schedule: 'Schedule delivery (optional)', send: 'Review & send', history: 'Campaign history', sent: 'Sent', pending: 'Pending', failed: 'Failed',
-    confirm: 'Confirm delivery', confirmation: 'Are you sure you want to send this notification to', users: 'users?', cancel: 'Cancel', confirmSend: 'Send now', noCampaigns: 'No campaigns yet.', smsCount: 'characters (recommended SMS limit: 160)', date: 'Sent at', status: 'Status',
+    timing: 'Send timing', sendNow: 'Send now', schedule: 'Schedule for later', send: 'Review & send', history: 'Campaign history', sent: 'Sent', pending: 'Pending', failed: 'Failed',
+    confirm: 'Confirm delivery', confirmation: 'Are you sure you want to send this notification to', users: 'users?', cancel: 'Cancel', confirmSend: 'Send now', noCampaigns: 'No campaigns yet.', smsCount: 'characters (recommended SMS limit: 160)', date: 'Sent at', status: 'Status', sendOk: 'Campaign sent now', scheduleOk: 'Campaign scheduled successfully', pickTime: 'Choose a time or switch to Send now',
   };
 
   const loadCampaigns = async () => {
@@ -71,6 +72,9 @@ export const MarketingNotificationsTab: React.FC = () => {
     if (targetType === 'single_user' && !selectedUser) {
       showToast(language === 'ar' ? 'اختر مستخدمًا أولاً' : 'Select a user first', 'error'); return;
     }
+    if (mode === 'schedule' && !scheduledAt) {
+      showToast(copy.pickTime, 'error'); return;
+    }
     try {
       const response = await adminService.getMarketingAudienceCount(targetType, selectedUser?.id);
       setTargetCount(response.data?.total_targeted ?? 0);
@@ -86,11 +90,12 @@ export const MarketingNotificationsTab: React.FC = () => {
   };
 
   const submit = async () => {
+    const willSchedule = mode === 'schedule' && !!scheduledAt;
     setSubmitting(true);
     try {
-      await adminService.sendMarketingNotification({ title, body, channel, target_type: targetType, target_user_id: selectedUser?.id, scheduled_at: scheduledAt || null });
-      showToast(scheduledAt ? (language === 'ar' ? 'تمت جدولة الحملة بنجاح' : 'Campaign scheduled successfully') : (language === 'ar' ? 'تمت إضافة الحملة إلى قائمة الإرسال' : 'Campaign queued successfully'), 'success');
-      setTitle(''); setBody(''); setScheduledAt(''); setSelectedUser(null); setSearch(''); setConfirming(false); loadCampaigns();
+      await adminService.sendMarketingNotification({ title, body, channel, target_type: targetType, target_user_id: selectedUser?.id, scheduled_at: willSchedule ? scheduledAt : null });
+      showToast(willSchedule ? copy.scheduleOk : copy.sendOk, 'success');
+      setTitle(''); setBody(''); setScheduledAt(''); setMode('now'); setSelectedUser(null); setSearch(''); setConfirming(false); loadCampaigns();
     } catch (error: any) {
       const details = error?.errors && typeof error.errors === 'object'
         ? Object.keys(error.errors)
@@ -110,7 +115,7 @@ export const MarketingNotificationsTab: React.FC = () => {
     <div><h1 className="text-2xl font-bold text-[var(--text-main)]">{copy.heading}</h1><p className="text-sm text-[var(--text-muted)] mt-1">{copy.intro}</p></div>
     <form onSubmit={prepareSubmission} className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] p-5 sm:p-6 space-y-5">
       <div className="grid md:grid-cols-2 gap-5"><label className="text-sm font-medium text-[var(--text-main)]">{copy.title}<input required maxLength={120} value={title} onChange={e => setTitle(e.target.value)} className="mt-2 w-full rounded-lg border border-[var(--border)] px-3 py-2.5 outline-none focus:border-primary" /></label>
-        <label className="text-sm font-medium text-[var(--text-main)]">{copy.schedule}<input type="datetime-local" value={scheduledAt} min={new Date(Date.now() + 60000).toISOString().slice(0, 16)} onChange={e => setScheduledAt(e.target.value)} className="mt-2 w-full rounded-lg border border-[var(--border)] px-3 py-2.5 outline-none focus:border-primary" /></label></div>
+        <div><span className="text-sm font-medium text-[var(--text-main)]">{copy.timing}</span><div className="flex flex-wrap gap-2 mt-2">{([['now', copy.sendNow, Send], ['schedule', copy.schedule, CalendarClock]] as const).map(([value, label, Icon]) => <label key={value} className={`cursor-pointer rounded-lg border px-3 py-2 text-sm flex gap-2 items-center ${mode === value ? 'border-primary bg-primary-pale text-primary' : 'border-[var(--border)]'}`}><input className="sr-only" type="radio" checked={mode === value} onChange={() => setMode(value)} /><Icon size={16}/>{label}</label>)}</div>{mode === 'schedule' && <input type="datetime-local" value={scheduledAt} min={new Date(Date.now() + 60000).toISOString().slice(0, 16)} onChange={e => setScheduledAt(e.target.value)} className="mt-2 w-full rounded-lg border border-[var(--border)] px-3 py-2.5 outline-none focus:border-primary" />}</div></div>
       <label className="block text-sm font-medium text-[var(--text-main)]">{copy.body}<textarea required maxLength={1000} rows={4} value={body} onChange={e => setBody(e.target.value)} className="mt-2 w-full resize-y rounded-lg border border-[var(--border)] px-3 py-2.5 outline-none focus:border-primary" /><span className={`mt-1 block text-xs ${body.length > 160 && (channel === 'sms' || channel === 'both') ? 'text-orange-600' : 'text-[var(--text-muted)]'}`}>{body.length} {copy.smsCount}</span></label>
       <div className="grid md:grid-cols-2 gap-5"><fieldset><legend className="text-sm font-medium text-[var(--text-main)] mb-2">{copy.channel}</legend><div className="flex flex-wrap gap-2">{([['push', copy.push, Bell], ['sms', copy.sms, Smartphone], ['both', copy.both, Send]] as const).map(([value, label, Icon]) => <label key={value} className={`cursor-pointer rounded-lg border px-3 py-2 text-sm flex gap-2 items-center ${channel === value ? 'border-primary bg-primary-pale text-primary' : 'border-[var(--border)]'}`}><input className="sr-only" type="radio" checked={channel === value} onChange={() => setChannel(value)} /><Icon size={16}/>{label}</label>)}</div></fieldset>
         <label className="text-sm font-medium text-[var(--text-main)]">{copy.target}<select value={targetType} onChange={e => { setTargetType(e.target.value as TargetType); setSelectedUser(null); setSearch(''); }} className="mt-2 w-full rounded-lg border border-[var(--border)] px-3 py-2.5 outline-none focus:border-primary"><option value="all">{copy.all}</option><option value="teachers">{copy.teachers}</option><option value="students">{copy.students}</option><option value="single_user">{copy.single}</option></select></label></div>
