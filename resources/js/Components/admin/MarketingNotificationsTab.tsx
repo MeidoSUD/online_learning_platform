@@ -75,7 +75,14 @@ export const MarketingNotificationsTab: React.FC = () => {
       const response = await adminService.getMarketingAudienceCount(targetType, selectedUser?.id);
       setTargetCount(response.data?.total_targeted ?? 0);
       setConfirming(true);
-    } catch (error: any) { showToast(error.message || 'Unable to calculate audience', 'error'); }
+    } catch (error: any) {
+      const details = error?.errors && typeof error.errors === 'object'
+        ? Object.keys(error.errors)
+            .map(k => `${k}: ${Array.isArray(error.errors[k]) ? error.errors[k].join(', ') : error.errors[k]}`)
+            .join(' · ')
+        : '';
+      showToast(details ? `${error.message || 'Unable to calculate audience'} — ${details}` : (error.message || 'Unable to calculate audience'), 'error');
+    }
   };
 
   const submit = async () => {
@@ -84,7 +91,14 @@ export const MarketingNotificationsTab: React.FC = () => {
       await adminService.sendMarketingNotification({ title, body, channel, target_type: targetType, target_user_id: selectedUser?.id, scheduled_at: scheduledAt || null });
       showToast(scheduledAt ? (language === 'ar' ? 'تمت جدولة الحملة بنجاح' : 'Campaign scheduled successfully') : (language === 'ar' ? 'تمت إضافة الحملة إلى قائمة الإرسال' : 'Campaign queued successfully'), 'success');
       setTitle(''); setBody(''); setScheduledAt(''); setSelectedUser(null); setSearch(''); setConfirming(false); loadCampaigns();
-    } catch (error: any) { showToast(error.message || 'Unable to queue campaign', 'error'); }
+    } catch (error: any) {
+      const details = error?.errors && typeof error.errors === 'object'
+        ? Object.keys(error.errors)
+            .map(k => `${k}: ${Array.isArray(error.errors[k]) ? error.errors[k].join(', ') : error.errors[k]}`)
+            .join(' · ')
+        : '';
+      showToast(details ? `${error.message || 'Validation failed'} — ${details}` : (error.message || 'Unable to queue campaign'), 'error');
+    }
     finally { setSubmitting(false); }
   };
 

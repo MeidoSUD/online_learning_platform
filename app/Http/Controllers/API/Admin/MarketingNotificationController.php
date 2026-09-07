@@ -11,6 +11,7 @@ use App\Services\MarketingNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class MarketingNotificationController extends Controller
 {
@@ -24,11 +25,25 @@ class MarketingNotificationController extends Controller
 
     public function send(SendMarketingNotificationRequest $request, MarketingNotificationService $service): JsonResponse
     {
-        $campaign = DB::transaction(function () use ($request, $service) {
-            $campaign = MarketingNotification::create($request->validated());
-            $campaign->update(['total_targeted' => $service->recipientCount($campaign)]);
-            return $campaign->fresh();
-        });
+        try {
+            $campaign = DB::transaction(function () use ($request, $service) {
+                $campaign = MarketingNotification::create($request->validated());
+                $campaign->update(['total_targeted' => $service->recipientCount($campaign)]);
+                return $campaign->fresh();
+            });
+        } catch (\Throwable $exception) {
+            Log::error('Marketing notification send failed', [
+                'admin_id' => $request->user()?->id,
+                'payload' => $request->validated(),
+                'error' => $exception->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to queue marketing notification',
+                'error' => $exception->getMessage(),
+            ], 500);
+        }
 
         $job = SendMarketingNotificationJob::dispatch($campaign->id);
         if ($campaign->scheduled_at) {
