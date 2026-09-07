@@ -321,6 +321,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({ onViewTeacher }) => {
                                 <th className="px-6 py-3 font-semibold text-navy">{t.phone}</th>
                                 <th className="px-6 py-3 font-semibold text-navy">{t.role}</th>
                                 <th className="px-6 py-3 font-semibold text-navy">{t.verifiedStatus}</th>
+                                <th className="px-6 py-3 font-semibold text-navy">{t.profileCompletion}</th>
                                 <th className="px-6 py-3 font-semibold text-navy">{t.status}</th>
                                 <th className="px-6 py-3 font-semibold text-navy text-right">{t.actions}</th>
                             </tr>
@@ -328,7 +329,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({ onViewTeacher }) => {
                         <tbody className="divide-y divide-[var(--border)]">
                             {paginatedUsers.length === 0 && !loading ? (
                                 <tr>
-                                    <td colSpan={6} className="px-6 py-8 text-center text-[var(--text-muted)]">{t.noResults}</td>
+                                    <td colSpan={7} className="px-6 py-8 text-center text-[var(--text-muted)]">{t.noResults}</td>
                                 </tr>
                             ) : (
                                 paginatedUsers.map(user => (
@@ -355,6 +356,16 @@ export const UsersTab: React.FC<UsersTabProps> = ({ onViewTeacher }) => {
                                                 <span className={`flex items-center gap-1 text-[10px] font-bold uppercase ${user.verified ? 'text-primary' : 'text-amber-600'}`}>
                                                     {user.verified ? <CheckCircle size={12} /> : <X size={12} />}
                                                     {user.verified ? t.verifiedStatus : t.unverifiedStatus}
+                                                </span>
+                                            ) : (
+                                                <span className="text-[var(--text-muted)]">--</span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            {user.role_id === 3 && user.profile_complete ? (
+                                                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold uppercase ${user.profile_complete.complete ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                    {user.profile_complete.complete ? <CheckCircle size={12} /> : <X size={12} />}
+                                                    {user.profile_complete.complete ? t.completeLabel : t.incompleteLabel}
                                                 </span>
                                             ) : (
                                                 <span className="text-[var(--text-muted)]">--</span>

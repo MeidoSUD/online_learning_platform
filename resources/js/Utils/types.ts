@@ -409,6 +409,12 @@ export interface AdminUser {
   verified: number | boolean | string;
   is_active: number | boolean;
   created_at: string;
+  profile_complete?: {
+    complete: boolean;
+    has_subject_or_language: boolean;
+    has_price: boolean;
+    has_time_slots: boolean;
+  } | null;
   profile?: {
     certificate?: string | null;
   };

@@ -27,7 +27,15 @@ class MarketingNotificationController extends Controller
     {
         try {
             $campaign = DB::transaction(function () use ($request, $service) {
-                $campaign = MarketingNotification::create($request->validated());
+                $payload = $request->validated();
+
+                // Don't send an empty array into the INSERT: omit the column so
+                // sends still work before the target_user_ids migration runs.
+                if (empty($payload['target_user_ids'])) {
+                    unset($payload['target_user_ids']);
+                }
+
+                $campaign = MarketingNotification::create($payload);
                 $campaign->update(['total_targeted' => $service->recipientCount($campaign)]);
                 return $campaign->fresh();
             });

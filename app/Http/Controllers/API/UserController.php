@@ -1274,6 +1274,7 @@ class UserController extends Controller
         $courses = [];
         $languages = [];
         $isPrivateService = false;
+        $isCourseService = false;
 
         if ($primaryTS && $primaryTS->service) {
             $svc = $primaryTS->service;
@@ -1290,44 +1291,64 @@ class UserController extends Controller
                 // use profile verified as fallback for now
                 'verified' => (bool) optional($teacher->profile)->verified,
             ];
+        }
 
-            // Conditional details depending on service type
-            $key = strtolower($svc->key_name ?? '');
+        // Detect what the teacher actually teaches from ALL their services
+        // (not just the first/primary one) so subject/language/course sections
+        // are shown strictly based on the services the teacher selected.
+        $serviceKeys = $uniqueTS
+            ->map(fn ($ts) => strtolower((string) optional($ts->service)->key_name))
+            ->filter()
+            ->values();
 
-            // Private lessons: include subjects and courses
-            // Course services (courses / training_courses): include courses
-            $isCourseService = (bool) (
-                $key === 'courses'
+        $isPrivateService = $serviceKeys->contains(fn ($key) => $key === 'private_lessons' || str_contains($key, 'private'));
+        $isCourseService = $serviceKeys->contains(
+            fn ($key) => $key === 'courses'
                 || $key === 'training_courses'
                 || str_contains($key, 'course')
                 || str_contains($key, 'training')
-            );
-            $isPrivateService = str_contains($key, 'private') || $key === 'private_lessons';
+        );
+        $isLanguageService = $serviceKeys->contains(fn ($key) => str_contains($key, 'lang') || str_contains($key, 'language'));
 
-            if ($isPrivateService || $isCourseService) {
-                // $teacherSubjects already contains subject details
-                // Fetch courses with basic fields and cover image, but only those matching the primary service
-                if ($primaryServiceId) {
-                    $courses = Course::where('teacher_id', $teacher->id)
-                        ->where('service_id', $primaryServiceId)
-                        ->with(['coverImage'])
-                        ->get()
-                        ->map(function ($c) {
-                            return [
-                                'id' => $c->id,
-                                'name' => $c->name,
-                                'description' => $c->description,
-                                'price' => $c->price,
-                                'duration_hours' => $c->duration_hours,
-                                'status' => $c->status,
-                                'cover_image' => optional($c->coverImage)->file_path ?? null,
-                            ];
-                        })->values()->toArray();
-                }
+        // Services that produce subjects/courses (private lessons + course type)
+        $courseServiceIds = $uniqueTS
+            ->filter(function ($ts) {
+                $key = strtolower((string) optional($ts->service)->key_name);
+                return $key === 'private_lessons'
+                    || str_contains($key, 'private')
+                    || str_contains($key, 'course')
+                    || str_contains($key, 'training');
+            })
+            ->pluck('service_id')
+            ->filter()
+            ->values()
+            ->all();
+
+        if ($isPrivateService || $isCourseService) {
+            // $teacherSubjects already contains subject details.
+            // Fetch courses for every teaching service the teacher selected.
+            $query = Course::where('teacher_id', $teacher->id)
+                ->with(['coverImage']);
+
+            if (!empty($courseServiceIds)) {
+                $query->whereIn('service_id', $courseServiceIds);
             }
 
-            // Language study service: include teacher languages
-            if (str_contains($key, 'lang') || str_contains($key, 'language') || str_contains($key, 'languages')) {
+            $courses = $query->get()->map(function ($c) {
+                return [
+                    'id' => $c->id,
+                    'name' => $c->name,
+                    'description' => $c->description,
+                    'price' => $c->price,
+                    'duration_hours' => $c->duration_hours,
+                    'status' => $c->status,
+                    'cover_image' => optional($c->coverImage)->file_path ?? null,
+                ];
+            })->values()->toArray();
+        }
+
+        // Language study service: include teacher languages
+        if ($isLanguageService) {
                 $languages = TeacherLanguage::where('teacher_id', $teacher->id)
                     ->with('language')
                     ->get()
@@ -1339,7 +1360,6 @@ class UserController extends Controller
                             'name_ar' => optional($tl->language)->name_ar ?? null,
                         ];
                     })->values()->toArray();
-            }
         }
 
         // Get earnings data

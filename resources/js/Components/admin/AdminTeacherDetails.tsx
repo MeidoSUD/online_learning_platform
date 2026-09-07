@@ -89,10 +89,10 @@ export const AdminTeacherDetails: React.FC<AdminTeacherDetailsProps> = ({ userId
     const primaryServiceId = profile?.service;
 
     const primaryService = services.find((s: any) => Number(s.service_id) === Number(primaryServiceId)) || services[0] || null;
-    const serviceKey = (primaryService?.key_name || '').toLowerCase();
-    const isPrivate = serviceKey.includes('private') || serviceKey === 'private_lessons';
-    const isLanguageStudy = serviceKey.includes('lang');
-    const isCoursesService = serviceKey === 'courses' || serviceKey === 'training_courses' || serviceKey.includes('course') || serviceKey.includes('training');
+    const serviceKeys = (services || []).map((s: any) => (s.key_name || '').toLowerCase());
+    const isPrivate = serviceKeys.some((k: string) => k.includes('private'));
+    const isLanguageStudy = serviceKeys.some((k: string) => k.includes('lang') || k.includes('language'));
+    const isCoursesService = serviceKeys.some((k: string) => k.includes('course') || k.includes('training'));
 
     const statCard = (label: string, value: string | number, Icon: React.ElementType, color = 'text-primary bg-primary-pale') => (
         <div className="p-4 rounded-[var(--radius-md)] border border-[var(--border)] bg-white flex items-center gap-3">

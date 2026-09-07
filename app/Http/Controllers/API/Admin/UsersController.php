@@ -68,8 +68,28 @@ class UsersController extends Controller
 
         $paginated = $q->orderBy('id', 'desc')->paginate(25);
 
+        // Profile-completeness aggregates for teachers (subjects/languages,
+        // pricing, availability slots). Only queried for the current page.
+        $teacherIds = $paginated->getCollection()->where('role_id', 3)->pluck('id')->all();
+        $subjectCounts = [];
+        $languageCounts = [];
+        $slotCounts = [];
+        $priceMap = [];
+
+        if (!empty($teacherIds)) {
+            $subjectCounts = DB::table('teacher_subjects')->whereIn('teacher_id', $teacherIds)
+                ->selectRaw('teacher_id, COUNT(*) as c')->groupBy('teacher_id')->pluck('c', 'teacher_id')->all();
+            $languageCounts = DB::table('teacher_languages')->whereIn('teacher_id', $teacherIds)
+                ->selectRaw('teacher_id, COUNT(*) as c')->groupBy('teacher_id')->pluck('c', 'teacher_id')->all();
+            $slotCounts = DB::table('availability_slots')->whereIn('teacher_id', $teacherIds)
+                ->selectRaw('teacher_id, COUNT(*) as c')->groupBy('teacher_id')->pluck('c', 'teacher_id')->all();
+            $priceMap = DB::table('teacher_info')->whereIn('teacher_id', $teacherIds)
+                ->get(['teacher_id', 'teach_individual', 'individual_hour_price', 'teach_group', 'group_hour_price'])
+                ->keyBy('teacher_id')->all();
+        }
+
         // Transform the paginator collection to include profile_photo and certificate urls
-        $paginated->getCollection()->transform(function ($user) {
+        $paginated->getCollection()->transform(function ($user) use ($subjectCounts, $languageCounts, $slotCounts, $priceMap) {
             $profilePhoto = null;
             $certificate = null;
 
@@ -78,6 +98,26 @@ class UsersController extends Controller
                 $cert = $user->attachments->firstWhere('attached_to_type', 'certificate');
                 $profilePhoto = $pp->file_path ?? null;
                 $certificate = $cert->file_path ?? null;
+            }
+
+            // A teacher profile is "complete" when they have subjects/languages,
+            // a price, and availability time slots.
+            $profileComplete = null;
+            if ((int) $user->role_id === 3) {
+                $hasContent = (int) ($subjectCounts[$user->id] ?? 0) > 0 || (int) ($languageCounts[$user->id] ?? 0) > 0;
+                $info = $priceMap[$user->id] ?? null;
+                $hasPrice = $info && (
+                    ($info->teach_individual && (float) $info->individual_hour_price > 0)
+                    || ($info->teach_group && (float) $info->group_hour_price > 0)
+                );
+                $hasTimeSlots = (int) ($slotCounts[$user->id] ?? 0) > 0;
+
+                $profileComplete = [
+                    'complete' => $hasContent && $hasPrice && $hasTimeSlots,
+                    'has_subject_or_language' => $hasContent,
+                    'has_price' => $hasPrice,
+                    'has_time_slots' => $hasTimeSlots,
+                ];
             }
 
             return [
@@ -93,6 +133,7 @@ class UsersController extends Controller
                 'verified' => $user->profile->verified ?? false,
                 'profile_photo' => $profilePhoto,
                 'certificate' => $certificate,
+                'profile_complete' => $profileComplete,
                 'created_at' => $user->created_at
             ];
         });
