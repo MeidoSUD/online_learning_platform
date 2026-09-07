@@ -133,6 +133,16 @@ class AuthController extends Controller
                 'has_bio' => $request->filled('bio'),
             ]);
 
+            // Normalize text fields before validation. The email is optional,
+            // so a blank string or trailing whitespace from the app must become
+            // null instead of failing the email rule with "validation.email".
+            $rawEmail = $request->input('email');
+            $request->merge([
+                'email' => is_string($rawEmail) ? (trim($rawEmail) ?: null) : $rawEmail,
+                'first_name' => is_string($request->input('first_name')) ? trim($request->input('first_name')) : $request->input('first_name'),
+                'last_name' => is_string($request->input('last_name')) ? trim($request->input('last_name')) : $request->input('last_name'),
+            ]);
+
             // Validate teacher-specific input
             $validated = $request->validate([
                 'first_name' => 'required|string|max:255',
@@ -349,6 +359,7 @@ class AuthController extends Controller
         } catch (ValidationException $e) {
             Log::warning('Teacher registration validation failed', [
                 'errors' => $e->errors(),
+                'email_raw' => $request->input('email'),
             ]);
 
             return response()->json([
