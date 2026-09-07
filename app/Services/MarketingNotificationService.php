@@ -22,8 +22,10 @@ class MarketingNotificationService
 
         return match ($campaign->target_type) {
             'teachers' => $query->where('role_id', 3),
-            'students' => $query->where('role_id', 2),
+            'students' => $query->where('role_id', 4),
             'single_user' => $query->whereKey($campaign->target_user_id),
+            'multi_teachers' => $query->where('role_id', 3)->whereIn('id', (array) $campaign->target_user_ids),
+            'multi_students' => $query->where('role_id', 4)->whereIn('id', (array) $campaign->target_user_ids),
             default => $query,
         };
     }

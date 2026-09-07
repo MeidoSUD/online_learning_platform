@@ -471,12 +471,13 @@ export const adminService = {
     const query = new URLSearchParams(params as any).toString();
     return fetchWithAuth(`/admin/marketing/notifications${query ? `?${query}` : ''}`);
   },
-  getMarketingAudienceCount: (target_type: string, target_user_id?: number) => {
+getMarketingAudienceCount: (target_type: string, target_user_id?: number, target_user_ids?: number[]) => {
     const params: Record<string, string> = { target_type };
-    if (target_user_id) params.target_user_id = String(target_user_id);
+    if (target_user_id !== undefined) params.target_user_id = String(target_user_id);
+    if (target_user_ids && target_user_ids.length) params.target_user_ids = target_user_ids.join(',');
     return fetchWithAuth(`/admin/marketing/notifications/audience-count?${new URLSearchParams(params).toString()}`);
   },
-  searchMarketingUsers: (query: string) => fetchWithAuth(`/admin/marketing/users/search?q=${encodeURIComponent(query)}`),
+  searchMarketingUsers: (query: string, role?: number) => fetchWithAuth(`/admin/marketing/users/search?q=${encodeURIComponent(query)}${role ? `&role=${role}` : ''}`),
   sendMarketingNotification: (data: Record<string, unknown>) =>
     fetchWithAuth('/admin/marketing/notifications/send', { method: 'POST', body: JSON.stringify(data) }),
 

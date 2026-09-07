@@ -25,6 +25,7 @@ class SendMarketingNotificationRequest extends FormRequest
         $this->merge([
             'target_user_id' => filled($this->input('target_user_id')) ? $this->input('target_user_id') : null,
             'scheduled_at' => $this->normalizeScheduledAt($this->input('scheduled_at')),
+            'target_user_ids' => $this->normalizeUserIds($this->input('target_user_ids')),
         ]);
     }
 
@@ -48,16 +49,35 @@ class SendMarketingNotificationRequest extends FormRequest
         return $parsed->gt(now()) ? (string) $parsed : null;
     }
 
+    /** Accepts an array of ids (JSON) or a comma-separated list (query string). */
+    private function normalizeUserIds(mixed $value): array
+    {
+        if (empty($value) && $value !== []) {
+            return [];
+        }
+
+        $ids = is_string($value) ? explode(',', $value) : (array) $value;
+
+        return array_values(array_unique(
+            array_filter(array_map('intval', $ids), fn (int $id) => $id > 0)
+        ));
+    }
+
     public function rules(): array
     {
         return [
             'title' => ['required', 'string', 'max:120'],
             'body' => ['required', 'string', 'max:1000'],
             'channel' => ['required', Rule::in(['push', 'sms', 'both'])],
-            'target_type' => ['required', Rule::in(['all', 'teachers', 'students', 'single_user'])],
+            'target_type' => ['required', Rule::in(['all', 'teachers', 'students', 'single_user', 'multi_teachers', 'multi_students'])],
             'target_user_id' => [
                 'nullable', 'integer', 'required_if:target_type,single_user', 'exists:users,id',
             ],
+            'target_user_ids' => [
+                'nullable', 'array',
+                'required_if:target_type,multi_teachers', 'required_if:target_type,multi_students',
+            ],
+            'target_user_ids.*' => ['integer', 'exists:users,id'],
             'scheduled_at' => ['nullable', 'date'],
         ];
     }

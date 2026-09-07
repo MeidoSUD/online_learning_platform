@@ -45,23 +45,55 @@ class MarketingNotificationController extends Controller
             ], 500);
         }
 
-        $job = SendMarketingNotificationJob::dispatch($campaign->id);
         if ($campaign->scheduled_at) {
-            $job->delay($campaign->scheduled_at);
+            SendMarketingNotificationJob::dispatch($campaign->id)->delay($campaign->scheduled_at);
+
+            Log::info('Marketing notification scheduled', [
+                'campaign_id' => $campaign->id,
+                'scheduled_at' => $campaign->scheduled_at,
+                'admin_id' => $request->user()?->id,
+            ]);
+
+            $message = 'Marketing notification scheduled successfully.';
+        } else {
+            // "Send now": run synchronously (same Dreams.sa request as the
+            // register verification SMS) so delivery happens immediately.
+            SendMarketingNotificationJob::dispatchSync($campaign->id);
+            $campaign->refresh();
+
+            Log::info('Marketing notification sent immediately', [
+                'campaign_id' => $campaign->id,
+                'channel' => $campaign->channel,
+                'total_recipients' => $campaign->total_targeted,
+                'total_sent' => $campaign->total_sent,
+                'status' => $campaign->status,
+                'admin_id' => $request->user()?->id,
+            ]);
+
+            $message = $campaign->status === 'sent'
+                ? 'Marketing notification sent successfully.'
+                : ($campaign->status === 'failed'
+                    ? 'Marketing notification processed but failed to reach any recipient — check the log for SMS provider errors.'
+                    : 'Marketing notification queued for delivery.');
         }
 
         return response()->json([
             'success' => true,
-            'message' => $campaign->scheduled_at ? 'Marketing notification scheduled successfully.' : 'Marketing notification queued successfully.',
+            'message' => $message,
             'data' => $campaign,
         ], 201);
     }
 
     public function audienceCount(Request $request, MarketingNotificationService $service): JsonResponse
     {
+        // Accept a comma-separated string from query params or a JSON array.
+        $request->merge(['target_user_ids' => $this->extractUserIds($request->input('target_user_ids'))]);
+
         $data = $request->validate([
-            'target_type' => ['required', 'in:all,teachers,students,single_user'],
+            'target_type' => ['required', 'in:all,teachers,students,single_user,multi_teachers,multi_students'],
             'target_user_id' => ['nullable', 'required_if:target_type,single_user', 'integer', 'exists:users,id'],
+            'target_user_ids' => ['nullable', 'array', 'required_if:target_type,multi_teachers', 'required_if:target_type,multi_students'],
+            'target_user_ids.*' => ['integer', 'exists:users,id'],
         ]);
         $campaign = new MarketingNotification($data);
 
@@ -70,16 +102,34 @@ class MarketingNotificationController extends Controller
 
     public function usersSearch(Request $request): JsonResponse
     {
-        $query = trim((string) $request->validate(['q' => ['required', 'string', 'min:2', 'max:100']])['q']);
+        $data = $request->validate([
+            'q' => ['required', 'string', 'min:2', 'max:100'],
+            'role' => ['nullable', 'integer', 'in:2,3,4'],
+        ]);
+        $query = trim($data['q']);
+
         $users = User::query()->select('id', 'first_name', 'last_name', 'email', 'phone_number', 'role_id')
             ->where(function ($builder) use ($query) {
                 $builder->where('first_name', 'like', "%{$query}%")->orWhere('last_name', 'like', "%{$query}%")
                     ->orWhere('email', 'like', "%{$query}%")->orWhere('phone_number', 'like', "%{$query}%");
-            })->orderBy('first_name')->limit(15)->get()->map(fn (User $user) => [
+            })
+            ->when(!empty($data['role']), fn ($builder) => $builder->where('role_id', $data['role']))
+            ->orderBy('first_name')->limit(15)->get()->map(fn (User $user) => [
                 'id' => $user->id, 'name' => $user->name, 'email' => $user->email,
                 'phone_number' => $user->phone_number, 'role_id' => $user->role_id,
             ]);
 
         return response()->json(['success' => true, 'data' => $users]);
+    }
+
+    private function extractUserIds(mixed $value): array
+    {
+        if ($value === null || $value === '') {
+            return [];
+        }
+
+        $ids = is_array($value) ? $value : explode(',', (string) $value);
+
+        return array_values(array_unique(array_filter(array_map('intval', $ids), fn (int $id) => $id > 0)));
     }
 }

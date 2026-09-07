@@ -13,8 +13,9 @@ return new class extends Migration
             $table->string('title');
             $table->text('body');
             $table->enum('channel', ['push', 'sms', 'both']);
-            $table->enum('target_type', ['all', 'teachers', 'students', 'single_user']);
+            $table->enum('target_type', ['all', 'teachers', 'students', 'single_user', 'multi_teachers', 'multi_students']);
             $table->foreignId('target_user_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->json('target_user_ids')->nullable()->after('target_user_id');
             $table->timestamp('scheduled_at')->nullable()->index();
             $table->enum('status', ['pending', 'sent', 'failed'])->default('pending')->index();
             $table->unsignedInteger('total_targeted')->default(0);
