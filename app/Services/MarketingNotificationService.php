@@ -15,11 +15,9 @@ class MarketingNotificationService
     {
         $query = User::query();
 
-        // is_active is present in the platform's users schema. Null is accepted for legacy users.
-        $query->where(function (Builder $query) {
-            $query->where('is_active', true)->orWhereNull('is_active');
-        });
-
+        // No is_active filter: users.created_at defaults is_active to 0 and
+        // teacher registration never sets it, so restricting to is_active=true
+        // silently excluded most teachers/students from campaigns.
         return match ($campaign->target_type) {
             'teachers' => $query->where('role_id', 3),
             'students' => $query->where('role_id', 4),
