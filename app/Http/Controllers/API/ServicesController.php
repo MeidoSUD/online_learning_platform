@@ -17,8 +17,20 @@ class ServicesController extends Controller
 
     public function listServices()
     {
+
+
         $services = \App\Models\Services::
-        get(['key_name', 'name_en', 'name_ar', 'description_en', 'image','description_ar', 'id', 'status']);
+            get(['key_name', 'name_en', 'name_ar', 'description_en', 'image', 'description_ar', 'id', 'status']);
+        return response()->json($services);
+    }
+
+    public function listServicesSpecialization()
+    {
+
+
+        $services = \App\Models\Services::where('specialization', 1)
+            ->where('status', 1)
+            ->get(['key_name', 'name_en', 'name_ar', 'description_en', 'image', 'description_ar', 'id', 'status']);
         return response()->json($services);
     }
 
@@ -252,7 +264,7 @@ class ServicesController extends Controller
                 $originalName = $file->getClientOriginalName();
                 $safeName = \Illuminate\Support\Str::slug(pathinfo($originalName, PATHINFO_FILENAME)) ?: 'certificate';
                 $fileName = time() . '_' . $safeName . '.' . $file->getClientOriginalExtension();
-                
+
                 // Store file in public storage
                 $path = $file->storeAs('certificates', $fileName, 'public');
 
@@ -294,12 +306,12 @@ class ServicesController extends Controller
 
             } catch (\Exception $e) {
                 DB::rollBack();
-                
+
                 // Clean up file if upload was partially successful
                 if (isset($path)) {
                     Storage::disk('public')->delete($path);
                 }
-                
+
                 throw $e;
             }
 

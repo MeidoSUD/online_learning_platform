@@ -103,6 +103,7 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::get('/common-subjects', [ServicesController::class, 'getAllSubjects']);
 // main screen APIs
 Route::get('/services', [ServicesController::class, 'listServices']);
+Route::get('/services/specialization', [ServicesController::class, 'listServicesSpecialization']);
 Route::get('/services/search', [ServicesController::class, 'searchServices']);
 Route::get('/subjects/{id}', [ServicesController::class, 'listSubjects']);
 Route::get('/subjects/{id}', [ServicesController::class, 'subjectDetails']);
