@@ -19,6 +19,7 @@ use App\Http\Controllers\API\PaymentMethodController;
 use App\Http\Controllers\API\UserPaymentMethodController;
 use App\Http\Controllers\API\SessionsController;
 use App\Http\Controllers\API\LanguageStudyController;
+use App\Http\Controllers\API\TeacherAbilityController;
 use App\Http\Controllers\FCMTokenController;
 use App\Http\Controllers\API\TeacherPackageController;
 use App\Http\Controllers\API\ConsultationController;
@@ -109,6 +110,11 @@ Route::prefix('teacher')->middleware(['auth:sanctum', 'role:teacher'])->group(fu
     Route::post('/language-study/languages', [LanguageStudyController::class, 'addTeacherLanguages']);
     Route::put('/language-study/languages', [LanguageStudyController::class, 'updateTeacherLanguages']);
     Route::delete('/language-study/{languageId}', [LanguageStudyController::class, 'deleteTeacherLanguage']);
+
+    Route::get('/abilities/{teacherId}', [TeacherAbilityController::class, 'index']);
+    Route::post('/abilities', [TeacherAbilityController::class, 'store']);
+    Route::put('/abilities', [TeacherAbilityController::class, 'update']);
+    Route::delete('/abilities/{abilityId}', [TeacherAbilityController::class, 'destroy']);
 
     // switch on/off package availability
     Route::match(['PUT', 'POST'], '/packages/on-off', [TeacherPackageController::class, 'switchPackageOnOff']);

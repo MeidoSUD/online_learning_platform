@@ -16,7 +16,6 @@ return new class extends Migration {
             $table->tinyInteger('specialization')->default(0);
         });
     }
-
     /**
      * Reverse the migrations.
      *

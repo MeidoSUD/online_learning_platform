@@ -19,6 +19,7 @@ use App\Http\Controllers\API\SessionsController;
 use App\Http\Controllers\API\AiAssistantController;
 use App\Http\Controllers\API\LanguageStudyController;
 use App\Http\Controllers\API\LanguageController;
+use App\Http\Controllers\API\AbilityController;
 use App\Http\Controllers\FCMTokenController;
 use App\Http\Controllers\API\Admin\DashboardController;
 use App\Http\Controllers\API\Admin\UsersController;
@@ -115,6 +116,7 @@ Route::get('language-study', [LanguageStudyController::class, 'index']);
 Route::get('language-study/teachers', [LanguageStudyController::class, 'getAllTeachersWithLanguages']); // Get all teachers with languages
 Route::get('language-study/teacher/{teacherId}', [LanguageStudyController::class, 'getTeacherLanguages']); // Get specific teacher languages
 Route::get('language-study/teachers/filter', [LanguageStudyController::class, 'filterTeachersByLanguage']); // Filter teachers by language
+Route::get('abilities', [AbilityController::class, 'index']);
 Route::get('/teachers', [UserController::class, 'listTeachers']);
 Route::get('/teachers/{id}', [UserController::class, 'teacherDetails']);
 Route::get('/teachers/{id}/students', [BookingController::class, 'getTeacherStudentsPublic']);
@@ -415,6 +417,13 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     Route::delete('/languages/{id}', [LanguageController::class, 'destroy']); // Soft delete language
     Route::delete('/languages/{id}/force', [LanguageController::class, 'forceDestroy']); // Hard delete language
     Route::post('/languages/{id}/restore', [LanguageController::class, 'restore']); // Restore soft-deleted language
+
+    Route::post('/abilities', [AbilityController::class, 'store']);
+    Route::get('/abilities/{id}', [AbilityController::class, 'show']);
+    Route::put('/abilities/{id}', [AbilityController::class, 'update']);
+    Route::delete('/abilities/{id}', [AbilityController::class, 'destroy']);
+    Route::delete('/abilities/{id}/force', [AbilityController::class, 'forceDestroy']);
+    Route::post('/abilities/{id}/restore', [AbilityController::class, 'restore']);
     // Education Levels
     Route::get('/education-levels', [EducationLevelAdminController::class, 'index']); // List all education levels
     Route::post('/education-levels', [EducationLevelAdminController::class, 'store']); // Create education level
