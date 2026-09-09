@@ -237,7 +237,8 @@ class BookingController extends Controller
 
 
             if ($slot->date && trim((string) $slot->date) !== '') {
-                $slotDate = $slot->date instanceof \Carbon\Carbon ? $slot->date->format('Y-m-d') : (string) $slot->date;
+                // أقرب وقوع قادم دائماً: التاريخ المستقبلي كما هو، والماضي يُنقل لأقرب وقوع قادم
+                $slotDate = PackageBookingHelper::resolveSlotDate($slot);
             } elseif ($slot->day_number !== null) {
                 // Compute next occurrence of the weekday
                 // day_number format: 1=Saturday, 2=Sunday, 3=Monday, 4=Tuesday, 5=Wednesday, 6=Thursday, 7=Friday

@@ -5,6 +5,8 @@
 namespace App\Models;
 
 use App\Helpers\Helpers;
+use App\Helpers\SessionNumberHelper;
+use App\Helpers\PackageBookingHelper;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -465,16 +467,14 @@ class Sessions extends Model
 
             $sessionTitle = self::buildSessionTitle($booking);
 
-            if ($booking->course_group_id && $booking->courseGroup) {
-                self::createGroupCourseSessions($booking, $sessionTitle);
-                return;
-            }
-
             // Package booking with multiple different timeslots
             // When availabilitySlots relationship is loaded with multiple entries,
             // create one session per slot with its own date/time
             $booking->load('availabilitySlots');
-            if ($booking->availabilitySlots->count() > 1) {
+
+            if ($booking->course_group_id && $booking->courseGroup) {
+                self::createGroupCourseSessions($booking, $sessionTitle);
+            } elseif ($booking->availabilitySlots->count() > 1) {
                 $sessionIndex = 1;
                 foreach ($booking->availabilitySlots as $slot) {
                     $slotIdStr = (string)$slot->id;
@@ -488,9 +488,8 @@ class Sessions extends Model
                         $sessionsForThisSlot = 1;
                     }
 
-                    $firstSlotDate = $slot->date && trim((string) $slot->date) !== ''
-                        ? ($slot->date instanceof Carbon ? $slot->date->format('Y-m-d') : (string) $slot->date)
-                        : self::resolveSlotDate($slot);
+                    // أقرب وقوع قادم دائماً (مثال: الاثنين الماضي → أقرب اثنين قادم)
+                    $firstSlotDate = PackageBookingHelper::resolveSlotDate($slot);
                         
                     $startDate = Carbon::parse($firstSlotDate);
 
@@ -526,10 +525,7 @@ class Sessions extends Model
                         ]);
                     }
                 }
-                return;
-            }
-
-            if ($booking->session_type === Booking::TYPE_SINGLE) {
+            } elseif ($booking->session_type === Booking::TYPE_SINGLE) {
                 $session = self::create([
                     'booking_id' => $booking->id,
                     'availability_slot_id' => $booking->availability_slot_id,
@@ -580,6 +576,8 @@ class Sessions extends Model
                     ]);
                 }
             }
+            // استدعاء واحد فقط بعد إنشاء الجلسات: إعادة ترقيم نفس الحجز حسب التاريخ (1..N)
+            SessionNumberHelper::renumberBookingSessions($booking->id);
         } catch (\Exception $e) {
             Log::error('Failed to create sessions for booking', [
                 'booking_id' => $booking->id,
@@ -740,34 +738,9 @@ class Sessions extends Model
         static::updated(function ($session) {
             // Auto-mark as no-show if session is overdue and still scheduled
             if ($session->status === self::STATUS_SCHEDULED && $session->is_overdue) {
-                $session->update(['status' => self::STATUS_WAIT_TEACHER]);
+                $session->updateQuietly(['status' => self::STATUS_WAIT_TEACHER]);
             }
         });
-    }
-
-    /**
-     * Resolve slot date from date field or day_number.
-     */
-    private static function resolveSlotDate($slot): string
-    {
-        if ($slot->day_number !== null) {
-            $today = Carbon::today();
-            $dayNumberFromApp = (int) $slot->day_number;
-            $carbonDayOfWeek = ($dayNumberFromApp === 1) ? 6 : ($dayNumberFromApp - 2);
-            $todayDow = $today->dayOfWeek;
-            $delta = ($carbonDayOfWeek - $todayDow + 7) % 7;
-            $candidate = $today->copy()->addDays($delta);
-            $slotStart = self::extractTimeFromValue($slot->start_time);
-            $candidateDateTime = Carbon::parse($candidate->format('Y-m-d') . ' ' . $slotStart);
-
-            if ($candidateDateTime->lessThanOrEqualTo(now())) {
-                $candidate->addDays(7);
-            }
-
-            return $candidate->format('Y-m-d');
-        }
-
-        return Carbon::today()->format('Y-m-d');
     }
 
     /**

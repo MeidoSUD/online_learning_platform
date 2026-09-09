@@ -12,6 +12,7 @@ use App\Models\Subject;
 use App\Models\User;
 use App\Models\UserPaymentMethod;
 use App\Models\Services;
+use App\Helpers\PackageBookingHelper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -139,7 +140,8 @@ class BookingCourseController extends Controller
 
                     $slotDate = null;
                     if ($slot->date && trim((string)$slot->date) !== '') {
-                        $slotDate = $slot->date instanceof Carbon ? $slot->date->format('Y-m-d') : (string) $slot->date;
+                        // أقرب وقوع قادم دائماً: التاريخ المستقبلي كما هو، والماضي يُنقل لأقرب وقوع قادم
+                        $slotDate = PackageBookingHelper::resolveSlotDate($slot);
                     } elseif ($slot->day_number !== null) {
                         $today = Carbon::today();
                         $dayNumberFromApp = (int) $slot->day_number;

@@ -342,7 +342,8 @@ class StudentPackageController extends Controller
 
             $slotDate = null;
             if ($slot->date && trim((string) $slot->date) !== '') {
-                $slotDate = $slot->date instanceof \Carbon\Carbon ? $slot->date->format('Y-m-d') : (string) $slot->date;
+                // أقرب وقوع قادم دائماً: التاريخ المستقبلي كما هو، والماضي يُنقل لأقرب وقوع قادم
+                $slotDate = \App\Helpers\PackageBookingHelper::resolveSlotDate($slot);
             } elseif ($slot->day_number !== null) {
                 $today = \Carbon\Carbon::today();
                 $dayNumberFromApp = (int) $slot->day_number;
