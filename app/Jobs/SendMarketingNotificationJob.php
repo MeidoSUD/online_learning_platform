@@ -19,7 +19,7 @@ class SendMarketingNotificationJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $timeout = 1200;
+    public int $timeout = 3600;
     public int $tries = 3;
 
     public function __construct(public int $campaignId)
@@ -49,6 +49,10 @@ class SendMarketingNotificationJob implements ShouldQueue
                             $sent++;
                         }
                     }
+
+                    // Persist progress after every chunk so the admin table shows
+                    // the counter climbing instead of only the final total.
+                    $campaign->fresh()->update(['total_sent' => $sent]);
                 });
 
             $campaign->update(['total_sent' => $sent, 'status' => $sent > 0 ? 'sent' : 'failed']);
@@ -61,8 +65,8 @@ class SendMarketingNotificationJob implements ShouldQueue
                 'status' => $campaign->fresh()->status,
             ]);
         } catch (\Throwable $exception) {
-            $campaign->update(['total_sent' => $sent, 'status' => 'failed']);
-            Log::error('Marketing campaign failed', ['campaign_id' => $campaign->id, 'error' => $exception->getMessage()]);
+            $campaign->fresh()->update(['total_sent' => $sent, 'status' => 'failed']);
+            Log::error('Marketing campaign failed', ['campaign_id' => $campaign->id, 'error' => $exception->getMessage(), 'delivered_before_error' => $sent]);
             throw $exception;
         }
     }

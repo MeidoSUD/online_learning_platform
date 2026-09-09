@@ -51,7 +51,7 @@ class MarketingSmsChannel
                 throw new RuntimeException("Unsupported SMS provider [{$provider}]");
             }
 
-            $client = new \GuzzleHttp\Client(['timeout' => 20]);
+            $client = new \GuzzleHttp\Client(['timeout' => 10]);
             $response = $client->post($url, [
                 'form_params' => $payload,
             ]);

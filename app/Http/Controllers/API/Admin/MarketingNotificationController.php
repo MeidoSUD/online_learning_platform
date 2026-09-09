@@ -64,25 +64,21 @@ class MarketingNotificationController extends Controller
 
             $message = 'Marketing notification scheduled successfully.';
         } else {
-            // "Send now": run synchronously (same Dreams.sa request as the
-            // register verification SMS) so delivery happens immediately.
-            SendMarketingNotificationJob::dispatchSync($campaign->id);
-            $campaign->refresh();
+            // "Send now": always queue for the background worker. Sending 150
+            // SMS synchronously inside the HTTP request exceeds PHP/nginx/browser
+            // timeouts and cuts the campaign short (only part gets delivered).
+            // The queue worker delivers to every recipient and updates
+            // total_sent on the way.
+            SendMarketingNotificationJob::dispatch($campaign->id);
 
-            Log::info('Marketing notification sent immediately', [
+            Log::info('Marketing notification queued for delivery', [
                 'campaign_id' => $campaign->id,
                 'channel' => $campaign->channel,
-                'total_recipients' => $campaign->total_targeted,
-                'total_sent' => $campaign->total_sent,
-                'status' => $campaign->status,
+                'total_targeted' => $campaign->total_targeted,
                 'admin_id' => $request->user()?->id,
             ]);
 
-            $message = $campaign->status === 'sent'
-                ? 'Marketing notification sent successfully.'
-                : ($campaign->status === 'failed'
-                    ? 'Marketing notification processed but failed to reach any recipient — check the log for SMS provider errors.'
-                    : 'Marketing notification queued for delivery.');
+            $message = 'Marketing notification is being sent to all recipients in the background.';
         }
 
         return response()->json([
