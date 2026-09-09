@@ -83,6 +83,7 @@ class BookingController extends Controller
             'type' => 'required|in:single,package',
             'sessions_count' => 'nullable|integer|min:1|max:50',
             'total_sessions' => 'nullable|integer|min:1|max:50',
+            'sessions_per_slot' => 'nullable|array',
             'special_requests' => 'nullable|string|max:500',
         ]);
 
@@ -383,7 +384,7 @@ class BookingController extends Controller
                 PackageBookingHelper::deductSubscriptionSessions($subscription, $sessionsCount);
                 PackageBookingHelper::markSlotsAsBooked($slots, $booking->id);
 
-                Sessions::createForBooking($booking);
+                Sessions::createForBooking($booking, $request->sessions_per_slot);
                 $booking->refresh();
                 $booking->createMeetingsForSessions();
 

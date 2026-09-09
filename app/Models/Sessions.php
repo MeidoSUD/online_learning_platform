@@ -436,7 +436,7 @@ class Sessions extends Model
 
     // Static methods
 
-    public static function createForBooking(Booking $booking): void
+    public static function createForBooking(Booking $booking, $sessionsPerSlot = null): void
     {
         $existingSessions = self::where('booking_id', $booking->id)->count();
         if ($existingSessions > 0) {
@@ -475,38 +475,51 @@ class Sessions extends Model
             // create one session per slot with its own date/time
             $booking->load('availabilitySlots');
             if ($booking->availabilitySlots->count() > 1) {
-                foreach ($booking->availabilitySlots as $index => $slot) {
-                    $slotDate = $slot->date && trim((string) $slot->date) !== ''
+                $sessionIndex = 1;
+                foreach ($booking->availabilitySlots as $slot) {
+                    $slotIdStr = (string)$slot->id;
+                    $sessionsForThisSlot = 1;
+                    if (is_array($sessionsPerSlot) && isset($sessionsPerSlot[$slotIdStr])) {
+                        $sessionsForThisSlot = (int)$sessionsPerSlot[$slotIdStr];
+                    }
+
+                    $firstSlotDate = $slot->date && trim((string) $slot->date) !== ''
                         ? ($slot->date instanceof Carbon ? $slot->date->format('Y-m-d') : (string) $slot->date)
                         : self::resolveSlotDate($slot);
+                        
+                    $startDate = Carbon::parse($firstSlotDate);
 
                     $startTime = self::extractTimeFromValue($slot->start_time);
                     $endTime = self::extractTimeFromValue($slot->end_time);
 
-                    $session = self::create([
-                        'booking_id' => $booking->id,
-                        'availability_slot_id' => $slot->id,
-                        'student_id' => $booking->student_id,
-                        'teacher_id' => $booking->teacher_id,
-                        'session_number' => $index + 1,
-                        'session_title' => $sessionTitle,
-                        'session_date' => $slotDate,
-                        'start_time' => $startTime,
-                        'end_time' => $endTime,
-                        'duration' => $slot->duration ?? $booking->session_duration,
-                        'status' => self::STATUS_SCHEDULED,
-                    ]);
+                    for ($i = 0; $i < $sessionsForThisSlot; $i++) {
+                        $sessionDate = $i === 0 ? $startDate : $startDate->copy()->addWeeks($i);
 
-                    if ($session) {
-                        Helpers::updateAvailabilitySlot($session->availability_slot_id);
+                        $session = self::create([
+                            'booking_id' => $booking->id,
+                            'availability_slot_id' => $slot->id,
+                            'student_id' => $booking->student_id,
+                            'teacher_id' => $booking->teacher_id,
+                            'session_number' => $sessionIndex++,
+                            'session_title' => $sessionTitle,
+                            'session_date' => $sessionDate->format('Y-m-d'),
+                            'start_time' => $startTime,
+                            'end_time' => $endTime,
+                            'duration' => $slot->duration ?? $booking->session_duration,
+                            'status' => self::STATUS_SCHEDULED,
+                        ]);
+
+                        if ($session) {
+                            Helpers::updateAvailabilitySlot($session->availability_slot_id);
+                        }
+
+                        Log::info("Multi-slot session {$session->session_number} created", [
+                            'session_id' => $session->id,
+                            'booking_id' => $booking->id,
+                            'slot_id' => $slot->id,
+                            'session_date' => $sessionDate->format('Y-m-d'),
+                        ]);
                     }
-
-                    Log::info("Multi-slot session {$session->session_number} created", [
-                        'session_id' => $session->id,
-                        'booking_id' => $booking->id,
-                        'slot_id' => $slot->id,
-                        'session_date' => $slotDate,
-                    ]);
                 }
                 return;
             }
