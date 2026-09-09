@@ -478,9 +478,14 @@ class Sessions extends Model
                 $sessionIndex = 1;
                 foreach ($booking->availabilitySlots as $slot) {
                     $slotIdStr = (string)$slot->id;
-                    $sessionsForThisSlot = 1;
-                    if (is_array($sessionsPerSlot) && isset($sessionsPerSlot[$slotIdStr])) {
+
+                    if (is_array($sessionsPerSlot)) {
+                        if (!isset($sessionsPerSlot[$slotIdStr]) || (int)$sessionsPerSlot[$slotIdStr] === 0) {
+                            continue;
+                        }
                         $sessionsForThisSlot = (int)$sessionsPerSlot[$slotIdStr];
+                    } else {
+                        $sessionsForThisSlot = 1;
                     }
 
                     $firstSlotDate = $slot->date && trim((string) $slot->date) !== ''

@@ -303,7 +303,7 @@ class PaymentController extends Controller
                                 'payment_id' => $payment->id,
                             ]);
                             
-                            Sessions::createForBooking($booking);
+                            Sessions::createForBooking($booking, $booking->sessions_per_slot);
                             
                             $booking->update(['status' => 'confirmed']);
                             
@@ -324,7 +324,7 @@ class PaymentController extends Controller
 
                             $courseGroup = \App\Models\CourseGroup::find($booking->course_group_id);
                             if ($courseGroup) {
-                                Sessions::createForBooking($booking);
+                                Sessions::createForBooking($booking, $booking->sessions_per_slot);
                                 $booking->update(['status' => 'confirmed']);
                                 $this->scheduleMeetingJobs($booking);
                                 $this->sendPaymentNotifications($booking);
@@ -337,7 +337,7 @@ class PaymentController extends Controller
                             ]);
 
                             // Create sessions
-                            Sessions::createForBooking($booking);
+                            Sessions::createForBooking($booking, $booking->sessions_per_slot);
                             
                             // Update booking status to confirmed
                             $booking->update(['status' => 'confirmed']);

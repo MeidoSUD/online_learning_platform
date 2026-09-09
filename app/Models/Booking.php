@@ -51,13 +51,15 @@ class Booking extends Model
         'cancellation_reason',
         'cancelled_at',
         'refund_amount',
-        'refund_percentage'
+        'refund_percentage',
+        'sessions_per_slot'
     ];
 
     protected $casts = [
         'first_session_date' => 'datetime',
         'first_session_start_time' => 'datetime:H:i',
         'first_session_end_time' => 'datetime:H:i',
+        'sessions_per_slot' => 'array',
         'booking_date' => 'datetime',
         'cancelled_at' => 'datetime',
         'price_per_session' => 'decimal:2',

@@ -360,6 +360,7 @@ class BookingController extends Controller
                 'special_requests' => $request->special_requests,
                 'status' => $isPackageBooking ? Booking::STATUS_CONFIRMED : Booking::STATUS_PENDING_PAYMENT,
                 'booking_date' => now(),
+                'sessions_per_slot' => $request->sessions_per_slot,
             ]);
 
             // ── Record activity ──
@@ -658,7 +659,7 @@ class BookingController extends Controller
                 $booking->update(['status' => Booking::STATUS_CONFIRMED]);
 
                 // Create sessions for the booking
-                Sessions::createForBooking($booking);
+                Sessions::createForBooking($booking, $booking->sessions_per_slot);
 
                 // Schedule meeting generation jobs
                 $this->scheduleSessionMeetingJobs($booking);
@@ -1047,7 +1048,7 @@ class BookingController extends Controller
                 ]);
 
                 $booking->update(['status' => Booking::STATUS_CONFIRMED]);
-                Sessions::createForBooking($booking);
+                Sessions::createForBooking($booking, $booking->sessions_per_slot);
                 $this->scheduleSessionMeetingJobs($booking);
                 DB::commit();
 
@@ -1882,7 +1883,7 @@ class BookingController extends Controller
             $booking = $payment->booking;
             if ($booking) {
                 $booking->update(['status' => Booking::STATUS_CONFIRMED]);
-                Sessions::createForBooking($booking);
+                Sessions::createForBooking($booking, $booking->sessions_per_slot);
                 $this->scheduleSessionMeetingJobs($booking);
             }
 
@@ -1997,7 +1998,7 @@ class BookingController extends Controller
 
                     $booking = $payment->booking;
                     $booking->update(['status' => Booking::STATUS_CONFIRMED]);
-                    Sessions::createForBooking($booking);
+                    Sessions::createForBooking($booking, $booking->sessions_per_slot);
                     $this->scheduleSessionMeetingJobs($booking);
                 }
             }
