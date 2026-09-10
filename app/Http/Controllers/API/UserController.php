@@ -1238,7 +1238,14 @@ class UserController extends Controller
             ->where('attached_to_type', 'cover_image')
             ->latest()
             ->value('file_path');
-
+        // الخدمة الرئيسية للمعلم: تؤخذ من أول خدمة في teacher_services
+        // وتُستخدم في الفرونت لاختيار عرض اللغات (language_learning) أو المواد (private_lessons)
+        $main_service_key = null;
+        $s = TeacherServices::where('teacher_id', $teacher->id)
+            ->with('service')
+            ->first();
+        if ($s)
+            $main_service_key = $s->service->key_name;
         // Normalize stored paths to absolute URLs (DB may hold relative paths
         // like "teachers/videos/x.mp4" or already-full URLs).
         $toPublicUrl = function ($path) {
@@ -1391,6 +1398,17 @@ class UserController extends Controller
                 })->values()->toArray();
         }
 
+        // Teacher abilities via relation User::teacherAbilities()
+        $abilities = $teacher->teacherAbilities()->with('ability')->get()
+            ->map(function ($ta) {
+                return [
+                    'id' => $ta->id,
+                    'ability_id' => $ta->ability_id,
+                    'name_en' => optional($ta->ability)->name_en ?? null,
+                    'name_ar' => optional($ta->ability)->name_ar ?? null,
+                ];
+            })->values()->toArray();
+
         // Get earnings data
         $earnings = DB::table('wallets')
             ->where('user_id', $teacher->id)
@@ -1532,14 +1550,7 @@ class UserController extends Controller
         if ($totalLessons === 0) {
             $totalLessons = (int) $totalBookings;
         }
-        // الخدمة الرئيسية للمعلم: تؤخذ من أول خدمة في teacher_services
-        // وتُستخدم في الفرونت لاختيار عرض اللغات (language_learning) أو المواد (private_lessons)
-        $main_service_key = null;
-        if (isset($primaryTS) && $primaryTS && $primaryTS->service) {
-            $main_service_key = $primaryTS->service->key_name;
-        } elseif (!empty($teacherServices)) {
-            $main_service_key = $teacherServices[0]['key_name'] ?? null;
-        }
+
         $d = [
             'id' => $teacher->id,
             'main_service_key' => $main_service_key,
@@ -1584,6 +1595,7 @@ class UserController extends Controller
                 'services' => $teacherServices,
                 'courses' => $courses,
                 'languages' => $languages,
+                'abilities' => $abilities,
                 'available_times' => $availableTimes,
                 'certificate_attachment' => $certificateAttachment,
                 'earnings' => $earnings,
