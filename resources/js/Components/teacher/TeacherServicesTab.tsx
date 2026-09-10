@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
-import { School, Save, Loader2, Building, ChevronLeft, ChevronRight, Check, Package, Upload, Award, ArrowRight, FileCheck2 } from 'lucide-react';
+import { School, Save, Loader2, Building, ChevronLeft, ChevronRight, Check, Package, Upload, Award, ArrowRight, FileCheck2, Pencil, X } from 'lucide-react';
 import { Button } from '../ui/Button';
-import { teacherService, authService, UserData } from '../../Services/api';
+import { teacherService, authService, UserData, getStorageUrl } from '../../Services/api';
 import { useToast } from '../../Contexts/ToastContext';
 import { getTeacherProfileCompleteness, TeacherCompleteness } from '../../Utils/teacherProfileCompleteness';
 
@@ -27,10 +27,14 @@ export const TeacherServicesTab: React.FC<TeacherServicesTabProps> = ({ onNaviga
     });
     const [allServices, setAllServices] = useState<{ id: number, name_en: string, name_ar: string, key_name?: string, description_en?: string, description_ar?: string }[]>([]);
     const [currentServiceIds, setCurrentServiceIds] = useState<number[]>([]);
-    const [addingServiceId, setAddingServiceId] = useState<number | null>(null);
+    // وضع التعديل: اختيار خدمة واحدة فقط (مثل فلاتر)
+    const [isEditingServices, setIsEditingServices] = useState(false);
+    const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
+    const [savingService, setSavingService] = useState(false);
     const [certificateFile, setCertificateFile] = useState<File | null>(null);
     const [certificateTitle, setCertificateTitle] = useState('');
     const [uploadingCertificate, setUploadingCertificate] = useState(false);
+    const [currentCertificateUrl, setCurrentCertificateUrl] = useState('');
     const [dismissed, setDismissed] = useState(false);
 
     const loadData = useCallback(async () => {
@@ -48,6 +52,20 @@ export const TeacherServicesTab: React.FC<TeacherServicesTabProps> = ({ onNaviga
                 );
                 setOfferPackages(!!profile.package_on_off);
                 setCompleteness(getTeacherProfileCompleteness(userData));
+                // الشهادة الحالية (مثل فلاتر: certificate / resume / certificate_attachment)
+                const p: any = profile;
+                const certRaw: string =
+                    p.certificate ||
+                    p.certificate_attachment?.file_path ||
+                    p.certificate_attachment?.filePath ||
+                    p.resume ||
+                    '';
+                const certClean = certRaw
+                    ? (/^https?:\/\//i.test(certRaw)
+                        ? certRaw
+                        : getStorageUrl(String(certRaw).replace(/^\//, '').replace(/^storage\//, '')))
+                    : '';
+                setCurrentCertificateUrl(certClean);
             }
 
             const srv = await teacherService.getTeacherServices();
@@ -98,22 +116,46 @@ export const TeacherServicesTab: React.FC<TeacherServicesTabProps> = ({ onNaviga
         }
     };
 
-    const handleAddService = async (serviceId: number) => {
-        setAddingServiceId(serviceId);
+    const startEditServices = () => {
+        setSelectedServiceId(currentServiceIds.length > 0 ? currentServiceIds[0] : null);
+        setIsEditingServices(true);
+    };
+
+    const handleSaveService = async () => {
+        if (!selectedServiceId) {
+            showToast(language === 'ar' ? 'يرجى اختيار خدمة واحدة' : 'Please select one service', 'error');
+            return;
+        }
+        setSavingService(true);
         try {
-            await teacherService.addTeacherService({ service_id: serviceId });
-            showToast(language === 'ar' ? 'تمت إضافة الخدمة بنجاح' : 'Service added successfully', 'success');
+            await teacherService.setTeacherService({ service_id: selectedServiceId });
+            showToast(language === 'ar' ? 'تم حفظ الخدمة بنجاح' : 'Service saved successfully', 'success');
+            setIsEditingServices(false);
             await loadData();
         } catch (e: any) {
-            showToast(e.message || (language === 'ar' ? 'فشلت إضافة الخدمة' : 'Failed to add service'), 'error');
+            showToast(e.message || (language === 'ar' ? 'فشل حفظ الخدمة' : 'Failed to save service'), 'error');
         } finally {
-            setAddingServiceId(null);
+            setSavingService(false);
         }
+    };
+
+    const MAX_CERT_SIZE = 5 * 1024 * 1024; // 5MB مثل الباك-إند
+
+    const handleCertificateFilePick = (file: File | null) => {
+        if (file && file.size > MAX_CERT_SIZE) {
+            showToast(language === 'ar' ? 'حجم الملف كبير (الحد الأقصى 5MB)' : 'File too large (max 5MB)', 'error');
+            return;
+        }
+        setCertificateFile(file);
     };
 
     const handleUploadCertificate = async () => {
         if (!certificateFile) {
             showToast(language === 'ar' ? 'يرجى اختيار ملف الشهادة أولاً' : 'Please choose a certificate file first', 'error');
+            return;
+        }
+        if (certificateFile.size > MAX_CERT_SIZE) {
+            showToast(language === 'ar' ? 'حجم الملف كبير (الحد الأقصى 5MB)' : 'File too large (max 5MB)', 'error');
             return;
         }
         setUploadingCertificate(true);
@@ -246,58 +288,93 @@ export const TeacherServicesTab: React.FC<TeacherServicesTabProps> = ({ onNaviga
                 </div>
             )}
 
-            {/* Services I provide */}
+            {/* Services I provide — اختيار واحد فقط مع أيقونة تعديل */}
             <div className="bg-white rounded-[var(--radius-md)] border border-primary/20 p-5 shadow-[var(--shadow-sm)]">
-                <div className="flex items-center gap-2 mb-4">
-                    <School size={22} className="text-primary" />
-                    <h3 className="font-bold text-primary text-base">
-                        {language === 'ar' ? 'الخدمات التي أقدمها' : 'Services I Provide'}
-                    </h3>
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                        <School size={22} className="text-primary" />
+                        <h3 className="font-bold text-primary text-base">
+                            {language === 'ar' ? 'الخدمات التي أقدمها' : 'Services I Provide'}
+                        </h3>
+                    </div>
+                    {!isEditingServices && allServices.length > 0 && (
+                        <button
+                            type="button"
+                            onClick={startEditServices}
+                            className="w-8 h-8 rounded-full bg-black/[0.04] flex items-center justify-center text-[#1F3D3A]/70 hover:bg-black/10 transition-colors"
+                            title={language === 'ar' ? 'تعديل' : 'Edit'}
+                        >
+                            <Pencil size={16} />
+                        </button>
+                    )}
                 </div>
                 {allServices.length === 0 ? (
                     <p className="text-sm text-[var(--text-muted)]">
                         {language === 'ar' ? 'لا توجد خدمات متاحة حالياً.' : 'No services available right now.'}
                     </p>
                 ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {allServices.map(svc => {
-                            const selected = currentServiceIds.includes(svc.id);
-                            return (
-                                <div
-                                    key={svc.id}
-                                    onClick={() => { if (!selected) handleAddService(svc.id); }}
-                                    className={`p-4 rounded-[var(--radius-md)] border-2 transition-all ${
-                                        selected
-                                            ? 'bg-primary/10 border-primary cursor-default'
-                                            : 'bg-white border-[var(--border)] cursor-pointer hover:border-primary'
-                                    }`}
-                                >
-                                    <div className="flex items-start justify-between gap-2">
-                                        <p className="font-bold text-[var(--text-main)] text-sm">
-                                            {language === 'ar' ? svc.name_ar : svc.name_en}
-                                        </p>
-                                        <div
-                                            className={`shrink-0 h-5 w-5 rounded-md flex items-center justify-center border-2 transition-all ${
-                                                selected ? 'bg-primary border-primary' : 'border-[var(--border)]'
-                                            }`}
-                                        >
-                                            {selected && <Check size={12} className="text-white" />}
+                    <>
+                        {!isEditingServices && (
+                            <p className="text-xs text-[var(--text-muted)] mb-3">
+                                {language === 'ar' ? 'خدمة واحدة فقط — اضغط أيقونة القلم للتغيير.' : 'Only one service — tap the pencil icon to change it.'}
+                            </p>
+                        )}
+                        {!isEditingServices && currentServiceIds.length === 0 && (
+                            <p className="text-sm text-[var(--text-muted)] mb-3">
+                                {language === 'ar' ? 'لم تختر خدمة بعد — اضغط أيقونة القلم للاختيار.' : 'No service selected yet — tap the pencil icon to choose.'}
+                            </p>
+                        )}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {(isEditingServices ? allServices : allServices.filter(svc => currentServiceIds.includes(svc.id))).map(svc => {
+                                const selected = isEditingServices
+                                    ? selectedServiceId === svc.id
+                                    : true;
+                                return (
+                                    <div
+                                        key={svc.id}
+                                        onClick={() => { if (isEditingServices) setSelectedServiceId(svc.id); }}
+                                        className={`p-4 rounded-[var(--radius-md)] border-2 transition-all ${
+                                            selected
+                                                ? 'bg-primary/10 border-primary'
+                                                : 'bg-white border-[var(--border)]'
+                                        } ${isEditingServices ? 'cursor-pointer hover:border-primary' : 'cursor-default'}`}
+                                    >
+                                        <div className="flex items-start justify-between gap-2">
+                                            <p className="font-bold text-[var(--text-main)] text-sm">
+                                                {language === 'ar' ? svc.name_ar : svc.name_en}
+                                            </p>
+                                            <div
+                                                className={`shrink-0 h-5 w-5 rounded-full flex items-center justify-center border-2 transition-all ${
+                                                    selected ? 'bg-primary border-primary' : 'border-[var(--border)]'
+                                                }`}
+                                            >
+                                                {selected && <Check size={12} className="text-white" />}
+                                            </div>
                                         </div>
+                                        <p className="text-[11px] text-[var(--text-muted)] mt-1 truncate">
+                                            {language === 'ar' ? svc.description_ar || svc.description_en : svc.description_en || svc.description_ar}
+                                        </p>
                                     </div>
-<p className="text-[11px] text-[var(--text-muted)] mt-1 truncate">
-                        {language === 'ar' ? svc.description_ar || svc.description_en : svc.description_en || svc.description_ar}
-                                    </p>
-                                    {addingServiceId === svc.id && (
-                                        <Loader2 className="animate-spin text-primary mt-2" size={14} />
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
+                                );
+                            })}
+                        </div>
+                        {isEditingServices && (
+                            <div className="flex gap-3 mt-4">
+                                <Button variant="ghost" className="flex-1" onClick={() => setIsEditingServices(false)} disabled={savingService}>
+                                    <X size={16} className="mr-2" />
+                                    {language === 'ar' ? 'إلغاء' : 'Cancel'}
+                                </Button>
+                                <Button className="flex-1" onClick={handleSaveService} isLoading={savingService} disabled={!selectedServiceId}>
+                                    <Save size={16} className="mr-2" />
+                                    {language === 'ar' ? 'حفظ الخدمة' : 'Save Service'}
+                                </Button>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
 
-            {/* Certificate upload */}
+            {/* Certificate upload — مثل فلاتر: متاح دائماً (رفع / استبدال) */}
             <div className="bg-white rounded-[var(--radius-md)] border border-primary/20 p-5 shadow-[var(--shadow-sm)]">
                 <div className="flex items-center gap-2 mb-4">
                     <FileCheck2 size={22} className="text-primary" />
@@ -305,42 +382,61 @@ export const TeacherServicesTab: React.FC<TeacherServicesTabProps> = ({ onNaviga
                         {language === 'ar' ? 'الشهادة الأكاديمية' : 'Academic Certificate'}
                     </h3>
                 </div>
-                {completeness.verified ? (
-                    <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2 inline-flex items-center gap-2">
+                {completeness.verified && (
+                    <p className="mb-3 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2 inline-flex items-center gap-2">
                         <Check size={16} /> {language === 'ar' ? 'حسابك موثق' : 'Your account is verified'}
                     </p>
+                )}
+                {currentCertificateUrl ? (
+                    <a
+                        href={currentCertificateUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mb-3 block text-sm font-medium text-primary underline"
+                    >
+                        {language === 'ar' ? 'الشهادة الحالية مرفقة (عرض الملف)' : 'Current certificate attached (view file)'}
+                    </a>
                 ) : (
-                    <div className="space-y-3">
-                        <p className="text-xs text-[var(--text-muted)]">
-                            {language === 'ar'
-                                ? 'ارفع شهادتك الأكاديمية (PDF أو JPG أو PNG، بحد أقصى 5MB) لتوثيق حسابك من قبل الإدارة.'
-                                : 'Upload your academic certificate (PDF, JPG, or PNG, max 5MB) so the admin can verify your account.'}
-                        </p>
-                        <input
-                            type="text"
-                            value={certificateTitle}
-                            onChange={(e) => setCertificateTitle(e.target.value)}
-                            placeholder={language === 'ar' ? 'عنوان الشهادة (اختياري)' : 'Certificate title (optional)'}
-                            className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"
-                        />
-                        <label className="flex items-center gap-3 border-2 border-dashed border-[var(--border)] rounded-[var(--radius-md)] p-4 cursor-pointer hover:border-primary transition-colors">
-                            <Upload size={20} className="text-primary shrink-0" />
-                            <span className="text-sm text-[var(--text-muted)] truncate">
-                                {certificateFile ? certificateFile.name : (language === 'ar' ? 'اختر ملف الشهادة' : 'Choose certificate file')}
-                            </span>
+                    <p className="mb-3 text-sm text-[var(--text-muted)]">
+                        {language === 'ar' ? 'لا توجد شهادة مرفقة بعد.' : 'No certificate attached yet.'}
+                    </p>
+                )}
+                <div className="space-y-3">
+                    <p className="text-xs text-[var(--text-muted)]">
+                        {language === 'ar'
+                            ? (currentCertificateUrl
+                                ? 'يمكنك استبدال الشهادة برفع ملف جديد (PDF أو JPG أو PNG، بحد أقصى 5MB).'
+                                : 'ارفع شهادتك الأكاديمية (PDF أو JPG أو PNG، بحد أقصى 5MB) لتوثيق حسابك من قبل الإدارة.')
+                            : (currentCertificateUrl
+                                ? 'You can replace the certificate by uploading a new file (PDF, JPG, or PNG, max 5MB).'
+                                : 'Upload your academic certificate (PDF, JPG, or PNG, max 5MB) so the admin can verify your account.')}
+                    </p>
+                    <input
+                        type="text"
+                        value={certificateTitle}
+                        onChange={(e) => setCertificateTitle(e.target.value)}
+                        placeholder={language === 'ar' ? 'عنوان الشهادة (اختياري)' : 'Certificate title (optional)'}
+                        className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                    />
+                    <label className="flex items-center gap-3 border-2 border-dashed border-[var(--border)] rounded-[var(--radius-md)] p-4 cursor-pointer hover:border-primary transition-colors">
+                        <Upload size={20} className="text-primary shrink-0" />
+                        <span className="text-sm text-[var(--text-muted)] truncate">
+                            {certificateFile ? certificateFile.name : (language === 'ar' ? 'اختر ملف الشهادة' : 'Choose certificate file')}
+                        </span>
                             <input
                                 type="file"
                                 accept=".pdf,.jpg,.jpeg,.png"
                                 className="hidden"
-                                onChange={(e) => setCertificateFile(e.target.files?.[0] || null)}
+                                onChange={(e) => handleCertificateFilePick(e.target.files?.[0] || null)}
                             />
-                        </label>
-                        <Button onClick={handleUploadCertificate} isLoading={uploadingCertificate} disabled={!certificateFile}>
-                            <Upload size={16} className="mr-2" />
-                            {language === 'ar' ? 'رفع الشهادة' : 'Upload certificate'}
-                        </Button>
-                    </div>
-                )}
+                    </label>
+                    <Button onClick={handleUploadCertificate} isLoading={uploadingCertificate} disabled={!certificateFile}>
+                        <Upload size={16} className="mr-2" />
+                        {currentCertificateUrl
+                            ? (language === 'ar' ? 'استبدال الشهادة' : 'Replace certificate')
+                            : (language === 'ar' ? 'رفع الشهادة' : 'Upload certificate')}
+                    </Button>
+                </div>
             </div>
 
             {/* Lesson Preferences Form */}

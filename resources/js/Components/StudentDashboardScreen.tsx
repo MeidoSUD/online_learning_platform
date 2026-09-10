@@ -84,7 +84,7 @@ export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ 
       case 'certificates':
         return <MyCertificates />;
       case 'profile':
-        return <ProfileTab />;
+        return <ProfileTab onNavigate={setActiveTab} />;
       case 'support':
         return <SupportTab />;
       case 'settings':

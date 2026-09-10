@@ -11,6 +11,7 @@ import { ProfileTab } from './dashboard/ProfileTab';
 import { TeacherServicesTab } from './teacher/TeacherServicesTab';
 import { TeacherCoursesTab } from './teacher/TeacherCoursesTab';
 import { TeacherLanguagesTab } from './teacher/TeacherLanguagesTab';
+import { TeacherAbilitiesTab } from './teacher/TeacherAbilitiesTab';
 import { TeacherLessonsTab } from './teacher/TeacherLessonsTab';
 import { ConsultationTab } from './teacher/ConsultationTab';
 import { DisputesTab } from './student/DisputesTab';
@@ -75,12 +76,14 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
         return <ConsultationTab />;
       case 'languages':
         return <TeacherLanguagesTab user={currentUser} />;
+      case 'abilities':
+        return <TeacherAbilitiesTab user={currentUser} />;
       case 'wallet':
         return <WalletTab user={currentUser} onNavigate={setActiveTab} />;
       case 'bank-accounts':
         return <BankAccountsPage user={currentUser} onNavigate={setActiveTab} />;
       case 'profile':
-        return <ProfileTab />;
+        return <ProfileTab onNavigate={setActiveTab} />;
       case 'services':
         return <TeacherServicesTab onNavigate={setActiveTab} />;
       case 'support':

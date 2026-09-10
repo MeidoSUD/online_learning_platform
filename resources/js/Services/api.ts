@@ -300,6 +300,8 @@ export const teacherService = {
   getServicesList: () => fetchWithAuth('/teacher/services').then(extractArray),
   getTeacherServices: () => fetchWithAuth('/teacher/get-services').then(res => res.data || res),
   addTeacherService: (payload: { service_id: number }) => fetchWithAuth('/teacher/teacher-service', { method: 'POST', body: JSON.stringify(payload) }),
+  // تعيين خدمة المعلم (واحدة فقط — تستبدل الحالية)
+  setTeacherService: (payload: { service_id: number }) => fetchWithAuth('/teacher/teacher-service', { method: 'PUT', body: JSON.stringify(payload) }),
   uploadTeacherCertificate: (formData: FormData) => fetchWithAuth('/teacher/teacher-upload-certificate', { method: 'POST', body: formData }),
   updateInfo: (data: any) => fetchWithAuth('/profile/teacher/info', { method: 'POST', body: JSON.stringify(data) }),
   addSubjects: (subject_ids: number[]) => fetchWithAuth('/teacher/subjects', { method: 'POST', body: JSON.stringify({ subjects_id: subject_ids }) }),
@@ -329,6 +331,26 @@ export const teacherService = {
   getConsultationDetails: (id: number) => fetchWithAuth(`/teacher/consultations/${id}`).then(res => res.data || res),
   scheduleConsultation: (id: number, data: { scheduled_date: string; scheduled_start_time: string; scheduled_end_time: string; admin_notes?: string }) =>
     fetchWithAuth(`/teacher/consultations/${id}/schedule`, { method: 'POST', body: JSON.stringify(data) }),
+};
+
+export const abilityService = {
+  // القائمة العامة لجميع القدرات: GET /abilities -> {success, data: [...]}
+  getAll: () => fetchWithAuth('/abilities').then(res => extractArray(res?.data ?? res)),
+  // قدرات المعلم: GET /teacher/abilities/{teacherId} -> {data: {abilities: [...]}}
+  getTeacherAbilities: (teacherId: number) =>
+    fetchWithAuth(`/teacher/abilities/${teacherId}`).then(res => {
+      const list = res?.data?.abilities ?? res?.abilities ?? [];
+      return Array.isArray(list) ? list : [];
+    }),
+  // مزامنة كاملة (مثل فلاتر: الحالي + الجديد): POST /teacher/abilities {ability_ids}
+  saveTeacherAbilities: (ability_ids: number[]) =>
+    fetchWithAuth('/teacher/abilities', { method: 'POST', body: JSON.stringify({ ability_ids }) }).then(res => {
+      const list = res?.data?.abilities ?? res?.abilities ?? [];
+      return Array.isArray(list) ? list : [];
+    }),
+  // حذف قدرة واحدة: DELETE /teacher/abilities/{abilityId}
+  deleteTeacherAbility: (abilityId: number) =>
+    fetchWithAuth(`/teacher/abilities/${abilityId}`, { method: 'DELETE' }),
 };
 
 export const studentService = {

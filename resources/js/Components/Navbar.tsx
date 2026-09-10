@@ -153,6 +153,14 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
         links.push({ id: 'languages', label: language === 'ar' ? 'لغات' : 'Languages' });
     }
 
+    // 4. Abilities (قدرات) — كشف عبر key_name مثل فلاتر (main_service_key contains 'abilit')
+    const hasAbilityService = activeServices.some(s =>
+        String(s.key_name || '').toLowerCase().includes('abilit')
+    );
+    if (hasAbilityService) {
+        links.push({ id: 'abilities', label: language === 'ar' ? 'قدرات' : 'Abilities' });
+    }
+
     // AI Educational Assistant
     links.push({ id: 'ai', label: language === 'ar' ? 'الذكاء الاصطناعي' : 'AI Assistant' });
 
