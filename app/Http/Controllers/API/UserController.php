@@ -1345,6 +1345,15 @@ class UserController extends Controller
             || str_contains($key, 'training')
         );
         $isLanguageService = $serviceKeys->contains(fn($key) => str_contains($key, 'lang') || str_contains($key, 'language'));
+        $isAbilityService = $serviceKeys->contains(fn($key) => str_contains($key, 'abilit'));
+
+        // الخدمة الرئيسية تُشتق من $primaryTS (بعد إزالة التكرار) لتكون متسقة مع services المعادة.
+        // الفرونت يستخدم main_service_key لاختيار القسم: لغات / مواد / قدرات.
+        if ($primaryTS && $primaryTS->service && !empty($primaryTS->service->key_name)) {
+            $main_service_key = $primaryTS->service->key_name;
+        } elseif (!empty($teacherServices)) {
+            $main_service_key = $teacherServices[0]['key_name'] ?? $main_service_key;
+        }
 
         // Services that produce subjects/courses (private lessons + course type)
         $courseServiceIds = $uniqueTS
@@ -1398,16 +1407,19 @@ class UserController extends Controller
                 })->values()->toArray();
         }
 
-        // Teacher abilities via relation User::teacherAbilities()
-        $abilities = $teacher->teacherAbilities()->with('ability')->get()
-            ->map(function ($ta) {
-                return [
-                    'id' => $ta->id,
-                    'ability_id' => $ta->ability_id,
-                    'name_en' => optional($ta->ability)->name_en ?? null,
-                    'name_ar' => optional($ta->ability)->name_ar ?? null,
-                ];
-            })->values()->toArray();
+        // Teacher abilities: only for ability service (same pattern as languages)
+        $abilities = [];
+        if ($isAbilityService) {
+            $abilities = $teacher->teacherAbilities()->with('ability')->get()
+                ->map(function ($ta) {
+                    return [
+                        'id' => $ta->id,
+                        'ability_id' => $ta->ability_id,
+                        'name_en' => optional($ta->ability)->name_en ?? null,
+                        'name_ar' => optional($ta->ability)->name_ar ?? null,
+                    ];
+                })->values()->toArray();
+        }
 
         // Get earnings data
         $earnings = DB::table('wallets')
@@ -1603,6 +1615,7 @@ class UserController extends Controller
                 'bookings_count' => (int) $totalBookings,
                 'subjects_count' => (int) count($teacherSubjects),
                 'languages_count' => (int) count($languages),
+                'abilities_count' => (int) count($abilities),
                 'courses_count' => (int) count($courses),
                 'teach_individual' => (bool) optional($teacher->teacherInfo)->teach_individual,
                 'package_on_off' => (bool) optional($teacher->teacherInfo)->package_on_off,
