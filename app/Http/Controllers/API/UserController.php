@@ -1230,6 +1230,35 @@ class UserController extends Controller
             ->where('attached_to_type', 'certificate')
             ->latest()
             ->value('file_path');
+        $introVideoRaw = $teacher->attachments()
+            ->where('attached_to_type', 'intro_video')
+            ->latest()
+            ->value('file_path');
+        $coverImageRaw = $teacher->attachments()
+            ->where('attached_to_type', 'cover_image')
+            ->latest()
+            ->value('file_path');
+
+        // Normalize stored paths to absolute URLs (DB may hold relative paths
+        // like "teachers/videos/x.mp4" or already-full URLs).
+        $toPublicUrl = function ($path) {
+            if (empty($path))
+                return null;
+            if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+                return $path;
+            }
+            $clean = ltrim($path, '/');
+            // Avoid doubling "storage/storage/..."
+            if (str_starts_with($clean, 'storage/')) {
+                $clean = substr($clean, strlen('storage/'));
+            }
+            // Paths saved via asset('storage/...') contain the host already handled above,
+            // so anything left here is a relative storage path.
+            return asset('storage/' . $clean);
+        };
+
+        $introVideo = $toPublicUrl($introVideoRaw);
+        $coverImage = $toPublicUrl($coverImageRaw);
 
         // Return the certificate attachment record (if exists) so client can show filename / id
         $certificateAttachment = $teacher->attachments()
@@ -1297,18 +1326,18 @@ class UserController extends Controller
         // (not just the first/primary one) so subject/language/course sections
         // are shown strictly based on the services the teacher selected.
         $serviceKeys = $uniqueTS
-            ->map(fn ($ts) => strtolower((string) optional($ts->service)->key_name))
+            ->map(fn($ts) => strtolower((string) optional($ts->service)->key_name))
             ->filter()
             ->values();
 
-        $isPrivateService = $serviceKeys->contains(fn ($key) => $key === 'private_lessons' || str_contains($key, 'private'));
+        $isPrivateService = $serviceKeys->contains(fn($key) => $key === 'private_lessons' || str_contains($key, 'private'));
         $isCourseService = $serviceKeys->contains(
-            fn ($key) => $key === 'courses'
-                || $key === 'training_courses'
-                || str_contains($key, 'course')
-                || str_contains($key, 'training')
+            fn($key) => $key === 'courses'
+            || $key === 'training_courses'
+            || str_contains($key, 'course')
+            || str_contains($key, 'training')
         );
-        $isLanguageService = $serviceKeys->contains(fn ($key) => str_contains($key, 'lang') || str_contains($key, 'language'));
+        $isLanguageService = $serviceKeys->contains(fn($key) => str_contains($key, 'lang') || str_contains($key, 'language'));
 
         // Services that produce subjects/courses (private lessons + course type)
         $courseServiceIds = $uniqueTS
@@ -1349,17 +1378,17 @@ class UserController extends Controller
 
         // Language study service: include teacher languages
         if ($isLanguageService) {
-                $languages = TeacherLanguage::where('teacher_id', $teacher->id)
-                    ->with('language')
-                    ->get()
-                    ->map(function ($tl) {
-                        return [
-                            'id' => $tl->id,
-                            'language_id' => $tl->language_id,
-                            'name_en' => optional($tl->language)->name_en ?? null,
-                            'name_ar' => optional($tl->language)->name_ar ?? null,
-                        ];
-                    })->values()->toArray();
+            $languages = TeacherLanguage::where('teacher_id', $teacher->id)
+                ->with('language')
+                ->get()
+                ->map(function ($tl) {
+                    return [
+                        'id' => $tl->id,
+                        'language_id' => $tl->language_id,
+                        'name_en' => optional($tl->language)->name_en ?? null,
+                        'name_ar' => optional($tl->language)->name_ar ?? null,
+                    ];
+                })->values()->toArray();
         }
 
         // Get earnings data
@@ -1396,36 +1425,41 @@ class UserController extends Controller
         $rating = round($reviews->avg('rating') ?? 0, 1);
 
         // Get teacher subjects with detailed info
-        $teacherSubjects = TeacherSubject::where('teacher_id', $teacher->id)
-            ->with([
-                'subject' => function ($q) {
-                    $q->select('id', 'name_en', 'name_ar', 'class_id', 'education_level_id');
-                },
-                'subject.class' => function ($q) {
-                    $q->select('id', 'name_en', 'name_ar', 'education_level_id');
-                },
-                'subject.educationLevel' => function ($q) {
-                    $q->select('id', 'name_en', 'name_ar');
-                }
-            ])
-            ->get()
-            ->map(function ($teacherSubject) {
-                return [
-                    'id' => $teacherSubject->id,
-                    'teacher_id' => $teacherSubject->teacher_id,
-                    'subject_id' => optional($teacherSubject->subject)->id ?? $teacherSubject->subject_id,
-                    'name_en' => $teacherSubject->subject->name_en ?? null,
-                    'name_ar' => $teacherSubject->subject->name_ar ?? null,
-                    'title' => $teacherSubject->subject->name_ar ?? $teacherSubject->subject->name_en,
-                    'class_id' => $teacherSubject->subject->class_id,
-                    'class_level_id' => $teacherSubject->subject->education_level_id,
-                    'class_level_title' => optional($teacherSubject->subject->educationLevel)->name_ar,
-                    'class_title' => optional($teacherSubject->subject->class)->name_ar,
-                ];
-            })
-            ->values()
-            ->toArray();
+        if ($isPrivateService) {
 
+
+            $teacherSubjects = TeacherSubject::where('teacher_id', $teacher->id)
+                ->with([
+                    'subject' => function ($q) {
+                        $q->select('id', 'name_en', 'name_ar', 'class_id', 'education_level_id');
+                    },
+                    'subject.class' => function ($q) {
+                        $q->select('id', 'name_en', 'name_ar', 'education_level_id');
+                    },
+                    'subject.educationLevel' => function ($q) {
+                        $q->select('id', 'name_en', 'name_ar');
+                    }
+                ])
+                ->get()
+                ->map(function ($teacherSubject) {
+                    return [
+                        'id' => $teacherSubject->id,
+                        'teacher_id' => $teacherSubject->teacher_id,
+                        'subject_id' => optional($teacherSubject->subject)->id ?? $teacherSubject->subject_id,
+                        'name_en' => $teacherSubject->subject->name_en ?? null,
+                        'name_ar' => $teacherSubject->subject->name_ar ?? null,
+                        'title' => $teacherSubject->subject->name_ar ?? $teacherSubject->subject->name_en,
+                        'class_id' => $teacherSubject->subject->class_id,
+                        'class_level_id' => $teacherSubject->subject->education_level_id,
+                        'class_level_title' => optional($teacherSubject->subject->educationLevel)->name_ar,
+                        'class_title' => optional($teacherSubject->subject->class)->name_ar,
+                    ];
+                })
+                ->values()
+                ->toArray();
+        } else {
+            $teacherSubjects = [];
+        }
         // Get availability slots grouped by day
         $availabilitySlots = AvailabilitySlot::where('teacher_id', $teacher->id)
             // ->where('is_available', true)
@@ -1498,9 +1532,17 @@ class UserController extends Controller
         if ($totalLessons === 0) {
             $totalLessons = (int) $totalBookings;
         }
-
-        return [
+        // الخدمة الرئيسية للمعلم: تؤخذ من أول خدمة في teacher_services
+        // وتُستخدم في الفرونت لاختيار عرض اللغات (language_learning) أو المواد (private_lessons)
+        $main_service_key = null;
+        if (isset($primaryTS) && $primaryTS && $primaryTS->service) {
+            $main_service_key = $primaryTS->service->key_name;
+        } elseif (!empty($teacherServices)) {
+            $main_service_key = $teacherServices[0]['key_name'] ?? null;
+        }
+        $d = [
             'id' => $teacher->id,
+            'main_service_key' => $main_service_key,
             'first_name' => $teacher->first_name,
             'last_name' => $teacher->last_name,
             'email' => $teacher->email,
@@ -1559,8 +1601,16 @@ class UserController extends Controller
                 'min_group_size' => (int) (optional($teacher->teacherInfo)->min_group_size ?? 0),
                 'code' => optional($teacher->teacherInfo)->code,
                 'teacher_subjects' => $teacherSubjects,
-            ]
+                'intro_video' => $introVideo,
+                'cover_image' => $coverImage,
+            ],
+            'intro_video' => $introVideo,
+            'cover_image' => $coverImage,
         ];
+
+        Log::warning("Teacher Data: ", ['teacher_data' => $d]);
+
+        return $d;
     }
 
 
