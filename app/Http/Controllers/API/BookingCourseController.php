@@ -145,7 +145,7 @@ class BookingCourseController extends Controller
                     } elseif ($slot->day_number !== null) {
                         $today = Carbon::today();
                         $dayNumberFromApp = (int) $slot->day_number;
-                        $carbonDayOfWeek = ($dayNumberFromApp === 1) ? 6 : ($dayNumberFromApp - 2);
+                        $carbonDayOfWeek = $dayNumberFromApp - 1;
                         $todayDow = $today->dayOfWeek;
                         $delta = ($carbonDayOfWeek - $todayDow + 7) % 7;
                         $candidate = $today->copy()->addDays($delta);
