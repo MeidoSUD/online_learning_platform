@@ -1586,6 +1586,7 @@ class UserController extends Controller
             'completed_lessons' => (int) $completedLessons,
             'lessons_count' => (int) $totalLessons,
             'profile' => [
+                'main_service_key' => $main_service_key,
                 'is_active' => (int) $teacher->is_active,
                 'profile_photo' => $profilePhoto,
                 'resume' => $resume,

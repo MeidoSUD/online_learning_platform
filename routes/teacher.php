@@ -110,6 +110,8 @@ Route::prefix('teacher')->middleware(['auth:sanctum', 'role:teacher'])->group(fu
     Route::post('/language-study/languages', [LanguageStudyController::class, 'addTeacherLanguages']);
     Route::put('/language-study/languages', [LanguageStudyController::class, 'updateTeacherLanguages']);
     Route::delete('/language-study/{languageId}', [LanguageStudyController::class, 'deleteTeacherLanguage']);
+    // اسم بديل يقبله إصدار التطبيق الذي ينادي /language-study/languages/{id}
+    Route::delete('/language-study/languages/{languageId}', [LanguageStudyController::class, 'deleteTeacherLanguage']);
 
     Route::get('/abilities/{teacherId}', [TeacherAbilityController::class, 'index']);
     Route::post('/abilities', [TeacherAbilityController::class, 'store']);
