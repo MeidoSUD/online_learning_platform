@@ -98,6 +98,20 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onSwitch, onVeri
         setRegisteredUserId(userId);
         setShowVerification(true);
         showToast(language === 'ar' ? "تم إرسال رمز التحقق" : "Verification code sent", 'success');
+
+        // Fire analytics events so the marketing team's campaigns can measure sign-ups.
+        try {
+          if (typeof window !== 'undefined') {
+            const win: any = window;
+            win.dataLayer = win.dataLayer || [];
+            win.dataLayer.push({ event: 'sign_up', role: roleId === 3 ? 'teacher' : roleId === 4 ? 'student' : 'other', method: 'web' });
+            if (typeof win.fbq === 'function') {
+              win.fbq('track', 'CompleteRegistration', { role: roleId === 3 ? 'teacher' : 'student' });
+            }
+          }
+        } catch {
+          // Analytics must never break registration.
+        }
       } else {
         // Fallback if no user ID returned but success (edge case)
         showToast(t.successRegister || "Registration successful", 'success');
