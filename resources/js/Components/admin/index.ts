@@ -24,5 +24,6 @@ export * from './SystemLogsTab';
 export * from './CertificatesTab';
 export * from './InstructionsTab';
 export * from './MarketingNotificationsTab';
+export * from './SystemReportsTab';
 export * from './ConsultationTab';
 export * from './AdminTeacherDetails';

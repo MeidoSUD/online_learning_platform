@@ -30,6 +30,12 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ activeTab, setActive
             isAction: true
         },
         {
+            id: 'reports',
+            label: language === 'ar' ? 'تقرير النظام والإحصاءات' : 'System Report & Statistics',
+            icon: BarChart3,
+            isAction: true
+        },
+        {
             id: 'users_group',
             label: language === 'ar' ? 'المستخدمين والأدوار' : 'Users & Roles',
             icon: Users,

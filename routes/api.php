@@ -43,6 +43,7 @@ use App\Http\Controllers\API\Admin\TermsConditionsAdminController;
 use App\Http\Controllers\API\Admin\SystemLogController;
 use App\Http\Controllers\API\Admin\ActivityRecordController;
 use App\Http\Controllers\API\Admin\MarketingNotificationController;
+use App\Http\Controllers\API\Admin\SystemReportController;
 
 
 use App\Http\Controllers\API\Admin\InstructionAdminController;
@@ -465,6 +466,9 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     Route::get('/dashboard', [DashboardController::class, 'dashboard']); // Comprehensive admin dashboard
     Route::get('/stats', [DashboardController::class, 'stats']);
     Route::get('/health', [DashboardController::class, 'health']);
+
+    // System coverage reports (subjects / levels / services / languages / abilities / time slots)
+    Route::get('/reports/system', [SystemReportController::class, 'stats']);
 
     // Admin-only booking actions
     Route::post('/bookings/{id}/mark-paid', [BookingAdminController::class, 'markPaid']);

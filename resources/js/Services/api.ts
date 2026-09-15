@@ -505,6 +505,7 @@ getMarketingAudienceCount: (target_type: string, target_user_id?: number, target
 
   getDashboardData: () => fetchWithAuth('/admin/dashboard'),
   getStats: () => fetchWithAuth('/admin/stats'),
+  getSystemReport: () => fetchWithAuth('/admin/reports/system').then(res => res.data ?? res),
   getUsers: (filters: any = {}) => {
     const params = { ...filters, per_page: Number(filters.per_page ?? 25) };
     const query = new URLSearchParams(params).toString();
