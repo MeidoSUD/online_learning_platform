@@ -37,7 +37,7 @@ export const ContactPage: React.FC = () => {
               <p className="text-lg">{language === 'ar' ? 'تواصل معنا لأي استفسار حول منتجاتنا وخدماتنا' : 'Get in touch with us for any inquiries about our products and services'}</p>
             </div>
             <div className="flex-1">
-              <img src="/heros/contact_us_2.jpg" alt="Contact us" className="w-full max-w-md mx-auto rounded-[var(--radius-lg)] shadow-[var(--shadow-lg)] border border-white/20" />
+              <img src="./heros/contact_us_2.jpg" alt="Contact us" className="w-full max-w-md mx-auto rounded-[var(--radius-lg)] shadow-[var(--shadow-lg)] border border-white/20" />
             </div>
           </div>
         </div>

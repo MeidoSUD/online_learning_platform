@@ -99,7 +99,7 @@ export const ServicePage: React.FC = () => {
               </p>
             </div>
             <div className="flex-1">
-              <img src="/heros/teacher.png" alt="Our Services" className="w-full max-w-md mx-auto rounded-[var(--radius-lg)] shadow-[var(--shadow-lg)] border border-white/20" />
+              <img src="./heros/teacher.png" alt="Our Services" className="w-full max-w-md mx-auto rounded-[var(--radius-lg)] shadow-[var(--shadow-lg)] border border-white/20" />
             </div>
           </div>
         </div>

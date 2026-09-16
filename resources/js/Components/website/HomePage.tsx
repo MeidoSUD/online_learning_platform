@@ -67,7 +67,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onRegisterClic
                             <div className="hero-visual">
                                 <div className="hero-book-visual" style={{ borderRadius: 'var(--radius-lg)', background: 'transparent', boxShadow: 'none', overflow: 'hidden' }}>
                                     <img
-                                        src="/heros/hero1.png"
+                                        src="./heros/hero1.png"
                                         alt="Ewan learning"
                                         className="w-full h-[400px] object-cover"
                                     />

@@ -33,7 +33,7 @@ export const ProfileView: React.FC = () => {
           <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="relative">
             <div className="aspect-[4/5] bg-slate-100 rounded-[2rem] md:rounded-[4rem] overflow-hidden shadow-2xl relative z-10 border-4 border-white">
               <img 
-                src="/heros/online_learning.png" 
+                src="./heros/online_learning.png"
                 alt="online ed" 
                 className="w-full h-full object-cover"
               />
