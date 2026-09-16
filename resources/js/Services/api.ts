@@ -269,6 +269,7 @@ export const fetchWithProgress = (endpoint: string, options: { method?: string, 
 export const authService = {
   login: (credentials: any) => fetchWithAuth('/auth/login', { method: 'POST', body: JSON.stringify(credentials) }),
   register: (data: any) => fetchWithAuth('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
+  registerTeacherWeb: (data: any) => fetchWithAuth('/auth/register-teacher-web', { method: 'POST', body: JSON.stringify(data) }),
   verifyCode: (data: { user_id: number, code: string }) => fetchWithAuth('/auth/verify', { method: 'POST', body: JSON.stringify(data) }),
   resendCode: (data: { user_id: number }) => fetchWithAuth('/auth/resend-code', { method: 'POST', body: JSON.stringify(data) }),
   getProfile: () => fetchWithAuth(`/auth/user/details?_t=${Date.now()}`),

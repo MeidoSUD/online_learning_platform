@@ -171,6 +171,7 @@ Route::prefix('auth')->group(function () {
     Route::post('login', [AuthController::class, 'login']);
     Route::post('register', [AuthController::class, 'register']); // Unified register - routes to teacher or student
     Route::post('register-teacher', [AuthController::class, 'registerTeacher']); // Explicit teacher registration
+    Route::post('register-teacher-web', [AuthController::class, 'registerTeacherWeb']); // Web-only teacher registration
     Route::post('register-student', [AuthController::class, 'registerStudent']); // Explicit student registration
     Route::post('verify', [AuthController::class, 'verifyCode']);
     Route::post('resend-code', [AuthController::class, 'resendCode']);

@@ -4,6 +4,7 @@ import { useLanguage } from '../Contexts/LanguageContext';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
 import { CountrySelect } from './ui/CountrySelect';
+import { COUNTRIES } from '../Utils/constants';
 import { PhoneInput } from './ui/PhoneInput';
 import { Button } from './ui/Button';
 import { Logo } from './Logo';
@@ -39,6 +40,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onSwitch, onVeri
     password: '',
     confirmPassword: '',
     notionalId: '',
+    nationality: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -57,11 +59,12 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onSwitch, onVeri
       newErrors.email = t.invalidEmail;
     }
 
-    if (!formData.phone) {
+    if (roleId !== 3 && !formData.phone) {
       newErrors.phone = t.required;
-    } else if (!phoneRegex.test(formData.phone)) {
+    } else if (roleId !== 3 && !phoneRegex.test(formData.phone)) {
       newErrors.phone = "Must start with 5 and be 9 digits";
     }
+    if (roleId === 3 && !formData.nationality) newErrors.nationality = t.required;
 
     if (!formData.password) newErrors.password = t.required;
     if (formData.password !== formData.confirmPassword) {
@@ -80,17 +83,24 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onSwitch, onVeri
       first_name: formData.firstName,
       last_name: formData.lastName,
       email: formData.email,
-      phone_number: `+966${formData.phone}`,
       password: formData.password,
       role_id: roleId,
     };
+    if (roleId === 3) {
+      apiData.nationality = formData.nationality;
+      apiData.country_key = COUNTRIES.find(country => country.label === formData.nationality)?.code;
+    } else {
+      apiData.phone_number = `+966${formData.phone}`;
+    }
     if (formData.notionalId.trim()) {
       apiData.notional_id = formData.notionalId.trim();
     }
 
     setIsLoading(true);
     try {
-      const response = await authService.register(apiData);
+      const response = roleId === 3
+        ? await authService.registerTeacherWeb(apiData)
+        : await authService.register(apiData);
       // Assuming register response contains user object with id
       const userId = response.user?.id || response.data?.id || response.user?.data?.id;
 
@@ -288,12 +298,21 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onSwitch, onVeri
               error={errors.notionalId}
             />
 
-            <PhoneInput
+            {roleId !== 3 && <PhoneInput
               label={t.phone}
               value={formData.phone}
               onChangeText={(text) => handleChange('phone', text)}
               error={errors.phone}
-            />
+            />}
+
+            {roleId === 3 && (
+              <CountrySelect
+                label={t.nationality}
+                value={formData.nationality}
+                onChange={(value) => handleChange('nationality', value)}
+                error={errors.nationality}
+              />
+            )}
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Input

@@ -24,6 +24,7 @@ use App\Models\SupportTicketReply;
 use App\Models\UserProfile;
 use App\Models\TeacherServices;
 use App\Traits\ApiResponse;
+use App\Helpers\CountryTimezone;
 
 class AuthController extends Controller
 {
@@ -322,14 +323,7 @@ class AuthController extends Controller
                 Log::warning('Failed to sync ProfileComplete after registration', ['user_id' => $user->id, 'error' => $e->getMessage()]);
             }
 
-            // Send verification code
-            $smsPhone = PhoneHelper::normalizeForSMS($normalizedPhone);
-            try {
-                $this->sendVerificationSMS($smsPhone, $verification_code);
-            } catch (\Exception $e) {
-                Log::warning('Failed to send SMS', ['error' => $e->getMessage()]);
-            }
-
+            // Mobile registration verification is email-only.
             try {
                 Mail::to($user->email)->send(new VerificationCodeMail($user, $verification_code, 'register'));
             } catch (\Exception $e) {
@@ -351,8 +345,8 @@ class AuthController extends Controller
                 'success' => true,
                 'code' => 'REGISTRATION_SUCCESS',
                 'status' => 'unverified',
-                'message_en' => 'Teacher registration successful. Verification code sent via SMS and email.',
-                'message_ar' => 'تم تسجيل المعلم بنجاح. تم إرسال رمز التحقق عبر الرسائل النصية والبريد الإلكتروني.',
+                'message_en' => 'Teacher registration successful. Verification code sent by email.',
+                'message_ar' => 'تم تسجيل المعلم بنجاح. تم إرسال رمز التحقق عبر البريد الإلكتروني.',
                 'user' => $user_response,
             ], 201);
 
@@ -386,6 +380,67 @@ class AuthController extends Controller
                 'message_ar' => 'حدث خطأ أثناء التسجيل. يرجى المحاولة لاحقًا.',
             ], 500);
         }
+    }
+
+    /**
+     * Web-only teacher registration. Phone verification is intentionally not
+     * part of this flow; the existing mobile registration remains separate.
+     */
+    public function registerTeacherWeb(Request $request)
+    {
+        $validated = $request->validate([
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'email' => 'required|string|email|unique:users,email',
+            'password' => 'required|string|min:8',
+            'nationality' => 'required|string|max:255',
+            'country_key' => 'nullable|string|size:2',
+            'notional_id' => 'nullable|string|max:255',
+        ]);
+
+        $verificationCode = random_int(1000, 9999);
+        $user = DB::transaction(function () use ($validated, $verificationCode) {
+            return User::create([
+                'first_name' => $validated['first_name'],
+                'last_name' => $validated['last_name'],
+                'email' => $validated['email'],
+                'phone_number' => null,
+                'nationality' => $validated['nationality'],
+                'timezone' => CountryTimezone::fromCountry($validated['country_key'] ?? null, $validated['nationality']),
+                'notional_id' => $validated['notional_id'] ?? null,
+                'password' => Hash::make($validated['password']),
+                'role_id' => 3,
+                'verified' => false,
+                'verification_code' => $verificationCode,
+            ]);
+        });
+
+        try {
+            Mail::to($user->email)->send(new VerificationCodeMail($user, $verificationCode, 'register'));
+        } catch (\Throwable $e) {
+            Log::warning('Failed to send web teacher verification email', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'code' => 'REGISTRATION_SUCCESS',
+            'status' => 'unverified',
+            'message_en' => 'Teacher registration successful. Verification code sent by email.',
+            'message_ar' => 'تم تسجيل المعلم بنجاح. تم إرسال رمز التحقق عبر البريد الإلكتروني.',
+            'user' => [
+                'id' => $user->id,
+                'first_name' => $user->first_name,
+                'last_name' => $user->last_name,
+                'email' => $user->email,
+                'phone_number' => null,
+                'nationality' => $user->nationality,
+                'timezone' => $user->timezone,
+                'role_id' => $user->role_id,
+            ],
+        ], 201);
     }
 
     /**
