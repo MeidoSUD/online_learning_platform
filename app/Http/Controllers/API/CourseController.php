@@ -717,7 +717,8 @@ TeacherProfileHelper::checkAndUpdateProfileCompleted( $teacherId);
         $course->availability_slots()->delete();
         $course->courseLessons()->delete();
         $course->delete();
-TeacherProfileHelper::checkAndUpdateProfileCompleted( $teacherId);
+        $teacherId = auth()->user()->id;
+        TeacherProfileHelper::checkAndUpdateProfileCompleted($teacherId);
 
         return response()->json([
             'success' => true,

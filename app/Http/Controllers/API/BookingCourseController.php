@@ -145,7 +145,7 @@ class BookingCourseController extends Controller
                     } elseif ($slot->day_number !== null) {
                         $today = Carbon::today();
                         $dayNumberFromApp = (int) $slot->day_number;
-                        $carbonDayOfWeek = $dayNumberFromApp - 1;
+                        $carbonDayOfWeek = ($dayNumberFromApp + 5) % 7;
                         $todayDow = $today->dayOfWeek;
                         $delta = ($carbonDayOfWeek - $todayDow + 7) % 7;
                         $candidate = $today->copy()->addDays($delta);
@@ -387,8 +387,8 @@ class BookingCourseController extends Controller
     private function getDayName(?int $dayNumber): string
     {
         $dayNames = [
-            0 => 'Sunday', 1 => 'Monday', 2 => 'Tuesday', 3 => 'Wednesday',
-            4 => 'Thursday', 5 => 'Friday', 6 => 'Saturday',
+            1 => 'Saturday', 2 => 'Sunday', 3 => 'Monday', 4 => 'Tuesday',
+            5 => 'Wednesday', 6 => 'Thursday', 7 => 'Friday',
         ];
         return $dayNames[$dayNumber] ?? 'Unknown';
     }

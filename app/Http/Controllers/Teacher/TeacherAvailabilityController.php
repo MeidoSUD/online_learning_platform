@@ -26,13 +26,13 @@ class TeacherAvailabilityController extends Controller
 
         // Define days of week
         $daysOfWeek = [
-            1 => app()->getLocale() == 'ar' ? 'الأحد' : 'Sunday',
-            2 => app()->getLocale() == 'ar' ? 'الإثنين' : 'Monday',
-            3 => app()->getLocale() == 'ar' ? 'الثلاثاء' : 'Tuesday',
-            4 => app()->getLocale() == 'ar' ? 'الأربعاء' : 'Wednesday',
-            5 => app()->getLocale() == 'ar' ? 'الخميس' : 'Thursday',
-            6 => app()->getLocale() == 'ar' ? 'الجمعة' : 'Friday',
-            7 => app()->getLocale() == 'ar' ? 'السبت' : 'Saturday',
+            1 => app()->getLocale() == 'ar' ? 'السبت' : 'Saturday',
+            2 => app()->getLocale() == 'ar' ? 'الأحد' : 'Sunday',
+            3 => app()->getLocale() == 'ar' ? 'الإثنين' : 'Monday',
+            4 => app()->getLocale() == 'ar' ? 'الثلاثاء' : 'Tuesday',
+            5 => app()->getLocale() == 'ar' ? 'الأربعاء' : 'Wednesday',
+            6 => app()->getLocale() == 'ar' ? 'الخميس' : 'Thursday',
+            7 => app()->getLocale() == 'ar' ? 'الجمعة' : 'Friday',
         ];
 
         // Generate time slots 
@@ -117,13 +117,13 @@ class TeacherAvailabilityController extends Controller
             ->firstOrFail();
 
         $daysOfWeek = [
-            1 => app()->getLocale() == 'ar' ? 'الأحد' : 'Sunday',
-            2 => app()->getLocale() == 'ar' ? 'الإثنين' : 'Monday',
-            3 => app()->getLocale() == 'ar' ? 'الثلاثاء' : 'Tuesday',
-            4 => app()->getLocale() == 'ar' ? 'الأربعاء' : 'Wednesday',
-            5 => app()->getLocale() == 'ar' ? 'الخميس' : 'Thursday',
-            6 => app()->getLocale() == 'ar' ? 'الجمعة' : 'Friday',
-            7 => app()->getLocale() == 'ar' ? 'السبت' : 'Saturday',
+            1 => app()->getLocale() == 'ar' ? 'السبت' : 'Saturday',
+            2 => app()->getLocale() == 'ar' ? 'الأحد' : 'Sunday',
+            3 => app()->getLocale() == 'ar' ? 'الإثنين' : 'Monday',
+            4 => app()->getLocale() == 'ar' ? 'الثلاثاء' : 'Tuesday',
+            5 => app()->getLocale() == 'ar' ? 'الأربعاء' : 'Wednesday',
+            6 => app()->getLocale() == 'ar' ? 'الخميس' : 'Thursday',
+            7 => app()->getLocale() == 'ar' ? 'الجمعة' : 'Friday',
         ];
 
         // Generate time slots

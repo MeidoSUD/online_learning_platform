@@ -241,13 +241,13 @@ class BookingController extends Controller
                 $slotDate = PackageBookingHelper::resolveSlotDate($slot);
             } elseif ($slot->day_number !== null) {
                 // Compute next occurrence of the weekday
-                // day_number format: 1=Sunday, 2=Monday, 3=Tuesday, 4=Wednesday, 5=Thursday, 6=Friday, 7=Saturday
+                // day_number format: 1=Saturday, 2=Sunday, 3=Monday, 4=Tuesday, 5=Wednesday, 6=Thursday, 7=Friday
                 // Convert to Carbon dayOfWeek format: 0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday
                 $today = Carbon::today();
                 $dayNumberFromApp = (int) $slot->day_number;
 
-                // Convert app day number (1-7, starting Sunday) to Carbon dayOfWeek (0-6, starting Sunday)
-                $carbonDayOfWeek = $dayNumberFromApp - 1;
+                // Convert app day number (1-7, starting Saturday) to Carbon dayOfWeek (0-6, starting Sunday)
+                $carbonDayOfWeek = ($dayNumberFromApp + 5) % 7;
 
                 $todayDow = $today->dayOfWeek; // 0 (Sunday) .. 6 (Saturday)
                 $delta = ($carbonDayOfWeek - $todayDow + 7) % 7;
@@ -1748,15 +1748,15 @@ class BookingController extends Controller
     private function getDayName(?int $dayNumber): string
     {
         // Map app day_number format (1-7) to day names
-        // 1=Sunday, 2=Monday, 3=Tuesday, 4=Wednesday, 5=Thursday, 6=Friday, 7=Saturday
+        // 1=Saturday, 2=Sunday, 3=Monday, 4=Tuesday, 5=Wednesday, 6=Thursday, 7=Friday
         $dayNames = [
-            1 => 'Sunday',
-            2 => 'Monday',
-            3 => 'Tuesday',
-            4 => 'Wednesday',
-            5 => 'Thursday',
-            6 => 'Friday',
-            7 => 'Saturday',
+            1 => 'Saturday',
+            2 => 'Sunday',
+            3 => 'Monday',
+            4 => 'Tuesday',
+            5 => 'Wednesday',
+            6 => 'Thursday',
+            7 => 'Friday',
         ];
         return $dayNames[$dayNumber] ?? 'Unknown';
     }

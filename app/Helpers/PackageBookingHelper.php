@@ -155,11 +155,11 @@ class PackageBookingHelper
     }
 
     /**
-     * Convert the application day number (1=Sunday .. 7=Saturday) to Carbon.
+     * Convert the application day number (1=Saturday .. 7=Friday) to Carbon.
      */
     private static function appDayToCarbon(int $dayNumber): int
     {
-        return $dayNumber - 1;
+        return ($dayNumber + 5) % 7;
     }
 
     private static function extractSlotTime($value): string
