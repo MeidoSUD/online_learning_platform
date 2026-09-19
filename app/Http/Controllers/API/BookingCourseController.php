@@ -126,10 +126,14 @@ class BookingCourseController extends Controller
                     $slot = AvailabilitySlot::where('id', $slotId)->lockForUpdate()->firstOrFail();
 
                     $reasons = [];
-                    if (!$slot->is_available) $reasons[] = 'slot_not_available';
-                    if ($slot->is_booked) $reasons[] = 'slot_already_booked';
-                    if ($slot->teacher_id !== $course->teacher_id) $reasons[] = 'slot_teacher_mismatch';
-                    if ($slot->course_id !== $course->id) $reasons[] = 'slot_course_mismatch';
+                    if (!$slot->is_available)
+                        $reasons[] = 'slot_not_available';
+                    if ($slot->is_booked)
+                        $reasons[] = 'slot_already_booked';
+                    if ($slot->teacher_id !== $course->teacher_id)
+                        $reasons[] = 'slot_teacher_mismatch';
+                    if ($slot->course_id !== $course->id)
+                        $reasons[] = 'slot_course_mismatch';
                     if (count($reasons) > 0) {
                         return response()->json([
                             'success' => false,
@@ -139,7 +143,7 @@ class BookingCourseController extends Controller
                     }
 
                     $slotDate = null;
-                    if ($slot->date && trim((string)$slot->date) !== '') {
+                    if ($slot->date && trim((string) $slot->date) !== '') {
                         // أقرب وقوع قادم دائماً: التاريخ المستقبلي كما هو، والماضي يُنقل لأقرب وقوع قادم
                         $slotDate = PackageBookingHelper::resolveSlotDate($slot);
                     } elseif ($slot->day_number !== null) {
@@ -167,7 +171,7 @@ class BookingCourseController extends Controller
                     $firstSessionEndTime = $this->extractTimeOnly($slot->end_time);
 
                     $sessionsCountInput = $request->total_sessions ?? $request->sessions_count;
-                    $sessionsCount = (int)($sessionsCountInput ?? ($request->type === 'package' ? 1 : 1));
+                    $sessionsCount = (int) ($sessionsCountInput ?? ($request->type === 'package' ? 1 : 1));
                 }
             } else {
                 $teacherId = $request->teacher_id;
@@ -175,7 +179,7 @@ class BookingCourseController extends Controller
                 $sessionDuration = 60;
                 $basePrice = ($request->type === 'single') ? ($teacherInfo->individual_hour_price ?? 0) : ($teacherInfo->group_hour_price ?? 0);
                 $currency = 'SAR';
-                $sessionsCount = $request->type === 'package' ? (int)($request->sessions_count ?? 1) : 1;
+                $sessionsCount = $request->type === 'package' ? (int) ($request->sessions_count ?? 1) : 1;
                 $firstSessionDate = null;
                 $startTime = null;
                 $firstSessionEndTime = null;
@@ -378,17 +382,25 @@ class BookingCourseController extends Controller
 
     private function calculatePackageDiscount(int $sessionsCount): float
     {
-        if ($sessionsCount >= 20) return 20;
-        if ($sessionsCount >= 10) return 15;
-        if ($sessionsCount >= 5) return 10;
+        if ($sessionsCount >= 20)
+            return 20;
+        if ($sessionsCount >= 10)
+            return 15;
+        if ($sessionsCount >= 5)
+            return 10;
         return 0;
     }
 
     private function getDayName(?int $dayNumber): string
     {
         $dayNames = [
-            1 => 'Saturday', 2 => 'Sunday', 3 => 'Monday', 4 => 'Tuesday',
-            5 => 'Wednesday', 6 => 'Thursday', 7 => 'Friday',
+            1 => 'Saturday',
+            2 => 'Sunday',
+            3 => 'Monday',
+            4 => 'Tuesday',
+            5 => 'Wednesday',
+            6 => 'Thursday',
+            7 => 'Friday',
         ];
         return $dayNames[$dayNumber] ?? 'Unknown';
     }
@@ -398,7 +410,7 @@ class BookingCourseController extends Controller
         if ($timeValue instanceof Carbon) {
             return $timeValue->format('H:i:s');
         }
-        $timeStr = (string)$timeValue;
+        $timeStr = (string) $timeValue;
         if (strlen($timeStr) === 8 && preg_match('/^\d{2}:\d{2}:\d{2}$/', $timeStr)) {
             return $timeStr;
         }

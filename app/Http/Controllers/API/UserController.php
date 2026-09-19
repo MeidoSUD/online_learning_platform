@@ -447,6 +447,22 @@ class UserController extends Controller
                 $user->update($updateData);
             }
 
+            // [intro_video] تشخيص الرفع: هل وصل الملف أصلاً أم أسقطه PHP/السيرفر؟
+            $introProbe = $request->file('intro_video');
+            Log::info('[intro_video] upload probe', [
+                'user_id' => $user->id,
+                'has_file' => $request->hasFile('intro_video'),
+                'all_files' => array_keys($request->allFiles()),
+                'content_length' => $request->server('CONTENT_LENGTH'),
+                'upload_max_filesize' => ini_get('upload_max_filesize'),
+                'post_max_size' => ini_get('post_max_size'),
+                'orig_name' => $introProbe ? $introProbe->getClientOriginalName() : null,
+                'mime' => $introProbe ? $introProbe->getClientMimeType() : null,
+                'size' => $introProbe ? $introProbe->getSize() : null,
+                'error_code' => $introProbe ? $introProbe->getError() : null,
+                'error_msg' => $introProbe ? $introProbe->getErrorMessage() : null,
+            ]);
+
             // Check if this is institute registration
             if ($request->input('teacher_type') === 'institute') {
                 $this->updateInstituteProfile($request, $user);
@@ -534,8 +550,16 @@ class UserController extends Controller
             $this->saveUserAttachment($request, 'cover_image', 'teachers/covers', $user, 'cover_image');
         }
 
+        // [intro_video] الفيديو التعريفي — مع لوج يوضح هل حُفظ أم تُجوهل ولماذا
         if ($request->hasFile('intro_video')) {
+            Log::info('[intro_video] file detected, saving...', ['user_id' => $user->id]);
             $this->saveUserAttachment($request, 'intro_video', 'teachers/videos', $user, 'intro_video');
+            Log::info('[intro_video] save finished', ['user_id' => $user->id]);
+        } elseif ($request->has('intro_video')) {
+            // المفتاح موجود كنص (رابط قديم) وليس ملفاً مرفوعاً — لا حاجة لفعل شيء
+            Log::info('[intro_video] key present as scalar (old url?), no new file', ['user_id' => $user->id]);
+        } else {
+            Log::info('[intro_video] no file in request (nothing to save)', ['user_id' => $user->id]);
         }
     }
 
@@ -675,19 +699,44 @@ class UserController extends Controller
         }
 
         try {
+            $file = $request->file($fieldName);
+            Log::info("[intro_video] saveUserAttachment start", [
+                'user_id' => $user->id,
+                'field' => $fieldName,
+                'orig_name' => $file ? $file->getClientOriginalName() : null,
+                'mime' => $file ? $file->getClientMimeType() : null,
+                'size' => $file ? $file->getSize() : null,
+                'tmp_path' => $file ? $file->getPathname() : null,
+                'disk' => config('filesystems.default'),
+                'public_disk_root' => config('filesystems.disks.public.root'),
+            ]);
+
             // Delete old attachment if exists for this user and type
             $oldAttachment = Attachment::where('user_id', $user->id)
                 ->where('attached_to_type', $attachmentType)
                 ->first();
 
-            if ($oldAttachment && Storage::exists($oldAttachment->file_path)) {
-                Storage::delete($oldAttachment->file_path);
+            if ($oldAttachment) {
+                $oldExists = Storage::disk('public')->exists($oldAttachment->file_path);
+                Log::info("[intro_video] old attachment", [
+                    'user_id' => $user->id,
+                    'old_path' => $oldAttachment->file_path,
+                    'exists_on_public_disk' => $oldExists,
+                ]);
+                if ($oldExists) {
+                    Storage::disk('public')->delete($oldAttachment->file_path);
+                }
             }
 
-            $file = $request->file($fieldName);
             $filePath = $file->store($path, 'public');
+            Log::info("[intro_video] stored on public disk", [
+                'user_id' => $user->id,
+                'stored_path' => $filePath,
+                'verify_exists' => Storage::disk('public')->exists($filePath),
+                'public_url' => asset('storage/' . $filePath),
+            ]);
 
-            Attachment::updateOrCreate(
+            $record = Attachment::updateOrCreate(
                 [
                     'user_id' => $user->id,
                     'attached_to_type' => $attachmentType,
@@ -704,10 +753,14 @@ class UserController extends Controller
 
             Log::info("User $attachmentType uploaded", [
                 'user_id' => $user->id,
-                'path' => $filePath
+                'path' => $filePath,
+                'attachment_id' => $record->id,
             ]);
         } catch (\Exception $e) {
-            Log::error("Failed to upload user $attachmentType: " . $e->getMessage());
+            Log::error("Failed to upload user $attachmentType: " . $e->getMessage(), [
+                'user_id' => $user->id,
+                'trace' => $e->getTraceAsString(),
+            ]);
             throw $e;
         }
     }
