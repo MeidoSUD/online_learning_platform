@@ -74,6 +74,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ activeTab, setActive
                 { id: 'orders', label: t.ordersManagement, icon: ShoppingBag },
                 { id: 'payments', label: language === 'ar' ? 'المدفوعات' : 'Payments', icon: CreditCard },
                 { id: 'payouts', label: t.payoutRequests, icon: DollarSign },
+                { id: 'withdrawalMethods', label: language === 'ar' ? 'طرق السحب' : 'Withdrawal Methods', icon: CreditCard },
                 { id: 'percentage', label: t.revenueManagement, icon: Percent },
                 { id: 'disputes', label: t.disputes, icon: AlertCircle },
             ]

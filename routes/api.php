@@ -77,6 +77,7 @@ Route::get('settings/{group}', [SettingController::class, 'byGroup']);
 // App Configuration Routes (for mobile apps)
 Route::get('app-config', [AppConfigController::class, 'getConfig']);
 Route::get('app-settings', [AppConfigController::class, 'getAppSettings']);
+Route::get('withdrawal-methods', [\App\Http\Controllers\API\WithdrawalMethodController::class, 'index']);
 // Notification route
 Route::post('/send-notification', [FCMTokenController::class, 'sendToToken']);
 Route::middleware('auth:sanctum')->group(function () {
@@ -349,6 +350,10 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     Route::delete('/packages/{id}', [PackageAdminController::class, 'destroy']);
     Route::put('/packages/{id}/toggle', [PackageAdminController::class, 'toggleActive']);
     Route::get('/packages/stats', [PackageAdminController::class, 'stats']);
+
+    // Withdrawal Methods Management
+    Route::get('/withdrawal-methods', [\App\Http\Controllers\API\Admin\WithdrawalMethodController::class, 'index']);
+    Route::post('/withdrawal-methods/{id}/toggle', [\App\Http\Controllers\API\Admin\WithdrawalMethodController::class, 'toggle']);
 
     // App Configuration Management (Admin)
     Route::get('app-config/settings', [AppConfigController::class, 'getAppSettings']);

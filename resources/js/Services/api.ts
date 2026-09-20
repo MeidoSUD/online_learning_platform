@@ -754,6 +754,9 @@ getMarketingAudienceCount: (target_type: string, target_user_id?: number, target
   clearSystemLogs: () => fetchWithAuth('/admin/system-logs', { method: 'DELETE' }),
 
   // Certificates
+  getWithdrawalMethods: () => fetchWithAuth('/admin/withdrawal-methods').then(res => res.data || []),
+  toggleWithdrawalMethod: (id: number) => fetchWithAuth(`/admin/withdrawal-methods/${id}/toggle`, { method: 'POST' }),
+
   getCertificates: (filters: any = {}) => {
     const params = Object.fromEntries(Object.entries(filters).filter(([_, v]) => v != null && v !== ''));
     const query = new URLSearchParams(params).toString();
