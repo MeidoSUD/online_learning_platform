@@ -11,7 +11,7 @@ class PayoutAdminController extends Controller
 {
     public function index(Request $request)
     {
-        $payouts = Payout::orderByDesc('id')->with(['paymentMethod', 'teacher'])->paginate(25);
+        $payouts = Payout::orderByDesc('id')->with(['paymentMethod', 'card', 'teacher'])->paginate(25);
         return response()->json(['success' => true, 'data' => $payouts]);
     }
 

@@ -13,6 +13,7 @@ class Payout extends Model
         'teacher_id',
         'amount',
         'payment_method_id',
+        'card_id',
         'status',
         'receipt',
         'reject_reason',
@@ -39,5 +40,10 @@ class Payout extends Model
     public function paymentMethod()
     {
         return $this->belongsTo(UserPaymentMethod::class, 'payment_method_id');
+    }
+
+    public function card()
+    {
+        return $this->belongsTo(Card::class, 'card_id');
     }
 }

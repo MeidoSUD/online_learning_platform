@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Wallet;
+use App\Models\Card;
 use App\Models\Payout;
 use App\Models\UserPaymentMethod;
 use App\Models\PlatformPercentage;
@@ -66,7 +67,7 @@ class WalletController extends Controller
 
         // Get withdrawal requests (pending, completed, failed, rejected)
         $withdrawals = Payout::where('teacher_id', $teacher->id)
-            ->with('paymentMethod')
+            ->with(['paymentMethod', 'card'])
             ->orderByDesc('id')
             ->paginate(15);
 
@@ -97,19 +98,9 @@ class WalletController extends Controller
      */
     public function withdraw(Request $request)
 
-    /**
-     * @OA\Post(
-     *     path="/api/teacher/wallet/withdraw",
-     *     summary="Request a withdrawal from wallet",
-     *     tags={"Wallet"},
-     *     @OA\RequestBody(@OA\JsonContent(type="object", @OA\Property(property="amount", type="number"), @OA\Property(property="payment_method_id", type="integer"))),
-     *     @OA\Response(response=201, description="Withdrawal request created")
-     * )
-     */
     {
         $teacher = $request->user();
 
-        // Ensure user is a teacher
         if ($teacher->role_id != 3) {
             return response()->json([
                 'success' => false,
@@ -117,13 +108,20 @@ class WalletController extends Controller
             ], 403);
         }
 
-        // Validate input
         $validated = $request->validate([
             'amount' => 'required|numeric|min:0.01',
-            'payment_method_id' => 'required|integer|exists:user_payment_methods,id',
+            'payment_method_id' => 'nullable|integer|exists:user_payment_methods,id',
+            'card_id' => 'nullable|integer|exists:cards,id',
         ]);
 
-        // Get wallet
+        if (empty($validated['payment_method_id']) && empty($validated['card_id'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'يجب تحديد وسيلة سحب',
+                'errors' => ['payment_method' => ['payment_method_id or card_id is required']]
+            ], 422);
+        }
+
         $wallet = $teacher->wallet;
         if (!$wallet) {
             return response()->json([
@@ -132,7 +130,6 @@ class WalletController extends Controller
             ], 404);
         }
 
-        // Check if amount is valid
         $amount = (float) $validated['amount'];
         if ($amount <= 0) {
             return response()->json([
@@ -146,7 +143,6 @@ class WalletController extends Controller
         $commissionRate = $teacherPercentage ? (float) $teacherPercentage->value : 0.0;
         $netAvailableBalance = $this->netAmount((float) $wallet->balance, $commissionRate);
 
-        // The requested payout is a net amount. Commission is deducted before it is paid.
         if ($amount > $netAvailableBalance) {
             return response()->json([
                 'success' => false,
@@ -163,7 +159,6 @@ class WalletController extends Controller
             ], 422);
         }
 
-        // Check that total pending withdrawals don't exceed available balance
         $pendingTotal = Payout::where('teacher_id', $teacher->id)
             ->where('status', Payout::STATUS_PENDING)
             ->sum('amount');
@@ -185,35 +180,50 @@ class WalletController extends Controller
             ], 422);
         }
 
-        // Verify payment method belongs to teacher
-        $paymentMethod = UserPaymentMethod::where('id', $validated['payment_method_id'])
-            ->where('user_id', $teacher->id)
-            ->first();
+        if (!empty($validated['payment_method_id'])) {
+            $paymentMethod = UserPaymentMethod::where('id', $validated['payment_method_id'])
+                ->where('user_id', $teacher->id)
+                ->first();
 
-        if (!$paymentMethod) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Payment method not found or does not belong to you',
-                'errors' => ['payment_method_id' => ['Invalid payment method']]
-            ], 422);
+            if (!$paymentMethod) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Payment method not found or does not belong to you',
+                    'errors' => ['payment_method_id' => ['Invalid payment method']]
+                ], 422);
+            }
+        }
+
+        if (!empty($validated['card_id'])) {
+            $card = Card::where('id', $validated['card_id'])
+                ->where('user_id', $teacher->id)
+                ->first();
+
+            if (!$card) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Card not found or does not belong to you',
+                    'errors' => ['card_id' => ['Invalid card']]
+                ], 422);
+            }
         }
 
         try {
-            // Create withdrawal request
             $payout = Payout::create([
                 'teacher_id' => $teacher->id,
                 'amount' => $amount,
-                'payment_method_id' => $validated['payment_method_id'],
+                'payment_method_id' => $validated['payment_method_id'] ?? null,
+                'card_id' => $validated['card_id'] ?? null,
                 'status' => Payout::STATUS_PENDING,
                 'requested_at' => now(),
             ]);
 
-            // Log the withdrawal request
             Log::info('Withdrawal request created', [
                 'teacher_id' => $teacher->id,
                 'payout_id' => $payout->id,
                 'amount' => $amount,
-                'payment_method_id' => $validated['payment_method_id'],
+                'payment_method_id' => $validated['payment_method_id'] ?? null,
+                'card_id' => $validated['card_id'] ?? null,
                 'teacher_name' => $teacher->first_name . ' ' . $teacher->last_name,
                 'teacher_email' => $teacher->email
             ]);
@@ -226,6 +236,7 @@ class WalletController extends Controller
                     'amount' => (float) $payout->amount,
                     'status' => $payout->status,
                     'payment_method_id' => $payout->payment_method_id,
+                    'card_id' => $payout->card_id,
                     'requested_at' => $payout->requested_at,
                     'remaining_balance' => round($netAvailableBalance - $pendingTotal - $amount, 2),
                     'company_percentage' => $commissionRate
@@ -270,7 +281,7 @@ class WalletController extends Controller
 
         $payout = Payout::where('id', $id)
             ->where('teacher_id', $teacher->id)
-            ->with(['paymentMethod', 'teacher'])
+            ->with(['paymentMethod', 'card', 'teacher'])
             ->first();
 
         if (!$payout) {
@@ -288,13 +299,19 @@ class WalletController extends Controller
                 'status' => $payout->status,
                 'requested_at' => $payout->requested_at,
                 'processed_at' => $payout->processed_at,
-                'payment_method' => [
+                'payment_method' => $payout->paymentMethod ? [
                     'id' => $payout->paymentMethod->id,
                     'account_holder_name' => $payout->paymentMethod->account_holder_name,
                     'account_number' => $payout->paymentMethod->account_number,
                     'bank_name' => optional($payout->paymentMethod->banks)->name,
                     'iban' => $payout->paymentMethod->iban,
-                ]
+                ] : null,
+                'card' => $payout->card ? [
+                    'id' => $payout->card->id,
+                    'type' => $payout->card->type,
+                    'details' => $payout->card->details,
+                    'moyasar_payout_account_id' => $payout->card->moyasar_payout_account_id,
+                ] : null,
             ]
         ]);
     }

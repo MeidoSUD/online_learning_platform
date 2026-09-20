@@ -425,4 +425,34 @@ class MoyasarPay
             return null;
         }
     }
+
+    public function createPayoutAccount(array $data): array
+    {
+        try {
+            $response = Http::withBasicAuth($this->apiKey, '')
+                ->post("{$this->baseUrl}/payout_accounts", $data);
+
+            if (!$response->successful()) {
+                $error = $response->json();
+                Log::error('Moyasar: Payout account creation failed', [
+                    'status' => $response->status(),
+                    'error' => $error,
+                    'data' => $data,
+                ]);
+
+                throw new Exception(
+                    $error['message'] ?? "Payout account creation failed: {$response->status()}",
+                    $response->status()
+                );
+            }
+
+            return $response->json();
+        } catch (Exception $e) {
+            Log::error('Moyasar: Payout account creation exception', [
+                'error' => $e->getMessage(),
+                'code' => $e->getCode(),
+            ]);
+            throw $e;
+        }
+    }
 }

@@ -102,6 +102,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/ai/assistant', [AiAssistantController::class, 'send']);
     Route::get('/ai/assistant/history', [AiAssistantController::class, 'history']);
     Route::delete('/ai/assistant', [AiAssistantController::class, 'clear']);
+
+    Route::get('/user/cards', [\App\Http\Controllers\API\CardController::class, 'index']);
+    Route::post('/user/cards', [\App\Http\Controllers\API\CardController::class, 'store']);
+    Route::put('/user/cards/{id}', [\App\Http\Controllers\API\CardController::class, 'update']);
+    Route::post('/user/cards/{id}/default', [\App\Http\Controllers\API\CardController::class, 'setDefault']);
+    Route::delete('/user/cards/{id}', [\App\Http\Controllers\API\CardController::class, 'destroy']);
 });
 Route::get('/common-subjects', [ServicesController::class, 'getAllSubjects']);
 // main screen APIs

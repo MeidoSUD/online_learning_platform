@@ -13,4 +13,10 @@ return [
     
     // Callback configuration
     'callback_timeout' => env('MOYASAR_CALLBACK_TIMEOUT', 30), // seconds
+
+    // Payout B2B Credentials (provided by bank/wallet provider via Moyasar)
+    'payout_credentials' => [
+        'client_id' => env('MOYASAR_PAYOUT_CLIENT_ID', ''),
+        'client_secret' => env('MOYASAR_PAYOUT_CLIENT_SECRET', ''),
+    ],
 ];
