@@ -35,6 +35,7 @@ export class ApiErrorHandler {
   private static messageMap: Record<string, string> = {
     "The provided credentials are incorrect.": "Email or password incorrect",
     "The email has already been taken.": "Email already registered",
+    "validation.unique": "Email already registered",
     "The phone number has already been taken.": "Phone already registered",
     "Invalid phone number format. Must be a valid KSA phone number.": "Invalid phone format",
     "Phone number already registered.": "Phone already registered",

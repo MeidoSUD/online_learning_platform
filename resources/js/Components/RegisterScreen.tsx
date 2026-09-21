@@ -138,7 +138,10 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onSwitch, onVeri
             if (key === 'phone_number') field = 'phone';
             if (key === 'first_name') field = 'firstName';
             if (key === 'last_name') field = 'lastName';
-            acc[field] = error.errors[key][0];
+            const message = error.errors[key][0];
+            acc[field] = message === 'validation.unique'
+              ? (language === 'ar' ? 'البريد الإلكتروني مستخدم بالفعل' : 'Email already registered')
+              : message;
             return acc;
           }, {})
         }));
