@@ -10,7 +10,9 @@ class WithdrawalMethodController extends Controller
 {
     public function index()
     {
-        $methods = WithdrawalMethod::where('is_active', true)->get();
+        // نرجع كل الطرق (المفعلة وغير المفعلة) حتى يعرض التطبيق
+        // الطرق غير المفعلة بحالة "غير متاح" بدل إخفائها نهائياً.
+        $methods = WithdrawalMethod::orderBy('id')->get();
         return response()->json([
             'status' => 'success',
             'data' => $methods

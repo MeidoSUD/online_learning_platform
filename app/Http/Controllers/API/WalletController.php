@@ -122,6 +122,16 @@ class WalletController extends Controller
             ], 422);
         }
 
+        // A payout must be bound to exactly one destination number:
+        // either a bank account number (payment_method_id) or a card number (card_id).
+        if (!empty($validated['payment_method_id']) && !empty($validated['card_id'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'يجب اختيار وسيلة واحدة فقط (حساب بنكي أو بطاقة)',
+                'errors' => ['payment_method' => ['Send either payment_method_id or card_id, not both']]
+            ], 422);
+        }
+
         $wallet = $teacher->wallet;
         if (!$wallet) {
             return response()->json([
@@ -212,11 +222,24 @@ class WalletController extends Controller
             $payout = Payout::create([
                 'teacher_id' => $teacher->id,
                 'amount' => $amount,
+                // Bind the payout to the exact destination number:
+                // bank flow -> payment_method_id (IBAN / account_number),
+                // card flow -> card_id (card number / phone / IBAN in details).
                 'payment_method_id' => $validated['payment_method_id'] ?? null,
                 'card_id' => $validated['card_id'] ?? null,
                 'status' => Payout::STATUS_PENDING,
                 'requested_at' => now(),
             ]);
+
+            $payout->load(['paymentMethod.banks', 'card']);
+
+            // Resolve the human-readable destination numbers for the response + logs.
+            $accountNumber = $payout->paymentMethod->account_number ?? null;
+            $iban = $payout->paymentMethod->iban ?? null;
+            $cardDetails = $payout->card->details ?? null;
+            $cardNumber = is_array($cardDetails)
+                ? ($cardDetails['card_number'] ?? $cardDetails['phone_number'] ?? $cardDetails['iban'] ?? null)
+                : null;
 
             Log::info('Withdrawal request created', [
                 'teacher_id' => $teacher->id,
@@ -224,6 +247,9 @@ class WalletController extends Controller
                 'amount' => $amount,
                 'payment_method_id' => $validated['payment_method_id'] ?? null,
                 'card_id' => $validated['card_id'] ?? null,
+                'account_number' => $accountNumber,
+                'iban' => $iban,
+                'card_number' => $cardNumber,
                 'teacher_name' => $teacher->first_name . ' ' . $teacher->last_name,
                 'teacher_email' => $teacher->email
             ]);
@@ -237,6 +263,12 @@ class WalletController extends Controller
                     'status' => $payout->status,
                     'payment_method_id' => $payout->payment_method_id,
                     'card_id' => $payout->card_id,
+                    // Echo the bound destination numbers so the app/admin can display them.
+                    'account_number' => $accountNumber,
+                    'iban' => $iban,
+                    'card_number' => $cardNumber,
+                    'card_details' => $cardDetails,
+                    'destination' => $accountNumber ?? $iban ?? $cardNumber,
                     'requested_at' => $payout->requested_at,
                     'remaining_balance' => round($netAvailableBalance - $pendingTotal - $amount, 2),
                     'company_percentage' => $commissionRate
@@ -305,13 +337,24 @@ class WalletController extends Controller
                     'account_number' => $payout->paymentMethod->account_number,
                     'bank_name' => optional($payout->paymentMethod->banks)->name,
                     'iban' => $payout->paymentMethod->iban,
+                    // Explicit destination number for admin/app display.
+                    'destination' => $payout->paymentMethod->iban ?? $payout->paymentMethod->account_number,
                 ] : null,
                 'card' => $payout->card ? [
                     'id' => $payout->card->id,
                     'type' => $payout->card->type,
                     'details' => $payout->card->details,
+                    'card_number' => is_array($payout->card->details)
+                        ? ($payout->card->details['card_number'] ?? $payout->card->details['phone_number'] ?? $payout->card->details['iban'] ?? null)
+                        : null,
                     'moyasar_payout_account_id' => $payout->card->moyasar_payout_account_id,
                 ] : null,
+                // Single destination field: IBAN/account_number or card/phone number.
+                'destination' => $payout->paymentMethod
+                    ? ($payout->paymentMethod->iban ?? $payout->paymentMethod->account_number)
+                    : (is_array($payout->card->details ?? null)
+                        ? ($payout->card->details['card_number'] ?? $payout->card->details['phone_number'] ?? $payout->card->details['iban'] ?? null)
+                        : null),
             ]
         ]);
     }
@@ -407,7 +450,7 @@ class WalletController extends Controller
         $status = $request->query('status');
         
         $query = Payout::where('teacher_id', $teacher->id)
-            ->with('paymentMethod');
+            ->with(['paymentMethod.banks', 'card']);
 
         if ($status && in_array($status, [
             Payout::STATUS_PENDING,
