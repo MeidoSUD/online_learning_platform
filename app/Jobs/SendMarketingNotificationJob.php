@@ -2,9 +2,11 @@
 
 namespace App\Jobs;
 
+use App\Channels\MarketingEmailChannel;
 use App\Channels\MarketingPushChannel;
 use App\Channels\MarketingSmsChannel;
 use App\Models\MarketingNotification;
+use App\Notifications\MarketingEmailNotification;
 use App\Notifications\MarketingPushNotification;
 use App\Notifications\MarketingSmsNotification;
 use App\Services\MarketingNotificationService;
@@ -26,7 +28,7 @@ class SendMarketingNotificationJob implements ShouldQueue
     {
     }
 
-    public function handle(MarketingNotificationService $service, MarketingPushChannel $push, MarketingSmsChannel $sms): void
+    public function handle(MarketingNotificationService $service, MarketingPushChannel $push, MarketingSmsChannel $sms, MarketingEmailChannel $email): void
     {
         $campaign = MarketingNotification::find($this->campaignId);
         if (!$campaign || $campaign->status !== 'pending') {
@@ -36,14 +38,17 @@ class SendMarketingNotificationJob implements ShouldQueue
         $sent = 0;
         try {
             $service->recipientsQuery($campaign)->orderBy('id')->chunkById(MarketingNotificationService::BATCH_SIZE,
-                function ($users) use (&$sent, $campaign, $push, $sms) {
+                function ($users) use (&$sent, $campaign, $push, $sms, $email) {
                     foreach ($users as $user) {
                         $delivered = false;
-                        if (in_array($campaign->channel, ['push', 'both'], true)) {
+                        if (in_array($campaign->channel, ['push', 'both', 'all'], true)) {
                             $delivered = $push->send($user, new MarketingPushNotification($campaign->title, $campaign->body, $campaign->id)) || $delivered;
                         }
-                        if (in_array($campaign->channel, ['sms', 'both'], true)) {
+                        if (in_array($campaign->channel, ['sms', 'both', 'all'], true)) {
                             $delivered = $sms->send($user, new MarketingSmsNotification($campaign->body, $campaign->id)) || $delivered;
+                        }
+                        if (in_array($campaign->channel, ['email', 'all'], true)) {
+                            $delivered = $email->send($user, new MarketingEmailNotification($campaign->title, $campaign->body, $campaign->id)) || $delivered;
                         }
                         if ($delivered) {
                             $sent++;

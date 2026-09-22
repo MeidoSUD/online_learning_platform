@@ -187,6 +187,7 @@ class UsersController extends Controller
                 1 => 'Admin',
                 3 => 'Teacher',
                 4 => 'Student',
+                5 => 'Customer Support',
                 default => 'Other',
             },
             $user->is_active ? 'Active' : 'Inactive',
@@ -409,7 +410,11 @@ class UsersController extends Controller
         ]);
 
         $data['password'] = Hash::make($data['password']);
+        if (!isset($data['is_active'])) {
+            $data['is_active'] = true;
+        }
         $user = User::create($data);
+        UserProfile::firstOrCreate(['user_id' => $user->id]);
 
         return response()->json(['success' => true, 'data' => $user], 201);
     }

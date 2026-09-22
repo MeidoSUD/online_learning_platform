@@ -3,7 +3,8 @@ import { useLanguage } from '../../Contexts/LanguageContext';
 import {
     Search, MoreVertical, Shield, User, GraduationCap, Loader2,
     Trash2, Ban, Eye, Key, CheckCircle, X, Plus, Filter,
-    UserPlus, Edit, CheckSquare, Square, Mail, Phone, Globe, FileSpreadsheet, FileText
+    UserPlus, Edit, CheckSquare, Square, Mail, Phone, Globe, FileSpreadsheet, FileText,
+    Headphones
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
@@ -239,9 +240,21 @@ export const UsersTab: React.FC<UsersTabProps> = ({ onViewTeacher }) => {
 
     const getRoleIcon = (roleId: number) => {
         switch (roleId) {
-            case 1: return <Shield size={16} className="text-[var(--accent)]" />;
-            case 3: return <User size={16} className="text-secondary" />;
-            default: return <GraduationCap size={16} className="text-primary" />;
+            case 1: return <Shield size={16} className="text-purple-600" />;
+            case 3: return <GraduationCap size={16} className="text-blue-600" />;
+            case 4: return <User size={16} className="text-green-600" />;
+            case 5: return <Headphones size={16} className="text-amber-600" />;
+            default: return <User size={16} className="text-gray-500" />;
+        }
+    };
+
+    const getRoleName = (roleId: number) => {
+        switch (roleId) {
+            case 1: return t.admin;
+            case 3: return t.teacher;
+            case 4: return t.student;
+            case 5: return t.customerSupport || (language === 'ar' ? 'خدمة العملاء' : 'Customer Support');
+            default: return t.other || 'Other';
         }
     };
 
@@ -287,9 +300,10 @@ export const UsersTab: React.FC<UsersTabProps> = ({ onViewTeacher }) => {
                                 className="bg-[var(--light-bg)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary"
                             >
                                 <option value="all">{t.allRoles || 'All Roles'}</option>
-                                <option value="1">{t.admin}</option>
-                                <option value="3">{t.teacher}</option>
                                 <option value="4">{t.student}</option>
+                                <option value="3">{t.teacher}</option>
+                                <option value="5">{t.customerSupport || (language === 'ar' ? 'خدمة العملاء' : 'Customer Support')}</option>
+                                <option value="1">{t.admin}</option>
                             </select>
                         </div>
                         <select
@@ -348,7 +362,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({ onViewTeacher }) => {
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-2 capitalize bg-[var(--light-bg)] px-3 py-1 rounded-full w-fit text-xs font-medium">
                                                 {getRoleIcon(user.role_id)}
-                                                {user.role_id === 1 ? t.admin : user.role_id === 3 ? t.teacher : t.student}
+                                                {getRoleName(user.role_id)}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
@@ -500,6 +514,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({ onViewTeacher }) => {
                             >
                                 <option value="4">{t.student}</option>
                                 <option value="3">{t.teacher}</option>
+                                <option value="5">{t.customerSupport || (language === 'ar' ? 'خدمة العملاء' : 'Customer Support')}</option>
                                 <option value="1">{t.admin}</option>
                             </select>
                         </div>
@@ -595,7 +610,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({ onViewTeacher }) => {
                                 <span className="block text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1">{t.role}</span>
                                 <span className="font-semibold text-navy flex items-center gap-2">
                                     {getRoleIcon(selectedUser.role_id)}
-                                    {selectedUser.role_id === 1 ? t.admin : selectedUser.role_id === 3 ? t.teacher : t.student}
+                                    {getRoleName(selectedUser.role_id)}
                                 </span>
                             </div>
                             <div className="p-3 bg-[var(--light-bg)] rounded-[var(--radius-md)] border border-[var(--border)]">

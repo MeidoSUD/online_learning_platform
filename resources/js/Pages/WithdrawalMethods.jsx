@@ -1,6 +1,5 @@
 import React from 'react';
 import { Head, useForm } from '@inertiajs/react';
-import AdminLayout from '@/Layouts/AdminLayout';
 
 export default function WithdrawalMethods({ methods }) {
     const { post } = useForm();
@@ -12,7 +11,7 @@ export default function WithdrawalMethods({ methods }) {
     };
 
     return (
-        <AdminLayout>
+        <div>
             <Head title="طرق السحب" />
 
             <div className="py-12">
@@ -58,6 +57,6 @@ export default function WithdrawalMethods({ methods }) {
                     </div>
                 </div>
             </div>
-        </AdminLayout>
+        </div>
     );
 }

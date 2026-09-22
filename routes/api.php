@@ -330,16 +330,14 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin,support'])->grou
     Route::get('/sessions', [SessionsAdminController::class, 'index']);
     Route::get('/sessions/export', [SessionsAdminController::class, 'export']);
     Route::put('/sessions/{id}/reschedule', [SessionsAdminController::class, 'reschedule']);
-    Route::get('/users/{userId}/sessions', [SessionsAdminController::class, 'userSessions']);
-});
-
-Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(function () {
-    // Marketing notifications
+    // Marketing notifications (shared between admin and support roles)
     Route::get('/marketing/notifications', [MarketingNotificationController::class, 'index']);
     Route::post('/marketing/notifications/send', [MarketingNotificationController::class, 'send']);
     Route::get('/marketing/notifications/audience-count', [MarketingNotificationController::class, 'audienceCount']);
     Route::get('/marketing/users/search', [MarketingNotificationController::class, 'usersSearch']);
+});
 
+Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(function () {
     // Admin language management routes
 
 

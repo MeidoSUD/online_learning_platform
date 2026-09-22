@@ -4,7 +4,8 @@ import {
     Loader2, X, Calendar, Video, CreditCard, Package, ShoppingBag,
     BookOpen, Wallet as WalletIcon, Star, HelpCircle, AlertCircle,
     User, Mail, Phone, Shield, GraduationCap, Globe, ChevronDown,
-    CheckCircle, XCircle, Clock, DollarSign, ArrowUpRight, ArrowDownLeft
+    CheckCircle, XCircle, Clock, DollarSign, ArrowUpRight, ArrowDownLeft,
+    Headphones
 } from 'lucide-react';
 import { adminService, UserFullProfile, AdminUser } from '../../Services/api';
 import { getStorageUrl } from '../../Services/api';
@@ -97,9 +98,10 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
     };
 
     const getRoleBadge = (roleId: number) => {
-        if (roleId === 1) return { label: t.admin || 'Admin', icon: Shield, color: 'text-[var(--accent)] bg-secondary-pale' };
-        if (roleId === 3) return { label: t.teacher || 'Teacher', icon: GraduationCap, color: 'text-secondary bg-secondary-pale' };
-        return { label: t.student || 'Student', icon: User, color: 'text-primary bg-primary-pale' };
+        if (roleId === 1) return { label: t.admin || 'Admin', icon: Shield, color: 'text-purple-700 bg-purple-100' };
+        if (roleId === 3) return { label: t.teacher || 'Teacher', icon: GraduationCap, color: 'text-blue-700 bg-blue-100' };
+        if (roleId === 5) return { label: t.customerSupport || (language === 'ar' ? 'خدمة العملاء' : 'Customer Support'), icon: Headphones, color: 'text-amber-700 bg-amber-100' };
+        return { label: t.student || 'Student', icon: User, color: 'text-emerald-700 bg-emerald-100' };
     };
 
     if (!isOpen) return null;

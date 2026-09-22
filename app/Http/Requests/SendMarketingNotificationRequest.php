@@ -68,7 +68,7 @@ class SendMarketingNotificationRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:120'],
             'body' => ['required', 'string', 'max:1000'],
-            'channel' => ['required', Rule::in(['push', 'sms', 'both'])],
+            'channel' => ['required', Rule::in(['push', 'sms', 'email', 'both', 'all'])],
             'target_type' => ['required', Rule::in(['all', 'teachers', 'students', 'single_user', 'multi_teachers', 'multi_students'])],
             'target_user_id' => [
                 'nullable', 'integer', 'required_if:target_type,single_user', 'exists:users,id',

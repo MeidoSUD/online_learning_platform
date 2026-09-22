@@ -24,6 +24,7 @@ class CheckUserRole
         // ✅ 2. Redirect based on role
         switch ($user->role_id ?? '') {
             case 1: // Admin
+            case 5: // Customer Support
                 return redirect()->route('admin.dashboard');
             case 3: // teacher
                 return redirect()->route('teacher.dashboard');
