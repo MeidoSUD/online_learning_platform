@@ -248,6 +248,7 @@ Route::prefix('teacher')->middleware(['auth:sanctum', 'role:teacher'])->group(fu
     Route::get('profile/status', [TeacherController::class, 'profileCompletionStatus']);
     Route::get('get-services', [ServicesController::class, 'teacherServices']);
     Route::post('teacher-service', [ServicesController::class, 'addTeacherService']);
+    Route::delete('teacher-service/{serviceId}', [ServicesController::class, 'removeTeacherService']);
     Route::post('teacher-upload-certificate', [ServicesController::class, 'uploadTeacherCertificate']);
     Route::put('active-status', [UserController::class, 'updateActiveStatus']);
     Route::get('active-status', [UserController::class, 'getActiveStatus']);

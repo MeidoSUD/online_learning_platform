@@ -231,6 +231,80 @@ class ServicesController extends Controller
     }
 
     /**
+     * DELETE /api/teacher/teacher-service/{serviceId}
+     * Remove a service from the teacher
+     * 
+     * @param Request $request
+     * @param int $serviceId
+     * @return JsonResponse
+     */
+    public function removeTeacherService(Request $request, int $serviceId): JsonResponse
+    {
+        try {
+            $teacher = auth()->user();
+
+            // Check if teacher has this service
+            $teacherService = TeacherServices::where('teacher_id', $teacher->id)
+                ->where('service_id', $serviceId)
+                ->first();
+
+            if (!$teacherService) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Service not found for this teacher',
+                    'error' => 'SERVICE_NOT_FOUND'
+                ], 404);
+            }
+
+            // Get service details before deleting
+            $service = \App\Models\Services::find($serviceId);
+
+            DB::beginTransaction();
+
+            try {
+                $teacherService->delete();
+
+                Log::info('Teacher service removed', [
+                    'teacher_id' => $teacher->id,
+                    'service_id' => $serviceId,
+                ]);
+
+                DB::commit();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => "Service '{$service->name_en}' removed successfully",
+                    'data' => [
+                        'service_id' => $serviceId,
+                        'service' => [
+                            'id' => $service->id,
+                            'name_en' => $service->name_en,
+                            'name_ar' => $service->name_ar,
+                            'key_name' => $service->key_name ?? null,
+                        ]
+                    ]
+                ], 200);
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Failed to remove teacher service', [
+                'teacher_id' => auth()->id(),
+                'service_id' => $serviceId,
+                'error' => $e->getMessage()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to remove service',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * POST /api/teacher/teacher-upload-certificate
      * Upload a certificate for the teacher
      * 

@@ -111,7 +111,8 @@ class AuthController extends Controller
      *             @OA\Property(property="email", type="string", format="email"),
      *             @OA\Property(property="phone_number", type="string"),
      *             @OA\Property(property="password", type="string", format="password"),
-     *             @OA\Property(property="service_id", type="integer", description="Service ID (1=private_lessons, 2=language_study, 3=courses, 4=language_study)"),
+     *             @OA\Property(property="service_id", type="integer", description="Service ID (legacy single)"),
+     *             @OA\Property(property="service_ids", type="array", @OA\Items(type="integer"), description="Multiple service IDs (min 1)"),
      *             @OA\Property(property="bio", type="string", description="Teacher bio/about"),
      *             @OA\Property(property="certificate", type="string", format="binary", description="Certificate file (PDF, image, etc)"),
      *             @OA\Property(property="cv", type="string", format="binary", description="CV file (PDF, etc)"),
@@ -129,6 +130,7 @@ class AuthController extends Controller
         try {
             Log::info('Teacher registration request received', [
                 'has_service_id' => $request->filled('service_id'),
+                'has_service_ids' => $request->filled('service_ids'),
                 'has_certificate' => $request->hasFile('certificate'),
                 'has_cv' => $request->hasFile('cv'),
                 'has_bio' => $request->filled('bio'),
@@ -155,6 +157,8 @@ class AuthController extends Controller
                 'nationality' => 'nullable|string|max:255',
                 'notional_id' => 'nullable|string|max:255',
                 'service_id' => 'nullable|exists:services,id',
+                'service_ids' => 'nullable|array',
+                'service_ids.*' => 'integer|exists:services,id',
                 'bio' => 'nullable|string|max:2000',
                 'certificate' => 'nullable|file|max:5120', // 5MB - any file type accepted
                 'cv' => 'nullable|file|max:5120', // 5MB - any file type accepted
@@ -244,15 +248,26 @@ class AuthController extends Controller
                 Log::info('Teacher profile created with bio', ['user_id' => $user->id]);
             }
 
-            // Add service if provided
+            // Add service(s) if provided (supports single service_id + service_ids array)
+            $serviceIds = [];
+            if ($request->filled('service_ids') && is_array($request->input('service_ids'))) {
+                $serviceIds = $request->input('service_ids');
+            }
             if ($request->filled('service_id')) {
-                TeacherServices::create([
+                $serviceIds[] = $validated['service_id'];
+            }
+            $serviceIds = array_values(array_unique(array_map('intval', $serviceIds)));
+            foreach ($serviceIds as $sid) {
+                if ($sid <= 0) continue;
+                TeacherServices::firstOrCreate([
                     'teacher_id' => $user->id,
-                    'service_id' => $validated['service_id'],
+                    'service_id' => $sid,
                 ]);
-                Log::info('Teacher service added', [
+            }
+            if (!empty($serviceIds)) {
+                Log::info('Teacher services added', [
                     'user_id' => $user->id,
-                    'service_id' => $validated['service_id']
+                    'service_ids' => $serviceIds
                 ]);
             }
 
