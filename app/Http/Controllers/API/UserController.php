@@ -1503,9 +1503,31 @@ class UserController extends Controller
             ->where('teacher_id', $teacher->id)
             ->count();
 
-        // Get reviews
-        $reviews = Review::where('reviewed_id', $teacher->id)->get();
-        $rating = round($reviews->avg('rating') ?? 0, 1);
+        // Get reviews with reviewer name (fix: student name was missing -> showed "طالب")
+        $reviewsData = Review::where('reviewed_id', $teacher->id)
+            ->with('reviewer:id,first_name,last_name')
+            ->latest()
+            ->get();
+        $rating = round($reviewsData->avg('rating') ?? 0, 1);
+        $reviews = $reviewsData->map(function ($r) {
+            $reviewer = $r->reviewer;
+            $name = $reviewer
+                ? trim(($reviewer->first_name ?? '') . ' ' . ($reviewer->last_name ?? ''))
+                : '';
+            if ($name === '') {
+                $name = 'طالب';
+            }
+            $arr = $r->toArray();
+            $arr['student_name'] = $name;
+            $arr['date'] = $r->created_at ? $r->created_at->toDateString() : ($arr['created_at'] ?? null);
+            $arr['reviewer'] = $reviewer ? [
+                'id' => $reviewer->id,
+                'first_name' => $reviewer->first_name,
+                'last_name' => $reviewer->last_name,
+                'name' => $name,
+            ] : null;
+            return $arr;
+        })->values()->toArray();
 
         // Get teacher subjects with detailed info
         if ($isPrivateService) {
