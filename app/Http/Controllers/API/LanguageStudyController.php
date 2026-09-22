@@ -80,11 +80,18 @@ class LanguageStudyController extends Controller
     public function getTeacherLanguages($teacherId): JsonResponse
     {
         try {
-            $teacher = User::where('id', $teacherId)
-                ->where('role_id', 3)
-                ->where('is_active', 1)
-                ->with('teacherLanguages.language')
-                ->firstOrFail();
+            $query = User::where('id', $teacherId)
+                ->where('role_id', 3);
+
+            // شرط التفعيل يُطبق عندما يكون المشاهِد طالباً (أو ضيفاً) فقط:
+            // الطالب لا يرى لغات معلم غير مفعّل، أما المعلم فيرى/يدير
+            // لغاته دائماً ولو كان حسابه غير مفعّل.
+            $viewer = auth('sanctum')->user();
+            if (!$viewer || (int) $viewer->id !== (int) $teacherId) {
+                $query->where('is_active', 1);
+            }
+
+            $teacher = $query->with('teacherLanguages.language')->firstOrFail();
 
             $languages = $teacher->teacherLanguages()->with('language')->get()->map(function ($tl) {
                 return [
