@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
 import { useToast } from '../../Contexts/ToastContext';
 import {
     ArrowLeft, Loader2, Mail, Phone, Globe, User, GraduationCap, Star,
     CalendarDays, Clock, BadgeCheck, Ban, CheckCircle, BookOpen, Languages,
-    PlayCircle, Wallet, Users, AlertCircle, Shield, BookMarked
+    PlayCircle, Wallet, Users, AlertCircle, Shield, BookMarked, Pencil, Save,
+    X
 } from 'lucide-react';
 import { adminService } from '../../Services/api';
 import { getStorageUrl } from '../../Services/api';
@@ -31,8 +32,52 @@ export const AdminTeacherDetails: React.FC<AdminTeacherDetailsProps> = ({ userId
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [toggling, setToggling] = useState<'active' | 'verify' | null>(null);
+    const [isEditing, setIsEditing] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [draft, setDraft] = useState<any>({});
 
     const ar = language === 'ar';
+
+    const normalizeTime = useCallback((value: string) => {
+        if (!value) return value;
+        const match = String(value).match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+        if (!match) return String(value).trim();
+        let hour = Number(match[1]);
+        const minute = match[2];
+        const meridiem = (match[3] || '').toUpperCase();
+        if (meridiem === 'PM' && hour < 12) hour += 12;
+        if (meridiem === 'AM' && hour === 12) hour = 0;
+        return `${String(hour).padStart(2, '0')}:${minute}`;
+    }, []);
+
+    const availableSlotsToDraft = useCallback((list: any[] = []) => {
+        return (list || []).map((day: any) => ({
+            day: Number(day.day_number ?? day.id ?? 1),
+            times: (day.times || []).map((slot: any) => normalizeTime(slot.time || slot.start_time || ''))
+                .filter(Boolean)
+        })).filter((entry) => entry.times.length > 0);
+    }, [normalizeTime]);
+
+    const buildDraft = useCallback((currentTeacher: any) => {
+        const profile = currentTeacher?.profile || {};
+        const services = profile?.services || [];
+        const subjectItems = profile?.teacher_subjects || [];
+        const languageItems = profile?.languages || [];
+
+        return {
+            bio: profile?.bio || '',
+            teach_individual: !!profile?.teach_individual,
+            individual_hour_price: Number(profile?.individual_hour_price ?? 0),
+            teach_group: !!profile?.teach_group,
+            group_hour_price: Number(profile?.group_hour_price ?? 0),
+            max_group_size: Number(profile?.max_group_size ?? 0),
+            min_group_size: Number(profile?.min_group_size ?? 0),
+            service_ids: services.map((service: any) => Number(service.service_id ?? service.id)).filter(Boolean),
+            subject_ids: subjectItems.map((subject: any) => Number(subject.subject_id ?? subject.id)).filter(Boolean),
+            language_ids: languageItems.map((language: any) => Number(language.language_id ?? language.id)).filter(Boolean),
+            available_times: availableSlotsToDraft(profile?.available_times || []),
+        };
+    }, [availableSlotsToDraft]);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -48,6 +93,12 @@ export const AdminTeacherDetails: React.FC<AdminTeacherDetailsProps> = ({ userId
     }, [userId, ar]);
 
     useEffect(() => { load(); }, [load]);
+
+    useEffect(() => {
+        if (teacher) {
+            setDraft(buildDraft(teacher));
+        }
+    }, [teacher, buildDraft]);
 
     if (loading) {
         return <div className="flex justify-center p-16"><Loader2 className="animate-spin text-primary" /></div>;
@@ -162,6 +213,30 @@ export const AdminTeacherDetails: React.FC<AdminTeacherDetailsProps> = ({ userId
         }
     };
 
+    const saveTeacherEdit = async () => {
+        setSaving(true);
+        try {
+            const payload = {
+                ...draft,
+                available_times: draft.available_times.map((entry: any) => ({
+                    day: Number(entry.day),
+                    times: (entry.times || []).map((time: string) => normalizeTime(time)).filter(Boolean),
+                })).filter((entry: any) => entry.times.length > 0),
+            };
+
+            const response: any = await adminService.updateTeacherProfileByAdmin(userId, payload);
+            const updatedTeacher = response?.data ?? response;
+            setTeacher(updatedTeacher || teacher);
+            setIsEditing(false);
+            showToast(ar ? 'تم تحديث بيانات المعلم بنجاح' : 'Teacher profile updated successfully', 'success');
+            await load();
+        } catch (e: any) {
+            showToast(e.message || (ar ? 'فشل تحديث بيانات المعلم' : 'Failed to update teacher profile'), 'error');
+        } finally {
+            setSaving(false);
+        }
+    };
+
     return (
         <div className="space-y-6 animate-fade-in" dir={direction}>
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -169,6 +244,22 @@ export const AdminTeacherDetails: React.FC<AdminTeacherDetailsProps> = ({ userId
                     <ArrowLeft size={18} className={direction === 'rtl' ? 'rotate-180' : ''} /> {ar ? 'العودة إلى المستخدمين' : 'Back to Users'}
                 </button>
                 <div className="flex gap-2">
+                    {!isEditing && (
+                        <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} className="text-primary border-primary/30 hover:bg-primary-pale">
+                            <Pencil size={16} /> {ar ? 'تعديل' : 'Edit'}
+                        </Button>
+                    )}
+                    {isEditing && (
+                        <>
+                            <Button variant="outline" size="sm" onClick={() => { setIsEditing(false); setDraft(buildDraft(teacher)); }} className="text-slate-600 border-slate-200">
+                                <X size={16} /> {ar ? 'إلغاء' : 'Cancel'}
+                            </Button>
+                            <Button variant="primary" size="sm" onClick={saveTeacherEdit} disabled={saving}>
+                                {saving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
+                                {ar ? 'حفظ' : 'Save'}
+                            </Button>
+                        </>
+                    )}
                     <Button variant={isActive ? 'outline' : 'primary'} size="sm" onClick={toggleActive} disabled={toggling !== null} className={isActive ? 'text-orange-600 border-orange-200 hover:bg-orange-50' : ''}>
                         {toggling === 'active' ? <Loader2 className="animate-spin" size={16} /> : isActive ? <Ban size={16} /> : <CheckCircle size={16} />}
                         {isActive ? (t.deactivate || 'Deactivate') : (t.activate || 'Activate')}
@@ -205,7 +296,16 @@ export const AdminTeacherDetails: React.FC<AdminTeacherDetailsProps> = ({ userId
                                 <Star size={12} className="text-amber-500" fill="currentColor" /> {Number(rating).toFixed(1)}
                             </span>
                         </div>
-                        {bio && <p className="mt-3 text-sm text-[var(--text-muted)] leading-relaxed">{bio}</p>}
+                        {isEditing ? (
+                            <textarea
+                                value={draft.bio || ''}
+                                onChange={(e) => setDraft((prev: any) => ({ ...prev, bio: e.target.value }))}
+                                className="mt-3 w-full rounded-[var(--radius-sm)] border border-[var(--border)] p-3 text-sm text-[var(--text-main)]"
+                                rows={3}
+                            />
+                        ) : bio ? (
+                            <p className="mt-3 text-sm text-[var(--text-muted)] leading-relaxed">{bio}</p>
+                        ) : null}
                     </div>
                     <div className="flex flex-col items-end gap-2 flex-shrink-0">
                         <span className={`px-3 py-1 rounded-full text-xs font-bold ${isActive ? 'bg-primary-pale text-primary' : 'bg-red-100 text-red-700'}`}>
@@ -227,6 +327,110 @@ export const AdminTeacherDetails: React.FC<AdminTeacherDetailsProps> = ({ userId
                     {statCard(ar ? 'الدورات' : 'Courses', profile?.courses_count ?? courses.length, BookOpen, 'text-[var(--accent)] bg-secondary-pale')}
                 </div>
             </div>
+
+            {isEditing && (
+                <div className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] p-5 space-y-4">
+                    <h3 className="text-lg font-bold text-[var(--text-main)]">{ar ? 'تعديل بيانات المعلم' : 'Edit teacher profile'}</h3>
+                    <div className="grid md:grid-cols-2 gap-4">
+                        <label className="space-y-2 text-sm text-[var(--text-main)]">
+                            <span>{ar ? 'السعر الفردي / ساعة' : 'Individual price / hour'}</span>
+                            <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={draft.individual_hour_price ?? 0}
+                                onChange={(e) => setDraft((prev: any) => ({ ...prev, individual_hour_price: Number(e.target.value) }))}
+                                className="w-full rounded-[var(--radius-sm)] border border-[var(--border)] p-2.5"
+                            />
+                        </label>
+                        <label className="space-y-2 text-sm text-[var(--text-main)]">
+                            <span>{ar ? 'سعر المجموعة / ساعة' : 'Group price / hour'}</span>
+                            <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={draft.group_hour_price ?? 0}
+                                onChange={(e) => setDraft((prev: any) => ({ ...prev, group_hour_price: Number(e.target.value) }))}
+                                className="w-full rounded-[var(--radius-sm)] border border-[var(--border)] p-2.5"
+                            />
+                        </label>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-4">
+                        <label className="flex items-center gap-2 text-sm text-[var(--text-main)]">
+                            <input type="checkbox" checked={!!draft.teach_individual} onChange={(e) => setDraft((prev: any) => ({ ...prev, teach_individual: e.target.checked }))} />
+                            {ar ? 'يدرس فردي' : 'Offers individual classes'}
+                        </label>
+                        <label className="flex items-center gap-2 text-sm text-[var(--text-main)]">
+                            <input type="checkbox" checked={!!draft.teach_group} onChange={(e) => setDraft((prev: any) => ({ ...prev, teach_group: e.target.checked }))} />
+                            {ar ? 'يدرس مجموعة' : 'Offers group classes'}
+                        </label>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-4">
+                        <label className="space-y-2 text-sm text-[var(--text-main)]">
+                            <span>{ar ? 'أقل حجم للمجموعة' : 'Min group size'}</span>
+                            <input type="number" min="0" value={draft.min_group_size ?? 0} onChange={(e) => setDraft((prev: any) => ({ ...prev, min_group_size: Number(e.target.value) }))} className="w-full rounded-[var(--radius-sm)] border border-[var(--border)] p-2.5" />
+                        </label>
+                        <label className="space-y-2 text-sm text-[var(--text-main)]">
+                            <span>{ar ? 'أقصى حجم للمجموعة' : 'Max group size'}</span>
+                            <input type="number" min="0" value={draft.max_group_size ?? 0} onChange={(e) => setDraft((prev: any) => ({ ...prev, max_group_size: Number(e.target.value) }))} className="w-full rounded-[var(--radius-sm)] border border-[var(--border)] p-2.5" />
+                        </label>
+                    </div>
+
+                    <div className="grid md:grid-cols-3 gap-4">
+                        <div className="space-y-2 text-sm text-[var(--text-main)]">
+                            <span>{ar ? 'الخدمات' : 'Services'}</span>
+                            <textarea
+                                value={(draft.service_ids || []).join(', ')}
+                                onChange={(e) => setDraft((prev: any) => ({ ...prev, service_ids: e.target.value.split(',').map((item: string) => Number(item.trim())).filter((value: number) => !Number.isNaN(value) && value > 0) }))}
+                                className="w-full min-h-[80px] rounded-[var(--radius-sm)] border border-[var(--border)] p-2.5"
+                                placeholder={ar ? 'أرقام الخدمات' : 'service IDs'}
+                            />
+                        </div>
+                        <div className="space-y-2 text-sm text-[var(--text-main)]">
+                            <span>{ar ? 'المواد' : 'Subjects'}</span>
+                            <textarea
+                                value={(draft.subject_ids || []).join(', ')}
+                                onChange={(e) => setDraft((prev: any) => ({ ...prev, subject_ids: e.target.value.split(',').map((item: string) => Number(item.trim())).filter((value: number) => !Number.isNaN(value) && value > 0) }))}
+                                className="w-full min-h-[80px] rounded-[var(--radius-sm)] border border-[var(--border)] p-2.5"
+                                placeholder={ar ? 'أرقام المواد' : 'subject IDs'}
+                            />
+                        </div>
+                        <div className="space-y-2 text-sm text-[var(--text-main)]">
+                            <span>{ar ? 'اللغات' : 'Languages'}</span>
+                            <textarea
+                                value={(draft.language_ids || []).join(', ')}
+                                onChange={(e) => setDraft((prev: any) => ({ ...prev, language_ids: e.target.value.split(',').map((item: string) => Number(item.trim())).filter((value: number) => !Number.isNaN(value) && value > 0) }))}
+                                className="w-full min-h-[80px] rounded-[var(--radius-sm)] border border-[var(--border)] p-2.5"
+                                placeholder={ar ? 'أرقام اللغات' : 'language IDs'}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-2 text-sm text-[var(--text-main)]">
+                        <span>{ar ? 'أوقات التوفر' : 'Availability slots'}</span>
+                        <textarea
+                            value={(draft.available_times || []).map((entry: any) => `${entry.day}:${(entry.times || []).join(',')}`).join(' | ')}
+                            onChange={(e) => {
+                                const raw = e.target.value;
+                                if (!raw.trim()) {
+                                    setDraft((prev: any) => ({ ...prev, available_times: [] }));
+                                    return;
+                                }
+                                const parsed = raw.split('|').map((entry) => {
+                                    const [day, timesPart] = entry.split(':');
+                                    const times = (timesPart || '').split(',').map((time) => time.trim()).filter(Boolean);
+                                    return { day: Number(day), times };
+                                }).filter((entry) => entry.day && entry.times.length > 0);
+                                setDraft((prev: any) => ({ ...prev, available_times: parsed }));
+                            }}
+                            className="w-full min-h-[80px] rounded-[var(--radius-sm)] border border-[var(--border)] p-2.5"
+                            placeholder={ar ? 'مثال: 1:09:00,10:00 | 2:11:00' : 'Example: 1:09:00,10:00 | 2:11:00'}
+                        />
+                    </div>
+                </div>
+            )}
 
             <div className="grid lg:grid-cols-3 gap-6">
                 {/* Left column */}

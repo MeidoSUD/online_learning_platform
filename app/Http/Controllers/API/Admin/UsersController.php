@@ -20,6 +20,11 @@ use App\Models\Review;
 use App\Models\Complaint;
 use App\Models\Dispute;
 use App\Models\Enrollment;
+use App\Models\TeacherInfo;
+use App\Models\TeacherServices;
+use App\Models\TeacherSubject;
+use App\Models\TeacherLanguage;
+use App\Models\AvailabilitySlot;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
@@ -308,13 +313,335 @@ class UsersController extends Controller
 
     public function teacherDetails(Request $request, $id)
     {
-        
+
         $user = User::with('profile')->findOrFail($id);
         $userController = new UserController();
         $user = $userController->getFullTeacherData($user);
         return response()->json([
             'success' => true,
             'data' => $user
+        ]);
+    }
+
+    public function updateTeacherProfileByAdmin(Request $request, $id)
+    {
+        $teacher = User::with(['profile', 'teacherInfo'])->findOrFail($id);
+        $teacherRoleId = Role::where('name_key', 'teacher')->value('id');
+
+        if ((int) $teacher->role_id !== (int) $teacherRoleId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Selected user is not a teacher.',
+            ], 422);
+        }
+
+        $request->validate([
+            'first_name' => 'nullable|string|max:255',
+            'last_name' => 'nullable|string|max:255',
+            'email' => 'nullable|email|unique:users,email,' . $teacher->id,
+            'phone_number' => 'nullable|string|max:20|unique:users,phone_number,' . $teacher->id,
+            'gender' => 'nullable|string|max:50',
+            'nationality' => 'nullable|string|max:255',
+            'is_active' => 'nullable|boolean',
+            'bio' => 'nullable|string|max:2000',
+            'description' => 'nullable|string|max:5000',
+            'verified' => 'nullable|boolean',
+            'teach_individual' => 'nullable|boolean',
+            'package_on_off' => 'nullable|boolean',
+            'individual_hour_price' => 'nullable|numeric|min:0',
+            'teach_group' => 'nullable|boolean',
+            'group_hour_price' => 'nullable|numeric|min:0',
+            'max_group_size' => 'nullable|integer|min:0|max:100',
+            'min_group_size' => 'nullable|integer|min:0|max:100',
+            'service_ids' => 'nullable|array',
+            'service_ids.*' => 'integer|exists:services,id',
+            'subject_ids' => 'nullable|array',
+            'subject_ids.*' => 'integer|exists:subjects,id',
+            'language_ids' => 'nullable|array',
+            'language_ids.*' => 'integer|exists:languages,id',
+            'available_times' => 'nullable|array',
+            'available_times.*.day' => 'required_with:available_times|integer|min:1|max:7',
+            'available_times.*.times' => 'required_with:available_times|array',
+            'available_times.*.times.*' => 'string',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $profileUpdateData = [];
+            foreach (['bio', 'description', 'verified'] as $field) {
+                if ($request->has($field)) {
+                    $profileUpdateData[$field] = $request->input($field);
+                }
+            }
+
+            if (!empty($profileUpdateData)) {
+                UserProfile::updateOrCreate(
+                    ['user_id' => $teacher->id],
+                    $profileUpdateData
+                );
+            }
+
+            $teacherData = [];
+            foreach (['first_name', 'last_name', 'email', 'phone_number', 'gender', 'nationality', 'is_active'] as $field) {
+                if ($request->has($field)) {
+                    $teacherData[$field] = $request->input($field);
+                }
+            }
+
+            if (!empty($teacherData)) {
+                $teacher->fill($teacherData);
+                $teacher->save();
+            }
+
+            $teacherInfoData = [];
+            foreach (['bio', 'package_on_off', 'teach_individual', 'individual_hour_price', 'teach_group', 'group_hour_price', 'max_group_size', 'min_group_size'] as $field) {
+                if ($request->has($field)) {
+                    $teacherInfoData[$field] = $request->input($field);
+                }
+            }
+
+            if (!empty($teacherInfoData)) {
+                TeacherInfo::updateOrCreate(
+                    ['teacher_id' => $teacher->id],
+                    $teacherInfoData
+                );
+            }
+
+            if ($request->has('service_ids')) {
+                TeacherServices::where('teacher_id', $teacher->id)->delete();
+                foreach ($request->input('service_ids', []) as $serviceId) {
+                    TeacherServices::firstOrCreate([
+                        'teacher_id' => $teacher->id,
+                        'service_id' => (int) $serviceId,
+                    ]);
+                }
+            }
+
+            if ($request->has('subject_ids')) {
+                TeacherSubject::where('teacher_id', $teacher->id)->delete();
+                foreach ($request->input('subject_ids', []) as $subjectId) {
+                    TeacherSubject::firstOrCreate([
+                        'teacher_id' => $teacher->id,
+                        'subject_id' => (int) $subjectId,
+                    ]);
+                }
+            }
+
+            if ($request->has('language_ids')) {
+                TeacherLanguage::where('teacher_id', $teacher->id)->delete();
+                foreach ($request->input('language_ids', []) as $languageId) {
+                    TeacherLanguage::firstOrCreate([
+                        'teacher_id' => $teacher->id,
+                        'language_id' => (int) $languageId,
+                    ]);
+                }
+            }
+
+            if ($request->has('available_times')) {
+                $teacherAvailableTimes = $request->input('available_times', []);
+
+                if (empty($teacherAvailableTimes)) {
+                    AvailabilitySlot::where('teacher_id', $teacher->id)->delete();
+                } else {
+                    foreach ($teacherAvailableTimes as $dayEntry) {
+                        $day = $dayEntry['day'] ?? $dayEntry['day_number'] ?? null;
+                        if (!$day || !is_array($dayEntry['times'] ?? null)) {
+                            continue;
+                        }
+
+                        foreach ($dayEntry['times'] as $time) {
+                            $timeStr = trim((string) $time);
+                            $parsed = null;
+                            $timeFormats = ['g:i A', 'h:i A', 'H:i', 'G:i'];
+                            foreach ($timeFormats as $fmt) {
+                                try {
+                                    $parsed = \Carbon\Carbon::createFromFormat($fmt, str_replace(['ص', 'م'], ['AM', 'PM'], $timeStr));
+                                    if ($parsed) {
+                                        break;
+                                    }
+                                } catch (\Exception $e) {
+                                    // Try next time format.
+                                }
+                            }
+
+                            if (!$parsed) {
+                                throw new \InvalidArgumentException('Invalid time format: ' . $timeStr);
+                            }
+
+                            $startTime = $parsed->format('H:i');
+                            $endParsed = $parsed->copy()->addHour();
+                            if ($endParsed->lessThanOrEqualTo($parsed)) {
+                                throw new \InvalidArgumentException('Invalid time slot: ' . $timeStr);
+                            }
+
+                            AvailabilitySlot::firstOrCreate([
+                                'teacher_id' => $teacher->id,
+                                'day_number' => (int) $day,
+                                'start_time' => $startTime,
+                            ], [
+                                'course_id' => null,
+                                'order_id' => null,
+                                'end_time' => $endParsed->format('H:i'),
+                                'is_available' => true,
+                                'is_booked' => false,
+                                'repeat_type' => AvailabilitySlot::REPEAT_NONE,
+                            ]);
+                        }
+                    }
+                }
+            }
+
+            DB::commit();
+
+            $teacher->refresh();
+            $teacher->load(['profile', 'teacherInfo', 'teacherServices.service', 'teacherSubjects.subject', 'teacherLanguages.language', 'availableSlots']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Teacher profile updated successfully.',
+                'data' => $teacher,
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update teacher profile.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function syncTeacherServicesByAdmin(Request $request, $id)
+    {
+        $request->validate([
+            'service_ids' => 'required|array|min:1',
+            'service_ids.*' => 'integer|exists:services,id',
+        ]);
+
+        $teacher = User::findOrFail($id);
+        TeacherServices::where('teacher_id', $teacher->id)->delete();
+
+        foreach ($request->service_ids as $serviceId) {
+            TeacherServices::firstOrCreate([
+                'teacher_id' => $teacher->id,
+                'service_id' => (int) $serviceId,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Teacher services updated successfully.',
+            'data' => $request->service_ids,
+        ]);
+    }
+
+    public function syncTeacherSubjectsByAdmin(Request $request, $id)
+    {
+        $request->validate([
+            'subject_ids' => 'required|array',
+            'subject_ids.*' => 'integer|exists:subjects,id',
+        ]);
+
+        $teacher = User::findOrFail($id);
+        TeacherSubject::where('teacher_id', $teacher->id)->delete();
+
+        foreach ($request->subject_ids as $subjectId) {
+            TeacherSubject::firstOrCreate([
+                'teacher_id' => $teacher->id,
+                'subject_id' => (int) $subjectId,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Teacher subjects updated successfully.',
+            'data' => $request->subject_ids,
+        ]);
+    }
+
+    public function syncTeacherLanguagesByAdmin(Request $request, $id)
+    {
+        $request->validate([
+            'language_ids' => 'required|array',
+            'language_ids.*' => 'integer|exists:languages,id',
+        ]);
+
+        $teacher = User::findOrFail($id);
+        TeacherLanguage::where('teacher_id', $teacher->id)->delete();
+
+        foreach ($request->language_ids as $languageId) {
+            TeacherLanguage::firstOrCreate([
+                'teacher_id' => $teacher->id,
+                'language_id' => (int) $languageId,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Teacher languages updated successfully.',
+            'data' => $request->language_ids,
+        ]);
+    }
+
+    public function addTeacherAvailabilityByAdmin(Request $request, $id)
+    {
+        $request->validate([
+            'available_times' => 'required|array|min:1',
+            'available_times.*.day' => 'required|integer|min:1|max:7',
+            'available_times.*.times' => 'required|array|min:1',
+            'available_times.*.times.*' => 'string',
+        ]);
+
+        $teacher = User::findOrFail($id);
+        $created = [];
+
+        foreach ($request->available_times as $dayEntry) {
+            foreach ($dayEntry['times'] as $time) {
+                $timeStr = trim((string) $time);
+                $parsed = null;
+                $timeFormats = ['g:i A', 'h:i A', 'H:i', 'G:i'];
+                foreach ($timeFormats as $fmt) {
+                    try {
+                        $parsed = \Carbon\Carbon::createFromFormat($fmt, str_replace(['ص', 'م'], ['AM', 'PM'], $timeStr));
+                        if ($parsed) {
+                            break;
+                        }
+                    } catch (\Exception $e) {
+                        // Try next format.
+                    }
+                }
+
+                if (!$parsed) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Invalid time format: ' . $timeStr,
+                    ], 422);
+                }
+
+                $startTime = $parsed->format('H:i');
+                $endParsed = $parsed->copy()->addHour();
+                $slot = AvailabilitySlot::firstOrCreate([
+                    'teacher_id' => $teacher->id,
+                    'day_number' => (int) $dayEntry['day'],
+                    'start_time' => $startTime,
+                ], [
+                    'course_id' => null,
+                    'order_id' => null,
+                    'end_time' => $endParsed->format('H:i'),
+                    'is_available' => true,
+                    'is_booked' => false,
+                    'repeat_type' => AvailabilitySlot::REPEAT_NONE,
+                ]);
+
+                $created[] = $slot;
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Teacher availability updated successfully.',
+            'data' => $created,
         ]);
     }
 

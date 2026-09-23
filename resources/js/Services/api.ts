@@ -538,6 +538,7 @@ getMarketingAudienceCount: (target_type: string, target_user_id?: number, target
   getTeachers: (page: number = 1, perPage: number = 25) => fetchWithAuth(`/admin/teachers?page=${page}&per_page=${perPage}`),
   exportTeachers: (format: 'xlsx' | 'pdf') => fetchWithAuth(`/admin/teachers/export?format=${format}`, { headers: { 'X-Download': 'true' } }),
   getTeacherDetails: (id: number) => fetchWithAuth(`/admin/teachers/${id}`),
+  updateTeacherProfileByAdmin: (id: number, data: Record<string, any>) => fetchWithAuth(`/admin/teachers/${id}/profile`, { method: 'PUT', body: JSON.stringify(data) }),
   rejectUser: (id: number) => fetchWithAuth(`/admin/users/${id}/reject-teacher`, { method: 'PUT' }),
   getBookings: (page: number = 1, perPage: number = 25) => fetchWithAuth(`/admin/bookings?page=${page}&per_page=${perPage}`),
   exportBookings: (format: 'xlsx' | 'pdf', status = '') => fetchWithAuth(`/admin/bookings/export?format=${format}${status ? `&status=${encodeURIComponent(status)}` : ''}`, { headers: { 'X-Download': 'true' } }),

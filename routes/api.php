@@ -314,6 +314,11 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin,support'])->grou
     Route::delete('/users/{id}', [UsersController::class, 'destroy']);
     Route::get('/teachers', [UsersController::class, 'teachers']);
     Route::get('/teachers/{id}', [UsersController::class, 'teacherDetails']);
+    Route::put('/teachers/{id}/profile', [UsersController::class, 'updateTeacherProfileByAdmin']);
+    Route::put('/teachers/{id}/services', [UsersController::class, 'syncTeacherServicesByAdmin']);
+    Route::put('/teachers/{id}/subjects', [UsersController::class, 'syncTeacherSubjectsByAdmin']);
+    Route::put('/teachers/{id}/languages', [UsersController::class, 'syncTeacherLanguagesByAdmin']);
+    Route::post('/teachers/{id}/availability', [UsersController::class, 'addTeacherAvailabilityByAdmin']);
     Route::put('/users/{id}/reset-password', [UsersController::class, 'resetPassword']);
     Route::put('/users/{id}/verify-teacher', [UsersController::class, 'verifyTeacher']);
     Route::put('/users/{id}/suspend', [UsersController::class, 'suspend']);
