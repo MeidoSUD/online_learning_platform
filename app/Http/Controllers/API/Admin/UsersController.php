@@ -25,6 +25,8 @@ use App\Models\TeacherServices;
 use App\Models\TeacherSubject;
 use App\Models\TeacherLanguage;
 use App\Models\AvailabilitySlot;
+use App\Models\Services;
+use App\Models\Subject;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
@@ -364,6 +366,43 @@ class UsersController extends Controller
             'available_times.*.times' => 'required_with:available_times|array',
             'available_times.*.times.*' => 'string',
         ]);
+
+        $serviceIds = array_values(array_unique(array_map('intval', $request->input('service_ids', []))));
+        $selectedServices = Services::whereIn('id', $serviceIds)->get(['id', 'key_name']);
+        $serviceKeys = $selectedServices->pluck('key_name')->map(fn ($key) => strtolower((string) $key));
+        $hasPrivateLessons = $serviceKeys->contains(fn ($key) => str_contains($key, 'private'));
+        $hasLanguageStudy = $serviceKeys->contains(fn ($key) => str_contains($key, 'language'));
+        $subjectIds = array_values(array_unique(array_map('intval', $request->input('subject_ids', []))));
+        $languageIds = array_values(array_unique(array_map('intval', $request->input('language_ids', []))));
+
+        if (!empty($subjectIds)) {
+            if (!$hasPrivateLessons) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Subjects can only be assigned when the teacher has the private lessons service.',
+                ], 422);
+            }
+
+            $validSubjectCount = Subject::whereIn('id', $subjectIds)
+                ->where(function ($query) use ($serviceIds) {
+                    $query->whereIn('service_id', $serviceIds)
+                        ->orWhereNull('service_id');
+                })
+                ->count();
+            if ($validSubjectCount !== count($subjectIds)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'One or more selected subjects do not belong to the selected private lessons service.',
+                ], 422);
+            }
+        }
+
+        if (!empty($languageIds) && !$hasLanguageStudy) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Languages can only be assigned when the teacher has the language study service.',
+            ], 422);
+        }
 
         DB::beginTransaction();
 

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
 import { useToast } from '../../Contexts/ToastContext';
 import {
@@ -35,6 +35,8 @@ export const AdminTeacherDetails: React.FC<AdminTeacherDetailsProps> = ({ userId
     const [isEditing, setIsEditing] = useState(false);
     const [saving, setSaving] = useState(false);
     const [draft, setDraft] = useState<any>({});
+    const [editOptions, setEditOptions] = useState<{ services: any[]; subjects: any[]; languages: any[] }>({ services: [], subjects: [], languages: [] });
+    const [optionsLoading, setOptionsLoading] = useState(false);
 
     const ar = language === 'ar';
 
@@ -99,6 +101,20 @@ export const AdminTeacherDetails: React.FC<AdminTeacherDetailsProps> = ({ userId
             setDraft(buildDraft(teacher));
         }
     }, [teacher, buildDraft]);
+
+    useEffect(() => {
+        if (!isEditing || editOptions.services.length > 0) return;
+        setOptionsLoading(true);
+        Promise.all([
+            adminService.getTeacherEditServices(),
+            adminService.getTeacherEditSubjects(),
+            adminService.getTeacherEditLanguages(),
+        ]).then(([services, subjects, languages]) => {
+            setEditOptions({ services: services || [], subjects: subjects || [], languages: languages || [] });
+        }).catch((e: any) => {
+            showToast(e.message || (ar ? 'فشل تحميل بيانات الخدمات' : 'Failed to load service data'), 'error');
+        }).finally(() => setOptionsLoading(false));
+    }, [isEditing, editOptions.services.length, ar, showToast]);
 
     if (loading) {
         return <div className="flex justify-center p-16"><Loader2 className="animate-spin text-primary" /></div>;
@@ -237,6 +253,31 @@ export const AdminTeacherDetails: React.FC<AdminTeacherDetailsProps> = ({ userId
         }
     };
 
+    const selectedServices = editOptions.services.filter((service: any) => (draft.service_ids || []).includes(Number(service.id)));
+    const hasPrivateService = selectedServices.some((service: any) => String(service.key_name || '').toLowerCase().includes('private'));
+    const hasLanguageService = selectedServices.some((service: any) => String(service.key_name || '').toLowerCase().includes('language'));
+    const availableSubjects = editOptions.subjects.filter((subject: any) =>
+        (draft.service_ids || []).includes(Number(subject.service_id)) ||
+        (subject.service_id == null && hasPrivateService)
+    );
+    const toggleId = (field: 'service_ids' | 'subject_ids' | 'language_ids', id: number) => {
+        setDraft((prev: any) => {
+            const current = prev[field] || [];
+            const next = current.includes(id) ? current.filter((value: number) => value !== id) : [...current, id];
+            if (field !== 'service_ids') return { ...prev, [field]: next };
+
+            const selected = editOptions.services.filter((service: any) => next.includes(Number(service.id)));
+            const privateSelected = selected.some((service: any) => String(service.key_name || '').toLowerCase().includes('private'));
+            const languageSelected = selected.some((service: any) => String(service.key_name || '').toLowerCase().includes('language'));
+            return {
+                ...prev,
+                service_ids: next,
+                subject_ids: privateSelected ? prev.subject_ids : [],
+                language_ids: languageSelected ? prev.language_ids : [],
+            };
+        });
+    };
+
     return (
         <div className="space-y-6 animate-fade-in" dir={direction}>
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -331,6 +372,55 @@ export const AdminTeacherDetails: React.FC<AdminTeacherDetailsProps> = ({ userId
             {isEditing && (
                 <div className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] p-5 space-y-4">
                     <h3 className="text-lg font-bold text-[var(--text-main)]">{ar ? 'تعديل بيانات المعلم' : 'Edit teacher profile'}</h3>
+                    {optionsLoading ? (
+                        <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]"><Loader2 className="animate-spin" size={16} /> {ar ? 'جاري تحميل بيانات النظام...' : 'Loading system data...'}</div>
+                    ) : (
+                        <>
+                            <div className="space-y-2">
+                                <p className="text-sm font-semibold text-[var(--text-main)]">{ar ? 'الخدمات' : 'Services'}</p>
+                                <p className="text-xs text-[var(--text-muted)]">{ar ? 'اختر الخدمة أولا. سيتم عرض المواد واللغات حسب الخدمة المختارة.' : 'Choose services first. Subjects and languages are shown according to the selected services.'}</p>
+                                <div className="grid md:grid-cols-2 gap-2">
+                                    {editOptions.services.map((service: any) => {
+                                        const id = Number(service.id);
+                                        const checked = (draft.service_ids || []).includes(id);
+                                        return (
+                                            <label key={id} className={`flex items-center gap-2 rounded-[var(--radius-sm)] border p-3 cursor-pointer ${checked ? 'border-primary bg-primary-pale/40' : 'border-[var(--border)]'}`}>
+                                                <input type="checkbox" checked={checked} onChange={() => toggleId('service_ids', id)} />
+                                                <span className="text-sm text-[var(--text-main)]">{ar ? (service.name_ar || service.name_en) : (service.name_en || service.name_ar)}</span>
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {hasPrivateService && (
+                                <div className="space-y-2">
+                                    <p className="text-sm font-semibold text-[var(--text-main)]">{ar ? 'مواد الدروس الخاصة' : 'Private lesson subjects'}</p>
+                                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-56 overflow-y-auto">
+                                        {availableSubjects.map((subject: any) => {
+                                            const id = Number(subject.id);
+                                            return <label key={id} className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--border)] p-2 cursor-pointer"><input type="checkbox" checked={(draft.subject_ids || []).includes(id)} onChange={() => toggleId('subject_ids', id)} /><span className="text-sm">{ar ? (subject.name_ar || subject.name_en) : (subject.name_en || subject.name_ar)}</span></label>;
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+
+                            {hasLanguageService && (
+                                <div className="space-y-2">
+                                    <p className="text-sm font-semibold text-[var(--text-main)]">{ar ? 'لغات الدراسة' : 'Study languages'}</p>
+                                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-56 overflow-y-auto">
+                                        {editOptions.languages.map((item: any) => {
+                                            const id = Number(item.id);
+                                            return <label key={id} className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--border)] p-2 cursor-pointer"><input type="checkbox" checked={(draft.language_ids || []).includes(id)} onChange={() => toggleId('language_ids', id)} /><span className="text-sm">{ar ? (item.name_ar || item.name_en) : (item.name_en || item.name_ar)}</span></label>;
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+
+                            {!hasPrivateService && <p className="text-xs text-[var(--text-muted)]">{ar ? 'اختر خدمة الدروس الخاصة لإدارة المواد.' : 'Select the private lessons service to manage subjects.'}</p>}
+                            {!hasLanguageService && <p className="text-xs text-[var(--text-muted)]">{ar ? 'اختر خدمة دراسة اللغات لإدارة اللغات.' : 'Select the language study service to manage languages.'}</p>}
+                        </>
+                    )}
                     <div className="grid md:grid-cols-2 gap-4">
                         <label className="space-y-2 text-sm text-[var(--text-main)]">
                             <span>{ar ? 'السعر الفردي / ساعة' : 'Individual price / hour'}</span>
@@ -376,36 +466,6 @@ export const AdminTeacherDetails: React.FC<AdminTeacherDetailsProps> = ({ userId
                             <span>{ar ? 'أقصى حجم للمجموعة' : 'Max group size'}</span>
                             <input type="number" min="0" value={draft.max_group_size ?? 0} onChange={(e) => setDraft((prev: any) => ({ ...prev, max_group_size: Number(e.target.value) }))} className="w-full rounded-[var(--radius-sm)] border border-[var(--border)] p-2.5" />
                         </label>
-                    </div>
-
-                    <div className="grid md:grid-cols-3 gap-4">
-                        <div className="space-y-2 text-sm text-[var(--text-main)]">
-                            <span>{ar ? 'الخدمات' : 'Services'}</span>
-                            <textarea
-                                value={(draft.service_ids || []).join(', ')}
-                                onChange={(e) => setDraft((prev: any) => ({ ...prev, service_ids: e.target.value.split(',').map((item: string) => Number(item.trim())).filter((value: number) => !Number.isNaN(value) && value > 0) }))}
-                                className="w-full min-h-[80px] rounded-[var(--radius-sm)] border border-[var(--border)] p-2.5"
-                                placeholder={ar ? 'أرقام الخدمات' : 'service IDs'}
-                            />
-                        </div>
-                        <div className="space-y-2 text-sm text-[var(--text-main)]">
-                            <span>{ar ? 'المواد' : 'Subjects'}</span>
-                            <textarea
-                                value={(draft.subject_ids || []).join(', ')}
-                                onChange={(e) => setDraft((prev: any) => ({ ...prev, subject_ids: e.target.value.split(',').map((item: string) => Number(item.trim())).filter((value: number) => !Number.isNaN(value) && value > 0) }))}
-                                className="w-full min-h-[80px] rounded-[var(--radius-sm)] border border-[var(--border)] p-2.5"
-                                placeholder={ar ? 'أرقام المواد' : 'subject IDs'}
-                            />
-                        </div>
-                        <div className="space-y-2 text-sm text-[var(--text-main)]">
-                            <span>{ar ? 'اللغات' : 'Languages'}</span>
-                            <textarea
-                                value={(draft.language_ids || []).join(', ')}
-                                onChange={(e) => setDraft((prev: any) => ({ ...prev, language_ids: e.target.value.split(',').map((item: string) => Number(item.trim())).filter((value: number) => !Number.isNaN(value) && value > 0) }))}
-                                className="w-full min-h-[80px] rounded-[var(--radius-sm)] border border-[var(--border)] p-2.5"
-                                placeholder={ar ? 'أرقام اللغات' : 'language IDs'}
-                            />
-                        </div>
                     </div>
 
                     <div className="space-y-2 text-sm text-[var(--text-main)]">

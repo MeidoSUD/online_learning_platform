@@ -203,6 +203,14 @@ class AdminTeacherProfileEditTest extends TestCase
             'role_id' => 3,
         ]);
 
+        $languageService = Services::create([
+            'key_name' => 'language_study',
+            'name_en' => 'Language Study',
+            'name_ar' => 'دراسة اللغات',
+            'status' => true,
+            'role_id' => 3,
+        ]);
+
         $language = Languages::create([
             'name_en' => 'English',
             'name_ar' => 'الإنجليزية',
@@ -232,7 +240,7 @@ class AdminTeacherProfileEditTest extends TestCase
                 'teach_individual' => true,
                 'individual_hour_price' => 40.50,
                 'teach_group' => false,
-                'service_ids' => [$service->id],
+                'service_ids' => [$service->id, $languageService->id],
                 'subject_ids' => [$subject->id],
                 'language_ids' => [$language->id],
                 'available_times' => [
