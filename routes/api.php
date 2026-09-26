@@ -305,6 +305,8 @@ Route::prefix('teacher')->middleware(['auth:sanctum', 'role:teacher'])->group(fu
 
 // Users & Teachers management (shared between admin and support roles)
 Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin,support'])->group(function () {
+    Route::get('/teacher-edit/options', [UsersController::class, 'teacherEditOptions']);
+    Route::get('/teacher-edit/subjects', [UsersController::class, 'teacherEditSubjects']);
     Route::get('/users', [UsersController::class, 'index']);
     Route::get('/users/export', [UsersController::class, 'export']);
     Route::get('/users/{id}', [UsersController::class, 'show']);

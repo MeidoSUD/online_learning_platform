@@ -376,6 +376,23 @@ class StudentPackageController extends Controller
                 return response()->json(['status' => false, 'message' => 'Slot must be at least 2 hours in the future'], 400);
             }
 
+            // Check if student has a conflicting upcoming session
+            $validationService = app(\App\Services\Booking\BookingValidationService::class);
+            $conflictCheck = $validationService->checkStudentSessionConflict($studentId, [[
+                'date' => $slotDate,
+                'start_time' => $startTime,
+                'end_time' => $endTime,
+            ]]);
+            if ($conflictCheck['has_conflict']) {
+                return response()->json([
+                    'status' => false,
+                    'message' => $conflictCheck['message'],
+                    'message_ar' => $conflictCheck['message_ar'],
+                    'error_code' => 'STUDENT_SESSION_CONFLICT',
+                    'conflict_session' => $conflictCheck['conflict_details'] ?? null,
+                ], 422);
+            }
+
             $booking = Booking::create([
                 'student_id' => $studentId,
                 'teacher_id' => $request->teacher_id,

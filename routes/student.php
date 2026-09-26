@@ -53,6 +53,10 @@ Route::prefix('student')->middleware(['auth:sanctum', 'role:student'])->group(fu
     Route::get('/orders/{order_id}/applications', [OrdersController::class, 'getApplications']);
     Route::post('/orders/{order_id}/applications/{application_id}/accept', [OrdersController::class, 'acceptApplication']);
     // bookings
+    Route::get('/timeslots/session-date', [BookingController::class, 'getTimeslotSessionDate']);
+    Route::get('/timeslots/{slotId}/session-date', [BookingController::class, 'getTimeslotSessionDate']);
+    Route::get('/booking/timeslot-date', [BookingController::class, 'getTimeslotSessionDate']);
+    Route::get('/booking/timeslot-date/{slotId}', [BookingController::class, 'getTimeslotSessionDate']);
     Route::post('/booking', [BookingController::class, 'createBooking']); // create booking
     Route::get('/booking', [BookingController::class, 'getStudentBookings']);   // list my bookings
     Route::get('/booking/{bookingId}', [BookingController::class, 'getBookingDetails']); // view specific booking

@@ -205,6 +205,29 @@ class BookingCourseController extends Controller
                 $service_id = $subject ? $subject->service_id : $service_id;
             }
 
+            // Check student session conflict
+            $validationService = app(\App\Services\Booking\BookingValidationService::class);
+            $candidateSessions = [];
+            $firstDateParsed = Carbon::parse($firstSessionDate);
+            for ($i = 0; $i < $sessionsCount; $i++) {
+                $candidateSessions[] = [
+                    'date' => $i === 0 ? $firstDateParsed->format('Y-m-d') : $firstDateParsed->copy()->addWeeks($i)->format('Y-m-d'),
+                    'start_time' => $startTime,
+                    'end_time' => $firstSessionEndTime,
+                ];
+            }
+            $conflictCheck = $validationService->checkStudentSessionConflict($studentId, $candidateSessions);
+            if ($conflictCheck['has_conflict']) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => $conflictCheck['message'],
+                    'message_ar' => $conflictCheck['message_ar'],
+                    'error_code' => 'STUDENT_SESSION_CONFLICT',
+                    'conflict_session' => $conflictCheck['conflict_details'] ?? null,
+                ], 422);
+            }
+
             $booking = Booking::create([
                 'student_id' => $studentId,
                 'teacher_id' => $teacherId,

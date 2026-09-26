@@ -1232,10 +1232,9 @@ We are currently in the teacher preparation phase ahead of our official launch. 
     /**
      * Delete user account and all associated data
      * 
-     * Deletes:
-     * - User profile
-     * - User attachments
-     * - User account
+     * Checks for blockers (upcoming sessions, active bookings, wallet balance,
+     * active subscriptions, pending payouts, open disputes) before proceeding.
+     * Returns bilingual messages describing any blockers.
      * 
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
@@ -1253,7 +1252,8 @@ We are currently in the teacher preparation phase ahead of our official launch. 
             if (!$user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'User not authenticated'
+                    'message' => 'User not authenticated',
+                    'message_ar' => 'المستخدم غير مسجل الدخول',
                 ], 401);
             }
 
@@ -1261,77 +1261,38 @@ We are currently in the teacher preparation phase ahead of our official launch. 
             if (!Hash::check($request->password, $user->password)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Invalid password. Account deletion cancelled.'
+                    'message' => 'Invalid password. Account deletion cancelled.',
+                    'message_ar' => 'كلمة المرور غير صحيحة. تم إلغاء حذف الحساب.',
                 ], 422);
             }
 
-            // Start database transaction
-            DB::beginTransaction();
+            $deletionService = app(\App\Services\User\UserDeletionService::class);
+            $result = $deletionService->deleteUser($user, false);
 
-            $userId = $user->id;
-            $userEmail = $user->email;
-
-            // Log deletion request
-            Log::warning("User account deletion initiated - User ID: {$userId}, Email: {$userEmail}");
-
-            // Delete all attachments associated with the user
-            $attachments = Attachment::where('user_id', $userId)->get();
-            foreach ($attachments as $attachment) {
-                try {
-                    // Delete file from storage if it exists
-                    if (Storage::exists($attachment->file_path)) {
-                        Storage::delete($attachment->file_path);
-                    }
-                } catch (\Exception $e) {
-                    Log::warning("Failed to delete attachment file: {$attachment->file_path}");
-                }
-                $attachment->delete();
-            }
-
-            // Delete user profile
-            if ($user->profile) {
-                $user->profile()->delete();
-            }
-
-            // Delete all support tickets and replies
-            $tickets = SupportTicket::where('user_id', $userId)->get();
-            foreach ($tickets as $ticket) {
-                SupportTicketReply::where('support_ticket_id', $ticket->id)->delete();
-                $ticket->delete();
-            }
-
-            // Delete all support ticket replies made by this user
-            SupportTicketReply::where('user_id', $userId)->delete();
-
-            // Revoke all API tokens
-            $user->tokens()->delete();
-
-            // Delete user account
-            $user->delete();
-
-            DB::commit();
-
-            Log::error("User account successfully deleted - User ID: {$userId}, Email: {$userEmail}");
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Your account has been permanently deleted. All associated data has been removed from our system.',
-                'deleted_user_id' => $userId,
-            ], 200);
+            return response()->json(
+                array_filter([
+                    'success' => $result['success'],
+                    'message' => $result['message'],
+                    'message_ar' => $result['message_ar'] ?? null,
+                    'deleted_user_id' => $result['deleted_user_id'] ?? null,
+                    'blockers' => $result['blockers'] ?? null,
+                ]),
+                $result['status_code']
+            );
 
         } catch (ValidationException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Validation failed',
+                'message_ar' => 'فشل التحقق',
                 'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
-            DB::rollBack();
             Log::error('Account deletion failed: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to delete account. Please try again later.',
-                'error' => $e->getMessage()
+                'message_ar' => 'فشل في حذف الحساب. يرجى المحاولة لاحقًا.',
             ], 500);
         }
     }

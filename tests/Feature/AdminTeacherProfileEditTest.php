@@ -8,12 +8,15 @@ use App\Models\Services;
 use App\Models\Subject;
 use App\Models\User;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class AdminTeacherProfileEditTest extends TestCase
 {
+    use DatabaseTransactions;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -44,6 +47,7 @@ class AdminTeacherProfileEditTest extends TestCase
                 $table->boolean('is_active')->default(true);
                 $table->rememberToken();
                 $table->timestamps();
+                $table->softDeletes();
             });
         }
 

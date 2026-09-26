@@ -18,6 +18,13 @@ class Helpers
         if (!$model) {
             return false;
         }
+
+        // Weekly teacher availability is a reusable schedule. A confirmed
+        // occurrence is tracked in sessions, not by disabling the whole slot.
+        if (\App\Helpers\PackageBookingHelper::isRecurringSlot($model)) {
+            return true;
+        }
+
         $model->is_booked = 1;
         $model->is_available = 0;
         return $model->save();

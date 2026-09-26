@@ -74,10 +74,15 @@ export class ApiErrorHandler {
       const error: any = new Error(this.getFriendlyMessage(data.message || "Validation failed"));
       error.status = 422;
       error.errors = data.errors;
+      error.blockers = data.blockers;
+      error.message_ar = data.message_ar;
       throw error;
     }
 
-    throw new Error(this.getFriendlyMessage(data.message || data.error || "API Request Failed"));
+    const error: any = new Error(this.getFriendlyMessage(data.message || data.error || "API Request Failed"));
+    error.blockers = data.blockers;
+    error.message_ar = data.message_ar;
+    throw error;
   }
 }
 
@@ -394,6 +399,8 @@ export const studentService = {
     }));
   },
   // --- Booking API (matching Android app) ---
+  getTimeslotSessionDate: (slotId: number, sessionsCount = 1) =>
+    fetchWithAuth(`/student/timeslots/${slotId}/session-date?sessions_count=${sessionsCount}`),
   createBooking: (data: any) => fetchWithAuth('/student/booking', { method: 'POST', body: JSON.stringify(data) }),
   getBookings: () => fetchWithAuth('/student/booking').then(extractArray),
   getBookingsPaginated: (status: string = 'all', page: number = 1, perPage: number = 10) => {
@@ -539,8 +546,15 @@ getMarketingAudienceCount: (target_type: string, target_user_id?: number, target
   exportTeachers: (format: 'xlsx' | 'pdf') => fetchWithAuth(`/admin/teachers/export?format=${format}`, { headers: { 'X-Download': 'true' } }),
   getTeacherDetails: (id: number) => fetchWithAuth(`/admin/teachers/${id}`),
   updateTeacherProfileByAdmin: (id: number, data: Record<string, any>) => fetchWithAuth(`/admin/teachers/${id}/profile`, { method: 'PUT', body: JSON.stringify(data) }),
-  getTeacherEditServices: () => fetchWithAuth('/admin/services?role_id=3').then(extractArray),
-  getTeacherEditSubjects: () => fetchWithAuth('/admin/subjects?status=1').then(extractArray),
+  getTeacherEditOptions: () => fetchWithAuth('/admin/teacher-edit/options').then((response) => response?.data ?? response),
+  getTeacherEditSubjects: (educationLevelId: number, classId: number, serviceIds: number[]) => {
+    const params = new URLSearchParams({
+      education_level_id: String(educationLevelId),
+      class_id: String(classId),
+    });
+    serviceIds.forEach((id) => params.append('service_ids[]', String(id)));
+    return fetchWithAuth(`/admin/teacher-edit/subjects?${params.toString()}`).then(extractArray);
+  },
   getTeacherEditLanguages: () => fetchWithAuth('/admin/languages').then(extractArray),
   rejectUser: (id: number) => fetchWithAuth(`/admin/users/${id}/reject-teacher`, { method: 'PUT' }),
   getBookings: (page: number = 1, perPage: number = 25) => fetchWithAuth(`/admin/bookings?page=${page}&per_page=${perPage}`),

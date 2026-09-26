@@ -27,8 +27,12 @@ use App\Models\TeacherLanguage;
 use App\Models\AvailabilitySlot;
 use App\Models\Services;
 use App\Models\Subject;
+use App\Models\EducationLevel;
+use App\Models\ClassModel;
+use App\Models\Languages;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 
 class UsersController extends Controller
 {
@@ -325,6 +329,65 @@ class UsersController extends Controller
         ]);
     }
 
+    /** Read-only choices for the dependent teacher-edit selectors. */
+    public function teacherEditOptions()
+    {
+        $teacherRoleId = Role::where('name_key', 'teacher')->value('id') ?? 3;
+        $levelsQuery = EducationLevel::query()->orderBy('id');
+        $classesQuery = ClassModel::query()->orderBy('education_level_id')->orderBy('id');
+        $languagesQuery = Languages::query()->orderBy('id');
+        if (Schema::hasColumn('education_levels', 'status')) $levelsQuery->where('status', 1);
+        if (Schema::hasColumn('classes', 'status')) $classesQuery->where('status', 1);
+        if (Schema::hasColumn('languages', 'status')) $languagesQuery->where('status', 1);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'services' => Services::where('role_id', $teacherRoleId)
+                    ->where('status', 1)->orderBy('id')->get(['id', 'key_name', 'name_en', 'name_ar']),
+                'levels' => $levelsQuery->get(['id', 'name_en', 'name_ar']),
+                'classes' => $classesQuery
+                    ->get(['id', 'education_level_id', 'name_en', 'name_ar']),
+                'languages' => $languagesQuery->get(['id', 'name_en', 'name_ar']),
+            ],
+        ]);
+    }
+
+    /** Return subjects only after a level, class, and private-lesson service are selected. */
+    public function teacherEditSubjects(Request $request)
+    {
+        $validated = $request->validate([
+            'education_level_id' => 'required|integer|exists:education_levels,id',
+            'class_id' => 'required|integer|exists:classes,id',
+            'service_ids' => 'required|array|min:1',
+            'service_ids.*' => 'integer|exists:services,id',
+        ]);
+
+        $privateServiceIds = Services::whereIn('id', $validated['service_ids'])
+            ->where('key_name', 'like', '%private%')->pluck('id')->all();
+        if (!$privateServiceIds) {
+            return response()->json(['success' => true, 'data' => []]);
+        }
+
+        if (!Schema::hasColumn('subjects', 'class_id') || !Schema::hasColumn('subjects', 'education_level_id')) {
+            return response()->json(['success' => true, 'data' => []]);
+        }
+
+        $subjects = Subject::query()
+            ->where('education_level_id', $validated['education_level_id'])
+            ->where('class_id', $validated['class_id'])
+            ->when(Schema::hasColumn('subjects', 'status'), fn ($query) => $query->where('status', 1))
+            ->when(Schema::hasColumn('subjects', 'service_id'), function ($query) use ($privateServiceIds) {
+                $query->where(function ($serviceQuery) use ($privateServiceIds) {
+                    $serviceQuery->whereIn('service_id', $privateServiceIds)->orWhereNull('service_id');
+                });
+            })
+            ->orderBy('name_en')
+            ->get(['id', 'name_en', 'name_ar', 'class_id', 'education_level_id', 'service_id']);
+
+        return response()->json(['success' => true, 'data' => $subjects]);
+    }
+
     public function updateTeacherProfileByAdmin(Request $request, $id)
     {
         $teacher = User::with(['profile', 'teacherInfo'])->findOrFail($id);
@@ -372,6 +435,9 @@ class UsersController extends Controller
         $serviceKeys = $selectedServices->pluck('key_name')->map(fn ($key) => strtolower((string) $key));
         $hasPrivateLessons = $serviceKeys->contains(fn ($key) => str_contains($key, 'private'));
         $hasLanguageStudy = $serviceKeys->contains(fn ($key) => str_contains($key, 'language'));
+        $privateServiceIds = $selectedServices
+            ->filter(fn ($service) => str_contains(strtolower((string) $service->key_name), 'private'))
+            ->pluck('id')->all();
         $subjectIds = array_values(array_unique(array_map('intval', $request->input('subject_ids', []))));
         $languageIds = array_values(array_unique(array_map('intval', $request->input('language_ids', []))));
 
@@ -383,12 +449,13 @@ class UsersController extends Controller
                 ], 422);
             }
 
-            $validSubjectCount = Subject::whereIn('id', $subjectIds)
-                ->where(function ($query) use ($serviceIds) {
-                    $query->whereIn('service_id', $serviceIds)
-                        ->orWhereNull('service_id');
-                })
-                ->count();
+            $subjectQuery = Subject::whereIn('id', $subjectIds);
+            if (Schema::hasColumn('subjects', 'service_id')) {
+                $subjectQuery->where(function ($query) use ($privateServiceIds) {
+                    $query->whereIn('service_id', $privateServiceIds)->orWhereNull('service_id');
+                });
+            }
+            $validSubjectCount = $subjectQuery->count();
             if ($validSubjectCount !== count($subjectIds)) {
                 return response()->json([
                     'success' => false,
@@ -797,29 +864,8 @@ class UsersController extends Controller
     public function destroy(Request $request, $id)
     {
         $user = User::findOrFail($id);
-
-        try {
-            DB::beginTransaction();
-            $user->delete();
-            DB::commit();
-
-            return response()->json(['success' => true]);
-        } catch (\Illuminate\Database\QueryException $e) {
-            DB::rollBack();
-
-            // 1451/1217 = a foreign key constraint blocks hard deletion
-            // (e.g. payouts, bookings, sessions, payments, orders ...).
-            // Hard-deleting financial or service history would corrupt records,
-            // so tell the admin to suspend the account instead.
-            if (in_array((int) ($e->errorInfo[1] ?? null), [1451, 1217], true)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Cannot delete this user while they have payouts, bookings, sessions or other service history linked to their account. Use "Suspend" to deactivate them instead.',
-                ], 422);
-            }
-
-            throw $e;
-        }
+        $result = app(\App\Services\User\UserDeletionService::class)->deleteUser($user, true);
+        return response()->json($result, $result['status_code'] ?? 200);
     }
 
     public function resetPassword(Request $request, $id)

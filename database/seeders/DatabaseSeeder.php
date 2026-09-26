@@ -22,5 +22,6 @@ class DatabaseSeeder extends Seeder
 
         $this->call(UserTypeSeeder::class);
         $this->call(UserSeeder::class);
+        $this->call(WithdrawalMethodSeeder::class);
     }
 }

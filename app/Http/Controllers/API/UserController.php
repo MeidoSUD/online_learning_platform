@@ -3,43 +3,41 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\UserProfile;
-use Illuminate\Support\Facades\DB;
 use App\Models\User;
-use App\Models\Review;
-use App\Models\Course;
-use App\Models\TeacherInfo;
-use App\Models\TeacherTeachClasses;
-use App\Models\TeacherSubject;
-use App\Models\Attachment;
-use App\Models\TeacherServices;
-use App\Models\AvailabilitySlot;
-use App\Models\TeacherLanguage;
-use App\Models\PlatformPercentage;
-use Illuminate\Support\Facades\Log;
-use App\Helpers\PhoneHelper;
-use App\Models\TeacherInstitute;
-use Illuminate\Support\Facades\Storage;
+use App\Services\User\TeacherProfileService;
+use App\Services\User\UserProfileService;
+use App\Services\User\UserAttachmentService;
+use App\Services\User\TeacherManagementService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class UserController extends Controller
 {
-    private function getFileUrl($path)
-    {
-        return asset('storage/' . $path);
+    protected TeacherProfileService $teacherProfileService;
+    protected UserProfileService $userProfileService;
+    protected UserAttachmentService $attachmentService;
+    protected TeacherManagementService $teacherManagementService;
+
+    public function __construct(
+        ?TeacherProfileService $teacherProfileService = null,
+        ?UserProfileService $userProfileService = null,
+        ?UserAttachmentService $attachmentService = null,
+        ?TeacherManagementService $teacherManagementService = null
+    ) {
+        $this->teacherProfileService = $teacherProfileService ?? app(TeacherProfileService::class);
+        $this->userProfileService = $userProfileService ?? app(UserProfileService::class);
+        $this->attachmentService = $attachmentService ?? app(UserAttachmentService::class);
+        $this->teacherManagementService = $teacherManagementService ?? app(TeacherManagementService::class);
     }
 
-    /**
-     * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
     public function index()
     {
-        //
+        return response()->json([
+            'success' => true,
+            'data' => User::all()
+        ]);
     }
 
-    // select education levels
     public function educationLevels()
     {
         $levels = DB::table('education_levels')
@@ -53,13 +51,13 @@ class UserController extends Controller
         ]);
     }
 
-    // select classes based on education level
     public function classes($education_level_id)
     {
         $classes = DB::table('classes')
             ->select('id', 'name_en', 'name_ar')
             ->where('education_level_id', $education_level_id)
             ->get();
+
         return response()->json([
             'success' => true,
             'data' => $classes
@@ -68,947 +66,53 @@ class UserController extends Controller
 
     public function showProfile(Request $request)
     {
-        $user = $request->user();
-
-        $profile = UserProfile::with(['profilePhoto'])
-            ->where('user_id', $user->id)
-            ->first();
-
-        if (!$profile) {
-            // Create profile if doesn't exist
-            $profile = UserProfile::create([
-                'user_id' => $user->id,
-                'language_pref' => 'ar'
-            ]);
-        }
-
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'id' => $profile->id,
-                'bio' => $profile->bio,
-                'description' => $profile->description,
-                'profile_photo' => $profile->profilePhoto,
-                'terms_accepted' => $profile->terms_accepted,
-                'verified' => $profile->verified,
-                'language_pref' => $profile->language_pref,
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                ]
-            ]
-        ]);
+        $result = $this->userProfileService->showProfile($request);
+        return response()->json($result, $result['status_code'] ?? 200);
     }
 
-    // store profile
-
-    // Complete Profile
     public function storeProfile(Request $request)
     {
-        $user = $request->user();
         $request->validate([
-            'role_id' => 'required|in:3,4', // Must be teacher or student
-            'profile_photo' => 'nullable|image|max:2048', // Optional profile photo
-            'certificate' => 'nullable|mimes:pdf,doc,docx|max:5120', // Optional certificate
-            'resume' => 'nullable|mimes:pdf,doc,docx|max:5120', // Optional resume
-            'language_pref' => 'nullable|string|max:255', // Optional language preference
-            'terms_accepted' => 'required|boolean|in:1', // Must accept terms
-            'bio' => 'nullable|string|max:1000', // Optional bio
-            'education_level' => 'nullable|string|max:255', // Optional education level
-            'class_id' => 'nullable|exists:classes,id', // Optional class association
-            'subjects' => 'nullable|array', // Optional subjects array
+            'role_id' => 'required|in:3,4',
+            'profile_photo' => 'nullable|image|max:2048',
+            'certificate' => 'nullable|mimes:pdf,doc,docx|max:5120',
+            'resume' => 'nullable|mimes:pdf,doc,docx|max:5120',
+            'language_pref' => 'nullable|string|max:255',
+            'terms_accepted' => 'required|boolean|in:1',
+            'bio' => 'nullable|string|max:1000',
+            'education_level' => 'nullable|string|max:255',
+            'class_id' => 'nullable|exists:classes,id',
+            'subjects' => 'nullable|array',
             'email' => 'required|string|email|unique:users,email,' . $request->user()->id,
             'phone_number' => 'required|string|max:15|unique:users,phone_number,' . $request->user()->id,
         ]);
 
-        // Role-specific validation
-        $rules = [];
-        if ($user->role && $user->role->name_key === 'teacher') {
-            $rules['profile_photo'] = 'nullable|image|max:2048';
-            $rules['certificate'] = 'nullable|mimes:pdf,doc,docx|max:5120';
-            $rules['resume'] = 'nullable|mimes:pdf,doc,docx|max:5120';
-        } elseif ($user->role && $user->role->name_key === 'student') {
-            $rules['profile_photo'] = 'nullable|image|max:2048';
-        }
-
-        $validated = $request->validate($rules);
-
-        // Prepare profile data (exclude file uploads from direct user update)
-        $profileData = $request->only(['bio', 'language_pref', 'terms_accepted']);
-        $profileData['verified'] = $user->role_id == 3 ? 0 : 1; // Teachers start unverified
-
-        // Create or update user profile
-        $profile = UserProfile::updateOrCreate(
-            ['user_id' => $user->id],
-            $profileData
-        );
-
-        // Update user basic info
-        $user->update($request->only(['email', 'phone_number']));
-
-        // Handle file uploads and save to attachments table
-        try {
-            if ($request->hasFile('profile_photo')) {
-                $this->saveAttachmentFile($request, 'profile_photo', 'profile_photos', $user, 'profile_picture');
-            }
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to upload profile photo',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-
-        if ($user->role && $user->role->name_key === 'teacher') {
-            try {
-                if ($request->hasFile('certificate')) {
-                    $this->saveAttachmentFile($request, 'certificate', 'certificates', $user, 'certificate');
-                }
-                if ($request->hasFile('resume')) {
-                    $this->saveAttachmentFile($request, 'resume', 'resumes', $user, 'resume');
-                }
-            } catch (\Exception $e) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to upload teacher files',
-                    'error' => $e->getMessage()
-                ], 500);
-            }
-        }
-
-        $user->refresh();
-
-        if ($user->role_id == 3) {
-            // Teacher: return full teacher data
-            $user->load([
-                'profile',
-                'teacherInfo',
-                'teacherClasses',
-                'teacherSubjects',
-                'availableSlots',
-                'reviews',
-                'attachments',
-            ]);
-            return response()->json([
-                'success' => true,
-                'message' => 'Profile created successfully',
-                'data' => $this->getFullTeacherData($user)
-            ]);
-        } else {
-            // Student: return basic profile data with profile photo from attachments
-            $profilePhoto = $user->attachments()
-                ->where('attached_to_type', 'profile_picture')
-                ->latest()
-                ->value('file_path');
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Profile created successfully',
-                'data' => [
-                    'id' => $profile->id,
-                    'user_id' => $user->id,
-                    'first_name' => $user->first_name,
-                    'last_name' => $user->last_name,
-                    'email' => $user->email,
-                    'phone_number' => $user->phone_number,
-                    'bio' => $profile->bio,
-                    'language_pref' => $profile->language_pref,
-                    'terms_accepted' => $profile->terms_accepted,
-                    'verified' => $profile->verified,
-                    'profile_photo' => $profilePhoto,
-                ]
-            ]);
-        }
+        $result = $this->userProfileService->storeProfile($request);
+        return response()->json($result, $result['status_code'] ?? 200);
     }
 
-    // update profile
-    /**
-     * Update user profile
-     * Routes to separate handlers based on role:
-     * - role_id = 3 (teacher): updateTeacherProfile
-     * - role_id = 4 (student): updateStudentProfile
-     */
     public function updateProfile(Request $request)
     {
-        Log::info('Update Profile Request: ', $request->all());
-        $user = $request->user();
-
-        // Validate and set role_id if needed
-        if ($request->has('role_id')) {
-            $request->validate([
-                'role_id' => 'required|in:3,4',
-            ]);
-
-            // Only allow updating role_id if it's currently null (first-time setup)
-            if ($user->role_id === 2 || $user->role_id === null) {
-                $user->role_id = (int) $request->input('role_id');
-                $user->save();
-                Log::info('User role set to: ' . $user->role_id);
-            } else if ($user->role_id != $request->input('role_id')) {
-                // Prevent changing role after initial setup
-                Log::warning('Attempt to change user role blocked', ['user_id' => $user->id]);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Cannot change role after initial setup'
-                ], 422);
-            }
-        } elseif ($user->role_id === null) {
-            // role_id is required if not already set
-            return response()->json([
-                'success' => false,
-                'message' => 'role_id is required for first-time profile setup',
-                'errors' => ['role_id' => ['The role_id field is required.']]
-            ], 422);
-        }
-
-        // Route to appropriate handler based on role
-        try {
-            if ($user->role_id == 3) {
-                // Teacher profile update
-                return $this->updateTeacherProfile($request, $user);
-            } else if ($user->role_id == 4) {
-                // Student profile update
-                return $this->updateStudentProfile($request, $user);
-            } else {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid user role'
-                ], 422);
-            }
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            Log::error('Profile update validation error', [
-                'errors' => $e->errors(),
-                'message' => $e->getMessage()
-            ]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Profile validation failed',
-                'errors' => $e->errors()
-            ], 422);
-        } catch (\Exception $e) {
-            Log::error('Profile update error: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString()
-            ]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to update profile',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+        $result = $this->userProfileService->updateProfile($request);
+        return response()->json($result, $result['status_code'] ?? 200);
     }
 
-    /**
-     * Update student profile
-     * 
-     * Handles:
-     * - Basic profile info
-     * - Profile photo upload
-     * - User info updates
-     */
-    private function updateStudentProfile(Request $request, User $user)
-    {
-        try {
-            DB::beginTransaction();
-
-            // Update basic profile
-            $profileData = $request->only(['bio', 'description', 'profile_photo_id', 'language_pref', 'terms_accepted']);
-            $profileData['verified'] = $request->input('verified', 0);
-
-            $profile = UserProfile::updateOrCreate(
-                ['user_id' => $user->id],
-                $profileData
-            );
-
-            // Update user basic info if provided
-            if ($request->hasAny(['first_name', 'last_name', 'email', 'phone_number'])) {
-                $updateData = $request->only(['first_name', 'last_name', 'email', 'phone_number']);
-
-                // Normalize phone if provided
-                if (isset($updateData['phone_number'])) {
-                    $normalizedPhone = PhoneHelper::normalize($updateData['phone_number']);
-                    if (!$normalizedPhone) {
-                        DB::rollBack();
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'Invalid phone number format.'
-                        ], 422);
-                    }
-
-                    // Check if phone already exists
-                    $existingPhone = User::where('phone_number', $normalizedPhone)
-                        ->where('id', '!=', $user->id)
-                        ->first();
-                    if ($existingPhone) {
-                        DB::rollBack();
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'Phone number already in use.'
-                        ], 422);
-                    }
-
-                    $updateData['phone_number'] = $normalizedPhone;
-                }
-
-                $user->update($updateData);
-            }
-
-            // Handle profile photo upload
-            if ($request->hasFile('profile_photo')) {
-                $this->saveAttachmentFile($request, 'profile_photo', 'profile_photos', $user, 'profile_picture');
-            }
-
-            DB::commit();
-
-            // Prepare response
-            $user->refresh();
-            $profilePhoto = $user->attachments()
-                ->where('attached_to_type', 'profile_picture')
-                ->latest()
-                ->value('file_path');
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Profile updated successfully',
-                'data' => [
-                    'role_id' => $user->role_id,
-                    'id' => $profile->id,
-                    'user_id' => $user->id,
-                    'first_name' => $user->first_name,
-                    'last_name' => $user->last_name,
-                    'email' => $user->email,
-                    'nationality' => $user->nationality,
-                    'phone_number' => $user->phone_number,
-                    'terms_accepted' => $profile->terms_accepted,
-                    'verified' => $profile->verified,
-                    'language_pref' => $profile->language_pref,
-                    'profile' => [
-                        'profile_photo' => $profilePhoto,
-                    ],
-                ]
-            ]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Student profile update error: ' . $e->getMessage());
-            throw $e;
-        }
-    }
-
-    /**
-     * Update teacher profile
-     * 
-     * Handles:
-     * - Teacher basic info (services, pricing, classes, subjects)
-     * - Individual teacher profile
-     * - Institute teacher profile (if teacher_type = institute)
-     */
-    private function updateTeacherProfile(Request $request, User $user)
-    {
-        try {
-            DB::beginTransaction();
-
-            // Update basic profile
-            $profileData = $request->only(['bio', 'description', 'profile_photo_id', 'language_pref', 'terms_accepted']);
-            // $profileData['verified'] = $request->input('verified', 0);
-
-            $profile = UserProfile::updateOrCreate(
-                ['user_id' => $user->id],
-                $profileData
-            );
-
-            // Update user basic info
-            if ($request->hasAny(['first_name', 'last_name', 'email', 'phone_number'])) {
-                $updateData = $request->only(['first_name', 'last_name', 'email', 'phone_number']);
-
-                if (isset($updateData['phone_number'])) {
-                    $normalizedPhone = PhoneHelper::normalize($updateData['phone_number']);
-                    if (!$normalizedPhone) {
-                        DB::rollBack();
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'Invalid phone number format.'
-                        ], 422);
-                    }
-
-                    $existingPhone = User::where('phone_number', $normalizedPhone)
-                        ->where('id', '!=', $user->id)
-                        ->first();
-                    if ($existingPhone) {
-                        DB::rollBack();
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'Phone number already in use.'
-                        ], 422);
-                    }
-
-                    $updateData['phone_number'] = $normalizedPhone;
-                }
-
-                $user->update($updateData);
-            }
-
-            // [intro_video] تشخيص الرفع: هل وصل الملف أصلاً أم أسقطه PHP/السيرفر؟
-            $introProbe = $request->file('intro_video');
-            Log::info('[intro_video] upload probe', [
-                'user_id' => $user->id,
-                'has_file' => $request->hasFile('intro_video'),
-                'all_files' => array_keys($request->allFiles()),
-                'content_length' => $request->server('CONTENT_LENGTH'),
-                'upload_max_filesize' => ini_get('upload_max_filesize'),
-                'post_max_size' => ini_get('post_max_size'),
-                'orig_name' => $introProbe ? $introProbe->getClientOriginalName() : null,
-                'mime' => $introProbe ? $introProbe->getClientMimeType() : null,
-                'size' => $introProbe ? $introProbe->getSize() : null,
-                'error_code' => $introProbe ? $introProbe->getError() : null,
-                'error_msg' => $introProbe ? $introProbe->getErrorMessage() : null,
-            ]);
-
-            // Check if this is institute registration
-            if ($request->input('teacher_type') === 'institute') {
-                $this->updateInstituteProfile($request, $user);
-            } else {
-                // Individual teacher profile update
-                Log::info('Updating individual teacher profile', [
-                    'user_id' => $user->id,
-                    'has_teach_fields' => $request->hasAny(['teach_individual', 'teach_group', 'individual_hour_price', 'group_hour_price', 'max_group_size', 'min_group_size'])
-                ]);
-                $this->updateIndividualTeacherProfile($request, $user);
-            }
-
-            // Handle common teacher file uploads
-            if ($request->hasFile('profile_photo')) {
-                $this->saveAttachmentFile($request, 'profile_photo', 'profile_photos', $user, 'profile_picture');
-            }
-            if ($request->hasFile('certificate')) {
-                $this->saveAttachmentFile($request, 'certificate', 'certificates', $user, 'certificate');
-            }
-            if ($request->hasFile('resume')) {
-                $this->saveAttachmentFile($request, 'resume', 'resumes', $user, 'resume');
-            }
-
-            DB::commit();
-
-            // Return full teacher data
-            $user->refresh();
-            $user->load([
-                'profile.profilePhoto:id,file_path',
-                'teacherInfo',
-                'teacherClasses',
-                'teacherSubjects',
-                'availableSlots',
-                'reviews',
-            ]);
-            $teacherId = $user->id;
-            \App\Helpers\TeacherProfileHelper::checkAndUpdateProfileCompleted($teacherId);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Profile updated successfully',
-                'data' => $this->getFullTeacherData($user)
-            ]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Teacher profile update error: ' . $e->getMessage());
-            throw $e;
-        }
-    }
-
-    /**
-     * Update individual teacher profile
-     * 
-     * Handles:
-     * - Teaching info (prices, group size, services)
-     * - Classes and subjects
-     * - Availability slots
-     */
-    private function updateIndividualTeacherProfile(Request $request, User $user)
-    {
-        // Update teacher info ONLY if teaching-related fields are provided
-        if ($request->hasAny(['teach_individual', 'teach_group', 'individual_hour_price', 'package_on_off', 'group_hour_price', 'max_group_size', 'min_group_size'])) {
-            $this->updateTeacherInfo($request);
-        }
-
-        // Update classes
-        if ($request->has('class_ids')) {
-            $this->updateTeacherClasses($request);
-        }
-
-        // Update subjects
-        if ($request->has('subject_ids')) {
-            $this->updateTeacherSubjects($request);
-        }
-
-        // Update services (handle both 'services' and 'services_id' parameter names)
-        if ($request->has('services_id') || $request->has('services')) {
-            $this->updateTeacherServices($request);
-        }
-
-        Log::info('Individual teacher profile updated', ['user_id' => $user->id]);
-        // Allow individual teachers to upload a cover image or intro video similar to institute flow
-        if ($request->hasFile('cover_image')) {
-            // Use the attachments table and store under teachers/covers
-            $this->saveUserAttachment($request, 'cover_image', 'teachers/covers', $user, 'cover_image');
-        }
-
-        // [intro_video] الفيديو التعريفي — مع لوج يوضح هل حُفظ أم تُجوهل ولماذا
-        if ($request->hasFile('intro_video')) {
-            Log::info('[intro_video] file detected, saving...', ['user_id' => $user->id]);
-            $this->saveUserAttachment($request, 'intro_video', 'teachers/videos', $user, 'intro_video');
-            Log::info('[intro_video] save finished', ['user_id' => $user->id]);
-        } elseif ($request->has('intro_video')) {
-            // المفتاح موجود كنص (رابط قديم) وليس ملفاً مرفوعاً — لا حاجة لفعل شيء
-            Log::info('[intro_video] key present as scalar (old url?), no new file', ['user_id' => $user->id]);
-        } else {
-            Log::info('[intro_video] no file in request (nothing to save)', ['user_id' => $user->id]);
-        }
-    }
-
-    /**
-     * Update institute teacher profile
-     * 
-     * Handles:
-     * - Institute information
-     * - Cover image and intro video uploads
-     * - Status management
-     * - Certificate uploads
-     */
-    private function updateInstituteProfile(Request $request, User $user)
-    {
-        // Validate institute fields
-        $request->validate([
-            'institute_name' => 'nullable|string|max:255',
-            'commercial_register' => 'nullable|string|max:255',
-            'license_number' => 'nullable|string|max:255',
-            'description' => 'nullable|string|max:5000',
-            'website' => 'nullable|url|max:255',
-        ]);
-
-        // Find or create institute record
-        $institute = TeacherInstitute::firstOrCreate(
-            ['user_id' => $user->id],
-            ['status' => 'pending']
-        );
-
-        // Update institute fields
-        $updateData = $request->only([
-            'institute_name',
-            'commercial_register',
-            'license_number',
-            'description',
-            'website'
-        ]);
-
-        if (!empty($updateData)) {
-            $institute->update(array_filter($updateData)); // Only update non-null values
-        }
-
-        // Handle institute-specific file uploads
-        if ($request->hasFile('cover_image')) {
-            $this->saveInstituteAttachment($request, 'cover_image', 'institutes/covers', $institute, 'cover_image');
-        }
-
-        if ($request->hasFile('intro_video')) {
-            $this->saveInstituteAttachment($request, 'intro_video', 'institutes/videos', $institute, 'intro_video');
-        }
-
-        // Certificates can be uploaded multiple times
-        if ($request->hasFile('certificates')) {
-            $certificates = $request->file('certificates');
-            if (!is_array($certificates)) {
-                $certificates = [$certificates];
-            }
-            foreach ($certificates as $cert) {
-                $path = $cert->store('institutes/certificates', 'public');
-                Attachment::create([
-                    'user_id' => $user->id,
-                    'file_path' => $path,
-                    'attached_to_type' => 'institute_certificate',
-                    'attached_to_id' => $institute->id,
-                ]);
-            }
-        }
-
-        Log::info('Institute profile updated', [
-            'user_id' => $user->id,
-            'institute_id' => $institute->id,
-            'status' => $institute->status
-        ]);
-    }
-
-    /**
-     * Save institute-specific attachments
-     */
-    private function saveInstituteAttachment(Request $request, $fieldName, $path, TeacherInstitute $institute, $attachmentType)
-    {
-        if (!$request->hasFile($fieldName)) {
-            return;
-        }
-
-        try {
-            // Delete old attachment if exists
-            $oldAttachment = Attachment::where('user_id', $institute->user_id)
-                ->where('attached_to_type', $attachmentType)
-                ->where('attached_to_id', $institute->id)
-                ->first();
-
-            if ($oldAttachment && Storage::exists($oldAttachment->file_path)) {
-                Storage::delete($oldAttachment->file_path);
-            }
-
-            // Upload new file
-            $file = $request->file($fieldName);
-            $filePath = $file->store($path, 'public');
-
-            // Update or create attachment
-            Attachment::updateOrCreate(
-                [
-                    'user_id' => $institute->user_id,
-                    'attached_to_type' => $attachmentType,
-                    'attached_to_id' => $institute->id,
-                ],
-                [
-                    'file_path' => $filePath,
-                ]
-            );
-
-            // Update institute table if applicable
-            if ($attachmentType === 'cover_image') {
-                $institute->update(['cover_image' => $filePath]);
-            } elseif ($attachmentType === 'intro_video') {
-                $institute->update(['intro_video' => $filePath]);
-            }
-
-            Log::info("Institute $attachmentType uploaded", [
-                'user_id' => $institute->user_id,
-                'path' => $filePath
-            ]);
-        } catch (\Exception $e) {
-            Log::error("Failed to upload institute $attachmentType: " . $e->getMessage());
-            throw $e;
-        }
-    }
-
-    /**
-     * Save an attachment for a user (individual teacher flows)
-     * Mirrors the institute attachment logic but attaches to the user record.
-     */
-    private function saveUserAttachment(Request $request, $fieldName, $path, User $user, $attachmentType)
-    {
-        if (!$request->hasFile($fieldName)) {
-            return;
-        }
-
-        try {
-            $file = $request->file($fieldName);
-            Log::info("[intro_video] saveUserAttachment start", [
-                'user_id' => $user->id,
-                'field' => $fieldName,
-                'orig_name' => $file ? $file->getClientOriginalName() : null,
-                'mime' => $file ? $file->getClientMimeType() : null,
-                'size' => $file ? $file->getSize() : null,
-                'tmp_path' => $file ? $file->getPathname() : null,
-                'disk' => config('filesystems.default'),
-                'public_disk_root' => config('filesystems.disks.public.root'),
-            ]);
-
-            // Delete old attachment if exists for this user and type
-            $oldAttachment = Attachment::where('user_id', $user->id)
-                ->where('attached_to_type', $attachmentType)
-                ->first();
-
-            if ($oldAttachment) {
-                $oldExists = Storage::disk('public')->exists($oldAttachment->file_path);
-                Log::info("[intro_video] old attachment", [
-                    'user_id' => $user->id,
-                    'old_path' => $oldAttachment->file_path,
-                    'exists_on_public_disk' => $oldExists,
-                ]);
-                if ($oldExists) {
-                    Storage::disk('public')->delete($oldAttachment->file_path);
-                }
-            }
-
-            $filePath = $file->store($path, 'public');
-            Log::info("[intro_video] stored on public disk", [
-                'user_id' => $user->id,
-                'stored_path' => $filePath,
-                'verify_exists' => Storage::disk('public')->exists($filePath),
-                'public_url' => asset('storage/' . $filePath),
-            ]);
-
-            $record = Attachment::updateOrCreate(
-                [
-                    'user_id' => $user->id,
-                    'attached_to_type' => $attachmentType,
-                    'attached_to_id' => $user->id,
-                ],
-                [
-                    'file_path' => $filePath,
-                    'file_name' => $file->getClientOriginalName(),
-                    'file_type' => $file->getClientMimeType(),
-                    'file_size' => $file->getSize(),
-                    'created_by' => $user->id,
-                ]
-            );
-
-            Log::info("User $attachmentType uploaded", [
-                'user_id' => $user->id,
-                'path' => $filePath,
-                'attachment_id' => $record->id,
-            ]);
-        } catch (\Exception $e) {
-            Log::error("Failed to upload user $attachmentType: " . $e->getMessage(), [
-                'user_id' => $user->id,
-                'trace' => $e->getTraceAsString(),
-            ]);
-            throw $e;
-        }
-    }
-
-    /**
-     * Delete an attachment by id. Removes file from storage and DB record.
-     * DELETE /api/attachments/{id}
-     */
     public function deleteAttachment(Request $request, $id)
     {
-        $user = $request->user();
-
-        $attachment = Attachment::where('id', $id)->first();
-        if (!$attachment) {
-            return response()->json(['success' => false, 'message' => 'Attachment not found'], 404);
-        }
-
-        // Only allow owner or admins to delete
-        if ($attachment->user_id != $user->id && !optional($user->role)->name_key === 'admin') {
-            return response()->json(['success' => false, 'message' => 'Not authorized to delete this attachment'], 403);
-        }
-
-        try {
-            if (Storage::exists($attachment->file_path)) {
-                Storage::delete($attachment->file_path);
-            }
-        } catch (\Exception $e) {
-            // Log and continue to delete db record
-            Log::warning('Failed to delete attachment file from storage: ' . $e->getMessage());
-        }
-
-        try {
-            $attachment->delete();
-        } catch (\Exception $e) {
-            Log::error('Failed to delete attachment record: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Failed to delete attachment record'], 500);
-        }
-
-        return response()->json(['success' => true, 'message' => 'Attachment deleted']);
+        $result = $this->attachmentService->deleteAttachment($request, $id);
+        return response()->json($result, $result['status_code'] ?? 200);
     }
 
-    // List all teachers with optional filters
     public function listTeachers(Request $request)
     {
-        // ✅ First, update profile_completed status for all teachers with teacherServices
-        // This ensures we get the latest status even if teacher updated their profile
-        $allTeachersWithServices = User::where('role_id', 3)
-            ->where('is_active', 1)
-            ->whereHas('teacherServices')
-            ->pluck('id');
-
-        foreach ($allTeachersWithServices as $teacherId) {
-            \App\Helpers\TeacherProfileHelper::checkAndUpdateProfileCompleted($teacherId);
-        }
-
-        $query = User::where('role_id', 3)
-            ->where('is_active', 1)
-            ->where('profile_completed', 1)
-            ->with(['teacherInfo', 'teacherServices', 'subjects', 'teacherLanguages']);
-
-        /* =======================
-         | Service Filter (Private Lessons, Language Study, Courses)
-         ======================= */
-        if ($request->filled('service_id') || $request->filled('service')) {
-            $serviceParam = $request->input('service_id') ?? $request->input('service');
-
-            $query->whereHas('teacherServices', function ($q) use ($serviceParam) {
-                if (is_numeric($serviceParam)) {
-                    // Filter by service ID (e.g., 1, 2, 3)
-                    $q->where('service_id', $serviceParam);
-                } else {
-                    // Filter by service key_name (e.g., 'private_lessons', 'language_study', 'courses')
-                    $q->whereHas('service', function ($subQ) use ($serviceParam) {
-                        $subQ->where('key_name', strtolower($serviceParam));
-                    });
-                }
-            });
-        }
-
-        /* =======================
-         | Price Filter
-         ======================= */
-        if ($request->filled('min_price') || $request->filled('max_price')) {
-            $query->whereHas('teacherInfo', function ($q) use ($request) {
-                if ($request->filled('min_price')) {
-                    $q->where(function ($x) use ($request) {
-                        $x->where('individual_hour_price', '>=', $request->min_price)
-                            ->orWhere('group_hour_price', '>=', $request->min_price);
-                    });
-                }
-
-                if ($request->filled('max_price')) {
-                    $q->where(function ($x) use ($request) {
-                        $x->where('individual_hour_price', '<=', $request->max_price)
-                            ->orWhere('group_hour_price', '<=', $request->max_price);
-                    });
-                }
-            });
-        }
-
-        /* =======================
-         | Subject / Class / Level Filter
-         ======================= */
-        if ($request->filled('subject_id') || $request->filled('class_id') || $request->filled('education_level_id')) {
-            $query->whereHas('subjects', function ($q) use ($request) {
-                if ($request->filled('subject_id')) {
-                    $q->where('subjects.id', $request->subject_id);
-                }
-                if ($request->filled('class_id')) {
-                    $q->where('subjects.class_id', $request->class_id);
-                }
-                if ($request->filled('education_level_id')) {
-                    $q->where('subjects.education_level_id', $request->education_level_id);
-                }
-            });
-        }
-
-        /* =======================
-         | Language Filter (for Language Study service)
-         ======================= */
-        if ($request->filled('language_id')) {
-            $query->whereHas('teacherLanguages', function ($q) use ($request) {
-                $q->where('language_id', $request->language_id);
-            });
-        }
-
-        /* =======================
-         | Rating Filter
-         ======================= */
-        if ($request->filled('min_rate')) {
-            $query->whereHas('reviews', function ($q) use ($request) {
-                $q->groupBy('reviewed_id')
-                    ->havingRaw('AVG(rating) >= ?', [$request->min_rate]);
-            });
-        }
-
-        /* =======================
-         | Search Filter (by name, email, or code)
-         ======================= */
-        if ($request->filled('search')) {
-            $search = $request->search;
-
-            // Detect if search is a teacher code (3 letters followed by numbers, no spaces)
-            if (preg_match('/^[A-Za-z]{3}\d+$/', $search)) {
-                $query->whereHas('teacherInfo', function ($q) use ($search) {
-                    $q->where('code', strtoupper($search));
-                });
-            } else {
-                $query->where(function ($q) use ($search) {
-                    $q->where('first_name', 'like', "%{$search}%")
-                        ->orWhere('last_name', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%");
-                });
-            }
-        }
-
-        /* =======================
-         | Pagination & Ordering
-         ======================= */
-
-        // Get authenticated user's favorited teacher IDs (if student)
-        $favoritedIds = [];
-        $authUser = null;
-        if ($token = $request->bearerToken()) {
-            $accessToken = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
-            if ($accessToken) {
-                $authUser = $accessToken->tokenable;
-            }
-        }
-        if ($authUser && $authUser->role_id == 4) {
-            $favoritedIds = $authUser
-                ->favorites()
-                ->where('favoriteable_type', User::class)
-                ->pluck('favoriteable_id')
-                ->toArray();
-        }
-
-        $addHasFavorited = function ($teacherData, $teacherId) use ($favoritedIds) {
-            $teacherData['has_favorited'] = in_array($teacherId, $favoritedIds);
-            return $teacherData;
-        };
-
-        // Check if user wants all teachers (all=true or all=1)
-        $getAll = $request->boolean('all') || $request->get('all') === '1';
-
-        if ($getAll) {
-            // Return all teachers without pagination
-            $teachers = $query->orderByDesc('id')->get();
-
-            $transformedTeachers = $teachers->map(function ($teacher) use ($addHasFavorited) {
-                $data = $this->getFullTeacherData($teacher);
-                return $addHasFavorited($data, $teacher->id);
-            });
-
-            return response()->json([
-                'success' => true,
-                'data' => $transformedTeachers,
-                'pagination' => [
-                    'total' => count($transformedTeachers),
-                    'count' => count($transformedTeachers),
-                ]
-            ]);
-        }
-
-        // Otherwise use pagination with default of 10 per page
-        $perPage = $request->get('per_page', 10);
-        $teachers = $query->orderByDesc('id')->paginate($perPage);
-
-        $teachers->getCollection()->transform(function ($teacher) use ($addHasFavorited) {
-            $data = $this->getFullTeacherData($teacher);
-            return $addHasFavorited($data, $teacher->id);
-        });
-
-        return response()->json([
-            'success' => true,
-            'data' => $teachers->items(),
-            'pagination' => [
-                'current_page' => $teachers->currentPage(),
-                'last_page' => $teachers->lastPage(),
-                'per_page' => $teachers->perPage(),
-                'total' => $teachers->total(),
-            ],
-        ]);
+        $result = $this->teacherProfileService->listTeachers($request);
+        return response()->json($result, $result['status_code'] ?? 200);
     }
-
-
-
 
     public function teacherDetails($id)
     {
-        $teacher = User::where('role_id', 3)
-            ->where('is_active', 1)
-            ->find($id);
-
-        if (!$teacher) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Teacher not found'
-            ], 404);
-        }
-
-        // ✅ Update profile completion status based on current data
-        \App\Helpers\TeacherProfileHelper::checkAndUpdateProfileCompleted($teacher->id);
-
-        return response()->json([
-            'success' => true,
-            'data' => $this->getFullTeacherData($teacher)
-        ]);
+        $result = $this->teacherProfileService->teacherDetails($id);
+        return response()->json($result, $result['status_code'] ?? 200);
     }
 
     public function createOrUpdateTeacherInfo(Request $request)
@@ -1028,65 +132,12 @@ class UserController extends Controller
             'subject_ids.*' => 'exists:subjects,id',
         ]);
 
-        $teacher = $request->user();
-
-        // Update or create TeacherInfo
-        $info = TeacherInfo::updateOrCreate(
-            ['teacher_id' => $teacher->id],
-            $request->only([
-                'bio',
-                'teach_individual',
-                'package_on_off',
-                'individual_hour_price',
-                'teach_group',
-                'group_hour_price',
-                'max_group_size',
-                'min_group_size'
-            ])
-        );
-
-        // Sync classes
-        TeacherTeachClasses::where('teacher_id', $teacher->id)->delete();
-        foreach ($request->class_ids as $class_id) {
-            TeacherTeachClasses::create([
-                'teacher_id' => $teacher->id,
-                'class_id' => $class_id,
-            ]);
-        }
-
-        // Sync subjects
-        TeacherSubject::where('teacher_id', $teacher->id)->delete();
-        foreach ($request->subject_ids as $subject_id) {
-            TeacherSubject::create([
-                'teacher_id' => $teacher->id,
-                'subject_id' => $subject_id,
-            ]);
-        }
-
-        // ✅ Update profile completion status after changes
-        \App\Helpers\TeacherProfileHelper::checkAndUpdateProfileCompleted($teacher->id);
-        // Sync profile complete table
-        try {
-            \App\Helpers\ProfileCompleteHelper::sync($teacher->id);
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::warning('Failed to sync ProfileComplete after teacher info update', ['teacher_id' => $teacher->id, 'error' => $e->getMessage()]);
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Teacher info, classes, and subjects updated successfully',
-            'data' => [
-                'info' => $info,
-                'classes' => $request->class_ids,
-                'subjects' => $request->subject_ids,
-            ]
-        ]);
+        $result = $this->teacherManagementService->createOrUpdateTeacherInfo($request, $request->user());
+        return response()->json($result, $result['status_code'] ?? 200);
     }
 
-    // Update or create teacher info only
     public function updateTeacherInfo(Request $request)
     {
-        // Only validate if teaching fields are provided
         if ($request->hasAny(['teach_individual', 'teach_group', 'individual_hour_price', 'group_hour_price', 'max_group_size', 'min_group_size'])) {
             $request->validate([
                 'bio' => 'nullable|string|max:2000',
@@ -1099,29 +150,13 @@ class UserController extends Controller
                 'min_group_size' => 'nullable|integer|min:0|max:100',
             ]);
 
-            $teacher = $request->user();
-            $info = TeacherInfo::updateOrCreate(
-                ['teacher_id' => $teacher->id],
-                $request->only([
-                    'bio',
-                    'teach_individual',
-                    'package_on_off',
-                    'individual_hour_price',
-                    'teach_group',
-                    'group_hour_price',
-                    'max_group_size',
-                    'min_group_size'
-                ])
-            );
-
-            return response()->json([
-                'success' => true,
-                'data' => $info
-            ]);
+            $result = $this->teacherManagementService->updateTeacherInfo($request, $request->user());
+            return response()->json($result, $result['status_code'] ?? 200);
         }
+
+        return response()->json(['success' => false, 'message' => 'No teacher fields provided'], 422);
     }
 
-    // Update or create teacher classes only
     public function updateTeacherClasses(Request $request)
     {
         $request->validate([
@@ -1129,96 +164,16 @@ class UserController extends Controller
             'class_ids.*' => 'exists:classes,id',
         ]);
 
-        $teacher = $request->user();
-        TeacherTeachClasses::where('teacher_id', $teacher->id)->delete();
-        foreach ($request->class_ids as $class_id) {
-            TeacherTeachClasses::create([
-                'teacher_id' => $teacher->id,
-                'class_id' => $class_id,
-            ]);
-        }
-
-        return response()->json([
-            'success' => true,
-            'data' => $request->class_ids
-        ]);
+        $result = $this->teacherManagementService->updateTeacherClasses($request, $request->user());
+        return response()->json($result, $result['status_code'] ?? 200);
     }
 
-    // Update or create teacher services only
     public function updateTeacherServices(Request $request)
     {
-        // Handle both 'services' and 'services_id' parameter names
-        $servicesKey = $request->has('services_id') ? 'services_id' : 'services';
-        $servicesInput = $request->input($servicesKey);
-
-        // Convert single value to array if needed
-        if (!is_array($servicesInput)) {
-            if (is_string($servicesInput) && !empty($servicesInput)) {
-                // Try to parse as comma-separated or single value
-                $servicesInput = array_map('trim', explode(',', $servicesInput));
-            } else {
-                $servicesInput = [];
-            }
-        }
-
-        // If still empty, return error
-        if (empty($servicesInput)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No services provided',
-                'error' => 'At least one service must be selected'
-            ], 422);
-        }
-
-        $teacher = $request->user();
-
-        try {
-            // Delete existing services
-            TeacherServices::where('teacher_id', $teacher->id)->delete();
-
-            // Create new service records
-            foreach ($servicesInput as $service_id) {
-                $service_id = (int) $service_id; // Ensure it's an integer
-
-                // Validate service exists
-                $serviceExists = DB::table('services')->where('id', $service_id)->exists();
-                if (!$serviceExists) {
-                    Log::warning('Invalid service ID attempted', [
-                        'teacher_id' => $teacher->id,
-                        'service_id' => $service_id
-                    ]);
-                    continue; // Skip invalid services
-                }
-
-                TeacherServices::create([
-                    'teacher_id' => $teacher->id,
-                    'service_id' => $service_id,
-                ]);
-            }
-
-            Log::info('Teacher services updated', [
-                'teacher_id' => $teacher->id,
-                'services' => $servicesInput
-            ]);
-        } catch (\Exception $e) {
-            Log::error('TeacherServices save error: ' . $e->getMessage(), [
-                'teacher_id' => $teacher->id,
-                'services' => $servicesInput
-            ]);
-            return response()->json([
-                'success' => false,
-                'error' => 'Failed to save services: ' . $e->getMessage()
-            ], 500);
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Services updated successfully',
-            'data' => $servicesInput
-        ]);
+        $result = $this->teacherManagementService->updateTeacherServices($request, $request->user());
+        return response()->json($result, $result['status_code'] ?? 200);
     }
 
-    // Update or create teacher subjects only
     public function updateTeacherSubjects(Request $request)
     {
         $request->validate([
@@ -1226,566 +181,25 @@ class UserController extends Controller
             'subject_ids.*' => 'exists:subjects,id',
         ]);
 
-        $teacher = $request->user();
-        TeacherSubject::where('teacher_id', $teacher->id)->delete();
-        foreach ($request->subject_ids as $subject_id) {
-            TeacherSubject::create([
-                'teacher_id' => $teacher->id,
-                'subject_id' => $subject_id,
-            ]);
-        }
-
-        return response()->json([
-            'success' => true,
-            'data' => $request->subject_ids
-        ]);
+        $result = $this->teacherManagementService->updateTeacherSubjects($request, $request->user());
+        return response()->json($result, $result['status_code'] ?? 200);
     }
 
-
-    // Delete account
     public function deleteAccount(Request $request)
     {
-        $user = $request->user();
-
-        try {
-            // Revoke all tokens
-            $user->tokens()->delete();
-
-            // Delete the user
-            $user->delete();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Account deleted successfully'
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to delete account',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+        $result = $this->userProfileService->deleteAccount($request);
+        return response()->json($result, $result['status_code'] ?? 200);
     }
 
-    // Helper to get full teacher data
     public function getFullTeacherData(User $teacher)
     {
-        // Get latest attachments
-        $profilePhoto = $teacher->attachments()
-            ->where('attached_to_type', 'profile_picture')
-            ->latest()
-            ->value('file_path');
-        $resume = $teacher->attachments()
-            ->where('attached_to_type', 'resume')
-            ->latest()
-            ->value('file_path');
-        $certificate = $teacher->attachments()
-            ->where('attached_to_type', 'certificate')
-            ->latest()
-            ->value('file_path');
-        $introVideoRaw = $teacher->attachments()
-            ->where('attached_to_type', 'intro_video')
-            ->latest()
-            ->value('file_path');
-        $coverImageRaw = $teacher->attachments()
-            ->where('attached_to_type', 'cover_image')
-            ->latest()
-            ->value('file_path');
-        // الخدمة الرئيسية للمعلم: تؤخذ من أول خدمة في teacher_services
-        // وتُستخدم في الفرونت لاختيار عرض اللغات (language_learning) أو المواد (private_lessons)
-        $main_service_key = null;
-        $s = TeacherServices::where('teacher_id', $teacher->id)
-            ->with('service')
-            ->first();
-        if ($s)
-            $main_service_key = $s->service->key_name;
-        // Normalize stored paths to absolute URLs (DB may hold relative paths
-        // like "teachers/videos/x.mp4" or already-full URLs).
-        $toPublicUrl = function ($path) {
-            if (empty($path))
-                return null;
-            if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
-                return $path;
-            }
-            $clean = ltrim($path, '/');
-            // Avoid doubling "storage/storage/..."
-            if (str_starts_with($clean, 'storage/')) {
-                $clean = substr($clean, strlen('storage/'));
-            }
-            // Paths saved via asset('storage/...') contain the host already handled above,
-            // so anything left here is a relative storage path.
-            return asset('storage/' . $clean);
-        };
-
-        $introVideo = $toPublicUrl($introVideoRaw);
-        $coverImage = $toPublicUrl($coverImageRaw);
-
-        // Return the certificate attachment record (if exists) so client can show filename / id
-        $certificateAttachment = $teacher->attachments()
-            ->where('attached_to_type', 'certificate')
-            ->latest()
-            ->first(['id', 'file_name', 'file_path', 'created_at']);
-
-        // Get teacher services (teacher_services pivot) with related service details
-        $rawTS = TeacherServices::where('teacher_id', $teacher->id)
-            ->with('service')
-            ->get();
-
-        // Deduplicate by service_id to avoid duplicate service entries when the pivot was inserted twice
-        $uniqueTS = $rawTS->unique('service_id')->values();
-
-        $teacherServices = $uniqueTS->map(function ($ts) use ($teacher) {
-            $svc = $ts->service;
-            return [
-                'id' => $ts->id,
-                'teacher_id' => $ts->teacher_id,
-                'service_id' => $ts->service_id,
-                'key_name' => $svc->key_name ?? null,
-                'name_en' => $svc->name_en ?? null,
-                'name_ar' => $svc->name_ar ?? null,
-                'description_en' => $svc->description_en ?? null,
-                'description_ar' => $svc->description_ar ?? null,
-                'image' => $svc->image ?? null,
-                'status' => $svc->status ?? null,
-                // There is currently no per-service verification column in teacher_services.
-                // We use the teacher profile verified flag as a fallback. To support per-service
-                // verification, add a `verified` column to `teacher_services` and include it here.
-                'verified' => (bool) optional($teacher->profile)->verified,
-            ];
-        })->values()->toArray();
-
-        // Determine primary service for this teacher (teachers are expected to have at most one)
-        // Use the first unique service if multiple were mistakenly added
-        $primaryTS = $uniqueTS->first();
-
-        $primaryServiceId = 0;
-        $primaryServiceDetails = null;
-        $courses = [];
-        $languages = [];
-        $isPrivateService = false;
-        $isCourseService = false;
-
-        if ($primaryTS && $primaryTS->service) {
-            $svc = $primaryTS->service;
-            $primaryServiceId = (int) $svc->id;
-            $primaryServiceDetails = [
-                'id' => $svc->id,
-                'key_name' => $svc->key_name ?? null,
-                'name_en' => $svc->name_en ?? null,
-                'name_ar' => $svc->name_ar ?? null,
-                'description_en' => $svc->description_en ?? null,
-                'description_ar' => $svc->description_ar ?? null,
-                'image' => $svc->image ?? null,
-                'status' => $svc->status ?? null,
-                // use profile verified as fallback for now
-                'verified' => (bool) optional($teacher->profile)->verified,
-            ];
-        }
-
-        // Detect what the teacher actually teaches from ALL their services
-        // (not just the first/primary one) so subject/language/course sections
-        // are shown strictly based on the services the teacher selected.
-        $serviceKeys = $uniqueTS
-            ->map(fn($ts) => strtolower((string) optional($ts->service)->key_name))
-            ->filter()
-            ->values();
-
-        $isPrivateService = $serviceKeys->contains(fn($key) => $key === 'private_lessons' || str_contains($key, 'private'));
-        $isCourseService = $serviceKeys->contains(
-            fn($key) => $key === 'courses'
-            || $key === 'training_courses'
-            || str_contains($key, 'course')
-            || str_contains($key, 'training')
-        );
-        $isLanguageService = $serviceKeys->contains(fn($key) => str_contains($key, 'lang') || str_contains($key, 'language'));
-        $isAbilityService = $serviceKeys->contains(fn($key) => str_contains($key, 'abilit'));
-
-        // الخدمة الرئيسية تُشتق من $primaryTS (بعد إزالة التكرار) لتكون متسقة مع services المعادة.
-        // الفرونت يستخدم main_service_key لاختيار القسم: لغات / مواد / قدرات.
-        if ($primaryTS && $primaryTS->service && !empty($primaryTS->service->key_name)) {
-            $main_service_key = $primaryTS->service->key_name;
-        } elseif (!empty($teacherServices)) {
-            $main_service_key = $teacherServices[0]['key_name'] ?? $main_service_key;
-        }
-
-        // Services that produce subjects/courses (private lessons + course type)
-        $courseServiceIds = $uniqueTS
-            ->filter(function ($ts) {
-                $key = strtolower((string) optional($ts->service)->key_name);
-                return $key === 'private_lessons'
-                    || str_contains($key, 'private')
-                    || str_contains($key, 'course')
-                    || str_contains($key, 'training');
-            })
-            ->pluck('service_id')
-            ->filter()
-            ->values()
-            ->all();
-
-        if ($isPrivateService || $isCourseService) {
-            // $teacherSubjects already contains subject details.
-            // Fetch courses for every teaching service the teacher selected.
-            $query = Course::where('teacher_id', $teacher->id)
-                ->with(['coverImage']);
-
-            if (!empty($courseServiceIds)) {
-                $query->whereIn('service_id', $courseServiceIds);
-            }
-
-            $courses = $query->get()->map(function ($c) {
-                return [
-                    'id' => $c->id,
-                    'name' => $c->name,
-                    'description' => $c->description,
-                    'price' => $c->price,
-                    'duration_hours' => $c->duration_hours,
-                    'status' => $c->status,
-                    'cover_image' => optional($c->coverImage)->file_path ?? null,
-                ];
-            })->values()->toArray();
-        }
-
-        // Language study service: include teacher languages
-        if ($isLanguageService) {
-            $languages = TeacherLanguage::where('teacher_id', $teacher->id)
-                ->with('language')
-                ->get()
-                ->map(function ($tl) {
-                    return [
-                        'id' => $tl->id,
-                        'language_id' => $tl->language_id,
-                        'name_en' => optional($tl->language)->name_en ?? null,
-                        'name_ar' => optional($tl->language)->name_ar ?? null,
-                    ];
-                })->values()->toArray();
-        }
-
-        // Teacher abilities: only for ability service (same pattern as languages)
-        $abilities = [];
-        if ($isAbilityService) {
-            $abilities = $teacher->teacherAbilities()->with('ability')->get()
-                ->map(function ($ta) {
-                    return [
-                        'id' => $ta->id,
-                        'ability_id' => $ta->ability_id,
-                        'name_en' => optional($ta->ability)->name_en ?? null,
-                        'name_ar' => optional($ta->ability)->name_ar ?? null,
-                    ];
-                })->values()->toArray();
-        }
-
-        // Get earnings data
-        $earnings = DB::table('wallets')
-            ->where('user_id', $teacher->id)
-            ->select(
-                DB::raw('balance as total_earnings'),
-            )
-            ->first();
-
-        // TeacherInfo always stores the teacher's own rate. Apply the platform
-        // percentage only when another user (typically a student) views it.
-        $platformPercentage = PlatformPercentage::getActive();
-        $percentageValue = $platformPercentage ? ($platformPercentage->value / 100) : 0;
-        $authenticatedUser = request()->user();
-        $isOwnTeacherProfile = $authenticatedUser
-            && (int) $authenticatedUser->id === (int) $teacher->id
-            && (int) $authenticatedUser->role_id === 3;
-        $priceMultiplier = $isOwnTeacherProfile ? 1 : (1 + $percentageValue);
-
-        // Current lessons count
-        $currentLessons = DB::table('bookings')
-            ->where('teacher_id', $teacher->id)
-            ->where('status', 'active')
-            ->count();
-
-        // Total bookings (all statuses)
-        $totalBookings = DB::table('bookings')
-            ->where('teacher_id', $teacher->id)
-            ->count();
-
-        // Get reviews with reviewer name (fix: student name was missing -> showed "طالب")
-        $reviewsData = Review::where('reviewed_id', $teacher->id)
-            ->with('reviewer:id,first_name,last_name')
-            ->latest()
-            ->get();
-        $rating = round($reviewsData->avg('rating') ?? 0, 1);
-        $reviews = $reviewsData->map(function ($r) {
-            $reviewer = $r->reviewer;
-            $name = $reviewer
-                ? trim(($reviewer->first_name ?? '') . ' ' . ($reviewer->last_name ?? ''))
-                : '';
-            if ($name === '') {
-                $name = 'طالب';
-            }
-            $arr = $r->toArray();
-            $arr['student_name'] = $name;
-            $arr['date'] = $r->created_at ? $r->created_at->toDateString() : ($arr['created_at'] ?? null);
-            $arr['reviewer'] = $reviewer ? [
-                'id' => $reviewer->id,
-                'first_name' => $reviewer->first_name,
-                'last_name' => $reviewer->last_name,
-                'name' => $name,
-            ] : null;
-            return $arr;
-        })->values()->toArray();
-
-        // Get teacher subjects with detailed info
-        if ($isPrivateService) {
-
-
-            $teacherSubjects = TeacherSubject::where('teacher_id', $teacher->id)
-                ->with([
-                    'subject' => function ($q) {
-                        $q->select('id', 'name_en', 'name_ar', 'class_id', 'education_level_id');
-                    },
-                    'subject.class' => function ($q) {
-                        $q->select('id', 'name_en', 'name_ar', 'education_level_id');
-                    },
-                    'subject.educationLevel' => function ($q) {
-                        $q->select('id', 'name_en', 'name_ar');
-                    }
-                ])
-                ->get()
-                ->map(function ($teacherSubject) {
-                    return [
-                        'id' => $teacherSubject->id,
-                        'teacher_id' => $teacherSubject->teacher_id,
-                        'subject_id' => optional($teacherSubject->subject)->id ?? $teacherSubject->subject_id,
-                        'name_en' => $teacherSubject->subject->name_en ?? null,
-                        'name_ar' => $teacherSubject->subject->name_ar ?? null,
-                        'title' => $teacherSubject->subject->name_ar ?? $teacherSubject->subject->name_en,
-                        'class_id' => $teacherSubject->subject->class_id,
-                        'class_level_id' => $teacherSubject->subject->education_level_id,
-                        'class_level_title' => optional($teacherSubject->subject->educationLevel)->name_ar,
-                        'class_title' => optional($teacherSubject->subject->class)->name_ar,
-                    ];
-                })
-                ->values()
-                ->toArray();
-        } else {
-            $teacherSubjects = [];
-        }
-        // Get availability slots grouped by day
-        $availabilitySlots = AvailabilitySlot::where('teacher_id', $teacher->id)
-            // ->where('is_available', true)
-            ->get()
-            ->groupBy('day_number');
-
-        // Map day numbers to Arabic day names
-        $dayNames = [
-            1 => 'السبت',       // Saturday
-            2 => 'الأحد',       // Sunday
-            3 => 'الإثنين',     // Monday
-            4 => 'الثلاثاء',    // Tuesday
-            5 => 'الأربعاء',    // Wednesday
-            6 => 'الخميس',      // Thursday
-            7 => 'الجمعة',      // Friday
-        ];
-
-        $availableTimes = [];
-        foreach ($availabilitySlots as $dayNumber => $slots) {
-            $dayName = $dayNames[$dayNumber] ?? 'unknown';
-            $times = $slots->map(function ($slot) {
-                return [
-                    'id' => $slot->id,
-                    'is_booked' => $slot->is_booked,
-                    'is_available' => $slot->is_available,
-                    'time' => $slot->start_time->format('h:i A') // Format time as "5:00 PM"
-                ];
-            })->values()->toArray();
-
-            $availableTimes[] = [
-                'id' => $dayNumber,
-                'day' => $dayName,
-                'times' => $times
-            ];
-        }
-
-        $bookingStudentIds = DB::table('bookings')
-            ->where('teacher_id', $teacher->id)
-            ->where('status', '!=', 'cancelled')
-            ->pluck('student_id');
-
-        $sessionStudentIds = DB::table('sessions')
-            ->where('teacher_id', $teacher->id)
-            ->where('status', '!=', 'cancelled')
-            ->pluck('student_id');
-
-        $courseStudentIds = DB::table('enrollments')
-            ->join('courses', 'enrollments.course_id', '=', 'courses.id')
-            ->where('courses.teacher_id', $teacher->id)
-            ->where('enrollments.status', '!=', 'cancelled')
-            ->pluck('enrollments.student_id');
-
-        $totalStudents = $bookingStudentIds
-            ->concat($sessionStudentIds)
-            ->concat($courseStudentIds)
-            ->unique()
-            ->filter()
-            ->count();
-
-        $completedLessons = DB::table('sessions')
-            ->where('teacher_id', $teacher->id)
-            ->where('status', 'completed')
-            ->count();
-
-        $totalLessons = DB::table('sessions')
-            ->where('teacher_id', $teacher->id)
-            ->where('status', '!=', 'cancelled')
-            ->count();
-
-        if ($totalLessons === 0) {
-            $totalLessons = (int) $totalBookings;
-        }
-
-        $d = [
-            'id' => $teacher->id,
-            'main_service_key' => $main_service_key,
-            'first_name' => $teacher->first_name,
-            'last_name' => $teacher->last_name,
-            'email' => $teacher->email,
-            'phone_number' => $teacher->phone_number,
-            'email_verified_at' => $teacher->email_verified_at,
-            'role_id' => $teacher->role_id,
-            'gender' => $teacher->gender,
-            'nationality' => $teacher->nationality,
-            'teacher_type' => $teacher->teacher_type,
-            'verified' => (bool) optional($teacher->profile)->verified,
-            'verification_code' => (string) $teacher->verification_code,
-            'social_provider' => $teacher->social_provider,
-            'social_provider_id' => (string) ($teacher->social_provider_id ?? ''),
-            'phone_number' => (string) $teacher->phone_number,
-            'total_students' => (int) $totalStudents,
-            'students_count' => (int) $totalStudents,
-            'total_lessons' => (int) $totalLessons,
-            'completed_lessons' => (int) $completedLessons,
-            'lessons_count' => (int) $totalLessons,
-            'profile' => [
-                'main_service_key' => $main_service_key,
-                'is_active' => (int) $teacher->is_active,
-                'profile_photo' => $profilePhoto,
-                'resume' => $resume,
-                'certificate' => $certificate,
-                'reviews' => $reviews,
-                'rating' => $rating,
-                'bio' => optional($teacher->profile)->bio,
-                'founder' => $teacher->teacherInfo ? (bool) $teacher->teacherInfo->founder : false,
-                'offer_packages' => $teacher->teacherInfo ? (bool) $teacher->teacherInfo->offer_packages : false,
-                'package_on_off' => $teacher->teacherInfo ? (bool) $teacher->teacherInfo->package_on_off : false,
-                'packages_approved' => $teacher->teacherInfo ? (bool) $teacher->teacherInfo->packages_approved : false,
-                'total_students' => (int) $totalStudents,
-                'students_count' => (int) $totalStudents,
-                'total_lessons' => (int) $totalLessons,
-                'completed_lessons' => (int) $completedLessons,
-                'lessons_count' => (int) $totalLessons,
-                'verified' => (bool) optional($teacher->profile)->verified,
-                'service' => $primaryServiceId,
-                'services' => $teacherServices,
-                'courses' => $courses,
-                'languages' => $languages,
-                'abilities' => $abilities,
-                'available_times' => $availableTimes,
-                'certificate_attachment' => $certificateAttachment,
-                'earnings' => $earnings,
-                'currentLessons' => $currentLessons,
-                'bookings_count' => (int) $totalBookings,
-                'subjects_count' => (int) count($teacherSubjects),
-                'languages_count' => (int) count($languages),
-                'abilities_count' => (int) count($abilities),
-                'courses_count' => (int) count($courses),
-                'teach_individual' => (bool) optional($teacher->teacherInfo)->teach_individual,
-                'package_on_off' => (bool) optional($teacher->teacherInfo)->package_on_off,
-                'individual_hour_price' => (float) ((optional($teacher->teacherInfo)->individual_hour_price ?? 0) * $priceMultiplier),
-                'teach_group' => (bool) optional($teacher->teacherInfo)->teach_group,
-                'group_hour_price' => (float) ((optional($teacher->teacherInfo)->group_hour_price ?? 0) * $priceMultiplier),
-                'max_group_size' => (int) (optional($teacher->teacherInfo)->max_group_size ?? 0),
-                'min_group_size' => (int) (optional($teacher->teacherInfo)->min_group_size ?? 0),
-                'code' => optional($teacher->teacherInfo)->code,
-                'teacher_subjects' => $teacherSubjects,
-                'intro_video' => $introVideo,
-                'cover_image' => $coverImage,
-            ],
-            'intro_video' => $introVideo,
-            'cover_image' => $coverImage,
-        ];
-
-        Log::warning("Teacher Data: ", ['teacher_data' => $d]);
-
-        return $d;
-    }
-
-
-    private function handleFileUpload(Request $request, string $key, string $folder, User $user)
-    {
-        if (!$request->hasFile($key)) {
-            return null;
-        }
-
-        $file = $request->file($key);
-        $path = $file->store($folder, 'public'); // Saves to storage/app/public/$folder
-
-        $attachment = \App\Models\Attachment::create([
-            'user_id' => $user->id,
-            'file_path' => asset('storage/' . $path), // Full URL for mobile apps
-            'file_name' => $file->getClientOriginalName(),
-            'file_type' => $file->getClientMimeType(),
-        ]);
-
-        return $attachment->file_path;
-    }
-
-
-    private function saveAttachmentFile(Request $request, string $key, string $folder, User $user, string $attachedToType): ?string
-    {
-        if (!$request->hasFile($key)) {
-            return null;
-        }
-
-        try {
-            $file = $request->file($key);
-            $path = $file->store($folder, 'public'); // Saves to storage/app/public/$folder
-            $fileUrl = asset('storage/' . $path);
-
-            // Create attachment record in database
-            $attachment = Attachment::create([
-                'user_id' => $user->id,
-                'file_path' => $fileUrl,
-                'file_name' => $file->getClientOriginalName(),
-                'file_type' => $file->getClientMimeType(),
-                'file_size' => $file->getSize(),
-                'attached_to_type' => $attachedToType, // Store as profile-related attachment
-            ]);
-
-            Log::info('File uploaded and attachment created', [
-                'user_id' => $user->id,
-                'file_name' => $file->getClientOriginalName(),
-                'attachment_id' => $attachment->id,
-                'file_path' => $fileUrl
-            ]);
-
-            return $fileUrl;
-        } catch (\Exception $e) {
-            Log::error('Failed to save attachment file', [
-                'user_id' => $user->id,
-                'key' => $key,
-                'error' => $e->getMessage()
-            ]);
-            throw $e;
-        }
+        return $this->teacherProfileService->getFullTeacherData($teacher);
     }
 
     public function listCertificates(Request $request)
     {
-        $user = $request->user();
-
-        $certificates = Attachment::where('user_id', $user->id)
-            ->where('attached_to_type', 'certificate')
-            ->get(['id', 'file_name', 'file_path', 'created_at']);
-
-        return response()->json([
-            'success' => true,
-            'data' => $certificates
-        ]);
+        $result = $this->teacherManagementService->listCertificates($request->user());
+        return response()->json($result, $result['status_code'] ?? 200);
     }
 
     public function updateActiveStatus(Request $request)
@@ -1794,49 +208,16 @@ class UserController extends Controller
             'is_active' => 'required|boolean',
         ]);
 
-        $user = $request->user();
-        $isActive = $request->boolean('is_active');
-
-        // If trying to set as active, check if profile is verified
-        if ($isActive) {
-            $userProfile = UserProfile::where('user_id', $user->id)->first();
-
-            if (!$userProfile || !$userProfile->verified) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Cannot activate account. User profile must be verified first.',
-                    'error' => 'Profile not verified'
-                ], 422);
-            }
-        }
-
-        $user->is_active = $isActive;
-        $user->save();
-
-        Log::info('User active status updated', [
-            'user_id' => $user->id,
-            'is_active' => $isActive,
-            'verified' => (bool) optional($user->profile)->verified
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Active status updated successfully',
-            'data' => [
-                'is_active' => (bool) $user->is_active,
-                'verified' => (bool) optional($user->profile)->verified,
-            ],
-        ]);
+        $result = $this->teacherManagementService->updateActiveStatus($request, $request->user());
+        return response()->json($result, $result['status_code'] ?? 200);
     }
 
     public function getActiveStatus(Request $request)
     {
-        $user = $request->user();
-
         return response()->json([
             'success' => true,
             'data' => [
-                'is_active' => $user->is_active,
+                'is_active' => $request->user()->is_active,
             ],
         ]);
     }

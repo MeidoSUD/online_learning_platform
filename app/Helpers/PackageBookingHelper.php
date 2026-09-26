@@ -41,12 +41,10 @@ class PackageBookingHelper
         foreach ($timeslotIds as $slotId) {
             $slot = AvailabilitySlot::where('id', $slotId)
                 ->where('teacher_id', $teacherId)
-                ->where('is_available', true)
-                ->where('is_booked', false)
                 ->lockForUpdate()
                 ->first();
 
-            if (!$slot) {
+            if (!$slot || !self::isSlotBookable($slot)) {
                 abort(400, "Slot #{$slotId} not available or already booked");
             }
 
@@ -54,6 +52,26 @@ class PackageBookingHelper
         }
 
         return $slots;
+    }
+
+    /** A day-number slot is a recurring weekly window, not a one-time resource. */
+    public static function isRecurringSlot($slot): bool
+    {
+        return $slot->day_number !== null
+            && ($slot->date === null || $slot->repeat_type === AvailabilitySlot::REPEAT_WEEKLY);
+    }
+
+    /**
+     * Recurring slots may have legacy booked flags from a previous occurrence;
+     * actual availability is determined by date-specific sessions instead.
+     */
+    public static function isSlotBookable($slot): bool
+    {
+        if (self::isRecurringSlot($slot) && $slot->is_booked) {
+            return true;
+        }
+
+        return (bool) $slot->is_available && !(bool) $slot->is_booked;
     }
 
     /**
@@ -187,6 +205,10 @@ class PackageBookingHelper
     public static function markSlotsAsBooked(array $slots, int $bookingId): void
     {
         foreach ($slots as $slot) {
+            if (self::isRecurringSlot($slot)) {
+                continue;
+            }
+
             $slot->update([
                 'is_booked' => true,
                 'booking_id' => $bookingId,

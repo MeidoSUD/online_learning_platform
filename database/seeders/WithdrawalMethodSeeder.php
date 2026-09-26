@@ -14,7 +14,7 @@ class WithdrawalMethodSeeder extends Seeder
      */
     public function run()
     {
-        \App\Models\WithdrawalMethod::updateOrCreate(
+        \App\Models\WithdrawalMethod::firstOrCreate(
             ['key' => 'bank_account'],
             [
                 'name_ar' => 'حساب بنكي',
@@ -23,7 +23,7 @@ class WithdrawalMethodSeeder extends Seeder
             ]
         );
 
-        \App\Models\WithdrawalMethod::updateOrCreate(
+        \App\Models\WithdrawalMethod::firstOrCreate(
             ['key' => 'card'],
             [
                 'name_ar' => 'بطاقة',

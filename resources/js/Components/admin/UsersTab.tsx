@@ -182,7 +182,13 @@ export const UsersTab: React.FC<UsersTabProps> = ({ onViewTeacher }) => {
             setUsers(users.filter(u => u.id !== id));
             setOpenMenuId(null);
             if (selectedUser?.id === id) setSelectedUser(null);
-        } catch (e: any) { showToast(t.error, 'error'); }
+        } catch (e: any) {
+            const details = Array.isArray(e.blockers)
+                ? e.blockers.map((blocker: any) => language === 'ar' ? blocker.message_ar : blocker.message_en).filter(Boolean)
+                : [];
+            const message = language === 'ar' ? (e.message_ar || e.message || t.error) : (e.message || t.error);
+            showToast([message, ...details].join(' '), 'error');
+        }
     };
 
     const handleToggleStatus = async (user: AdminUser) => {

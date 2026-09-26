@@ -4,7 +4,7 @@ import { adminService } from '../../Services/api';
 import { CreditCard, Power, Loader2, AlertCircle } from 'lucide-react';
 
 export const AdminWithdrawalMethodsTab: React.FC = () => {
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
     const [methods, setMethods] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
@@ -60,6 +60,13 @@ export const AdminWithdrawalMethodsTab: React.FC = () => {
                     )}
                     
                     <div className="space-y-4">
+                        {methods.length === 0 && !error && (
+                            <div className="p-4 rounded-lg border border-amber-200 bg-amber-50 text-sm text-amber-800">
+                                {language === 'ar'
+                                    ? 'لا توجد طرق سحب مهيأة. شغّل seeder الخاص بطرق السحب ثم حدّث الصفحة.'
+                                    : 'No withdrawal methods are configured. Run the withdrawal method seeder, then refresh this page.'}
+                            </div>
+                        )}
                         {methods.map((method) => (
                             <div key={method.id} className="flex items-center justify-between p-4 bg-[var(--light-bg)] rounded-xl border border-[var(--border)]">
                                 <div>

@@ -109,7 +109,9 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({ teacher:
   const certificates = profile?.certificate_attachment ? [profile.certificate_attachment] : [];
   const coverImage = profile?.cover_image || null;
   const availableTimes = profile?.available_times ?? teacherProp?.available_times ?? [];
-  const specialization = teacherSubjects?.[0]?.class_level_title || (language === 'ar' ? 'معلم' : 'Teacher');
+  const specialization = language === 'ar'
+    ? (teacherSubjects?.[0]?.class_level_title_ar || teacherSubjects?.[0]?.class_level_title || 'معلم')
+    : (teacherSubjects?.[0]?.class_level_title_en || teacherSubjects?.[0]?.class_level_title || 'Teacher');
 
   const fetchSessions = useCallback(async () => {
     if (!teacherProp?.id) return;
@@ -356,7 +358,17 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({ teacher:
                 <div className="flex flex-wrap gap-2">
                   {teacherSubjects.map((sub: any) => (
                     <span key={sub.id} className="px-3 py-1.5 rounded-lg bg-secondary-pale text-[var(--accent)] text-sm font-medium border border-[var(--border)]">
-                      {sub.title || sub.name_ar || sub.name_en}
+                      {language === 'ar'
+                        ? (sub.title_ar || sub.name_ar || sub.title || sub.name_en)
+                        : (sub.title_en || sub.name_en || sub.title || sub.name_ar)}
+                      {(sub.class_level_title || sub.class_level_title_en || sub.class_title || sub.class_title_en) && (
+                        <span className="block text-xs font-normal opacity-75">
+                          {[
+                            language === 'ar' ? (sub.class_level_title_ar || sub.class_level_title) : (sub.class_level_title_en || sub.class_level_title),
+                            language === 'ar' ? (sub.class_title_ar || sub.class_title) : (sub.class_title_en || sub.class_title),
+                          ].filter(Boolean).join(' - ')}
+                        </span>
+                      )}
                     </span>
                   ))}
                 </div>

@@ -35,8 +35,12 @@ export const AdminTeacherDetails: React.FC<AdminTeacherDetailsProps> = ({ userId
     const [isEditing, setIsEditing] = useState(false);
     const [saving, setSaving] = useState(false);
     const [draft, setDraft] = useState<any>({});
-    const [editOptions, setEditOptions] = useState<{ services: any[]; subjects: any[]; languages: any[] }>({ services: [], subjects: [], languages: [] });
+    const [editOptions, setEditOptions] = useState<{ services: any[]; subjects: any[]; languages: any[]; levels: any[]; classes: any[] }>({ services: [], subjects: [], languages: [], levels: [], classes: [] });
     const [optionsLoading, setOptionsLoading] = useState(false);
+    const [subjectsLoading, setSubjectsLoading] = useState(false);
+    const [optionsLoaded, setOptionsLoaded] = useState(false);
+    const [selectedEducationLevelId, setSelectedEducationLevelId] = useState(0);
+    const [selectedClassId, setSelectedClassId] = useState(0);
 
     const ar = language === 'ar';
 
@@ -99,22 +103,57 @@ export const AdminTeacherDetails: React.FC<AdminTeacherDetailsProps> = ({ userId
     useEffect(() => {
         if (teacher) {
             setDraft(buildDraft(teacher));
+            const firstSubject = (teacher?.profile?.teacher_subjects || [])[0];
+            setSelectedEducationLevelId(Number(firstSubject?.class_level_id || 0));
+            setSelectedClassId(Number(firstSubject?.class_id || 0));
         }
     }, [teacher, buildDraft]);
 
     useEffect(() => {
-        if (!isEditing || editOptions.services.length > 0) return;
+        if (!isEditing || optionsLoaded) return;
         setOptionsLoading(true);
-        Promise.all([
-            adminService.getTeacherEditServices(),
-            adminService.getTeacherEditSubjects(),
-            adminService.getTeacherEditLanguages(),
-        ]).then(([services, subjects, languages]) => {
-            setEditOptions({ services: services || [], subjects: subjects || [], languages: languages || [] });
+        adminService.getTeacherEditOptions().then((options: any) => {
+            setEditOptions({
+                services: options?.services || [],
+                subjects: [],
+                languages: options?.languages || [],
+                levels: options?.levels || [],
+                classes: options?.classes || [],
+            });
+            setOptionsLoaded(true);
         }).catch((e: any) => {
             showToast(e.message || (ar ? 'فشل تحميل بيانات الخدمات' : 'Failed to load service data'), 'error');
         }).finally(() => setOptionsLoading(false));
-    }, [isEditing, editOptions.services.length, ar, showToast]);
+    }, [isEditing, optionsLoaded, ar, showToast]);
+
+    const selectedServiceIds = (draft.service_ids || []).map((id: number) => Number(id));
+    const privateServiceIds = editOptions.services
+        .filter((service: any) => selectedServiceIds.includes(Number(service.id)) && String(service.key_name || '').toLowerCase().includes('private'))
+        .map((service: any) => Number(service.id));
+    const privateServiceKey = privateServiceIds.join(',');
+
+    useEffect(() => {
+        if (!isEditing || !selectedEducationLevelId || !selectedClassId || !privateServiceKey) {
+            setEditOptions((prev) => ({ ...prev, subjects: [] }));
+            return;
+        }
+
+        let cancelled = false;
+        setSubjectsLoading(true);
+        adminService.getTeacherEditSubjects(
+            selectedEducationLevelId,
+            selectedClassId,
+            privateServiceKey.split(',').map(Number),
+        ).then((subjects: any[]) => {
+            if (!cancelled) setEditOptions((prev) => ({ ...prev, subjects: subjects || [] }));
+        }).catch((e: any) => {
+            if (!cancelled) showToast(e.message || (ar ? 'فشل تحميل المواد' : 'Failed to load subjects'), 'error');
+        }).finally(() => {
+            if (!cancelled) setSubjectsLoading(false);
+        });
+
+        return () => { cancelled = true; };
+    }, [isEditing, selectedEducationLevelId, selectedClassId, privateServiceKey, ar, showToast]);
 
     if (loading) {
         return <div className="flex justify-center p-16"><Loader2 className="animate-spin text-primary" /></div>;
@@ -256,10 +295,7 @@ export const AdminTeacherDetails: React.FC<AdminTeacherDetailsProps> = ({ userId
     const selectedServices = editOptions.services.filter((service: any) => (draft.service_ids || []).includes(Number(service.id)));
     const hasPrivateService = selectedServices.some((service: any) => String(service.key_name || '').toLowerCase().includes('private'));
     const hasLanguageService = selectedServices.some((service: any) => String(service.key_name || '').toLowerCase().includes('language'));
-    const availableSubjects = editOptions.subjects.filter((subject: any) =>
-        (draft.service_ids || []).includes(Number(subject.service_id)) ||
-        (subject.service_id == null && hasPrivateService)
-    );
+    const availableSubjects = editOptions.subjects;
     const toggleId = (field: 'service_ids' | 'subject_ids' | 'language_ids', id: number) => {
         setDraft((prev: any) => {
             const current = prev[field] || [];
@@ -396,12 +432,59 @@ export const AdminTeacherDetails: React.FC<AdminTeacherDetailsProps> = ({ userId
                             {hasPrivateService && (
                                 <div className="space-y-2">
                                     <p className="text-sm font-semibold text-[var(--text-main)]">{ar ? 'مواد الدروس الخاصة' : 'Private lesson subjects'}</p>
-                                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-56 overflow-y-auto">
-                                        {availableSubjects.map((subject: any) => {
-                                            const id = Number(subject.id);
-                                            return <label key={id} className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--border)] p-2 cursor-pointer"><input type="checkbox" checked={(draft.subject_ids || []).includes(id)} onChange={() => toggleId('subject_ids', id)} /><span className="text-sm">{ar ? (subject.name_ar || subject.name_en) : (subject.name_en || subject.name_ar)}</span></label>;
-                                        })}
+                                    <div className="grid md:grid-cols-2 gap-3">
+                                        <label className="space-y-1 text-sm">
+                                            <span className="font-medium">{ar ? '١. المرحلة التعليمية' : '1. Education level'}</span>
+                                            <select
+                                                value={selectedEducationLevelId || ''}
+                                                onChange={(e) => {
+                                                    setSelectedEducationLevelId(Number(e.target.value));
+                                                    setSelectedClassId(0);
+                                                }}
+                                                className="w-full rounded-[var(--radius-sm)] border border-[var(--border)] p-2.5 bg-white"
+                                            >
+                                                <option value="">{ar ? 'اختر المرحلة' : 'Select a level'}</option>
+                                                {editOptions.levels.map((level: any) => (
+                                                    <option key={level.id} value={level.id}>{ar ? (level.name_ar || level.name_en) : (level.name_en || level.name_ar)}</option>
+                                                ))}
+                                            </select>
+                                        </label>
+                                        <label className="space-y-1 text-sm">
+                                            <span className="font-medium">{ar ? '٢. الصف' : '2. Class'}</span>
+                                            <select
+                                                value={selectedClassId || ''}
+                                                disabled={!selectedEducationLevelId}
+                                                onChange={(e) => setSelectedClassId(Number(e.target.value))}
+                                                className="w-full rounded-[var(--radius-sm)] border border-[var(--border)] p-2.5 bg-white disabled:opacity-50"
+                                            >
+                                                <option value="">{ar ? 'اختر الصف' : 'Select a class'}</option>
+                                                {editOptions.classes
+                                                    .filter((item: any) => Number(item.education_level_id) === selectedEducationLevelId)
+                                                    .map((item: any) => (
+                                                        <option key={item.id} value={item.id}>{ar ? (item.name_ar || item.name_en) : (item.name_en || item.name_ar)}</option>
+                                                    ))}
+                                            </select>
+                                        </label>
                                     </div>
+                                    {!selectedEducationLevelId ? (
+                                        <p className="text-xs text-[var(--text-muted)]">{ar ? 'اختر المرحلة أولاً لعرض الصفوف.' : 'Select an education level first to see its classes.'}</p>
+                                    ) : !selectedClassId ? (
+                                        <p className="text-xs text-[var(--text-muted)]">{ar ? 'اختر الصف لعرض مواده فقط.' : 'Select a class to see only its subjects.'}</p>
+                                    ) : subjectsLoading ? (
+                                        <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]"><Loader2 className="animate-spin" size={16} /> {ar ? 'جاري تحميل المواد...' : 'Loading subjects...'}</div>
+                                    ) : availableSubjects.length === 0 ? (
+                                        <p className="text-xs text-[var(--text-muted)]">{ar ? 'لا توجد مواد لهذه المرحلة والصف والخدمة.' : 'No subjects match this level, class, and service.'}</p>
+                                    ) : (
+                                        <>
+                                            <p className="text-xs text-[var(--text-muted)]">{ar ? '٣. اختر المواد لهذا الصف.' : '3. Select subjects for this class.'}</p>
+                                            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-56 overflow-y-auto">
+                                                {availableSubjects.map((subject: any) => {
+                                                    const id = Number(subject.id);
+                                                    return <label key={id} className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--border)] p-2 cursor-pointer"><input type="checkbox" checked={(draft.subject_ids || []).includes(id)} onChange={() => toggleId('subject_ids', id)} /><span className="text-sm">{ar ? (subject.name_ar || subject.name_en) : (subject.name_en || subject.name_ar)}</span></label>;
+                                                })}
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             )}
 
@@ -526,7 +609,12 @@ export const AdminTeacherDetails: React.FC<AdminTeacherDetailsProps> = ({ userId
                                 {subjects.map((s: any) => (
                                     <span key={s.id} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary-pale text-primary text-xs font-semibold">
                                         {subjectName(s)}
-                                        <span className="text-[10px] text-[var(--text-muted)]">{s.class_title || s.class_level_title || ''}</span>
+                                        <span className="text-[10px] text-[var(--text-muted)]">
+                                            {[
+                                                ar ? (s.class_level_title_ar || s.class_level_title) : (s.class_level_title_en || s.class_level_title),
+                                                ar ? (s.class_title_ar || s.class_title) : (s.class_title_en || s.class_title),
+                                            ].filter(Boolean).join(' - ')}
+                                        </span>
                                     </span>
                                 ))}
                             </div>
@@ -576,7 +664,9 @@ export const AdminTeacherDetails: React.FC<AdminTeacherDetailsProps> = ({ userId
                             <div className="grid sm:grid-cols-2 gap-3">
                                 {[...availableTimes].sort(dayOrder).map((day: any) => (
                                     <div key={day.id ?? day.day_number} className="p-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--light-bg)]/50">
-                                        <div className="text-xs font-bold text-[var(--text-muted)] mb-2">{dayName(day.id ?? day.day_number)}</div>
+                                        <div className="text-xs font-bold text-[var(--text-muted)] mb-2">
+                                            {ar ? (day.day_ar || day.day_name_ar || dayName(day.id ?? day.day_number)) : (day.day_en || day.day_name_en || dayName(day.id ?? day.day_number))}
+                                        </div>
                                         <div className="flex flex-wrap gap-1.5">
                                             {(day.times || []).map((slot: any) => (
                                                 <span key={slot.id} className={`px-2 py-1 rounded text-[11px] font-semibold ${slot.is_available === false || slot.is_booked ? 'bg-[var(--border)]/40 text-[var(--text-muted)] line-through' : 'bg-primary-pale text-primary'}`}>

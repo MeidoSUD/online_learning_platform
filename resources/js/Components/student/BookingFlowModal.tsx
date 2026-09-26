@@ -111,6 +111,7 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
     setLoading(true);
     setError(null);
     try {
+      await validateSelectedTimeslots(sessionCount);
       const payload: any = {
         teacher_id: teacher.id,
         service_id: serviceId,
@@ -139,6 +140,22 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
     }
   };
 
+  const validateSelectedTimeslots = async (sessionsCount: number) => {
+    for (const slotId of selectedTimeSlots) {
+      const response: any = await studentService.getTimeslotSessionDate(slotId, sessionsCount);
+      const info = response?.data ?? response;
+      const conflict = (info?.upcoming_sessions || []).find((session: any) => !session.can_book);
+      if (response?.success === false || info?.can_book === false || conflict) {
+        const conflictDate = conflict?.session_date || info?.session_date;
+        const reason = conflict?.conflict_reason || (language === 'ar' ? info?.reason_ar : info?.reason);
+        const message = language === 'ar'
+          ? `الموعد غير متاح${conflictDate ? ` بتاريخ ${conflictDate}` : ''}${reason ? `: ${reason}` : '. يرجى اختيار موعد آخر.'}`
+          : `This time slot is unavailable${conflictDate ? ` on ${conflictDate}` : ''}${reason ? `: ${reason}` : '. Please choose another time.'}`;
+        throw new Error(message);
+      }
+    }
+  };
+
   const handlePayWithPackage = async (subscription: any) => {
     setLoading(true);
     setError(null);
@@ -148,7 +165,7 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
       setStep(4);
       setPaymentResult({ success: true, method: 'package', data: res });
     } catch (e: any) {
-      setError(e.message || 'Booking failed');
+      setError(language === 'ar' ? (e.message_ar || e.message || 'تعذر إتمام الحجز') : (e.message || 'Booking failed'));
     } finally {
       setLoading(false);
     }
@@ -212,7 +229,7 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
         throw new Error('No redirect URL from payment gateway');
       }
     } catch (e: any) {
-      setError(e.message || 'Payment failed');
+      setError(language === 'ar' ? (e.message_ar || e.message || 'فشل الدفع') : (e.message || 'Payment failed'));
       setLoading(false);
     } finally {
       setLoading(false);
@@ -269,7 +286,11 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
           <p className="text-[var(--text-muted)] text-sm">{language === 'ar' ? 'لا توجد مواد متاحة' : 'No subjects available'}</p>
         ) : (
           subjects.map((sub: any) => {
-            const title = sub.title || (language === 'ar' ? sub.name_ar : sub.name_en) || 'Unnamed Subject';
+            const title = (language === 'ar' ? (sub.title_ar || sub.name_ar) : (sub.title_en || sub.name_en)) || sub.title || 'Unnamed Subject';
+            const levelTitle = language === 'ar'
+              ? (sub.class_level_title_ar || sub.class_level_title)
+              : (sub.class_level_title_en || sub.class_level_title);
+            const classTitle = language === 'ar' ? (sub.class_title_ar || sub.class_title) : (sub.class_title_en || sub.class_title);
             return (
               <button key={sub.id} onClick={() => setSelectedSubject(sub)}
                 className={`w-full text-left p-3 rounded-lg border transition-all ${
@@ -277,8 +298,8 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
                 }`}
               >
                 <p className="font-semibold">{title}</p>
-                {sub.class_level_title && sub.class_title && (
-                  <p className="text-xs text-[var(--text-muted)] mt-1">{sub.class_level_title} - {sub.class_title}</p>
+                {levelTitle && classTitle && (
+                  <p className="text-xs text-[var(--text-muted)] mt-1">{levelTitle} - {classTitle}</p>
                 )}
               </button>
             );
@@ -576,6 +597,17 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
   const handleNext = async () => {
     if (step === 2) {
         await handlePayWithCard();
+    } else if (step === 1) {
+      setLoading(true);
+      setError(null);
+      try {
+        await validateSelectedTimeslots(sessionCount);
+        setStep(2);
+      } catch (e: any) {
+        setError(e.message || (language === 'ar' ? 'تعذر التحقق من الموعد' : 'Could not verify this time slot'));
+      } finally {
+        setLoading(false);
+      }
     } else {
       setStep(s => Math.min(s + 1, 3));
     }
