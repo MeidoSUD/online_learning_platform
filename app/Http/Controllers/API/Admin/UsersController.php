@@ -832,20 +832,39 @@ class UsersController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'first_name' => 'required|string',
-            'last_name' => 'required|string',
-            'phone_number' => 'required|string',
-            'gender' => 'required|string',
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'phone_number' => 'nullable|string|max:50',
+            'gender' => 'nullable|string|in:male,female,other',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:6',
             'role_id' => 'nullable|integer',
-            'nationality'=> 'nullable|string'
+            'nationality'=> 'nullable|string|max:100'
         ]);
+
+        if (empty($data['gender'])) {
+            $data['gender'] = 'male';
+        }
 
         $data['password'] = Hash::make($data['password']);
         if (!isset($data['is_active'])) {
             $data['is_active'] = true;
         }
+
+        if (isset($data['role_id']) && (int) $data['role_id'] === 5) {
+            $roleExists = DB::table('roles')->where('id', 5)->exists();
+            if (!$roleExists) {
+                DB::table('roles')->insertOrIgnore([
+                    'id' => 5,
+                    'name_key' => 'support',
+                    'name_en' => 'Customer Support',
+                    'name_ar' => 'خدمة العملاء',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+
         $user = User::create($data);
         UserProfile::firstOrCreate(['user_id' => $user->id]);
 

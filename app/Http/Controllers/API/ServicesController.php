@@ -231,6 +231,82 @@ class ServicesController extends Controller
     }
 
     /**
+     * PUT /api/teacher/teacher-service
+     * Set or replace the service for the teacher
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function setTeacherService(Request $request): JsonResponse
+    {
+        try {
+            $request->validate([
+                'service_id' => 'required|integer|exists:services,id',
+            ]);
+
+            $teacher = auth()->user();
+            $serviceId = (int) $request->service_id;
+
+            DB::beginTransaction();
+
+            try {
+                // Replace previous single service selection
+                TeacherServices::where('teacher_id', $teacher->id)->delete();
+
+                $teacherService = TeacherServices::create([
+                    'teacher_id' => $teacher->id,
+                    'service_id' => $serviceId,
+                ]);
+
+                Log::info('Teacher service set/updated', [
+                    'teacher_id' => $teacher->id,
+                    'service_id' => $serviceId,
+                ]);
+
+                $service = \App\Models\Services::find($serviceId);
+
+                DB::commit();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => $service ? "Service '{$service->name_en}' set successfully" : "Service updated successfully",
+                    'data' => [
+                        'id' => $teacherService->id,
+                        'service_id' => $serviceId,
+                        'service' => $service ? [
+                            'id' => $service->id,
+                            'name_en' => $service->name_en,
+                            'name_ar' => $service->name_ar,
+                            'key_name' => $service->key_name ?? null,
+                        ] : null
+                    ]
+                ], 200);
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
+            }
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Failed to set teacher service', [
+                'teacher_id' => auth()->id(),
+                'error' => $e->getMessage()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to set service',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * DELETE /api/teacher/teacher-service/{serviceId}
      * Remove a service from the teacher
      * 

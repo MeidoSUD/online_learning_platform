@@ -168,7 +168,17 @@ export const UsersTab: React.FC<UsersTabProps> = ({ onViewTeacher }) => {
             setIsFormModalOpen(false);
             fetchUsers();
         } catch (e: any) {
-            showToast(t.error, 'error');
+            let errorMsg = e.message || t.error;
+            if (e.errors && typeof e.errors === 'object') {
+                const firstKey = Object.keys(e.errors)[0];
+                if (firstKey && Array.isArray(e.errors[firstKey]) && e.errors[firstKey].length > 0) {
+                    errorMsg = e.errors[firstKey][0];
+                }
+            }
+            if (language === 'ar' && e.message_ar) {
+                errorMsg = e.message_ar;
+            }
+            showToast(errorMsg, 'error');
         } finally {
             setFormLoading(false);
         }
@@ -501,12 +511,12 @@ export const UsersTab: React.FC<UsersTabProps> = ({ onViewTeacher }) => {
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
-                            <label className="text-xs font-bold text-[var(--text-muted)] uppercase">{t.phone}</label>
+                            <label className="text-xs font-bold text-[var(--text-muted)] uppercase">{t.phone} ({t.optional || 'Optional'})</label>
                             <input
-                                required
                                 type="tel"
                                 value={formData.phone_number}
                                 onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
+                                placeholder="05XXXXXXXX"
                                 className="w-full p-2.5 rounded-[var(--radius-md)] border border-[var(--border)] focus:outline-none focus:border-primary text-sm"
                                 dir="ltr"
                             />

@@ -19,27 +19,34 @@ trait ActivityRecorder
         'sessions_count',
     ];
 
-    public function recordActivity(string $title, array $data = []): ActivityRecord
+    public function recordActivity(string $title, array $data = []): ?ActivityRecord
     {
-        $record = [
-            'title' => $title,
-            'data' => $data,
-        ];
+        try {
+            $record = [
+                'title' => $title,
+                'data' => $data,
+            ];
 
-        foreach ($this->activityDedicatedColumns as $column) {
-            if (array_key_exists($column, $data)) {
-                $record[$column] = $data[$column];
+            foreach ($this->activityDedicatedColumns as $column) {
+                if (array_key_exists($column, $data)) {
+                    $record[$column] = $data[$column];
+                }
             }
-        }
 
-        if (method_exists($this, 'getActivityUserId')) {
-            $record['user_id'] = $this->getActivityUserId();
-        }
+            if (method_exists($this, 'getActivityUserId')) {
+                $record['user_id'] = $this->getActivityUserId();
+            }
 
-        if (method_exists($this, 'getActivityCategory')) {
-            $record['category'] = $this->getActivityCategory();
-        }
+            if (method_exists($this, 'getActivityCategory')) {
+                $record['category'] = $this->getActivityCategory();
+            }
 
-        return ActivityRecord::create($record);
+            return ActivityRecord::create($record);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Failed to record activity log '{$title}': " . $e->getMessage(), [
+                'data' => $data,
+            ]);
+            return null;
+        }
     }
 }

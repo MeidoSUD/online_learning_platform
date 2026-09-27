@@ -81,7 +81,44 @@ class UserProfileService
             $profileData
         );
 
-        $user->update($request->only(['email', 'phone_number']));
+        $userUpdate = [];
+        if ($request->filled('email')) {
+            $newEmail = trim(strtolower($request->email));
+            if ($newEmail !== strtolower($user->email ?? '')) {
+                $existingEmail = User::where('email', $newEmail)->where('id', '!=', $user->id)->first();
+                if ($existingEmail) {
+                    return [
+                        'success' => false,
+                        'status_code' => 422,
+                        'message' => 'The email has already been taken.',
+                        'message_ar' => 'البريد الإلكتروني مستخدم بالفعل.',
+                        'errors' => ['email' => ['The email has already been taken.']],
+                    ];
+                }
+                $userUpdate['email'] = $newEmail;
+            }
+        }
+
+        if ($request->filled('phone_number')) {
+            $normalizedPhone = PhoneHelper::normalize($request->phone_number);
+            if ($normalizedPhone && $normalizedPhone !== $user->phone_number) {
+                $existingPhone = User::where('phone_number', $normalizedPhone)->where('id', '!=', $user->id)->first();
+                if ($existingPhone) {
+                    return [
+                        'success' => false,
+                        'status_code' => 422,
+                        'message' => 'Phone number already in use.',
+                        'message_ar' => 'رقم الهاتف مستخدم بالفعل.',
+                        'errors' => ['phone_number' => ['Phone number already in use.']],
+                    ];
+                }
+                $userUpdate['phone_number'] = $normalizedPhone;
+            }
+        }
+
+        if (!empty($userUpdate)) {
+            $user->update($userUpdate);
+        }
 
         try {
             if ($request->hasFile('profile_photo')) {
@@ -218,6 +255,28 @@ class UserProfileService
             if ($request->hasAny(['first_name', 'last_name', 'email', 'phone_number'])) {
                 $updateData = $request->only(['first_name', 'last_name', 'email', 'phone_number']);
 
+                if (isset($updateData['email'])) {
+                    $newEmail = trim(strtolower($updateData['email']));
+                    if (!empty($newEmail) && $newEmail !== strtolower($user->email ?? '')) {
+                        $existingEmail = User::where('email', $newEmail)
+                            ->where('id', '!=', $user->id)
+                            ->first();
+                        if ($existingEmail) {
+                            DB::rollBack();
+                            return [
+                                'success' => false,
+                                'status_code' => 422,
+                                'message' => 'The email has already been taken.',
+                                'message_ar' => 'البريد الإلكتروني مستخدم بالفعل.',
+                                'errors' => ['email' => ['The email has already been taken.']],
+                            ];
+                        }
+                        $updateData['email'] = $newEmail;
+                    } else {
+                        unset($updateData['email']);
+                    }
+                }
+
                 if (isset($updateData['phone_number'])) {
                     $normalizedPhone = PhoneHelper::normalize($updateData['phone_number']);
                     if (!$normalizedPhone) {
@@ -226,6 +285,8 @@ class UserProfileService
                             'success' => false,
                             'status_code' => 422,
                             'message' => 'Invalid phone number format.',
+                            'message_ar' => 'صيغة رقم الهاتف غير صالحة.',
+                            'errors' => ['phone_number' => ['Invalid phone number format.']],
                         ];
                     }
 
@@ -238,13 +299,17 @@ class UserProfileService
                             'success' => false,
                             'status_code' => 422,
                             'message' => 'Phone number already in use.',
+                            'message_ar' => 'رقم الهاتف مستخدم بالفعل.',
+                            'errors' => ['phone_number' => ['Phone number already in use.']],
                         ];
                     }
 
                     $updateData['phone_number'] = $normalizedPhone;
                 }
 
-                $user->update($updateData);
+                if (!empty($updateData)) {
+                    $user->update($updateData);
+                }
             }
 
             if ($request->hasFile('profile_photo')) {
@@ -309,6 +374,28 @@ class UserProfileService
             if ($request->hasAny(['first_name', 'last_name', 'email', 'phone_number'])) {
                 $updateData = $request->only(['first_name', 'last_name', 'email', 'phone_number']);
 
+                if (isset($updateData['email'])) {
+                    $newEmail = trim(strtolower($updateData['email']));
+                    if (!empty($newEmail) && $newEmail !== strtolower($user->email ?? '')) {
+                        $existingEmail = User::where('email', $newEmail)
+                            ->where('id', '!=', $user->id)
+                            ->first();
+                        if ($existingEmail) {
+                            DB::rollBack();
+                            return [
+                                'success' => false,
+                                'status_code' => 422,
+                                'message' => 'The email has already been taken.',
+                                'message_ar' => 'البريد الإلكتروني مستخدم بالفعل.',
+                                'errors' => ['email' => ['The email has already been taken.']],
+                            ];
+                        }
+                        $updateData['email'] = $newEmail;
+                    } else {
+                        unset($updateData['email']);
+                    }
+                }
+
                 if (isset($updateData['phone_number'])) {
                     $normalizedPhone = PhoneHelper::normalize($updateData['phone_number']);
                     if (!$normalizedPhone) {
@@ -317,6 +404,8 @@ class UserProfileService
                             'success' => false,
                             'status_code' => 422,
                             'message' => 'Invalid phone number format.',
+                            'message_ar' => 'صيغة رقم الهاتف غير صالحة.',
+                            'errors' => ['phone_number' => ['Invalid phone number format.']],
                         ];
                     }
 
@@ -329,13 +418,17 @@ class UserProfileService
                             'success' => false,
                             'status_code' => 422,
                             'message' => 'Phone number already in use.',
+                            'message_ar' => 'رقم الهاتف مستخدم بالفعل.',
+                            'errors' => ['phone_number' => ['Phone number already in use.']],
                         ];
                     }
 
                     $updateData['phone_number'] = $normalizedPhone;
                 }
 
-                $user->update($updateData);
+                if (!empty($updateData)) {
+                    $user->update($updateData);
+                }
             }
 
             if ($request->input('teacher_type') === 'institute') {

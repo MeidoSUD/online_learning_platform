@@ -51,10 +51,7 @@ class WalletController extends Controller
         }
 
         // Get or create wallet
-        $wallet = $teacher->wallet ?? Wallet::create([
-            'user_id' => $teacher->id,
-            'balance' => 0
-        ]);
+        $wallet = Wallet::getOrCreateForUser($teacher->id);
 
         // Recalculate pending balance and save to field
         Helpers::getPendingBalance($teacher->id);

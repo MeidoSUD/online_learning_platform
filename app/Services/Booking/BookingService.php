@@ -273,10 +273,14 @@ class BookingService
                 $total = $subtotal - $discountAmount;
             }
 
+            $validSubjectId = null;
             if ($request->subject_id && $request->subject_id > 0) {
                 $subject = Subject::find($request->subject_id);
-                if ($subject && $subject->service_id) {
-                    $service_id = $subject->service_id;
+                if ($subject) {
+                    $validSubjectId = $subject->id;
+                    if ($subject->service_id) {
+                        $service_id = $subject->service_id;
+                    }
                 }
             }
 
@@ -287,7 +291,7 @@ class BookingService
                 'availability_slot_id' => $slot->id,
                 'service_id' => $service_id,
                 'course_id' => $isCourse ? $course->id : null,
-                'subject_id' => (!$isCourse && $request->subject_id && $request->subject_id > 0) ? $request->subject_id : null,
+                'subject_id' => (!$isCourse) ? $validSubjectId : null,
                 'language_id' => !$isCourse && $request->filled('language_id') ? $request->language_id : null,
                 'subscription_id' => $isPackageBooking ? (int) $request->subscription_id : null,
                 'booking_reference' => $this->generateBookingReference(),
@@ -315,7 +319,7 @@ class BookingService
             $this->recordActivity('Booking Created', [
                 'booking_id' => $booking->id,
                 'service_id' => $service_id,
-                'subject_id' => $request->subject_id,
+                'subject_id' => $validSubjectId,
                 'teacher_id' => $booking->teacher_id,
                 'user_id' => $studentId,
                 'language_id' => $booking->language_id,
