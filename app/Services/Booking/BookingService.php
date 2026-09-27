@@ -403,21 +403,25 @@ class BookingService
             // ── 8. Prepare full response payload ──
             $hasSavedMethods = UserPaymentMethod::where('user_id', $studentId)->exists();
             $teacher = $isCourse ? $course->teacher : User::find($teacherId);
-            $teacherData = (new \App\Http\Controllers\API\UserController())->getFullTeacherData($teacher);
+            $teacherData = $teacher ? (new \App\Http\Controllers\API\UserController())->getFullTeacherData($teacher) : null;
 
             $subjectData = null;
             if ($isCourse && $booking->course) {
                 $subjectData = [
                     'id' => $booking->course->id,
-                    'name' => $booking->course->name ?? null,
-                    'name_en' => $booking->course->name ?? null,
+                    'name' => (string) ($booking->course->name ?? ''),
+                    'name_en' => (string) ($booking->course->name ?? ''),
+                    'name_ar' => (string) ($booking->course->name ?? ''),
+                    'title' => (string) ($booking->course->name ?? ''),
                 ];
             } elseif ($request->filled('subject_id') && $request->subject_id > 0) {
                 $subject = Subject::find($request->subject_id);
                 $subjectData = $subject ? [
                     'id' => $subject->id,
-                    'name_en' => $subject->name_en,
-                    'name_ar' => $subject->name_ar,
+                    'name' => (string) ($subject->name_ar ?? $subject->name_en ?? ''),
+                    'name_en' => (string) ($subject->name_en ?? ''),
+                    'name_ar' => (string) ($subject->name_ar ?? ''),
+                    'title' => (string) ($subject->name_ar ?? $subject->name_en ?? ''),
                 ] : null;
             }
 
@@ -426,34 +430,45 @@ class BookingService
             if ($serviceModel) {
                 $serviceData = [
                     'id' => $serviceModel->id,
-                    'name' => $serviceModel->name,
-                    'description' => $serviceModel->description ?? null,
+                    'name' => (string) ($serviceModel->name ?? ''),
+                    'name_en' => (string) ($serviceModel->name_en ?? $serviceModel->name ?? ''),
+                    'name_ar' => (string) ($serviceModel->name_ar ?? $serviceModel->name ?? ''),
+                    'description' => (string) ($serviceModel->description ?? ''),
                 ];
             }
 
             $timeslotData = [
                 'id' => $slot->id,
-                'day_number' => $slot->day_number,
-                'day_name' => $this->getDayName($slot->day_number ?? 0),
-                'start_time' => $slot->start_time instanceof Carbon ? $slot->start_time->format('H:i:s') : $slot->start_time,
-                'end_time' => $slot->end_time instanceof Carbon ? $slot->end_time->format('H:i:s') : $slot->end_time,
-                'duration' => $slot->duration,
+                'day_number' => (int) ($slot->day_number ?? 0),
+                'day_name' => (string) $this->getDayName($slot->day_number ?? 0),
+                'start_time' => (string) ($slot->start_time instanceof Carbon ? $slot->start_time->format('H:i:s') : $slot->start_time),
+                'end_time' => (string) ($slot->end_time instanceof Carbon ? $slot->end_time->format('H:i:s') : $slot->end_time),
+                'duration' => (int) ($slot->duration ?? 60),
+            ];
+
+            $firstSessionDateStr = $slotDateTime ? $slotDateTime->format('Y-m-d') : ($booking->first_session_date ? Carbon::parse($booking->first_session_date)->format('Y-m-d') : '');
+            $firstSessionStartTimeStr = $slotDateTime ? $slotDateTime->format('H:i:s') : ($booking->first_session_start_time ? Carbon::parse($booking->first_session_start_time)->format('H:i:s') : '');
+            $firstSessionEndTimeStr = $slotEndDateTime ? $slotEndDateTime->format('H:i:s') : ($booking->first_session_end_time ? Carbon::parse($booking->first_session_end_time)->format('H:i:s') : '');
+
+            $bookingPayload = [
+                'id' => $booking->id,
+                'reference' => (string) $booking->booking_reference,
+                'booking_reference' => (string) $booking->booking_reference,
+                'status' => (string) $booking->status,
+                'total_amount' => (string) $booking->total_amount,
+                'currency' => (string) ($booking->currency ?? 'SAR'),
+                'teacher' => $teacherData,
+                'student_id' => (int) $booking->student_id,
+                'first_session_date' => (string) $firstSessionDateStr,
+                'first_session_start_time' => (string) $firstSessionStartTimeStr,
+                'first_session_end_time' => (string) $firstSessionEndTimeStr,
+                'session_type' => (string) ($booking->session_type ?? 'single'),
+                'sessions_count' => (int) ($booking->sessions_count ?? 1),
+                'session_duration' => (int) ($booking->session_duration ?? 60),
             ];
 
             $responseData = [
-                'booking' => [
-                    'id' => $booking->id,
-                    'reference' => $booking->booking_reference,
-                    'status' => $booking->status,
-                    'total_amount' => $booking->total_amount,
-                    'currency' => $booking->currency,
-                    'teacher' => $teacherData,
-                    'student_id' => $booking->student_id,
-                    'first_session_date' => $booking->first_session_date,
-                    'first_session_start_time' => $booking->first_session_start_time,
-                    'session_type' => $booking->session_type,
-                    'sessions_count' => $booking->sessions_count,
-                ],
+                'booking' => $bookingPayload,
                 'requires_payment_method' => $isPackageBooking ? false : !$hasSavedMethods,
                 'meta' => [
                     'service' => $serviceData,
@@ -466,25 +481,25 @@ class BookingService
                 $responseData['sessions'] = $booking->sessions->map(function ($session) {
                     return [
                         'id' => $session->id,
-                        'session_number' => $session->session_number,
-                        'session_date' => $session->session_date,
-                        'start_time' => $session->start_time,
-                        'end_time' => $session->end_time,
-                        'status' => $session->status,
+                        'session_number' => (int) $session->session_number,
+                        'session_date' => (string) $session->session_date,
+                        'start_time' => (string) $session->start_time,
+                        'end_time' => (string) $session->end_time,
+                        'status' => (string) $session->status,
                     ];
                 });
                 $responseData['subscription'] = [
                     'id' => $subscription->id,
-                    'sessions_remaining' => $subscription->fresh()->sessions_remaining,
+                    'sessions_remaining' => (int) $subscription->fresh()->sessions_remaining,
                 ];
                 $responseData['meta']['timeslots'] = array_map(function ($s) {
                     return [
                         'id' => $s->id,
-                        'day_number' => $s->day_number,
-                        'date' => $s->date,
-                        'start_time' => $s->start_time instanceof Carbon ? $s->start_time->format('H:i:s') : $s->start_time,
-                        'end_time' => $s->end_time instanceof Carbon ? $s->end_time->format('H:i:s') : $s->end_time,
-                        'duration' => $s->duration,
+                        'day_number' => (int) ($s->day_number ?? 0),
+                        'date' => (string) ($s->date ?? ''),
+                        'start_time' => (string) ($s->start_time instanceof Carbon ? $s->start_time->format('H:i:s') : $s->start_time),
+                        'end_time' => (string) ($s->end_time instanceof Carbon ? $s->end_time->format('H:i:s') : $s->end_time),
+                        'duration' => (int) ($s->duration ?? 60),
                     ];
                 }, $slots);
             }
@@ -492,7 +507,9 @@ class BookingService
             return [
                 'success' => true,
                 'status_code' => 200,
+                'message' => 'Booking created successfully',
                 'data' => $responseData,
+                'booking' => $bookingPayload,
             ];
         } catch (\Exception $e) {
             DB::rollBack();

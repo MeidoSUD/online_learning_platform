@@ -178,6 +178,9 @@ export const UsersTab: React.FC<UsersTabProps> = ({ onViewTeacher }) => {
             if (language === 'ar' && e.message_ar) {
                 errorMsg = e.message_ar;
             }
+            if (typeof errorMsg === 'string' && (errorMsg === 'validation.unique' || errorMsg.includes('unique') || errorMsg.includes('already taken') || errorMsg.includes('already registered'))) {
+                errorMsg = language === 'ar' ? 'البريد الإلكتروني مسجل مسبقاً لمستخدم آخر في النظام' : 'This email is already registered to another user';
+            }
             showToast(errorMsg, 'error');
         } finally {
             setFormLoading(false);

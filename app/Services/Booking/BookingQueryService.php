@@ -68,33 +68,37 @@ class BookingQueryService
                 $subjectData = Subject::find($booking->subject_id);
             }
 
+            $dateStr = $booking->first_session_date ? Carbon::parse($booking->first_session_date)->format('Y-m-d') : '';
+            $timeStr = $booking->first_session_start_time ? Carbon::parse($booking->first_session_start_time)->format('H:i:s') : '';
+
             return [
                 'id' => $booking->id,
-                'reference' => $booking->booking_reference,
+                'reference' => (string) $booking->booking_reference,
+                'booking_reference' => (string) $booking->booking_reference,
                 'teacher' => $teacherData,
                 'course' => $courseData,
                 'subject' => $subjectData,
                 'session_info' => [
-                    'type' => $booking->session_type,
-                    'total_sessions' => $booking->sessions_count,
-                    'completed_sessions' => $booking->sessions_completed,
-                    'remaining_sessions' => $booking->sessions_count - $booking->sessions_completed,
-                    'duration' => $booking->session_duration . ' minutes',
+                    'type' => (string) ($booking->session_type ?? 'single'),
+                    'total_sessions' => (int) ($booking->sessions_count ?? 1),
+                    'completed_sessions' => (int) ($booking->sessions_completed ?? 0),
+                    'remaining_sessions' => (int) (($booking->sessions_count ?? 1) - ($booking->sessions_completed ?? 0)),
+                    'duration' => ($booking->session_duration ?? 60) . ' minutes',
                     'join_url' => ($booking->status === 'confirmed' && Route::has('sessions.join')) ? route('sessions.join', ['booking_id' => $booking->id]) : null,
                     'host_url' => ($booking->status === 'confirmed' && Route::has('sessions.host')) ? route('sessions.host', ['booking_id' => $booking->id]) : null,
                 ],
                 'schedule' => [
-                    'first_session_date' => $booking->first_session_date,
-                    'first_session_time' => $booking->first_session_start_time,
-                    'next_session_date' => $this->getNextSessionDate($booking),
+                    'first_session_date' => $dateStr,
+                    'first_session_time' => $timeStr,
+                    'next_session_date' => (string) ($this->getNextSessionDate($booking) ?? $dateStr),
                 ],
                 'pricing' => [
-                    'total_amount' => $booking->total_amount,
-                    'currency' => $booking->currency,
+                    'total_amount' => (string) $booking->total_amount,
+                    'currency' => (string) ($booking->currency ?? 'SAR'),
                     'discount_applied' => $booking->discount_percentage > 0,
                 ],
-                'status' => $booking->status,
-                'booking_date' => $booking->booking_date->format('Y-m-d H:i'),
+                'status' => (string) $booking->status,
+                'booking_date' => $booking->booking_date ? $booking->booking_date->format('Y-m-d H:i') : '',
                 'can_cancel' => $this->bookingService->canCancelBooking($booking),
                 'can_reschedule' => $this->bookingService->canRescheduleBooking($booking),
             ];
@@ -143,76 +147,89 @@ class BookingQueryService
         if ($booking->course) {
             $courseData = [
                 'id' => $booking->course->id,
-                'name' => $booking->course->name ?? null,
-                'education_level' => $booking->course->educationLevel->name_en ?? null,
-                'class_level' => $booking->course->classLevel->name_en ?? null,
-                'description' => $booking->course->description ?? null,
+                'name' => (string) ($booking->course->name ?? ''),
+                'education_level' => (string) (optional($booking->course->educationLevel)->name_en ?? ''),
+                'class_level' => (string) (optional($booking->course->classLevel)->name_en ?? ''),
+                'description' => (string) ($booking->course->description ?? ''),
             ];
         }
 
+        $teacherProfilePhoto = $booking->teacher ? ($booking->teacher->attachments()->where('attached_to_type', 'profile_picture')->latest()->value('file_path') ?? '') : '';
+        $teacherFullName = $booking->teacher ? trim(($booking->teacher->first_name ?? '') . ' ' . ($booking->teacher->last_name ?? '')) : '';
+
+        $firstSessionDateStr = $booking->first_session_date ? Carbon::parse($booking->first_session_date)->format('Y-m-d') : '';
+        $firstSessionStartTimeStr = $booking->first_session_start_time ? Carbon::parse($booking->first_session_start_time)->format('H:i:s') : '';
+        $firstSessionEndTimeStr = $booking->first_session_end_time ? Carbon::parse($booking->first_session_end_time)->format('H:i:s') : '';
+
         $bookingDetails = [
             'id' => $booking->id,
-            'reference' => $booking->booking_reference,
-            'status' => $booking->status,
-            'booking_date' => $booking->booking_date->format('Y-m-d H:i'),
+            'reference' => (string) $booking->booking_reference,
+            'booking_reference' => (string) $booking->booking_reference,
+            'status' => (string) $booking->status,
+            'booking_date' => $booking->booking_date ? $booking->booking_date->format('Y-m-d H:i') : '',
 
             'teacher' => [
-                'id' => $booking->teacher->id,
-                'name' => $booking->teacher->first_name . ' ' . $booking->teacher->last_name,
-                'avatar' => $booking->teacher->getProfilePhotoPathAttribute ?? null,
-                'gender' => $booking->teacher->profile->gender ?? null,
-                'nationality' => $booking->teacher->profile->nationality ?? null,
-                'phone' => $booking->status === 'confirmed' ? $booking->teacher->phone : null,
-                'email' => $booking->status === 'confirmed' ? $booking->teacher->email : null,
+                'id' => $booking->teacher ? $booking->teacher->id : null,
+                'name' => $teacherFullName,
+                'first_name' => (string) ($booking->teacher?->first_name ?? ''),
+                'last_name' => (string) ($booking->teacher?->last_name ?? ''),
+                'avatar' => (string) $teacherProfilePhoto,
+                'image' => (string) $teacherProfilePhoto,
+                'profile_photo' => (string) $teacherProfilePhoto,
+                'gender' => (string) (optional($booking->teacher?->profile)->gender ?? $booking->teacher?->gender ?? ''),
+                'nationality' => (string) (optional($booking->teacher?->profile)->nationality ?? $booking->teacher?->nationality ?? ''),
+                'phone' => (string) ($booking->teacher?->phone_number ?? ''),
+                'phone_number' => (string) ($booking->teacher?->phone_number ?? ''),
+                'email' => (string) ($booking->teacher?->email ?? ''),
             ],
 
             'course' => $courseData,
 
             'session_info' => [
-                'type' => $booking->session_type,
-                'total_sessions' => $booking->sessions_count,
-                'completed_sessions' => $booking->sessions_completed,
-                'remaining_sessions' => $booking->sessions_count - $booking->sessions_completed,
-                'session_duration' => $booking->session_duration,
-                'first_session_date' => $booking->first_session_date,
-                'first_session_start_time' => $booking->first_session_start_time,
-                'first_session_end_time' => $booking->first_session_end_time,
+                'type' => (string) ($booking->session_type ?? 'single'),
+                'total_sessions' => (int) ($booking->sessions_count ?? 1),
+                'completed_sessions' => (int) ($booking->sessions_completed ?? 0),
+                'remaining_sessions' => (int) (($booking->sessions_count ?? 1) - ($booking->sessions_completed ?? 0)),
+                'session_duration' => (int) ($booking->session_duration ?? 60),
+                'first_session_date' => (string) $firstSessionDateStr,
+                'first_session_start_time' => (string) $firstSessionStartTimeStr,
+                'first_session_end_time' => (string) $firstSessionEndTimeStr,
             ],
 
             'pricing' => [
-                'price_per_session' => $booking->price_per_session,
-                'subtotal' => $booking->subtotal,
-                'discount_percentage' => $booking->discount_percentage,
-                'discount_amount' => $booking->discount_amount,
-                'total_amount' => $booking->total_amount,
-                'currency' => $booking->currency,
+                'price_per_session' => (string) $booking->price_per_session,
+                'subtotal' => (string) $booking->subtotal,
+                'discount_percentage' => (string) $booking->discount_percentage,
+                'discount_amount' => (string) $booking->discount_amount,
+                'total_amount' => (string) $booking->total_amount,
+                'currency' => (string) ($booking->currency ?? 'SAR'),
             ],
 
             'payment' => $booking->payment ? [
                 'id' => $booking->payment->id,
-                'status' => $booking->payment->status,
-                'method' => $booking->payment->payment_method,
-                'transaction_reference' => $booking->payment->transaction_reference,
-                'paid_at' => $booking->payment->paid_at?->format('Y-m-d H:i'),
+                'status' => (string) $booking->payment->status,
+                'method' => (string) ($booking->payment->payment_method ?? ''),
+                'transaction_reference' => (string) ($booking->payment->transaction_reference ?? ''),
+                'paid_at' => $booking->payment->paid_at?->format('Y-m-d H:i') ?? '',
             ] : null,
 
             'sessions' => $booking->sessions->map(function ($session) {
                 return [
                     'id' => $session->id,
-                    'session_number' => $session->session_number,
-                    'session_date' => $session->session_date,
-                    'start_time' => $session->start_time,
-                    'end_time' => $session->end_time,
-                    'status' => $session->status,
+                    'session_number' => (int) $session->session_number,
+                    'session_date' => (string) $session->session_date,
+                    'start_time' => (string) $session->start_time,
+                    'end_time' => (string) $session->end_time,
+                    'status' => (string) $session->status,
                     'join_url' => $session->join_url,
-                    'notes' => $session->teacher_notes,
-                    'homework' => $session->homework,
+                    'notes' => (string) ($session->teacher_notes ?? ''),
+                    'homework' => (string) ($session->homework ?? ''),
                 ];
             }),
 
-            'special_requests' => $booking->special_requests,
-            'cancellation_reason' => $booking->cancellation_reason,
-            'cancelled_at' => $booking->cancelled_at?->format('Y-m-d H:i'),
+            'special_requests' => (string) ($booking->special_requests ?? ''),
+            'cancellation_reason' => (string) ($booking->cancellation_reason ?? ''),
+            'cancelled_at' => $booking->cancelled_at?->format('Y-m-d H:i') ?? '',
 
             'actions' => [
                 'can_cancel' => $this->bookingService->canCancelBooking($booking),
