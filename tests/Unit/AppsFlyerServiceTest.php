@@ -53,7 +53,9 @@ class AppsFlyerServiceTest extends TestCase
             ],
             customerUserId: 42,
             platform: 'android',
-            eventTime: '2026-09-30 00:00:00.000'
+            eventTime: '2026-09-30 00:00:00.000',
+            advertisingId: '38400000-8cf0-11bd-b23e-10b96e40000d',
+            ip: '105.235.122.10'
         );
 
         $this->assertTrue($result['success']);
@@ -65,6 +67,8 @@ class AppsFlyerServiceTest extends TestCase
             $isCorrectUrl = $request->url() === 'https://api2.appsflyer.com/inappevent/com.ewan_mobile_app';
             
             $hasAppsflyerId = $request['appsflyer_id'] === '1776310605848-6203800892691468154';
+            $hasAdvertisingId = $request['advertising_id'] === '38400000-8cf0-11bd-b23e-10b96e40000d';
+            $hasIp = $request['ip'] === '105.235.122.10';
             $hasCustomerUserId = $request['customer_user_id'] === '42';
             $hasEventName = $request['eventName'] === 'af_purchase';
             $hasEventTime = $request['eventTime'] === '2026-09-30 00:00:00.000';
@@ -72,7 +76,7 @@ class AppsFlyerServiceTest extends TestCase
             $eventValue = is_string($request['eventValue']) ? json_decode($request['eventValue'], true) : $request['eventValue'];
             $hasCorrectEventValue = isset($eventValue['af_revenue']) && $eventValue['af_revenue'] == 150.0 && $eventValue['af_currency'] === 'SAR';
 
-            return $hasAuthHeader && $isCorrectUrl && $hasAppsflyerId && $hasCustomerUserId && $hasEventName && $hasEventTime && $hasCorrectEventValue;
+            return $hasAuthHeader && $isCorrectUrl && $hasAppsflyerId && $hasAdvertisingId && $hasIp && $hasCustomerUserId && $hasEventName && $hasEventTime && $hasCorrectEventValue;
         });
     }
 

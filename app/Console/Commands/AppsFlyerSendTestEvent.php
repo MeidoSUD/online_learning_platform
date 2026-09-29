@@ -9,6 +9,8 @@ class AppsFlyerSendTestEvent extends Command
 {
     protected $signature = 'appsflyer:send-test-event
                             {--appsflyer-id=1776310605848-6203800892691468154 : The AppsFlyer device UID}
+                            {--advertising-id=38400000-8cf0-11bd-b23e-10b96e40000d : Device GAID / IDFA advertising ID}
+                            {--ip=105.235.122.10 : Client IP address}
                             {--platform=android : Platform (android or ios)}
                             {--event=af_complete_registration : Event name (e.g. af_complete_registration, af_purchase)}
                             {--user-id=1 : Customer user ID in database}
@@ -20,6 +22,8 @@ class AppsFlyerSendTestEvent extends Command
     public function handle(AppsFlyerService $appsFlyerService)
     {
         $appsflyerId = (string) $this->option('appsflyer-id');
+        $advertisingId = (string) $this->option('advertising-id');
+        $ip = (string) $this->option('ip');
         $platform = (string) $this->option('platform');
         $eventName = (string) $this->option('event');
         $userId = $this->option('user-id');
@@ -34,6 +38,8 @@ class AppsFlyerSendTestEvent extends Command
                 ['Resolved App ID', $appsFlyerService->resolveAppId($platform)],
                 ['Event Name', $eventName],
                 ['AppsFlyer ID', $appsflyerId],
+                ['Advertising ID (GAID/IDFA)', $advertisingId ?: '(none)'],
+                ['Client IP', $ip ?: '(none)'],
                 ['Customer User ID', $userId],
                 ['Revenue / Currency', "{$revenue} {$currency}"],
             ]
@@ -56,7 +62,9 @@ class AppsFlyerSendTestEvent extends Command
             eventName: $eventName,
             eventValue: $eventValue,
             customerUserId: $userId,
-            platform: $platform
+            platform: $platform,
+            advertisingId: $advertisingId,
+            ip: $ip
         );
 
         $this->newLine();

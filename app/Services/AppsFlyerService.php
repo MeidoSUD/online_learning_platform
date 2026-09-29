@@ -55,6 +55,8 @@ class AppsFlyerService
      * @param string|int|null $customerUserId User ID in the backend database
      * @param string|null $platform Device platform ('android' or 'ios')
      * @param string|null $eventTime Formatted event time (YYYY-MM-DD HH:mm:ss.SSS). Defaults to current UTC time.
+     * @param string|null $advertisingId GAID (Android) or IDFA (iOS)
+     * @param string|null $ip Client IP address
      * @return array
      */
     public function sendEvent(
@@ -63,7 +65,9 @@ class AppsFlyerService
         array|string $eventValue = [],
         string|int|null $customerUserId = null,
         ?string $platform = null,
-        ?string $eventTime = null
+        ?string $eventTime = null,
+        ?string $advertisingId = null,
+        ?string $ip = null
     ): array {
         if (empty($this->devKey)) {
             Log::warning('AppsFlyer S2S: Dev Key is missing. Skipping event dispatch.', [
@@ -106,8 +110,16 @@ class AppsFlyerService
             'eventTime' => $formattedEventTime,
         ];
 
+        if ($advertisingId !== null && $advertisingId !== '') {
+            $payload['advertising_id'] = (string) $advertisingId;
+        }
+
         if ($customerUserId !== null && $customerUserId !== '') {
             $payload['customer_user_id'] = (string) $customerUserId;
+        }
+
+        if ($ip !== null && $ip !== '') {
+            $payload['ip'] = (string) $ip;
         }
 
         try {
@@ -124,7 +136,9 @@ class AppsFlyerService
                     'app_id' => $appId,
                     'platform' => $platform,
                     'appsflyer_id' => $appsflyerId,
+                    'advertising_id' => $advertisingId,
                     'customer_user_id' => $customerUserId,
+                    'ip' => $ip,
                     'response_status' => $response->status(),
                     'response_body' => $response->body(),
                 ]);
@@ -133,6 +147,7 @@ class AppsFlyerService
                     'app_id' => $appId,
                     'platform' => $platform,
                     'appsflyer_id' => $appsflyerId,
+                    'advertising_id' => $advertisingId,
                     'response_status' => $response->status(),
                     'response_body' => $response->body(),
                     'payload' => $payload,
@@ -171,7 +186,9 @@ class AppsFlyerService
         string $appsflyerId,
         string|int|null $customerUserId,
         ?string $platform = null,
-        array $extraData = []
+        array $extraData = [],
+        ?string $advertisingId = null,
+        ?string $ip = null
     ): array {
         $eventValue = array_merge([
             'af_registration_method' => $extraData['method'] ?? 'app',
@@ -183,7 +200,9 @@ class AppsFlyerService
             eventName: 'af_complete_registration',
             eventValue: $eventValue,
             customerUserId: $customerUserId,
-            platform: $platform
+            platform: $platform,
+            advertisingId: $advertisingId,
+            ip: $ip
         );
     }
 
@@ -196,7 +215,9 @@ class AppsFlyerService
         float $revenue,
         string $currency = 'SAR',
         ?string $platform = null,
-        array $extraData = []
+        array $extraData = [],
+        ?string $advertisingId = null,
+        ?string $ip = null
     ): array {
         $eventValue = array_merge([
             'af_revenue' => $revenue,
@@ -208,7 +229,9 @@ class AppsFlyerService
             eventName: 'af_purchase',
             eventValue: $eventValue,
             customerUserId: $customerUserId,
-            platform: $platform
+            platform: $platform,
+            advertisingId: $advertisingId,
+            ip: $ip
         );
     }
 
@@ -219,14 +242,18 @@ class AppsFlyerService
         string $appsflyerId,
         string|int|null $customerUserId,
         ?string $platform = null,
-        array $extraData = []
+        array $extraData = [],
+        ?string $advertisingId = null,
+        ?string $ip = null
     ): array {
         return $this->sendEvent(
             appsflyerId: $appsflyerId,
             eventName: 'af_login',
             eventValue: $extraData,
             customerUserId: $customerUserId,
-            platform: $platform
+            platform: $platform,
+            advertisingId: $advertisingId,
+            ip: $ip
         );
     }
 }
