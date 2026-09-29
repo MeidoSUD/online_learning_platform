@@ -72,4 +72,10 @@ return [
         'chat_base_url' => env('AGORA_CHAT_BASE_URL', 'https://api.agora.io/dev/v1/project'),
     ],
 
+    'appsflyer' => [
+        'dev_key' => env('APPSFLYER_DEV_KEY'),
+        'android_app_id' => env('APPSFLYER_ANDROID_APP_ID', 'com.ewan_mobile_app'),
+        'ios_app_id' => env('APPSFLYER_IOS_APP_ID', 'id6754520719'),
+    ],
+
 ];
