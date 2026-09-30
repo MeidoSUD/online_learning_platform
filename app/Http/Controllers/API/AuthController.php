@@ -258,7 +258,8 @@ class AuthController extends Controller
             }
             $serviceIds = array_values(array_unique(array_map('intval', $serviceIds)));
             foreach ($serviceIds as $sid) {
-                if ($sid <= 0) continue;
+                if ($sid <= 0)
+                    continue;
                 TeacherServices::firstOrCreate([
                     'teacher_id' => $user->id,
                     'service_id' => $sid,
@@ -1028,7 +1029,8 @@ We are currently in the teacher preparation phase ahead of our official launch. 
             ], 404);
         }
 
-        $verification_code = rand(0000, 9999);
+        $verification_code = rand(1, 9) . rand(0, 9) . rand(0, 9) . rand(1, 9);
+        ;
         $user->verification_code = $verification_code;
         $user->save();
 
