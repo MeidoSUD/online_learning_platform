@@ -1298,4 +1298,241 @@ We are currently in the teacher preparation phase ahead of our official launch. 
             ], 500);
         }
     }
+
+    // ======================================================================
+    // NEW: OTP Login (passwordless) — additive only, existing code untouched.
+    // Step 1: POST /api/auth/login-otp/request {email|phone_number}
+    // Step 2: POST /api/auth/login-otp/verify {user_id, code, fcm_token?}
+    // ======================================================================
+
+    /**
+     * NEW: Request OTP code for passwordless login.
+     *
+     * @OA\Post(
+     *     path="/api/auth/login-otp/request",
+     *     summary="Request OTP for login (passwordless)",
+     *     tags={"Auth"},
+     *     @OA\Response(response=200, description="OTP sent"),
+     *     @OA\Response(response=404, description="User not found"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
+    public function requestLoginOtp(Request $request)
+    {
+        try {
+            $request->validate([
+                'email' => 'nullable|email',
+                'phone_number' => 'nullable|string|max:20',
+            ]);
+
+            if (!$request->filled('email') && !$request->filled('phone_number')) {
+                return $this->validationErrorArray(
+                    [
+                        'email' => ['Either email or phone_number must be provided.'],
+                        'phone_number' => ['Either email or phone_number must be provided.'],
+                    ],
+                    'Please provide email or phone number'
+                );
+            }
+
+            $user = null;
+            $sentVia = null;
+            if ($request->filled('email')) {
+                $user = User::where('email', $request->email)->first();
+                $sentVia = 'email';
+            } else {
+                $normalizedPhone = PhoneHelper::normalize($request->phone_number);
+                if (!$normalizedPhone) {
+                    return $this->validationErrorArray(
+                        ['phone_number' => ['Invalid phone number format']],
+                        'Invalid phone number'
+                    );
+                }
+                $user = User::where('phone_number', $normalizedPhone)->first();
+                $sentVia = 'phone_number';
+            }
+
+            if (!$user) {
+                return $this->notFoundError('No account found with this ' . $sentVia);
+            }
+
+            $role = Role::find($user->role_id);
+            if ($role && $role->name_key === 'visitor') {
+                return $this->validationErrorArray(
+                    ['profile' => ['Please complete your profile first.']],
+                    'Profile incomplete'
+                );
+            }
+
+            $otp = (string) random_int(1000, 9999);
+            $user->verification_code = $otp;
+            $user->save();
+
+            if ($sentVia === 'phone_number') {
+                try {
+                    $smsPhone = PhoneHelper::normalizeForSMS($user->phone_number);
+                    $this->sendVerificationSMS($smsPhone, $otp);
+                } catch (\Exception $e) {
+                    Log::warning('OTP login SMS failed: ' . $e->getMessage(), ['user_id' => $user->id]);
+                }
+                try {
+                    if ($user->email) {
+                        Mail::to($user->email)->send(new VerificationCodeMail($user, $otp, 'login'));
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('OTP login email (backup) failed: ' . $e->getMessage(), ['user_id' => $user->id]);
+                }
+            } else {
+                try {
+                    Mail::to($user->email)->send(new VerificationCodeMail($user, $otp, 'login'));
+                } catch (\Exception $e) {
+                    Log::warning('OTP login email failed: ' . $e->getMessage(), ['user_id' => $user->id]);
+                }
+                try {
+                    if ($user->phone_number) {
+                        $smsPhone = PhoneHelper::normalizeForSMS($user->phone_number);
+                        $this->sendVerificationSMS($smsPhone, $otp);
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('OTP login SMS (backup) failed: ' . $e->getMessage(), ['user_id' => $user->id]);
+                }
+            }
+
+            return $this->success(
+                [
+                    'user_id' => $user->id,
+                    'sent_via' => $sentVia,
+                    'email' => $user->email,
+                    'phone_number' => $user->phone_number,
+                ],
+                'OTP sent. Please check your ' . $sentVia . '.'
+            );
+        } catch (ValidationException $e) {
+            return $this->validationError($e, 'OTP request validation failed');
+        } catch (\Exception $e) {
+            Log::error('requestLoginOtp error: ' . $e->getMessage());
+            return $this->serverError($e, 'Failed to send OTP. Please try again.');
+        }
+    }
+
+    /**
+     * NEW: Verify OTP code for passwordless login and issue Sanctum token.
+     *
+     * @OA\Post(
+     *     path="/api/auth/login-otp/verify",
+     *     summary="Verify OTP and login (passwordless)",
+     *     tags={"Auth"},
+     *     @OA\Response(response=200, description="Login successful"),
+     *     @OA\Response(response=401, description="Invalid OTP"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
+    public function verifyLoginOtp(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'user_id' => 'required|integer|exists:users,id',
+                'code' => 'required',
+                'fcm_token' => 'nullable|string',
+                'device_type' => 'nullable|string',
+            ]);
+
+            $user = User::find($validated['user_id']);
+            if (!$user) {
+                return $this->notFoundError('User not found');
+            }
+
+            if ((string) $user->verification_code !== (string) $validated['code']) {
+                Log::warning('Invalid OTP login attempt', ['user_id' => $user->id]);
+                return $this->validationErrorArray(
+                    ['code' => ['Invalid or expired verification code']],
+                    'Invalid verification code'
+                );
+            }
+
+            $role = Role::find($user->role_id);
+            if (!$role) {
+                return $this->serverError(new \Exception('User role not found'), 'Invalid user role');
+            }
+            if ($role->name_key === 'visitor') {
+                return $this->validationErrorArray(
+                    ['profile' => ['Please complete your profile first.']],
+                    'Profile incomplete'
+                );
+            }
+
+            $user->verified = true;
+            $user->verification_code = null;
+            if ($request->filled('fcm_token')) {
+                try {
+                    $user->fcm_token = $request->input('fcm_token');
+                } catch (\Exception $e) {
+                    Log::warning('Failed to save fcm_token on OTP login: ' . $e->getMessage());
+                }
+            }
+            $user->save();
+
+            try {
+                \App\Helpers\ProfileCompleteHelper::sync($user->id);
+            } catch (\Exception $e) {
+                Log::warning('Failed to sync ProfileComplete after OTP login', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+            }
+
+            try {
+                if ($user->role_id == 3) {
+                    $userController = new UserController();
+                    $fullTeacherData = $userController->getFullTeacherData($user);
+                    $userData = [
+                        'role' => $role->name_key,
+                        'data' => $fullTeacherData,
+                    ];
+                } else {
+                    $userProfile = $user->profile;
+                    $userData = [
+                        'role' => $role->name_key,
+                        'data' => $user,
+                        'profile' => $userProfile,
+                    ];
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to fetch user data during OTP login: ' . $e->getMessage());
+                return $this->serverError($e, 'Failed to fetch user data');
+            }
+
+            try {
+                $token = $user->createToken('mobile-app-token')->plainTextToken;
+            } catch (\Exception $e) {
+                Log::error('Failed to create token on OTP login: ' . $e->getMessage());
+                return $this->serverError($e, 'Failed to create authentication token');
+            }
+
+            $deviceTokenValue = $request->input('fcm_token') ?? $user->fcm_token;
+            if (!empty($deviceTokenValue)) {
+                try {
+                    DeviceToken::updateOrCreate(
+                        [
+                            'user_id' => $user->id,
+                            'device_token' => $deviceTokenValue,
+                        ],
+                        [
+                            'device_type' => $request->input('device_type', 'android'),
+                            'is_active' => true,
+                        ]
+                    );
+                } catch (\Exception $e) {
+                    Log::warning('Failed to save device token on OTP login: ' . $e->getMessage(), ['user_id' => $user->id]);
+                }
+            }
+
+            return $this->success([
+                'user' => $userData,
+                'token' => $token,
+            ], 'Login successful');
+        } catch (ValidationException $e) {
+            return $this->validationError($e, 'OTP verification failed');
+        } catch (\Exception $e) {
+            Log::error('verifyLoginOtp error: ' . $e->getMessage());
+            return $this->serverError($e, 'Login failed. Please try again.');
+        }
+    }
 }

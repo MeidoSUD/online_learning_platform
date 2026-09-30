@@ -181,6 +181,9 @@ Route::prefix('auth')->group(function () {
     Route::post('register-teacher-web', [AuthController::class, 'registerTeacherWeb']); // Web-only teacher registration
     Route::post('register-student', [AuthController::class, 'registerStudent']); // Explicit student registration
     Route::post('verify', [AuthController::class, 'verifyCode']);
+    // NEW: OTP passwordless login (additive — existing routes untouched)
+    Route::post('login-otp/request', [AuthController::class, 'requestLoginOtp']);
+    Route::post('login-otp/verify', [AuthController::class, 'verifyLoginOtp']);
     Route::post('resend-code', [AuthController::class, 'resendCode']);
     Route::post('verify-reset-code', [AuthController::class, 'verifyResetCode']);
     Route::post('reset-password', [AuthController::class, 'resetPassword']);
