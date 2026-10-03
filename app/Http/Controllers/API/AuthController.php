@@ -510,10 +510,13 @@ class AuthController extends Controller
                 'last_name' => 'required|string|max:255',
                 'email' => 'nullable|string|email',
                 'phone_number' => 'nullable|string',
-                'password' => 'required|string|min:8',
+                'password' => 'nullable|string|min:6',
                 'gender' => 'nullable|in:male,female,other',
                 'nationality' => 'nullable|string|max:255',
                 'notional_id' => 'nullable|string|max:255',
+                'appsflyer_id' => 'nullable|string',
+                'platform' => 'nullable|string',
+                'advertising_id' => 'nullable|string',
             ]);
 
             // Ensure at least one contact method (email or phone_number) is provided
@@ -590,6 +593,7 @@ class AuthController extends Controller
             DB::beginTransaction();
 
             $verification_code = rand(1000, 9999);
+            $rawPassword = $request->filled('password') ? $validated['password'] : \Illuminate\Support\Str::random(32);
 
             // Create student user
             $user = User::create([
@@ -600,7 +604,7 @@ class AuthController extends Controller
                 'gender' => $validated['gender'] ?? null,
                 'nationality' => $validated['nationality'] ?? null,
                 'notional_id' => $validated['notional_id'] ?? null,
-                'password' => Hash::make($validated['password']),
+                'password' => Hash::make($rawPassword),
                 'role_id' => 4, // Student
                 'verified' => false,
                 'verification_code' => $verification_code,
@@ -609,6 +613,25 @@ class AuthController extends Controller
             Log::info('Student user created', ['user_id' => $user->id]);
 
             DB::commit();
+
+            // AppsFlyer S2S Registration Event
+            if ($request->filled('appsflyer_id')) {
+                try {
+                    app(\App\Services\AppsFlyerService::class)->sendRegistrationEvent(
+                        appsflyerId: (string) $request->input('appsflyer_id'),
+                        customerUserId: $user->id,
+                        platform: $request->input('platform'),
+                        extraData: [
+                            'user_type' => 'student',
+                            'registration_channel' => $normalizedPhone ? 'phone' : 'email',
+                        ],
+                        advertisingId: $request->input('advertising_id'),
+                        ip: $request->ip()
+                    );
+                } catch (\Throwable $e) {
+                    Log::warning('AppsFlyer registration event dispatch failed: ' . $e->getMessage());
+                }
+            }
 
             try {
                 if ($user->notional_id) {
