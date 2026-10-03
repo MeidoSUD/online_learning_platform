@@ -399,59 +399,148 @@ class AuthController extends Controller
     }
 
     /**
-     * Web-only teacher registration. Phone verification is intentionally not
-     * part of this flow; the existing mobile registration remains separate.
+     * Web-only teacher registration. Supports email and/or phone with optional password (OTP flow).
      */
     public function registerTeacherWeb(Request $request)
     {
+        // Normalize text inputs
+        $rawEmail = $request->input('email');
+        $rawPhone = $request->input('phone_number');
+        $request->merge([
+            'email' => is_string($rawEmail) ? (trim($rawEmail) ?: null) : $rawEmail,
+            'phone_number' => is_string($rawPhone) ? (trim($rawPhone) ?: null) : $rawPhone,
+            'first_name' => is_string($request->input('first_name')) ? trim($request->input('first_name')) : $request->input('first_name'),
+            'last_name' => is_string($request->input('last_name')) ? trim($request->input('last_name')) : $request->input('last_name'),
+        ]);
+
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
-            'email' => 'required|string|email|unique:users,email',
-            'password' => 'required|string|min:8',
+            'email' => 'nullable|string|email',
+            'phone_number' => 'nullable|string',
+            'password' => 'nullable|string|min:6',
             'nationality' => 'required|string|max:255',
             'country_key' => 'nullable|string|size:2',
             'notional_id' => 'nullable|string|max:255',
         ]);
 
+        if (!$request->filled('email') && !$request->filled('phone_number')) {
+            return response()->json([
+                'success' => false,
+                'code' => 'VALIDATION_ERROR',
+                'status' => 'validation_error',
+                'message_en' => 'Either email or phone number must be provided.',
+                'message_ar' => 'يجب إدخال البريد الإلكتروني أو رقم الهاتف.',
+                'errors' => [
+                    'email' => ['Either email or phone number must be provided.'],
+                    'phone_number' => ['Either email or phone number must be provided.']
+                ]
+            ], 422);
+        }
+
+        if ($request->filled('email')) {
+            $existingByEmail = User::where('email', $validated['email'])->first();
+            if ($existingByEmail) {
+                return response()->json([
+                    'success' => false,
+                    'code' => 'ALREADY_REGISTERED',
+                    'status' => 'already_registered',
+                    'message_en' => 'This email is already registered. Please log in or use a different email.',
+                    'message_ar' => 'هذا البريد الإلكتروني مسجل بالفعل. يرجى تسجيل الدخول أو استخدام بريد إلكتروني مختلف.',
+                    'field' => 'email'
+                ], 409);
+            }
+        }
+
+        $normalizedPhone = null;
+        if ($request->filled('phone_number')) {
+            $normalizedPhone = PhoneHelper::normalize($request->phone_number);
+            if (!$normalizedPhone) {
+                return response()->json([
+                    'success' => false,
+                    'code' => 'INVALID_PHONE',
+                    'status' => 'invalid',
+                    'message_en' => 'Invalid phone number format.',
+                    'message_ar' => 'صيغة رقم الهاتف غير صحيحة.',
+                    'field' => 'phone_number'
+                ], 422);
+            }
+
+            $existingByPhone = User::where('phone_number', $normalizedPhone)->first();
+            if ($existingByPhone) {
+                return response()->json([
+                    'success' => false,
+                    'code' => 'ALREADY_REGISTERED',
+                    'status' => 'already_registered',
+                    'message_en' => 'This phone number is already registered. Please log in or use a different phone number.',
+                    'message_ar' => 'رقم الهاتف هذا مسجل بالفعل. يرجى تسجيل الدخول أو استخدام رقم هاتف مختلف.',
+                    'field' => 'phone_number'
+                ], 409);
+            }
+        }
+
         $verificationCode = random_int(1000, 9999);
-        $user = DB::transaction(function () use ($validated, $verificationCode) {
+        $rawPassword = $request->filled('password') ? $validated['password'] : \Illuminate\Support\Str::random(32);
+
+        $user = DB::transaction(function () use ($validated, $normalizedPhone, $rawPassword, $verificationCode) {
             return User::create([
                 'first_name' => $validated['first_name'],
                 'last_name' => $validated['last_name'],
-                'email' => $validated['email'],
-                'phone_number' => null,
+                'email' => $validated['email'] ?? null,
+                'phone_number' => $normalizedPhone,
                 'nationality' => $validated['nationality'],
                 'timezone' => CountryTimezone::fromCountry($validated['country_key'] ?? null, $validated['nationality']),
                 'notional_id' => $validated['notional_id'] ?? null,
-                'password' => Hash::make($validated['password']),
+                'password' => Hash::make($rawPassword),
                 'role_id' => 3,
                 'verified' => false,
                 'verification_code' => $verificationCode,
             ]);
         });
 
-        try {
-            Mail::to($user->email)->send(new VerificationCodeMail($user, $verificationCode, 'register'));
-        } catch (\Throwable $e) {
-            Log::warning('Failed to send web teacher verification email', [
-                'user_id' => $user->id,
-                'error' => $e->getMessage(),
-            ]);
+        // Send SMS if phone exists
+        if ($normalizedPhone) {
+            $smsPhone = PhoneHelper::normalizeForSMS($normalizedPhone);
+            try {
+                $this->sendVerificationSMS($smsPhone, $verificationCode);
+            } catch (\Throwable $e) {
+                Log::warning('Failed to send teacher verification SMS', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+            }
+        }
+
+        // Send Email if email exists
+        if (!empty($user->email)) {
+            try {
+                Mail::to($user->email)->send(new VerificationCodeMail($user, $verificationCode, 'register'));
+            } catch (\Throwable $e) {
+                Log::warning('Failed to send web teacher verification email', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+            }
+        }
+
+        // Determine message
+        if ($normalizedPhone && !empty($user->email)) {
+            $msgEn = 'Teacher registration successful. Verification code sent via SMS and email.';
+            $msgAr = 'تم تسجيل المعلم بنجاح. تم إرسال رمز التحقق عبر الرسائل النصية والبريد الإلكتروني.';
+        } elseif (!empty($user->email)) {
+            $msgEn = 'Teacher registration successful. Verification code sent by email.';
+            $msgAr = 'تم تسجيل المعلم بنجاح. تم إرسال رمز التحقق عبر البريد الإلكتروني.';
+        } else {
+            $msgEn = 'Teacher registration successful. Verification code sent via SMS.';
+            $msgAr = 'تم تسجيل المعلم بنجاح. تم إرسال رمز التحقق عبر الرسائل القصيرة.';
         }
 
         return response()->json([
             'success' => true,
             'code' => 'REGISTRATION_SUCCESS',
             'status' => 'unverified',
-            'message_en' => 'Teacher registration successful. Verification code sent by email.',
-            'message_ar' => 'تم تسجيل المعلم بنجاح. تم إرسال رمز التحقق عبر البريد الإلكتروني.',
+            'message_en' => $msgEn,
+            'message_ar' => $msgAr,
             'user' => [
                 'id' => $user->id,
                 'first_name' => $user->first_name,
                 'last_name' => $user->last_name,
                 'email' => $user->email,
-                'phone_number' => null,
+                'phone_number' => $user->phone_number,
                 'nationality' => $user->nationality,
                 'timezone' => $user->timezone,
                 'role_id' => $user->role_id,

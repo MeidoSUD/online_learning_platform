@@ -15,6 +15,9 @@ class StudentRegistrationApiTest extends TestCase
     {
         parent::setUp();
         Mail::fake();
+        if (class_exists(\App\Http\Middleware\ApiAnalyticsMiddleware::class)) {
+            $this->withoutMiddleware(\App\Http\Middleware\ApiAnalyticsMiddleware::class);
+        }
     }
 
     /**
