@@ -4,7 +4,6 @@ namespace App\Mail;
 
 use App\Models\User;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 
@@ -12,48 +11,40 @@ class VerificationCodeMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    /**
-     * @var User
-     */
-    public $user;
-
-    /**
-     * @var string
-     */
-    public $verificationCode;
-
-    /**
-     * @var string Type of email: 'register' or 'reset'
-     */
-    public $type;
+    public User $user;
+    public string $verificationCode;
+    public string $type;
 
     /**
      * Create a new message instance.
      *
      * @param User $user
-     * @param string $verificationCode
-     * @param string $type
+     * @param string|int $verificationCode
+     * @param string $type Type of email: 'register' or 'reset' or 'login'
      */
-    public function __construct(User $user, $verificationCode, $type = 'register')
+    public function __construct(User $user, $verificationCode, string $type = 'register')
     {
         $this->user = $user;
-        $this->verificationCode = $verificationCode;
+        $this->verificationCode = (string) $verificationCode;
         $this->type = $type;
     }
 
     /**
-     * Build the message.
+     * Build the message with clean subject and multipart plain text fallback.
      *
      * @return $this
      */
     public function build()
     {
-        $subject = $this->type === 'reset' 
-            ? 'Password Reset Verification Code - رمز التحقق من إعادة تعيين كلمة المرور'
-            : 'Email Verification Code - رمز التحقق من البريد الإلكتروني';
+        $subject = match ($this->type) {
+            'reset' => 'Your Ewan Learning password reset code',
+            'login' => 'Your Ewan Learning login verification code',
+            default => 'Your Ewan Learning verification code',
+        };
 
         return $this->subject($subject)
                     ->view('emails.verification-code')
+                    ->text('emails.verification-code-text')
                     ->with([
                         'user' => $this->user,
                         'verificationCode' => $this->verificationCode,
