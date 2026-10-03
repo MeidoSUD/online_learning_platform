@@ -493,19 +493,45 @@ class AuthController extends Controller
                 'phone' => $request->input('phone_number'),
             ]);
 
+            // Normalize text fields before validation.
+            // Blank strings or trailing whitespace become null instead of failing validation.
+            $rawEmail = $request->input('email');
+            $rawPhone = $request->input('phone_number');
+            $request->merge([
+                'email' => is_string($rawEmail) ? (trim($rawEmail) ?: null) : $rawEmail,
+                'phone_number' => is_string($rawPhone) ? (trim($rawPhone) ?: null) : $rawPhone,
+                'first_name' => is_string($request->input('first_name')) ? trim($request->input('first_name')) : $request->input('first_name'),
+                'last_name' => is_string($request->input('last_name')) ? trim($request->input('last_name')) : $request->input('last_name'),
+            ]);
+
             // Validate student input
             $validated = $request->validate([
                 'first_name' => 'required|string|max:255',
                 'last_name' => 'required|string|max:255',
                 'email' => 'nullable|string|email',
-                'phone_number' => 'required|string',
+                'phone_number' => 'nullable|string',
                 'password' => 'required|string|min:8',
                 'gender' => 'nullable|in:male,female,other',
                 'nationality' => 'nullable|string|max:255',
                 'notional_id' => 'nullable|string|max:255',
             ]);
 
-            // Check if email already exists
+            // Ensure at least one contact method (email or phone_number) is provided
+            if (!$request->filled('email') && !$request->filled('phone_number')) {
+                return response()->json([
+                    'success' => false,
+                    'code' => 'VALIDATION_ERROR',
+                    'status' => 'validation_error',
+                    'message_en' => 'Either email or phone number must be provided.',
+                    'message_ar' => 'يجب إدخال البريد الإلكتروني أو رقم الهاتف.',
+                    'errors' => [
+                        'email' => ['Either email or phone number must be provided.'],
+                        'phone_number' => ['Either email or phone number must be provided.']
+                    ]
+                ], 422);
+            }
+
+            // Check if email already exists (if provided)
             if ($request->filled('email')) {
                 $existingByEmail = User::where('email', $validated['email'])->first();
                 if ($existingByEmail) {
@@ -524,38 +550,41 @@ class AuthController extends Controller
                 }
             }
 
-            // Normalize and check phone
-            $normalizedPhone = PhoneHelper::normalize($request->phone_number);
+            // Normalize and check phone (if provided)
+            $normalizedPhone = null;
+            if ($request->filled('phone_number')) {
+                $normalizedPhone = PhoneHelper::normalize($request->phone_number);
 
-            if (!$normalizedPhone) {
-                Log::warning('Student registration - failed to normalize phone', [
-                    'phone_input' => $request->phone_number,
-                ]);
+                if (!$normalizedPhone) {
+                    Log::warning('Student registration - failed to normalize phone', [
+                        'phone_input' => $request->phone_number,
+                    ]);
 
-                return response()->json([
-                    'success' => false,
-                    'code' => 'INVALID_PHONE',
-                    'status' => 'invalid',
-                    'message_en' => 'Invalid phone number format.',
-                    'message_ar' => 'صيغة رقم الهاتف غير صحيحة.',
-                    'field' => 'phone_number'
-                ], 422);
-            }
+                    return response()->json([
+                        'success' => false,
+                        'code' => 'INVALID_PHONE',
+                        'status' => 'invalid',
+                        'message_en' => 'Invalid phone number format.',
+                        'message_ar' => 'صيغة رقم الهاتف غير صحيحة.',
+                        'field' => 'phone_number'
+                    ], 422);
+                }
 
-            $existingByPhone = User::where('phone_number', $normalizedPhone)->first();
-            if ($existingByPhone) {
-                Log::warning('Student registration - phone already exists', [
-                    'phone' => $normalizedPhone,
-                ]);
+                $existingByPhone = User::where('phone_number', $normalizedPhone)->first();
+                if ($existingByPhone) {
+                    Log::warning('Student registration - phone already exists', [
+                        'phone' => $normalizedPhone,
+                    ]);
 
-                return response()->json([
-                    'success' => false,
-                    'code' => 'ALREADY_REGISTERED',
-                    'status' => 'already_registered',
-                    'message_en' => 'This phone number is already registered. Please log in or use a different phone number.',
-                    'message_ar' => 'رقم الهاتف هذا مسجل بالفعل. يرجى تسجيل الدخول أو استخدام رقم هاتف مختلف.',
-                    'field' => 'phone_number'
-                ], 409);
+                    return response()->json([
+                        'success' => false,
+                        'code' => 'ALREADY_REGISTERED',
+                        'status' => 'already_registered',
+                        'message_en' => 'This phone number is already registered. Please log in or use a different phone number.',
+                        'message_ar' => 'رقم الهاتف هذا مسجل بالفعل. يرجى تسجيل الدخول أو استخدام رقم هاتف مختلف.',
+                        'field' => 'phone_number'
+                    ], 409);
+                }
             }
 
             DB::beginTransaction();
@@ -566,7 +595,7 @@ class AuthController extends Controller
             $user = User::create([
                 'first_name' => $validated['first_name'],
                 'last_name' => $validated['last_name'],
-                'email' => $validated['email'],
+                'email' => $validated['email'] ?? null,
                 'phone_number' => $normalizedPhone,
                 'gender' => $validated['gender'] ?? null,
                 'nationality' => $validated['nationality'] ?? null,
@@ -589,18 +618,35 @@ class AuthController extends Controller
                 Log::warning('NELC xAPI: platformRegistered hook failed', ['error' => $e->getMessage()]);
             }
 
-            // Send verification code
-            $smsPhone = PhoneHelper::normalizeForSMS($normalizedPhone);
-            try {
-                $this->sendVerificationSMS($smsPhone, $verification_code);
-            } catch (\Exception $e) {
-                Log::warning('Failed to send SMS', ['error' => $e->getMessage()]);
+            // Send verification code via SMS if phone number was provided
+            if ($normalizedPhone) {
+                $smsPhone = PhoneHelper::normalizeForSMS($normalizedPhone);
+                try {
+                    $this->sendVerificationSMS($smsPhone, $verification_code);
+                } catch (\Exception $e) {
+                    Log::warning('Failed to send SMS', ['error' => $e->getMessage()]);
+                }
             }
 
-            try {
-                Mail::to($user->email)->send(new VerificationCodeMail($user, $verification_code, 'register'));
-            } catch (\Exception $e) {
-                Log::warning('Failed to send verification email', ['error' => $e->getMessage()]);
+            // Send verification code via Email if email was provided
+            if (!empty($user->email)) {
+                try {
+                    Mail::to($user->email)->send(new VerificationCodeMail($user, $verification_code, 'register'));
+                } catch (\Exception $e) {
+                    Log::warning('Failed to send verification email', ['error' => $e->getMessage()]);
+                }
+            }
+
+            // Determine friendly message based on sent channels
+            if ($normalizedPhone && !empty($user->email)) {
+                $msgEn = 'Student registration successful. Verification code sent via SMS and email.';
+                $msgAr = 'تم تسجيل الطالب بنجاح. تم إرسال رمز التحقق عبر الرسائل النصية والبريد الإلكتروني.';
+            } elseif (!empty($user->email)) {
+                $msgEn = 'Student registration successful. Verification code sent to your email.';
+                $msgAr = 'تم تسجيل الطالب بنجاح. تم إرسال رمز التحقق إلى بريدك الإلكتروني.';
+            } else {
+                $msgEn = 'Student registration successful. Verification code sent via SMS.';
+                $msgAr = 'تم تسجيل الطالب بنجاح. تم إرسال رمز التحقق عبر الرسائل القصيرة.';
             }
 
             // Same response structure (backward compatible)
@@ -619,8 +665,8 @@ class AuthController extends Controller
                 'success' => true,
                 'code' => 'REGISTRATION_SUCCESS',
                 'status' => 'unverified',
-                'message_en' => 'Student registration successful. Verification code sent via SMS and email.',
-                'message_ar' => 'تم تسجيل الطالب بنجاح. تم إرسال رمز التحقق عبر الرسائل النصية والبريد الإلكتروني.',
+                'message_en' => $msgEn,
+                'message_ar' => $msgAr,
                 'user' => $user_response,
             ], 201);
 
@@ -1183,12 +1229,27 @@ We are currently in the teacher preparation phase ahead of our official launch. 
         $user->verification_code = $verification_code;
         $user->save();
 
-        // Send SMS
-        $smsResponse = $this->sendVerificationSMS($user->phone_number, $verification_code);
+        $smsResponse = null;
+        if (!empty($user->phone_number)) {
+            $smsPhone = PhoneHelper::normalizeForSMS($user->phone_number);
+            try {
+                $smsResponse = $this->sendVerificationSMS($smsPhone, $verification_code);
+            } catch (\Exception $e) {
+                Log::warning('Failed to resend SMS', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+            }
+        }
+
+        if (!empty($user->email)) {
+            try {
+                Mail::to($user->email)->send(new VerificationCodeMail($user, $verification_code, 'register'));
+            } catch (\Exception $e) {
+                Log::warning('Failed to resend verification email', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+            }
+        }
 
         return response()->json([
             'message' => 'Verification code resent.',
-            'sms_response' => $smsResponse // For debugging, remove in production
+            'sms_response' => $smsResponse
         ]);
     }
 
