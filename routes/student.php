@@ -20,6 +20,7 @@ use App\Http\Controllers\API\BookingCourseController;
 use App\Http\Controllers\API\FavoriteController;
 use App\Http\Controllers\API\StudentPackageController;
 use App\Http\Controllers\API\ConsultationController;
+use App\Http\Controllers\API\GeneralServiceController;
 
 // Student routes with 'student' role middleware
 Route::prefix('student')->middleware(['auth:sanctum', 'role:student'])->group(function () {
@@ -114,6 +115,10 @@ Route::prefix('student')->middleware(['auth:sanctum', 'role:student'])->group(fu
     Route::get('/certificates', [UserController::class, 'listCertificates']);
     // by ab
     Route::post('/booking/course', [BookingCourseController::class, 'createBooking']); // create booking
+
+    // General services (no sessions/timeslots — pay via booking_id like courses)
+    Route::post('/booking/general-service', [GeneralServiceController::class, 'bookGeneralService']);
+    Route::get('/general-service-bookings', [GeneralServiceController::class, 'studentBookings']);
 
     // Favorites
     Route::post('/favorites/{teacher}/toggle', [FavoriteController::class, 'toggle']);

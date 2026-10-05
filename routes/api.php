@@ -20,6 +20,7 @@ use App\Http\Controllers\API\AiAssistantController;
 use App\Http\Controllers\API\LanguageStudyController;
 use App\Http\Controllers\API\LanguageController;
 use App\Http\Controllers\API\AbilityController;
+use App\Http\Controllers\API\GeneralServiceController;
 use App\Http\Controllers\FCMTokenController;
 use App\Http\Controllers\API\Admin\DashboardController;
 use App\Http\Controllers\API\Admin\UsersController;
@@ -114,6 +115,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/user/service-preferences', [ServicesController::class, 'updateServicePreferences']);
 });
 Route::get('/common-subjects', [ServicesController::class, 'getAllSubjects']);
+// General services (public)
+Route::get('/general-services', [GeneralServiceController::class, 'index']);
+Route::get('/general-services/{id}/teachers', [GeneralServiceController::class, 'teachers']);
+Route::get('/teachers/{id}/general-services', [GeneralServiceController::class, 'teacherOffers']);
 // main screen APIs
 Route::get('/services', [ServicesController::class, 'listServices']);
 Route::get('/services/specialization', [ServicesController::class, 'listServicesSpecialization']);

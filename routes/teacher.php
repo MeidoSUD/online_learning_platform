@@ -23,6 +23,7 @@ use App\Http\Controllers\API\TeacherAbilityController;
 use App\Http\Controllers\FCMTokenController;
 use App\Http\Controllers\API\TeacherPackageController;
 use App\Http\Controllers\API\ConsultationController;
+use App\Http\Controllers\API\GeneralServiceController;
 
 Route::prefix('teacher')->middleware(['auth:sanctum', 'role:teacher'])->group(function () {
     Route::get('/education-levels', [EducationLevelController::class, 'levelsWithClassesAndSubjects']);
@@ -127,4 +128,12 @@ Route::prefix('teacher')->middleware(['auth:sanctum', 'role:teacher'])->group(fu
     Route::get('/consultations', [ConsultationController::class, 'teacherIndex']); // consultations assigned to me
     Route::get('/consultations/{id}', [ConsultationController::class, 'teacherShow']); // consultation details
     Route::post('/consultations/{id}/schedule', [ConsultationController::class, 'schedule']); // set session time -> creates booking + online session
+
+    // General services (no sessions/timeslots)
+    Route::get('/general-services', [GeneralServiceController::class, 'teacherIndex']);
+    Route::post('/general-services', [GeneralServiceController::class, 'teacherStore']);
+    Route::put('/general-services/{id}', [GeneralServiceController::class, 'teacherUpdate']);
+    Route::delete('/general-services/{id}', [GeneralServiceController::class, 'teacherDestroy']);
+    Route::get('/general-service-orders', [GeneralServiceController::class, 'teacherOrders']);
+    Route::put('/general-service-orders/{id}/status', [GeneralServiceController::class, 'updateOrderStatus']);
 });

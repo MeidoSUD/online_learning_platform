@@ -19,6 +19,7 @@ class Booking extends Model
     use HasFactory;
 
     protected $fillable = ['service_id',
+        'general_service_id',
         'booking_reference','timeslot_id',
         'student_id',
         'teacher_id',
@@ -134,6 +135,11 @@ class Booking extends Model
  public function service()
     {
         return $this->belongsTo(Services::class, 'service_id');
+    }
+
+    public function generalService(): BelongsTo
+    {
+        return $this->belongsTo(GeneralService::class, 'general_service_id');
     }
     public function order()
 {
