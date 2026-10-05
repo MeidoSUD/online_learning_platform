@@ -15,13 +15,109 @@ use Illuminate\Support\Facades\DB;
 class ServicesController extends Controller
 {
 
-    public function listServices()
+    public function listServices(Request $request)
     {
+        $query = \App\Models\Services::query();
+        $query->where('status', 1)->where('specialization', 1);
+        // Authenticated users: exclude their hidden services.
+        // Guests (no token): return all active services as before.
+        // Default logic: absence of a record in user_hidden_services = visible.
+        $user = auth('sanctum')->user();
+        if ($user) {
+            $hiddenIds = \App\Models\UserHiddenService::where('user_id', $user->id)
+                ->pluck('service_id')
+                ->toArray();
+            if (!empty($hiddenIds)) {
+                $query->whereNotIn('id', $hiddenIds);
+            }
+        }
 
+        $services = $query
+            ->get(['key_name', 'name_en', 'name_ar', 'description_en', 'image', 'description_ar', 'id', 'status']);
+        return response()->json($services);
+    }
+
+    /**
+     * GET /api/user/service-preferences
+     * Returns ALL available services with `is_hidden` flag for the current user.
+     */
+    public function getServicePreferences(): JsonResponse
+    {
+        $user = auth('sanctum')->user() ?? auth()->user();
+
+        $hiddenIds = \App\Models\UserHiddenService::where('user_id', $user->id)
+            ->pluck('service_id')
+            ->toArray();
+        $hiddenLookup = array_flip($hiddenIds);
 
         $services = \App\Models\Services::
             get(['key_name', 'name_en', 'name_ar', 'description_en', 'image', 'description_ar', 'id', 'status']);
-        return response()->json($services);
+
+        $data = $services->map(function ($service) use ($hiddenLookup) {
+            $arr = $service->toArray();
+            $arr['is_hidden'] = isset($hiddenLookup[$service->id]);
+            return $arr;
+        })->values();
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+        ]);
+    }
+
+    /**
+     * POST /api/user/service-preferences
+     * Body: { "hidden_service_ids": [2, 5] }
+     * Syncs the hidden services list for the current user.
+     */
+    public function updateServicePreferences(Request $request): JsonResponse
+    {
+        $request->validate([
+            'hidden_service_ids' => 'sometimes|array',
+            'hidden_service_ids.*' => 'integer|exists:services,id',
+        ]);
+
+        $user = auth('sanctum')->user() ?? auth()->user();
+        $hiddenIds = array_values(array_unique($request->input('hidden_service_ids', [])));
+
+        DB::beginTransaction();
+        try {
+            // Remove records that are no longer hidden
+            \App\Models\UserHiddenService::where('user_id', $user->id)
+                ->whereNotIn('service_id', $hiddenIds)
+                ->delete();
+
+            // Insert newly hidden (ignore existing thanks to unique constraint)
+            $existing = \App\Models\UserHiddenService::where('user_id', $user->id)
+                ->pluck('service_id')
+                ->toArray();
+            $toInsert = array_diff($hiddenIds, $existing);
+
+            foreach ($toInsert as $serviceId) {
+                \App\Models\UserHiddenService::create([
+                    'user_id' => $user->id,
+                    'service_id' => $serviceId,
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Service preferences updated successfully',
+                'data' => ['hidden_service_ids' => $hiddenIds],
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to update service preferences', [
+                'user_id' => $user->id ?? null,
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update service preferences',
+            ], 500);
+        }
     }
 
     public function listServicesSpecialization()

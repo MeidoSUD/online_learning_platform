@@ -108,6 +108,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/user/cards/{id}', [\App\Http\Controllers\API\CardController::class, 'update']);
     Route::post('/user/cards/{id}/default', [\App\Http\Controllers\API\CardController::class, 'setDefault']);
     Route::delete('/user/cards/{id}', [\App\Http\Controllers\API\CardController::class, 'destroy']);
+
+    // Service visibility preferences (student home customization)
+    Route::get('/user/service-preferences', [ServicesController::class, 'getServicePreferences']);
+    Route::post('/user/service-preferences', [ServicesController::class, 'updateServicePreferences']);
 });
 Route::get('/common-subjects', [ServicesController::class, 'getAllSubjects']);
 // main screen APIs
