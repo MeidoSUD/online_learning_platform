@@ -621,7 +621,49 @@ class PaymentController extends Controller
             
             // ✅ Get appropriate title based on service type
             $titleStudent = $this->getTitleForBooking($booking);
-            
+
+            // ============================================================
+            // GENERAL SERVICE bookings (no sessions/timeslots):
+            // dedicated messages, then return (skip session wording below)
+            // ============================================================
+            if ($booking->general_service_id) {
+                $booking->loadMissing('generalService');
+                $gsName = app()->getLocale() == 'ar'
+                    ? ($booking->generalService?->name_ar ?? 'خدمة عامة')
+                    : ($booking->generalService?->name_en ?? 'General service');
+
+                $titleStudentGs = app()->getLocale() == 'ar'
+                    ? "تم استلام طلب الخدمة: {$gsName}"
+                    : "Service request received: {$gsName}";
+                $msgStudentGs = app()->getLocale() == 'ar'
+                    ? "تم الدفع بنجاح لطلبك ({$booking->booking_reference}) لخدمة {$gsName}. سيبدأ المعلم بتنفيذ طلبك."
+                    : "Payment successful for your request ({$booking->booking_reference}) for {$gsName}. The teacher will start working on it.";
+                if ($booking->student) {
+                    $ns->send($booking->student, 'payment_success', $titleStudentGs, $msgStudentGs, [
+                        'booking_id' => $booking->id,
+                        'amount' => $booking->total_amount,
+                    ]);
+                    if ($booking->student->phone_number) {
+                        $ns->sendBilingualSMS($booking->student->phone_number, $msgStudentGs);
+                    }
+                }
+
+                $titleTeacherGs = app()->getLocale() == 'ar' ? 'طلب خدمة عامة جديد' : 'New general service order';
+                $msgTeacherGs = app()->getLocale() == 'ar'
+                    ? "طلب جديد ({$booking->booking_reference}) من {$booking->student?->first_name} لخدمة {$gsName}."
+                    : "New order ({$booking->booking_reference}) from {$booking->student?->first_name} for {$gsName}.";
+                if ($booking->teacher) {
+                    $ns->send($booking->teacher, 'booking_received', $titleTeacherGs, $msgTeacherGs, [
+                        'booking_id' => $booking->id,
+                        'student_id' => $booking->student_id,
+                    ]);
+                    if ($booking->teacher->phone_number) {
+                        $ns->sendBilingualSMS($booking->teacher->phone_number, $msgTeacherGs);
+                    }
+                }
+                return;
+            }
+
             // ============================================================
             // STUDENT NOTIFICATIONS
             // ============================================================
