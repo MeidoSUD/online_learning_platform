@@ -28,3 +28,5 @@ export * from './SystemReportsTab';
 export * from './ConsultationTab';
 export * from './AdminTeacherDetails';
 export * from './AdminWithdrawalMethodsTab';
+export * from './MarketingAnnouncementsTab';
+

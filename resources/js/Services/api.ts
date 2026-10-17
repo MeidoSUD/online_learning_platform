@@ -99,7 +99,8 @@ import {
   AppNotification, BooksModel, SavedCard, StudentSubscription, StudentPackage,
   CheckoutResponse, PaymentStatusResponse, StudentOrder, BookingDetails,
   Instruction, InstructionPayload,
-  AdminConsultation, ConsultationCategoryView, ConsultationTeacherOption
+  AdminConsultation, ConsultationCategoryView, ConsultationTeacherOption,
+  MarketingAnnouncement, MarketingAnnouncementPayload
 } from '../Utils/types';
 
 export type {
@@ -114,7 +115,8 @@ export type {
   ApiAnalyticsStats, ApiStatistic, SystemLogEntry, ActivityRecord, ActivityRecordStats, ActivityRecordGroupedStats,
   AppNotification, BooksModel, SavedCard, StudentSubscription, StudentPackage,
   CheckoutResponse, PaymentStatusResponse, StudentOrder, BookingDetails,
-  Instruction, InstructionPayload
+  Instruction, InstructionPayload,
+  MarketingAnnouncement, MarketingAnnouncementPayload
 };
 
 export const AUTH_SESSION_EXPIRED = 'auth:session-expired';
@@ -514,6 +516,32 @@ getMarketingAudienceCount: (target_type: string, target_user_id?: number, target
   sendMarketingNotification: (data: Record<string, unknown>) =>
     fetchWithAuth('/admin/marketing/notifications/send', { method: 'POST', body: JSON.stringify(data) }),
 
+  // Marketing Announcements & Popups (Teacher / Student / Both)
+  getMarketingAnnouncements: (filters: Record<string, any> = {}) => {
+    const query = new URLSearchParams(filters as any).toString();
+    return fetchWithAuth(`/admin/marketing-announcements${query ? `?${query}` : ''}`).then(res => res.data?.data || res.data || []);
+  },
+  getMarketingAnnouncementStats: () => fetchWithAuth('/admin/marketing-announcements/stats').then(res => res.data),
+  getMarketingAnnouncement: (id: number) => fetchWithAuth(`/admin/marketing-announcements/${id}`).then(res => res.data),
+  createMarketingAnnouncement: (formData: FormData | Record<string, any>) => {
+    const isFormData = typeof FormData !== 'undefined' && formData instanceof FormData;
+    return fetchWithAuth('/admin/marketing-announcements', {
+      method: 'POST',
+      body: isFormData ? formData : JSON.stringify(formData),
+    });
+  },
+  updateMarketingAnnouncement: (id: number, formData: FormData | Record<string, any>) => {
+    const isFormData = typeof FormData !== 'undefined' && formData instanceof FormData;
+    return fetchWithAuth(`/admin/marketing-announcements/${id}`, {
+      method: 'POST',
+      body: isFormData ? formData : JSON.stringify(formData),
+    });
+  },
+  toggleMarketingAnnouncement: (id: number) =>
+    fetchWithAuth(`/admin/marketing-announcements/${id}/toggle`, { method: 'PUT' }),
+  deleteMarketingAnnouncement: (id: number) =>
+    fetchWithAuth(`/admin/marketing-announcements/${id}`, { method: 'DELETE' }),
+
   getDashboardData: () => fetchWithAuth('/admin/dashboard'),
   getStats: () => fetchWithAuth('/admin/stats'),
   getSystemReport: () => fetchWithAuth('/admin/reports/system').then(res => res.data ?? res),
@@ -866,6 +894,15 @@ export const notificationService = {
     fetchWithAuth('/notifications/mark-all-as-read', { method: 'POST' }),
   delete: (id: number) =>
     fetchWithAuth(`/notifications/${id}/delete`, { method: 'DELETE' }),
+};
+
+export const marketingAnnouncementService = {
+  getActive: (params: { platform?: string; role?: string } = {}) => {
+    const query = new URLSearchParams(params as any).toString();
+    return fetchWithAuth(`/marketing-announcements/active${query ? `?${query}` : ''}`).then(res => res.data);
+  },
+  trackClick: (id: number) => fetchWithAuth(`/marketing-announcements/${id}/click`, { method: 'POST' }),
+  trackView: (id: number) => fetchWithAuth(`/marketing-announcements/${id}/view`, { method: 'POST' }),
 };
 
 export const getStorageUrl = (path: string | null | undefined) => {

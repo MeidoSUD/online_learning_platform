@@ -1187,3 +1187,40 @@ export interface BookingDetails {
     can_join_session: boolean;
   };
 }
+
+export interface MarketingAnnouncement {
+  id: number;
+  title: string;
+  description: string;
+  link_url: string;
+  button_text: string;
+  close_button_text: string;
+  target_role: 'student' | 'teacher' | 'both';
+  platform: 'app' | 'web' | 'both';
+  image_path?: string | null;
+  image_url?: string | null;
+  is_active: boolean;
+  starts_at?: string | null;
+  expires_at?: string | null;
+  display_order: number;
+  clicks_count: number;
+  views_count: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface MarketingAnnouncementPayload {
+  title: string;
+  description: string;
+  link_url: string;
+  button_text?: string;
+  close_button_text?: string;
+  target_role: 'student' | 'teacher' | 'both';
+  platform: 'app' | 'web' | 'both';
+  is_active?: boolean;
+  starts_at?: string | null;
+  expires_at?: string | null;
+  display_order?: number;
+  remove_image?: boolean;
+}
+

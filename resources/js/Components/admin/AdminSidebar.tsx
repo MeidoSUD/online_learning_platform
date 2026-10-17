@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
-import { LayoutDashboard, Users, Layers, DollarSign, CheckSquare, AlertCircle, LogOut, Globe, Calendar, BookOpen, Settings, Package, Box, ShoppingBag, Percent, Cog, ChevronDown, ChevronRight, Video, Monitor, FileText, CreditCard, Activity, BarChart3, Terminal, Award, ClipboardList, Send, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, Users, Layers, DollarSign, CheckSquare, AlertCircle, LogOut, Globe, Calendar, BookOpen, Settings, Package, Box, ShoppingBag, Percent, Cog, ChevronDown, ChevronRight, Video, Monitor, FileText, CreditCard, Activity, BarChart3, Terminal, Award, ClipboardList, Send, MessageSquare, Megaphone } from 'lucide-react';
 import { Logo } from '../Logo';
 
 interface AdminSidebarProps {
@@ -93,6 +93,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ activeTab, setActive
                 { id: 'activityRecords', label: language === 'ar' ? 'سجل النشاطات' : 'Activity Records', icon: Activity },
                 { id: 'systemLogs', label: language === 'ar' ? 'سجل النظام' : 'System Logs', icon: Terminal },
                 { id: 'marketingNotifications', label: language === 'ar' ? 'إشعارات تسويقية' : 'Marketing Notifications', icon: Send },
+                { id: 'marketingAnnouncements', label: language === 'ar' ? 'الإعلانات والفعاليات المنبثقة' : 'Marketing Popups & Events', icon: Megaphone },
             ]
         }
     ];
@@ -104,7 +105,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ activeTab, setActive
                 if (g.id === 'system_group') {
                     return {
                         ...g,
-                        children: g.children?.filter(child => child.id === 'marketingNotifications')
+                        children: g.children?.filter(child => child.id === 'marketingNotifications' || child.id === 'marketingAnnouncements')
                     };
                 }
                 return null;

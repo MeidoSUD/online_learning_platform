@@ -44,6 +44,8 @@ use App\Http\Controllers\API\Admin\TermsConditionsAdminController;
 use App\Http\Controllers\API\Admin\SystemLogController;
 use App\Http\Controllers\API\Admin\ActivityRecordController;
 use App\Http\Controllers\API\Admin\MarketingNotificationController;
+use App\Http\Controllers\API\Admin\MarketingAnnouncementAdminController;
+use App\Http\Controllers\API\MarketingAnnouncementController;
 use App\Http\Controllers\API\Admin\SystemReportController;
 
 
@@ -179,6 +181,13 @@ Route::get('instructions', [\App\Http\Controllers\InstructionController::class, 
 // ======================
 Route::get('ads', [AdsController::class, 'getAds']); // Get active ads based on user role
 Route::get('ads/{id}', [AdsController::class, 'getAdById']); // Get single ad
+
+// ======================
+// Marketing Popups & Announcements (Public / Authenticated - for Flutter App & Web)
+// ======================
+Route::get('marketing-announcements/active', [MarketingAnnouncementController::class, 'getActive']);
+Route::post('marketing-announcements/{id}/click', [MarketingAnnouncementController::class, 'trackClick']);
+Route::post('marketing-announcements/{id}/view', [MarketingAnnouncementController::class, 'trackView']);
 // ======================
 // Authentication & User Management
 // ======================
@@ -356,6 +365,16 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin,support'])->grou
     Route::post('/marketing/notifications/send', [MarketingNotificationController::class, 'send']);
     Route::get('/marketing/notifications/audience-count', [MarketingNotificationController::class, 'audienceCount']);
     Route::get('/marketing/users/search', [MarketingNotificationController::class, 'usersSearch']);
+
+    // Marketing Announcements & Popups (Admin / Support)
+    Route::get('/marketing-announcements', [MarketingAnnouncementAdminController::class, 'index']);
+    Route::get('/marketing-announcements/stats', [MarketingAnnouncementAdminController::class, 'stats']);
+    Route::post('/marketing-announcements', [MarketingAnnouncementAdminController::class, 'store']);
+    Route::get('/marketing-announcements/{id}', [MarketingAnnouncementAdminController::class, 'show']);
+    Route::post('/marketing-announcements/{id}', [MarketingAnnouncementAdminController::class, 'update']);
+    Route::put('/marketing-announcements/{id}', [MarketingAnnouncementAdminController::class, 'update']);
+    Route::put('/marketing-announcements/{id}/toggle', [MarketingAnnouncementAdminController::class, 'toggleActive']);
+    Route::delete('/marketing-announcements/{id}', [MarketingAnnouncementAdminController::class, 'destroy']);
 });
 
 Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(function () {
