@@ -558,8 +558,14 @@ getMarketingAudienceCount: (target_type: string, target_user_id?: number, target
     return fetchWithAuth(`/admin/teacher-edit/subjects?${params.toString()}`).then(extractArray);
   },
   getTeacherEditLanguages: () => fetchWithAuth('/admin/languages').then(extractArray),
-  rejectUser: (id: number) => fetchWithAuth(`/admin/users/${id}/reject-teacher`, { method: 'PUT' }),
-  getBookings: (page: number = 1, perPage: number = 25) => fetchWithAuth(`/admin/bookings?page=${page}&per_page=${perPage}`),
+  getBookings: (page: number = 1, perPage: number = 25, filters: Record<string, any> = {}) => {
+    const params = new URLSearchParams({ page: String(page), per_page: String(perPage) });
+    Object.entries(filters).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') params.append(k, String(v));
+    });
+    return fetchWithAuth(`/admin/bookings?${params.toString()}`);
+  },
+  getBookingDetails: (id: number) => fetchWithAuth(`/admin/bookings/${id}`).then(res => res.data ?? res),
   exportBookings: (format: 'xlsx' | 'pdf', status = '') => fetchWithAuth(`/admin/bookings/export?format=${format}${status ? `&status=${encodeURIComponent(status)}` : ''}`, { headers: { 'X-Download': 'true' } }),
   getDisputes: () => fetchWithAuth('/admin/disputes').then(extractArray),
   getPayouts: () => fetchWithAuth('/admin/payout-requests').then(extractArray),
@@ -720,6 +726,7 @@ getMarketingAudienceCount: (target_type: string, target_user_id?: number, target
   },
   updateSessionDate: (id: number, data: { session_date: string; start_time?: string; end_time?: string }) => 
     fetchWithAuth(`/admin/sessions/${id}/reschedule`, { method: 'PUT', body: JSON.stringify(data) }),
+  getSessionDetails: (id: number) => fetchWithAuth(`/admin/sessions/${id}`).then(res => res.data ?? res),
   getUserSessions: (userId: number, role: 'teacher' | 'student') => 
     fetchWithAuth(`/admin/users/${userId}/sessions?role=${role}`).then(extractArray),
 
@@ -780,7 +787,7 @@ getMarketingAudienceCount: (target_type: string, target_user_id?: number, target
 
   getCertificates: (filters: any = {}) => {
     const params = Object.fromEntries(Object.entries(filters).filter(([_, v]) => v != null && v !== ''));
-    const query = new URLSearchParams(params).toString();
+    const query = new URLSearchParams(params as any).toString();
     return fetchWithAuth(`/admin/certificates${query ? `?${query}` : ''}`).then(res => res.data?.data || res.data || []);
   },
   getCertificateDetails: (id: number) => fetchWithAuth(`/admin/certificates/${id}`).then(res => res.data),

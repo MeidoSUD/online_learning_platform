@@ -349,6 +349,7 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin,support'])->grou
     Route::get('/bookings/{id}', [BookingAdminController::class, 'show']);
     Route::get('/sessions', [SessionsAdminController::class, 'index']);
     Route::get('/sessions/export', [SessionsAdminController::class, 'export']);
+    Route::get('/sessions/{id}', [SessionsAdminController::class, 'show']);
     Route::put('/sessions/{id}/reschedule', [SessionsAdminController::class, 'reschedule']);
     // Marketing notifications (shared between admin and support roles)
     Route::get('/marketing/notifications', [MarketingNotificationController::class, 'index']);
@@ -441,7 +442,6 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     Route::get('/education-levels', [EducationLevelAdminController::class, 'levelsWithClassesAndSubjects']);
     Route::get('/classes/{education_level_id}', [EducationLevelAdminController::class, 'classes']);
     Route::get('subjectsClasses/{class_id}', [EducationLevelAdminController::class, 'getSubjectsByClass']);
-    Route::get('/services', [ServicesController::class, 'listServices']);
     Route::get('/languages', [LanguageController::class, 'index']); // List all languages
     Route::post('/languages', [LanguageController::class, 'store']); // Create language
     Route::get('/languages/{id}', [LanguageController::class, 'show']); // Get language details

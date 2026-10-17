@@ -13,8 +13,37 @@ class BookingAdminController extends Controller
     public function index(Request $request)
     {
         $q = Booking::query();
-        if ($request->filled('status')) $q->where('status', $request->status);
-        $paginator = $q->with(['student','teacher'])->orderByDesc('id')->paginate(25);
+
+        if ($request->filled('status')) {
+            $status = $request->status;
+            if ($status === 'pending' || $status === 'pending_payment') {
+                $q->whereIn('status', ['pending', 'pending_payment']);
+            } else {
+                $q->where('status', $status);
+            }
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $q->where(function($sub) use ($search) {
+                $sub->where('booking_reference', 'like', "%{$search}%")
+                    ->orWhereHas('student', function($sq) use ($search) {
+                        $sq->where('first_name', 'like', "%{$search}%")
+                           ->orWhere('last_name', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('teacher', function($tq) use ($search) {
+                        $tq->where('first_name', 'like', "%{$search}%")
+                           ->orWhere('last_name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        if ($request->filled('date')) {
+            $q->whereDate('created_at', $request->date);
+        }
+
+        $perPage = (int)$request->input('per_page', 25);
+        $paginator = $q->with(['student','teacher'])->orderByDesc('id')->paginate($perPage);
         
         $paginator->getCollection()->transform(function ($booking) {
             return [
@@ -37,7 +66,14 @@ class BookingAdminController extends Controller
     public function export(Request $request)
     {
         $query = Booking::with(['student', 'teacher'])->orderByDesc('id');
-        if ($request->filled('status')) $query->where('status', $request->status);
+        if ($request->filled('status')) {
+            $status = $request->status;
+            if ($status === 'pending' || $status === 'pending_payment') {
+                $query->whereIn('status', ['pending', 'pending_payment']);
+            } else {
+                $query->where('status', $status);
+            }
+        }
 
         $rows = $query->get()->map(fn ($booking) => [
             $booking->id,
@@ -57,7 +93,7 @@ class BookingAdminController extends Controller
 
     public function show(Request $request, $id)
     {
-        $booking = Booking::with(['student','course','sessions'])->findOrFail($id);
+        $booking = Booking::with(['student', 'teacher', 'course', 'subject', 'sessions'])->findOrFail($id);
         return response()->json(['success' => true, 'data' => $booking]);
     }
 

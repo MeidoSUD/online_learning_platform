@@ -17,24 +17,44 @@ class ServicesController extends Controller
 
     public function listServices(Request $request)
     {
-        $query = \App\Models\Services::query();
-        $query->where('status', 1)->where('specialization', 1);
-        // Authenticated users: exclude their hidden services.
-        // Guests (no token): return all active services as before.
-        // Default logic: absence of a record in user_hidden_services = visible.
-        $user = auth('sanctum')->user();
-        if ($user) {
-            $hiddenIds = \App\Models\UserHiddenService::where('user_id', $user->id)
-                ->pluck('service_id')
-                ->toArray();
-            if (!empty($hiddenIds)) {
-                $query->whereNotIn('id', $hiddenIds);
+        try {
+            $query = \App\Models\Services::query();
+            $query->where('status', 1);
+
+            if (\Illuminate\Support\Facades\Schema::hasColumn('services', 'specialization')) {
+                if ($request->has('specialization')) {
+                    $query->where('specialization', (int)$request->input('specialization'));
+                }
+            }
+
+            // Authenticated users: exclude their hidden services for non-admin/support roles.
+            $user = auth('sanctum')->user() ?? auth()->user();
+            if ($user && !in_array($user->role_id, [1, 2, 5]) && \Illuminate\Support\Facades\Schema::hasTable('user_hidden_services')) {
+                try {
+                    $hiddenIds = \App\Models\UserHiddenService::where('user_id', $user->id)
+                        ->pluck('service_id')
+                        ->toArray();
+                    if (!empty($hiddenIds)) {
+                        $query->whereNotIn('id', $hiddenIds);
+                    }
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('UserHiddenService check failed: ' . $e->getMessage());
+                }
+            }
+
+            $services = $query
+                ->get(['key_name', 'name_en', 'name_ar', 'description_en', 'image', 'description_ar', 'id', 'status']);
+            return response()->json($services);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('listServices failed: ' . $e->getMessage());
+            // Fallback to basic query
+            try {
+                $fallback = \App\Models\Services::where('status', 1)->get();
+                return response()->json($fallback);
+            } catch (\Throwable $fallbackEx) {
+                return response()->json([]);
             }
         }
-
-        $services = $query
-            ->get(['key_name', 'name_en', 'name_ar', 'description_en', 'image', 'description_ar', 'id', 'status']);
-        return response()->json($services);
     }
 
     /**
@@ -122,12 +142,16 @@ class ServicesController extends Controller
 
     public function listServicesSpecialization()
     {
-
-
-        $services = \App\Models\Services::where('specialization', 1)
-            ->where('status', 1)
-            ->get(['key_name', 'name_en', 'name_ar', 'description_en', 'image', 'description_ar', 'id', 'status']);
-        return response()->json($services);
+        try {
+            $query = \App\Models\Services::where('status', 1);
+            if (\Illuminate\Support\Facades\Schema::hasColumn('services', 'specialization')) {
+                $query->where('specialization', 1);
+            }
+            $services = $query->get(['key_name', 'name_en', 'name_ar', 'description_en', 'image', 'description_ar', 'id', 'status']);
+            return response()->json($services);
+        } catch (\Throwable $e) {
+            return response()->json([]);
+        }
     }
 
     public function studentIndex()

@@ -23,6 +23,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({ onViewTeacher }) => {
     const [users, setUsers] = useState<AdminUser[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState<string>('all');
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [verifiedFilter, setVerifiedFilter] = useState<string>('all');
@@ -57,9 +58,17 @@ export const UsersTab: React.FC<UsersTabProps> = ({ onViewTeacher }) => {
     const [tempPassword, setTempPassword] = useState('');
     const [profileModalUserId, setProfileModalUserId] = useState<number | null>(null);
 
+    // Debounce search term to avoid losing focus and rapid re-renders
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedSearch(searchTerm);
+        }, 300);
+        return () => clearTimeout(handler);
+    }, [searchTerm]);
+
     useEffect(() => {
         fetchUsers();
-    }, [roleFilter, statusFilter, verifiedFilter, searchTerm, currentPage]);
+    }, [roleFilter, statusFilter, verifiedFilter, debouncedSearch, currentPage]);
 
     const fetchUsers = async () => {
         setLoading(true);
@@ -68,7 +77,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({ onViewTeacher }) => {
             if (roleFilter !== 'all') filters.role_id = roleFilter;
             if (statusFilter !== 'all') filters.is_active = statusFilter === 'active' ? 'true' : 'false';
             if (verifiedFilter !== 'all') filters.verified = verifiedFilter === 'verified' ? 'true' : 'false';
-            if (searchTerm.trim()) filters.search = searchTerm.trim();
+            if (debouncedSearch.trim()) filters.search = debouncedSearch.trim();
 
             const result = await adminService.getUsers(filters);
             const items = Array.isArray(result?.items) ? result.items : Array.isArray(result) ? result : [];
@@ -243,7 +252,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({ onViewTeacher }) => {
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm, roleFilter, statusFilter, verifiedFilter]);
+    }, [debouncedSearch, roleFilter, statusFilter, verifiedFilter]);
 
     const openUserProfile = (user: AdminUser) => {
         if (user.role_id === 3 && onViewTeacher) {
@@ -277,8 +286,6 @@ export const UsersTab: React.FC<UsersTabProps> = ({ onViewTeacher }) => {
         }
     };
 
-    if (loading && users.length === 0) return <div className="flex justify-center p-12"><Loader2 className="animate-spin text-primary" /></div>;
-
     return (
         <div className="space-y-6 animate-fade-in" onClick={() => setOpenMenuId(null)}>
             <div className="flex justify-between items-center">
@@ -307,8 +314,23 @@ export const UsersTab: React.FC<UsersTabProps> = ({ onViewTeacher }) => {
                             placeholder={t.searchPlaceholder}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className={`w-full pl-10 pr-4 py-2 rounded-lg border border-[var(--border)] focus:outline-none focus:border-primary ${direction === 'rtl' ? 'pr-10 pl-4' : ''}`}
+                            className={`w-full py-2 rounded-lg border border-[var(--border)] focus:outline-none focus:border-primary ${
+                                direction === 'rtl' ? 'pr-10 pl-10' : 'pl-10 pr-10'
+                            }`}
                         />
+                        <div className={`absolute top-1/2 -translate-y-1/2 flex items-center gap-1 ${direction === 'rtl' ? 'left-3' : 'right-3'}`}>
+                            {loading && <Loader2 size={16} className="animate-spin text-primary" />}
+                            {searchTerm && (
+                                <button
+                                    type="button"
+                                    onClick={() => setSearchTerm('')}
+                                    className="p-1 text-[var(--text-muted)] hover:text-red-500 rounded-full"
+                                    title={language === 'ar' ? 'مسح البحث' : 'Clear search'}
+                                >
+                                    <X size={16} />
+                                </button>
+                            )}
+                        </div>
                     </div>
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2">
@@ -360,7 +382,16 @@ export const UsersTab: React.FC<UsersTabProps> = ({ onViewTeacher }) => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-[var(--border)]">
-                            {paginatedUsers.length === 0 && !loading ? (
+                            {loading ? (
+                                <tr>
+                                    <td colSpan={7} className="px-6 py-12 text-center text-[var(--text-muted)]">
+                                        <div className="flex justify-center items-center gap-2">
+                                            <Loader2 className="animate-spin text-primary" size={24} />
+                                            <span>{t.loading || (language === 'ar' ? 'جاري التحميل...' : 'Loading...')}</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ) : paginatedUsers.length === 0 ? (
                                 <tr>
                                     <td colSpan={7} className="px-6 py-8 text-center text-[var(--text-muted)]">{t.noResults}</td>
                                 </tr>

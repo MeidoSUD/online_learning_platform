@@ -104,6 +104,74 @@ class SessionsAdminController extends Controller
     }
 
     /**
+     * Get Single Session Details
+     */
+    public function show(Request $request, $id)
+    {
+        $session = Sessions::with([
+            'teacher',
+            'student',
+            'booking.subject',
+            'booking.course',
+            'booking.student',
+            'booking.teacher'
+        ])->findOrFail($id);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $session->id,
+                'booking_id' => $session->booking_id,
+                'session_title' => $session->session_title,
+                'session_number' => $session->session_number,
+                'session_date' => $session->session_date ? $session->session_date->format('Y-m-d') : null,
+                'start_time' => $session->start_time ? $session->start_time->format('H:i:s') : null,
+                'end_time' => $session->end_time ? $session->end_time->format('H:i:s') : null,
+                'duration' => $session->duration,
+                'status' => $session->status,
+                'meeting_id' => $session->meeting_id,
+                'join_url' => $session->join_url,
+                'host_url' => $session->host_url,
+                'teacher_notes' => $session->teacher_notes,
+                'homework' => $session->homework,
+                'teacher' => $session->teacher ? [
+                    'id' => $session->teacher->id,
+                    'name' => trim($session->teacher->first_name . ' ' . $session->teacher->last_name),
+                    'email' => $session->teacher->email,
+                    'phone_number' => $session->teacher->phone_number ?? null,
+                ] : null,
+                'student' => $session->student ? [
+                    'id' => $session->student->id,
+                    'name' => trim($session->student->first_name . ' ' . $session->student->last_name),
+                    'email' => $session->student->email,
+                    'phone_number' => $session->student->phone_number ?? null,
+                ] : null,
+                'booking' => $session->booking ? [
+                    'id' => $session->booking->id,
+                    'reference' => $session->booking->booking_reference,
+                    'status' => $session->booking->status,
+                    'total_amount' => $session->booking->total_amount,
+                    'currency' => $session->booking->currency ?? 'SAR',
+                    'session_type' => $session->booking->session_type ?? null,
+                    'sessions_count' => $session->booking->sessions_count,
+                    'sessions_completed' => $session->booking->sessions_completed,
+                    'created_at' => $session->booking->created_at ? $session->booking->created_at->toIso8601String() : null,
+                ] : null,
+                'subject' => ($session->booking && $session->booking->subject) ? [
+                    'id' => $session->booking->subject->id ?? null,
+                    'name_en' => $session->booking->subject->name_en,
+                    'name_ar' => $session->booking->subject->name_ar,
+                ] : null,
+                'course' => ($session->booking && $session->booking->course) ? [
+                    'id' => $session->booking->course->id ?? null,
+                    'title_en' => $session->booking->course->title_en ?? null,
+                    'title_ar' => $session->booking->course->title_ar ?? null,
+                ] : null,
+            ]
+        ]);
+    }
+
+    /**
      * Reschedule / Make-up Session
      */
     public function reschedule(Request $request, $id)

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
-import { Video, Loader2, Filter, X, Printer, Calendar as CalendarIcon, User, ChevronRight, FileSpreadsheet, FileText } from 'lucide-react';
+import { Video, Loader2, Filter, X, Printer, Calendar as CalendarIcon, User, ChevronRight, FileSpreadsheet, FileText, Eye, ExternalLink, BookOpen, Clock, Phone, Mail } from 'lucide-react';
 import { adminService } from '../../Services/api';
 import { Pagination } from '../ui/Pagination';
 
@@ -37,12 +37,26 @@ export const AdminSessionsTab: React.FC = () => {
     // Modals
     const [makeupModal, setMakeupModal] = useState<{ isOpen: boolean; session: AdminSession | null }>({ isOpen: false, session: null });
     const [userProfileModal, setUserProfileModal] = useState<{ isOpen: boolean; userId: number; role: 'teacher' | 'student'; name: string } | null>(null);
+    const [sessionDetailsModal, setSessionDetailsModal] = useState<{ isOpen: boolean; session: any | null; loading: boolean }>({ isOpen: false, session: null, loading: false });
 
     const [userSessions, setUserSessions] = useState<AdminSession[]>([]);
     const [loadingUserSessions, setLoadingUserSessions] = useState(false);
 
     // Print ref
     const printRef = useRef<HTMLDivElement>(null);
+
+    const openSessionDetails = async (sessionId: number) => {
+        setSessionDetailsModal({ isOpen: true, session: null, loading: true });
+        try {
+            const data = await adminService.getSessionDetails(sessionId);
+            setSessionDetailsModal({ isOpen: true, session: data?.data ?? data, loading: false });
+        } catch (e) {
+            console.error('Failed to load session details', e);
+            // Fallback to local session object if network fails
+            const local = sessions.find(s => s.id === sessionId);
+            setSessionDetailsModal({ isOpen: true, session: local || null, loading: false });
+        }
+    };
 
     const fetchSessions = async () => {
         setLoading(true);
@@ -219,13 +233,20 @@ export const AdminSessionsTab: React.FC = () => {
                             </thead>
                             <tbody className="divide-y divide-[var(--border)]">
                                 {paginatedSessions.map(session => (
-                                    <tr key={session.id} className="hover:bg-[var(--light-bg)] transition-colors">
+                                    <tr
+                                        key={session.id}
+                                        className="hover:bg-[var(--light-bg)] transition-colors cursor-pointer"
+                                        onClick={() => openSessionDetails(session.id)}
+                                    >
                                         <td className="px-6 py-4">{getStatusBadge(session.status)}</td>
                                         <td className="px-6 py-4 font-medium text-navy">{new Date(session.session_date).toLocaleDateString()}</td>
                                         <td className="px-6 py-4 text-[var(--text-muted)]">{session.start_time.substring(0, 5)} - {session.end_time.substring(0, 5)}</td>
                                         <td className="px-6 py-4">
                                             <button 
-                                                onClick={() => openUserProfile(session.teacher.id, 'teacher', session.teacher.name)}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    openUserProfile(session.teacher.id, 'teacher', session.teacher.name);
+                                                }}
                                                 className="font-semibold text-primary hover:underline flex items-center gap-1"
                                             >
                                                 {session.teacher?.name}
@@ -233,20 +254,38 @@ export const AdminSessionsTab: React.FC = () => {
                                         </td>
                                         <td className="px-6 py-4">
                                             <button 
-                                                onClick={() => openUserProfile(session.student.id, 'student', session.student.name)}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    openUserProfile(session.student.id, 'student', session.student.name);
+                                                }}
                                                 className="font-semibold text-secondary hover:underline flex items-center gap-1"
                                             >
                                                 {session.student?.name}
                                             </button>
                                         </td>
                                         <td className="px-6 py-4 print:hidden text-right">
-                                            <button 
-                                                onClick={() => setMakeupModal({ isOpen: true, session })}
-                                                className="px-3 py-1.5 bg-secondary-pale text-secondary hover:bg-secondary-pale font-semibold text-xs rounded-lg transition-colors border border-secondary/30"
-                                                title={language === 'ar' ? "تأجيل لمدة 7 أيام" : "Make-up session (Push +7 Days)"}
-                                            >
-                                                {language === 'ar' ? 'جلسة تعويضية' : 'Make-up Session'}
-                                            </button>
+                                            <div className="flex items-center justify-end gap-2">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        openSessionDetails(session.id);
+                                                    }}
+                                                    className="p-1.5 text-primary hover:bg-primary/10 rounded-lg transition-colors border border-primary/20"
+                                                    title={language === 'ar' ? 'عرض تفاصيل الجلسة' : 'View session details'}
+                                                >
+                                                    <Eye size={16} />
+                                                </button>
+                                                <button 
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setMakeupModal({ isOpen: true, session });
+                                                    }}
+                                                    className="px-3 py-1.5 bg-secondary-pale text-secondary hover:bg-secondary-pale font-semibold text-xs rounded-lg transition-colors border border-secondary/30"
+                                                    title={language === 'ar' ? "تأجيل لمدة 7 أيام" : "Make-up session (Push +7 Days)"}
+                                                >
+                                                    {language === 'ar' ? 'جلسة تعويضية' : 'Make-up Session'}
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -393,6 +432,183 @@ export const AdminSessionsTab: React.FC = () => {
                                     <p className="text-[var(--text-muted)] font-medium">{language === 'ar' ? 'لا توجد جلسات لهذا المستخدم.' : 'No sessions found for this user.'}</p>
                                 </div>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Session Details Modal */}
+            {sessionDetailsModal.isOpen && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-[var(--radius-md)] shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-slide-up">
+                        <div className="p-6 border-b border-[var(--border)] flex justify-between items-center bg-[var(--light-bg)]">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2.5 rounded-lg bg-primary/10 text-primary">
+                                    <Video size={22} />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-lg text-navy">
+                                        {language === 'ar' ? 'تفاصيل الجلسة' : 'Session Details'}
+                                        {sessionDetailsModal.session?.session_number ? ` #${sessionDetailsModal.session.session_number}` : (sessionDetailsModal.session?.id ? ` #${sessionDetailsModal.session.id}` : '')}
+                                    </h3>
+                                    <span className="text-xs text-[var(--text-muted)] font-mono">
+                                        {sessionDetailsModal.session?.booking?.reference ? `${language === 'ar' ? 'حجز:' : 'Booking:'} ${sessionDetailsModal.session.booking.reference}` : ''}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {sessionDetailsModal.session?.status && getStatusBadge(sessionDetailsModal.session.status)}
+                                <button
+                                    onClick={() => setSessionDetailsModal({ isOpen: false, session: null, loading: false })}
+                                    className="p-1.5 text-[var(--text-muted)] hover:text-navy rounded-lg hover:bg-white transition-colors"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="p-6 flex-1 overflow-y-auto space-y-5">
+                            {sessionDetailsModal.loading ? (
+                                <div className="flex flex-col items-center justify-center p-12 gap-3">
+                                    <Loader2 className="animate-spin text-primary" size={32} />
+                                    <span className="text-sm text-[var(--text-muted)]">{language === 'ar' ? 'جاري تحميل التفاصيل...' : 'Loading details...'}</span>
+                                </div>
+                            ) : sessionDetailsModal.session ? (
+                                <>
+                                    {/* Time and Date Stats */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                        <div className="p-3 bg-[var(--light-bg)] rounded-xl border border-[var(--border)]">
+                                            <span className="text-xs text-[var(--text-muted)] block mb-1">{t.date}</span>
+                                            <span className="font-bold text-sm text-navy">{sessionDetailsModal.session.session_date}</span>
+                                        </div>
+                                        <div className="p-3 bg-[var(--light-bg)] rounded-xl border border-[var(--border)]">
+                                            <span className="text-xs text-[var(--text-muted)] block mb-1">{language === 'ar' ? 'الوقت' : 'Time'}</span>
+                                            <span className="font-bold text-sm text-navy">
+                                                {sessionDetailsModal.session.start_time?.substring(0, 5)} - {sessionDetailsModal.session.end_time?.substring(0, 5)}
+                                            </span>
+                                        </div>
+                                        <div className="p-3 bg-[var(--light-bg)] rounded-xl border border-[var(--border)]">
+                                            <span className="text-xs text-[var(--text-muted)] block mb-1">{language === 'ar' ? 'المدة' : 'Duration'}</span>
+                                            <span className="font-bold text-sm text-primary">
+                                                {sessionDetailsModal.session.duration || 60} {language === 'ar' ? 'دقيقة' : 'minutes'}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Teacher & Student Cards */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        {/* Teacher */}
+                                        <div className="p-4 bg-white rounded-xl border border-[var(--border)] space-y-2">
+                                            <div className="flex items-center gap-2 text-primary font-bold pb-2 border-b border-[var(--border)] text-sm">
+                                                <User size={16} />
+                                                <span>{t.teacher}</span>
+                                            </div>
+                                            <div className="text-xs space-y-1">
+                                                <p className="font-bold text-navy text-sm">{sessionDetailsModal.session.teacher?.name || t.na}</p>
+                                                {sessionDetailsModal.session.teacher?.email && (
+                                                    <p className="flex items-center gap-1.5 text-[var(--text-muted)] font-mono">
+                                                        <Mail size={12} /> {sessionDetailsModal.session.teacher.email}
+                                                    </p>
+                                                )}
+                                                {sessionDetailsModal.session.teacher?.phone_number && (
+                                                    <p className="flex items-center gap-1.5 text-[var(--text-muted)] font-mono" dir="ltr">
+                                                        <Phone size={12} /> {sessionDetailsModal.session.teacher.phone_number}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Student */}
+                                        <div className="p-4 bg-white rounded-xl border border-[var(--border)] space-y-2">
+                                            <div className="flex items-center gap-2 text-secondary font-bold pb-2 border-b border-[var(--border)] text-sm">
+                                                <User size={16} />
+                                                <span>{language === 'ar' ? 'الطالب' : 'Student'}</span>
+                                            </div>
+                                            <div className="text-xs space-y-1">
+                                                <p className="font-bold text-navy text-sm">{sessionDetailsModal.session.student?.name || t.na}</p>
+                                                {sessionDetailsModal.session.student?.email && (
+                                                    <p className="flex items-center gap-1.5 text-[var(--text-muted)] font-mono">
+                                                        <Mail size={12} /> {sessionDetailsModal.session.student.email}
+                                                    </p>
+                                                )}
+                                                {sessionDetailsModal.session.student?.phone_number && (
+                                                    <p className="flex items-center gap-1.5 text-[var(--text-muted)] font-mono" dir="ltr">
+                                                        <Phone size={12} /> {sessionDetailsModal.session.student.phone_number}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Subject / Course & Meeting Info */}
+                                    <div className="p-4 bg-[var(--light-bg)] rounded-xl border border-[var(--border)] space-y-3 text-xs">
+                                        {(sessionDetailsModal.session.subject || sessionDetailsModal.session.course) && (
+                                            <div className="flex items-center gap-2 pb-2 border-b border-[var(--border)]">
+                                                <BookOpen size={16} className="text-primary" />
+                                                <span className="text-[var(--text-muted)]">
+                                                    {sessionDetailsModal.session.subject ? (language === 'ar' ? 'المادة الدراسية:' : 'Subject:') : (language === 'ar' ? 'الدورة:' : 'Course:')}
+                                                </span>
+                                                <span className="font-bold text-navy">
+                                                    {sessionDetailsModal.session.subject
+                                                        ? (language === 'ar' ? sessionDetailsModal.session.subject.name_ar : sessionDetailsModal.session.subject.name_en)
+                                                        : (sessionDetailsModal.session.course ? (language === 'ar' ? sessionDetailsModal.session.course.title_ar : sessionDetailsModal.session.course.title_en) : '')}
+                                                </span>
+                                            </div>
+                                        )}
+
+                                        {sessionDetailsModal.session.meeting_id && (
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[var(--text-muted)]">{language === 'ar' ? 'معرف الاجتماع:' : 'Meeting ID:'}</span>
+                                                <span className="font-mono font-bold text-navy">{sessionDetailsModal.session.meeting_id}</span>
+                                            </div>
+                                        )}
+
+                                        {sessionDetailsModal.session.join_url && (
+                                            <div className="flex items-center justify-between pt-1">
+                                                <span className="text-[var(--text-muted)]">{language === 'ar' ? 'رابط الانضمام:' : 'Join URL:'}</span>
+                                                <a
+                                                    href={sessionDetailsModal.session.join_url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-primary hover:underline font-medium flex items-center gap-1"
+                                                >
+                                                    {language === 'ar' ? 'فتح الرابط' : 'Open Link'} <ExternalLink size={12} />
+                                                </a>
+                                            </div>
+                                        )}
+
+                                        {sessionDetailsModal.session.teacher_notes && (
+                                            <div className="pt-2 border-t border-[var(--border)]">
+                                                <span className="text-[var(--text-muted)] block mb-1 font-semibold">{language === 'ar' ? 'ملاحظات المعلم:' : 'Teacher Notes:'}</span>
+                                                <p className="text-[var(--text-main)] italic">{sessionDetailsModal.session.teacher_notes}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </>
+                            ) : (
+                                <p className="text-center text-[var(--text-muted)] py-6">{language === 'ar' ? 'لا توجد بيانات متاحة' : 'No data available'}</p>
+                            )}
+                        </div>
+
+                        <div className="p-4 bg-[var(--light-bg)] border-t border-[var(--border)] flex justify-end gap-2">
+                            {sessionDetailsModal.session && (
+                                <button
+                                    onClick={() => {
+                                        const s = sessionDetailsModal.session;
+                                        setSessionDetailsModal({ isOpen: false, session: null, loading: false });
+                                        setMakeupModal({ isOpen: true, session: s });
+                                    }}
+                                    className="px-4 py-2 bg-secondary-pale text-secondary hover:bg-secondary-pale font-semibold text-xs rounded-lg transition-colors border border-secondary/30"
+                                >
+                                    {language === 'ar' ? 'جلسة تعويضية' : 'Make-up Session'}
+                                </button>
+                            )}
+                            <button
+                                onClick={() => setSessionDetailsModal({ isOpen: false, session: null, loading: false })}
+                                className="px-4 py-2 border rounded-lg text-xs font-semibold text-[var(--text-muted)] hover:bg-white"
+                            >
+                                {language === 'ar' ? 'إغلاق' : 'Close'}
+                            </button>
                         </div>
                     </div>
                 </div>
