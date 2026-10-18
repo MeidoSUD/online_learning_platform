@@ -2,7 +2,7 @@
 import React from 'react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'outline' | 'ghost' | 'danger';
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
   size?: 'sm' | 'md' | 'lg';
   isLoading?: boolean;
 }
@@ -19,6 +19,7 @@ export const Button: React.FC<ButtonProps> = ({
   
   const variants = {
     primary: "bg-gradient-to-br from-green-light to-green text-white hover:-translate-y-[3px] hover:shadow-[0_10px_28px_rgba(61,139,55,.45)] focus:ring-green shadow-[0_6px_20px_rgba(61,139,55,.35)] rounded-[50px]",
+    secondary: "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 focus:ring-slate-300 rounded-[50px]",
     outline: "border-2 border-navy bg-transparent text-navy hover:bg-navy hover:text-white hover:-translate-y-[2px] focus:ring-navy rounded-[50px]",
     ghost: "bg-transparent text-primary hover:bg-primary-pale focus:ring-primary",
     danger: "bg-red-600 text-white hover:bg-red-700 focus:ring-red-600",
@@ -32,7 +33,7 @@ export const Button: React.FC<ButtonProps> = ({
 
   return (
     <button
-      className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
+      className={`${baseStyles} ${variants[variant] || ''} ${sizes[size]} ${className}`}
       disabled={isLoading || props.disabled}
       {...props}
     >

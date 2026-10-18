@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'enabled'               => env('LRS_ENABLED', false),
     'endpoint'              => env('LRS_ENDPOINT'),
     'middleware'            => ['web'],
     'key'                   => env('LRS_USERNAME'),

@@ -216,7 +216,9 @@ Route::prefix('auth')->group(function () {
 // ======================
 Route::prefix('nelc')->group(function () {
     Route::get('config', function () {
+        $enabled = (bool) config('lrs-nelc-xapi.enabled', false);
         $config = [
+            'enabled'     => $enabled,
             'endpoint'    => config('lrs-nelc-xapi.endpoint') ? 'set' : 'MISSING',
             'key'         => config('lrs-nelc-xapi.key') ? 'set' : 'MISSING',
             'secret'      => config('lrs-nelc-xapi.secret') ? 'set' : 'MISSING',
@@ -227,6 +229,9 @@ Route::prefix('nelc')->group(function () {
         return response()->json(['success' => true, 'config' => $config], 200, [], JSON_UNESCAPED_UNICODE);
     });
     Route::get('test-student/{userId}', function ($userId) {
+        if (!config('lrs-nelc-xapi.enabled', false)) {
+            return response()->json(['success' => false, 'message' => 'NELC xAPI is disabled']);
+        }
         $user = \App\Models\User::find($userId);
         if (!$user) return response()->json(['success' => false, 'error' => 'User not found']);
         if (!$user->notional_id) return response()->json(['success' => false, 'error' => 'User has no notional_id', 'user' => ['id' => $user->id, 'phone' => $user->phone_number]]);

@@ -208,6 +208,13 @@ Route::get('/lang/{locale}', function ($locale) {
 // NELC xAPI Test Route
 // ==========================================
 Route::get('/nelc-test', function () {
+    if (!config('lrs-nelc-xapi.enabled', false)) {
+        return response()->json([
+            'enabled' => false,
+            'message' => 'NELC xAPI is currently disabled via configuration.',
+        ]);
+    }
+
     $endpoint = config('lrs-nelc-xapi.endpoint');
     $key = config('lrs-nelc-xapi.key');
     $secret = config('lrs-nelc-xapi.secret');

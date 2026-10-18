@@ -8,9 +8,16 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  maxWidth?: string;
 }
 
-export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
+export const Modal: React.FC<ModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  title, 
+  children, 
+  maxWidth = 'max-w-lg' 
+}) => {
   const { direction } = useLanguage();
 
   if (!isOpen) return null;
@@ -20,7 +27,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" 
         onClick={onClose}
       ></div>
-      <div className="relative w-full max-w-lg transform rounded-[var(--radius-lg)] bg-white p-6 shadow-2xl transition-all">
+      <div className={`relative w-full ${maxWidth} transform rounded-[var(--radius-lg)] bg-white p-6 shadow-2xl transition-all`}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-[var(--text-main)]">{title}</h3>
           <button 

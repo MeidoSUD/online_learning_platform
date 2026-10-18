@@ -10,12 +10,18 @@ use Illuminate\Support\Facades\Log;
 
 class NelcXapiService
 {
-    protected string $endpoint;
-    protected string $platformUrl;
-    protected string $platformAr;
-    protected string $platformEn;
-    protected Client $client;
+    protected bool $enabled = false;
+    protected ?string $endpoint = null;
+    protected ?string $platformUrl = null;
+    protected ?string $platformAr = null;
+    protected ?string $platformEn = null;
+    protected ?Client $client = null;
     protected static array $sent = [];
+
+    public function isEnabled(): bool
+    {
+        return $this->enabled;
+    }
 
     protected function alreadySent(string $key): bool
     {
@@ -26,10 +32,15 @@ class NelcXapiService
 
     public function __construct()
     {
-        $this->endpoint   = config('lrs-nelc-xapi.endpoint');
-        $this->platformUrl = config('lrs-nelc-xapi.platform');
-        $this->platformAr  = config('lrs-nelc-xapi.platform_in_arabic');
-        $this->platformEn  = config('lrs-nelc-xapi.platform_in_english');
+        $this->enabled = (bool) config('lrs-nelc-xapi.enabled', false);
+        if (!$this->enabled) {
+            return;
+        }
+
+        $this->endpoint   = config('lrs-nelc-xapi.endpoint') ?? '';
+        $this->platformUrl = config('lrs-nelc-xapi.platform') ?? '';
+        $this->platformAr  = config('lrs-nelc-xapi.platform_in_arabic') ?? '';
+        $this->platformEn  = config('lrs-nelc-xapi.platform_in_english') ?? '';
 
         $key = config('lrs-nelc-xapi.key');
         $secret = config('lrs-nelc-xapi.secret');
@@ -131,6 +142,15 @@ class NelcXapiService
 
     protected function sendStatement(array $statement): array
     {
+        if (!$this->enabled || !$this->client || empty($this->endpoint)) {
+            return [
+                'success' => true,
+                'status'  => 200,
+                'body'    => 'NELC xAPI is disabled',
+                'skipped' => true,
+            ];
+        }
+
         Log::debug('NelcXapiService: sending statement', [
             'verb' => $statement['verb']['id'] ?? 'unknown',
             'actor_name' => $statement['actor']['name'] ?? '',
@@ -266,6 +286,7 @@ class NelcXapiService
      */
     public function platformRegistered(User $student): void
     {
+        if (!$this->enabled) return;
         $verb = 'platformRegistered';
         try {
             if ($this->alreadySent("platformRegistered_{$student->id}")) return;
@@ -323,6 +344,7 @@ class NelcXapiService
      */
     public function registered(User $student, Booking $booking): void
     {
+        if (!$this->enabled) return;
         $verb = 'registered';
         try {
             if ($this->alreadySent("registered_{$student->id}_{$booking->id}")) return;
@@ -358,6 +380,7 @@ class NelcXapiService
      */
     public function initialized(User $student, Booking $booking): void
     {
+        if (!$this->enabled) return;
         $verb = 'initialized';
         try {
             if ($this->alreadySent("initialized_{$student->id}_{$booking->id}")) return;
@@ -385,6 +408,7 @@ class NelcXapiService
      */
     public function attended(User $student, Booking $booking, string $sessionUrl, string $sessionName, string $duration): void
     {
+        if (!$this->enabled) return;
         $verb = 'attended';
         try {
             $statement = [
@@ -433,6 +457,7 @@ class NelcXapiService
      */
     public function completedLesson(User $student, Booking $booking, string $sessionUrl, string $sessionName, string $duration): void
     {
+        if (!$this->enabled) return;
         $verb = 'completedLesson';
         try {
             $statement = [
@@ -480,6 +505,7 @@ class NelcXapiService
      */
     public function progressed(User $student, Booking $booking, float $scaled, bool $completion = false): void
     {
+        if (!$this->enabled) return;
         $verb = 'progressed';
         try {
             $statement = [
@@ -509,6 +535,7 @@ class NelcXapiService
      */
     public function completedCourse(User $student, Booking $booking): void
     {
+        if (!$this->enabled) return;
         $verb = 'completed';
         try {
             if ($this->alreadySent("completedCourse_{$student->id}_{$booking->id}")) return;
@@ -535,6 +562,7 @@ class NelcXapiService
      */
     public function rated(User $student, Booking $booking, float $scaled, float $raw, string $comment = ''): void
     {
+        if (!$this->enabled) return;
         $verb = 'rated';
         try {
             $statement = [
@@ -569,6 +597,7 @@ class NelcXapiService
      */
     public function earned(User $student, Booking $booking, string $certUrl, string $certNumber): void
     {
+        if (!$this->enabled) return;
         $verb = 'earned';
         try {
             if ($this->alreadySent("earned_{$student->id}_{$booking->id}")) return;
