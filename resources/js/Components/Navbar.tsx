@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useLanguage } from '../Contexts/LanguageContext';
-import { Bell, LogOut, Settings, User, Globe, Menu, AlertCircle, CreditCard, FileText, Award, Layers, Video, X, Check, School, CreditCard as PaymentIcon, BellRing, Clock, Loader2, Trash2, Headphones } from 'lucide-react';
+import { Bell, LogOut, User, Globe, Menu, AlertCircle, CreditCard, FileText, Award, Layers, Video, X, Check, School, CreditCard as PaymentIcon, BellRing, Clock, Loader2, Trash2, Headphones } from 'lucide-react';
 import { AuthResponse, notificationService, AppNotification } from '../Services/api';
 import { Logo } from './Logo';
 
@@ -362,10 +362,7 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
                   <button onClick={() => { setActiveTab('support'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">
                     <Headphones size={16} /> {t.technicalSupport}
                   </button>
-                  <button className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">
-                    <Settings size={16} /> {t.settings}
-                  </button>
-                   <button onClick={() => { setActiveTab('disputes'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">
+                  <button onClick={() => { setActiveTab('disputes'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">
                     <AlertCircle size={16} /> {t.disputes}
                   </button>
                   

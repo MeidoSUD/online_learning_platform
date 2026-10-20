@@ -284,10 +284,6 @@ export const authService = {
   getUserDetails: () => fetchWithAuth('/auth/user/details'),
   logout: () => fetchWithAuth('/auth/logout', { method: 'POST' }),
   deleteAccount: () => fetchWithAuth('/auth/user', { method: 'DELETE' }),
-  resetPassword: (data: { phone_number: string }) => fetchWithAuth('/auth/reset-password', { method: 'POST', body: JSON.stringify(data) }),
-  verifyResetCode: (data: { user_id: number, code: string }) => fetchWithAuth('/auth/verify-reset-code', { method: 'POST', body: JSON.stringify(data) }),
-  confirmPassword: (data: { password: string }) => fetchWithAuth('/auth/confirm-password', { method: 'POST', body: JSON.stringify(data) }),
-  changePassword: (data: any) => fetchWithAuth('/auth/change-password', { method: 'POST', body: JSON.stringify(data) }),
   requestLoginOtp: (data: { email?: string, phone_number?: string }) => fetchWithAuth('/auth/login-otp/request', { method: 'POST', body: JSON.stringify(data) }),
   verifyLoginOtp: (data: { user_id: number, code: string, fcm_token?: string }) => fetchWithAuth('/auth/login-otp/verify', { method: 'POST', body: JSON.stringify(data) }),
 };

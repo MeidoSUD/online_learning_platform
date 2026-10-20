@@ -15,7 +15,6 @@ import { TeacherAbilitiesTab } from './teacher/TeacherAbilitiesTab';
 import { TeacherLessonsTab } from './teacher/TeacherLessonsTab';
 import { ConsultationTab } from './teacher/ConsultationTab';
 import { DisputesTab } from './student/DisputesTab';
-import { SettingsTab } from './dashboard/SettingsTab';
 import { SupportTab } from './dashboard/SupportTab';
 import { AiAssistantTab } from './dashboard/AiAssistantTab';
 import { ArrowRight, AlertTriangle, ArrowLeft } from 'lucide-react';
@@ -93,7 +92,7 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
       case 'ai':
         return <AiAssistantTab />;
       case 'settings':
-        return <SettingsTab />;
+        return <ProfileTab onNavigate={setActiveTab} />;
       default:
         return <OverviewTab user={user} onNavigate={setActiveTab} />;
     }

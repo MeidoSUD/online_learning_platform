@@ -42,72 +42,20 @@ class CardController extends Controller
         $validated = $request->validate([
             'type' => 'required|string|in:stc_pay,bank_account',
             'details' => 'required|array',
+            'details.phone_number' => 'required_if:type,stc_pay|nullable|string',
+            'details.iban' => 'required_if:type,bank_account|nullable|string',
             'status' => 'nullable|string',
         ]);
-
-        $payoutAccountId = null;
-
-        if ($this->moyasar) {
-            try {
-                $payoutData = [];
-                if ($validated['type'] === 'stc_pay') {
-                    $payoutData = [
-                        'account_type' => 'wallet',
-                        'currency' => 'SAR',
-                        'properties' => [
-                            'type' => 'stcpay',
-                            'phone_number' => $validated['details']['phone_number'] ?? null,
-                        ],
-                    ];
-                } elseif ($validated['type'] === 'bank_account') {
-                    $payoutData = [
-                        'account_type' => 'bank',
-                        'currency' => 'SAR',
-                        'properties' => [
-                            'iban' => $validated['details']['iban'] ?? null,
-                        ],
-                    ];
-                }
-
-                if (!empty($payoutData)) {
-                    $clientId = config('moyasar.payout_credentials.client_id');
-                    $clientSecret = config('moyasar.payout_credentials.client_secret');
-
-                    if (!empty($clientId) && !empty($clientSecret)) {
-                        $payoutData['credentials'] = [
-                            'client_id' => $clientId,
-                            'client_secret' => $clientSecret,
-                        ];
-                    }
-
-                    Log::info('CardController: Sending payout account to Moyasar', ['data' => $payoutData]);
-                    $moyasarResponse = $this->moyasar->createPayoutAccount($payoutData);
-                    Log::info('CardController: Moyasar payout account response', ['response' => $moyasarResponse]);
-                    $payoutAccountId = $moyasarResponse['id'] ?? null;
-                } else {
-                    Log::info('CardController: Type does not require Moyasar payout account', ['type' => $validated['type']]);
-                }
-            } catch (Exception $e) {
-                Log::warning('CardController: Moyasar payout account error: ' . $e->getMessage());
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'تعذر إنشاء حساب السحب. يرجى التحقق من صحة البيانات المدخلة.',
-                    'error' => $e->getMessage()
-                ], 400);
-            }
-        } else {
-            Log::info('CardController: Moyasar service not configured');
-        }
 
         $card = Card::create([
             'user_id' => $request->user()->id,
             'type' => $validated['type'],
-            'moyasar_payout_account_id' => $payoutAccountId,
+            'moyasar_payout_account_id' => null,
             'details' => $validated['details'],
             'status' => $validated['status'] ?? 'active',
         ]);
 
-        Log::info('CardController: Card saved', ['card_id' => $card->id, 'moyasar_payout_account_id' => $card->moyasar_payout_account_id]);
+        Log::info('CardController: Card saved', ['card_id' => $card->id]);
 
         return response()->json([
             'status' => 'success',

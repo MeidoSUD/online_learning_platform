@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
     <meta name="domain-verification" content="929a7a357472f8778a7a24fa292db91ca9c505614008522ec84986ef4ed44318">
 
     {{-- Google Tag Manager --}}

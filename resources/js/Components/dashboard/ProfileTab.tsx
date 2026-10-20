@@ -9,7 +9,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
 import { useToast } from '../../Contexts/ToastContext';
 import {
-  Camera, ChevronLeft, ChevronRight, Eye, Loader2, Lock, Pencil, Trash2,
+  Camera, ChevronLeft, ChevronRight, Eye, Loader2, Pencil, Trash2,
 } from 'lucide-react';
 import {
   authService, profileService, teacherService, UserData, getStorageUrl, tokenService,
@@ -60,7 +60,7 @@ const SectionCard: React.FC<{
   </div>
 );
 
-type DialogKind = 'name' | 'phone' | 'email' | 'bio' | 'price' | 'password' | null;
+type DialogKind = 'name' | 'phone' | 'email' | 'bio' | 'price' | null;
 
 export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
   const { t, language, direction } = useLanguage();
@@ -83,7 +83,6 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
   const [email, setEmail] = useState('');
   const [bio, setBio] = useState('');
   const [price, setPrice] = useState('');
-  const [pwdForm, setPwdForm] = useState({ current_password: '', new_password: '', new_password_confirmation: '' });
 
   const okMsg = (ar: string, en: string) => (isAr ? ar : en);
 
@@ -328,28 +327,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
     }
   };
 
-  const handleChangePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (pwdForm.new_password !== pwdForm.new_password_confirmation) {
-      showToast(okMsg('كلمات المرور غير متطابقة', 'Passwords do not match'), 'error');
-      return;
-    }
-    setSavingKey('password');
-    try {
-      await authService.confirmPassword({ password: pwdForm.current_password });
-      await authService.changePassword({
-        new_password: pwdForm.new_password,
-        new_password_confirmation: pwdForm.new_password_confirmation,
-      });
-      showToast(okMsg('تم تغيير كلمة المرور بنجاح', 'Password updated successfully'), 'success');
-      setPwdForm({ current_password: '', new_password: '', new_password_confirmation: '' });
-      setDialog(null);
-    } catch (err: any) {
-      showToast(err?.message || okMsg('فشل تغيير كلمة المرور', 'Failed to update password'), 'error');
-    } finally {
-      setSavingKey(null);
-    }
-  };
+
 
   const handleDeleteAccount = async () => {
     if (!confirm(okMsg('هل أنت متأكد؟ سيتم حذف حسابك نهائياً.', 'Are you sure? This will permanently delete your account.'))) return;
@@ -441,16 +419,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
         </p>
       </SectionCard>
 
-      {/* كلمة المرور */}
-      <SectionCard title={okMsg('كلمة المرور', 'Password')} icon={<Lock size={18} />} onIconTap={() => setDialog('password')}>
-        <button type="button" onClick={() => setDialog('password')} className="w-full flex items-center justify-between">
-          <span className="text-base font-bold tracking-[2px] text-[#1F3D3A]">••••••••</span>
-          <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-primary">
-            {okMsg('تغيير كلمة المرور', 'Change password')}
-            {chevIcon}
-          </span>
-        </button>
-      </SectionCard>
+
 
       {isTeacher && (
         <>
@@ -612,17 +581,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
           </div>
         )}
 
-        {dialog === 'password' && (
-          <form onSubmit={handleChangePassword} className="space-y-3">
-            <Input label={okMsg('كلمة المرور الحالية', 'Current password')} type="password" value={pwdForm.current_password} onChange={(e) => setPwdForm({ ...pwdForm, current_password: e.target.value })} required />
-            <Input label={okMsg('كلمة المرور الجديدة', 'New password')} type="password" value={pwdForm.new_password} onChange={(e) => setPwdForm({ ...pwdForm, new_password: e.target.value })} required />
-            <Input label={t.confirmPassword} type="password" value={pwdForm.new_password_confirmation} onChange={(e) => setPwdForm({ ...pwdForm, new_password_confirmation: e.target.value })} required />
-            <div className="flex gap-3 pt-1">
-              <Button variant="ghost" className="flex-1" type="button" onClick={() => setDialog(null)}>{t.cancel}</Button>
-              <Button className="flex-1" type="submit" isLoading={savingKey === 'password'}>{t.save}</Button>
-            </div>
-          </form>
-        )}
+
       </Modal>
 
       {/* معاينة الملف التعريفي */}

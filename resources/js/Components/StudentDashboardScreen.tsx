@@ -15,7 +15,6 @@ import { ProfileTab } from './dashboard/ProfileTab';
 import { TeacherDetailsPage } from './student/TeacherDetailsPage';
 import { MyTransactions } from './student/MyTransactions';
 import { MyCertificates } from './student/MyCertificates';
-import { SettingsTab } from './dashboard/SettingsTab';
 import { MySessionsTab } from './student/MySessionsTab';
 import { SupportTab } from './dashboard/SupportTab';
 import { ConsultationTab } from './student/ConsultationTab';
@@ -88,7 +87,7 @@ export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ 
       case 'support':
         return <SupportTab />;
       case 'settings':
-        return <SettingsTab />;
+        return <ProfileTab onNavigate={setActiveTab} />;
       default:
         return <OverviewTab user={data.user.data} onNavigate={setActiveTab} />;
     }
