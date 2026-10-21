@@ -152,7 +152,7 @@ class AuthController extends Controller
                 'last_name' => 'required|string|max:255',
                 'email' => 'nullable|string|email',
                 'phone_number' => 'required|string',
-                'password' => 'required|string|min:8',
+                'password' => 'nullable|string|min:6',
                 'gender' => 'nullable|in:male,female,other',
                 'nationality' => 'nullable|string|max:255',
                 'notional_id' => 'nullable|string|max:255',
@@ -220,6 +220,7 @@ class AuthController extends Controller
             DB::beginTransaction();
 
             $verification_code = rand(1000, 9999);
+            $rawPassword = $request->filled('password') ? $validated['password'] : \Illuminate\Support\Str::random(32);
 
             // Create teacher user
             $user = User::create([
@@ -230,7 +231,7 @@ class AuthController extends Controller
                 'gender' => $validated['gender'] ?? null,
                 'nationality' => $validated['nationality'] ?? null,
                 // 'notional_id'=> $validated['notional_id'] ?? null,
-                'password' => Hash::make($validated['password']),
+                'password' => Hash::make($rawPassword),
                 'role_id' => 3, // Teacher
                 'verified' => false,
                 'verification_code' => $verification_code,
@@ -1417,11 +1418,6 @@ We are currently in the teacher preparation phase ahead of our official launch. 
     public function deleteAccount(Request $request)
     {
         try {
-            $request->validate([
-                'password' => 'required|string',
-                'confirmation' => 'required|accepted', // User must explicitly accept deletion
-            ]);
-
             $user = $request->user();
 
             if (!$user) {
@@ -1432,13 +1428,27 @@ We are currently in the teacher preparation phase ahead of our official launch. 
                 ], 401);
             }
 
-            // Verify password
-            if (!Hash::check($request->password, $user->password)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid password. Account deletion cancelled.',
-                    'message_ar' => 'كلمة المرور غير صحيحة. تم إلغاء حذف الحساب.',
-                ], 422);
+            if ($request->has('confirm') && !$request->has('confirmation')) {
+                $request->merge(['confirmation' => $request->input('confirm')]);
+            }
+
+            $rules = [
+                'confirmation' => 'nullable|boolean',
+            ];
+            if (!empty($user->password)) {
+                $rules['password'] = 'required|string';
+            }
+            $request->validate($rules);
+
+            // Verify password if set on user
+            if (!empty($user->password) && $request->filled('password')) {
+                if (!Hash::check($request->password, $user->password)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Invalid password. Account deletion cancelled.',
+                        'message_ar' => 'كلمة المرور غير صحيحة. تم إلغاء حذف الحساب.',
+                    ], 422);
+                }
             }
 
             $deletionService = app(\App\Services\User\UserDeletionService::class);

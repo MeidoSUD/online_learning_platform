@@ -562,21 +562,15 @@ class UserProfileService
     public function deleteAccount(Request $request): array
     {
         $user = $request->user();
-        try {
-            $user->tokens()->delete();
-            $user->delete();
-            return [
-                'success' => true,
-                'status_code' => 200,
-                'message' => 'Account deleted successfully',
-            ];
-        } catch (\Exception $e) {
+        if (!$user) {
             return [
                 'success' => false,
-                'status_code' => 500,
-                'message' => 'Failed to delete account',
-                'error' => $e->getMessage(),
+                'status_code' => 401,
+                'message' => 'User not authenticated',
+                'message_ar' => 'المستخدم غير مسجل الدخول',
             ];
         }
+
+        return app(\App\Services\User\UserDeletionService::class)->deleteUser($user, false);
     }
 }

@@ -92,11 +92,20 @@ class UserController extends Controller
 
     public function destroy($id)
     {
-     
-            $users =  User::find($id)->delete();
-            toastr()->success('تم حذف بيانات المستخدم بنجاح !!');
+        $user = User::find($id);
+        if (!$user) {
+            toastr()->error('المستخدم غير موجود');
             return back();
-        
+        }
+
+        $result = app(\App\Services\User\UserDeletionService::class)->deleteUser($user, true);
+        if (!$result['success']) {
+            toastr()->error($result['message_ar'] ?? $result['message']);
+            return back();
+        }
+
+        toastr()->success($result['message_ar'] ?? 'تم حذف بيانات المستخدم بنجاح !!');
+        return back();
     }
     public function completeProfile()
     {
