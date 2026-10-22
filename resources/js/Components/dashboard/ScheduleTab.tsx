@@ -151,9 +151,13 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({ user }) => {
   };
 
   const days = [
-      { id: 1, name: 'Sunday' }, { id: 2, name: 'Monday' }, { id: 3, name: 'Tuesday' },
-      { id: 4, name: 'Wednesday' }, { id: 5, name: 'Thursday' }, { id: 6, name: 'Friday' },
-      { id: 7, name: 'Saturday' },
+      { id: 1, name: language === 'ar' ? 'السبت' : 'Saturday' },
+      { id: 2, name: language === 'ar' ? 'الأحد' : 'Sunday' },
+      { id: 3, name: language === 'ar' ? 'الاثنين' : 'Monday' },
+      { id: 4, name: language === 'ar' ? 'الثلاثاء' : 'Tuesday' },
+      { id: 5, name: language === 'ar' ? 'الأربعاء' : 'Wednesday' },
+      { id: 6, name: language === 'ar' ? 'الخميس' : 'Thursday' },
+      { id: 7, name: language === 'ar' ? 'الجمعة' : 'Friday' },
   ];
 
   const getTimesForDay = (dayId: number) => {

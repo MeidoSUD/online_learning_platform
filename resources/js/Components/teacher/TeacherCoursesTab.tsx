@@ -44,16 +44,15 @@ export const TeacherCoursesTab: React.FC<TeacherCoursesTabProps> = ({ user }) =>
 
     // Slots Builder State
     const [slots, setSlots] = useState<{ day: string, time: string }[]>([]);
-    const [currentSlot, setCurrentSlot] = useState({ day: 'Sunday', time: '' });
+    const [currentSlot, setCurrentSlot] = useState({ day: 'Saturday', time: '' });
 
-    // Map day names to numbers (1 = Sunday)
     const dayMap: Record<string, number> = {
-        'Sunday': 1, 'Monday': 2, 'Tuesday': 3, 'Wednesday': 4,
-        'Thursday': 5, 'Friday': 6, 'Saturday': 7
+        'Saturday': 1, 'Sunday': 2, 'Monday': 3, 'Tuesday': 4,
+        'Wednesday': 5, 'Thursday': 6, 'Friday': 7
     };
     const reverseDayMap: Record<number, string> = {
-        1: 'Sunday', 2: 'Monday', 3: 'Tuesday', 4: 'Wednesday',
-        5: 'Thursday', 6: 'Friday', 7: 'Saturday'
+        1: 'Saturday', 2: 'Sunday', 3: 'Monday', 4: 'Tuesday',
+        5: 'Wednesday', 6: 'Thursday', 7: 'Friday'
     };
 
     useEffect(() => {
@@ -206,7 +205,7 @@ export const TeacherCoursesTab: React.FC<TeacherCoursesTabProps> = ({ user }) =>
         }
     };
 
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const days = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
     if (loading && courses.length === 0) return <div className="flex justify-center p-10"><Loader2 className="animate-spin text-primary" /></div>;
 
