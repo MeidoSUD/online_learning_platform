@@ -29,6 +29,8 @@ Route::prefix('student')->middleware(['auth:sanctum', 'role:student'])->group(fu
     // services
     Route::get('/services', [ServicesController::class, 'studentIndex']);
     Route::get('/services/{serviceId}/subjects', [ServicesController::class, 'getSubjectsByService']);
+    Route::get('/service-preferences', [ServicesController::class, 'getServicePreferences']);
+    Route::post('/service-preferences', [ServicesController::class, 'updateServicePreferences']);
     // all teachers
     Route::get('/teachers', [UserController::class, 'listTeachers']);
     Route::get('/teachers/{id}', [UserController::class, 'teacherDetails']);

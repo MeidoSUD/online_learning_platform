@@ -64,6 +64,9 @@ class ServicesController extends Controller
     public function getServicePreferences(): JsonResponse
     {
         $user = auth('sanctum')->user() ?? auth()->user();
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Unauthenticated'], 401);
+        }
 
         $hiddenIds = \App\Models\UserHiddenService::where('user_id', $user->id)
             ->pluck('service_id')
@@ -92,12 +95,16 @@ class ServicesController extends Controller
      */
     public function updateServicePreferences(Request $request): JsonResponse
     {
+        $user = auth('sanctum')->user() ?? auth()->user();
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Unauthenticated'], 401);
+        }
+
         $request->validate([
             'hidden_service_ids' => 'sometimes|array',
             'hidden_service_ids.*' => 'integer|exists:services,id',
         ]);
 
-        $user = auth('sanctum')->user() ?? auth()->user();
         $hiddenIds = array_values(array_unique($request->input('hidden_service_ids', [])));
 
         DB::beginTransaction();
