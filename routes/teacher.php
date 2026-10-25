@@ -4,6 +4,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\AvailabilityController;
+use App\Http\Controllers\API\GroupClassAvailabilityController;
+use App\Http\Controllers\API\GroupClassController;
 use App\Http\Controllers\API\CourseController;
 use App\Http\Controllers\API\LessonController;
 use App\Http\Controllers\API\BookingController;
@@ -67,6 +69,18 @@ Route::prefix('teacher')->middleware(['auth:sanctum', 'role:teacher'])->group(fu
     Route::put('availability/{id}', [AvailabilityController::class, 'update']); // Update slot
     Route::delete('availability/{id}', [AvailabilityController::class, 'destroy']); // Delete single slot
     Route::delete('availability', [AvailabilityController::class, 'destroyBatch']); // Delete multiple slots (batch)
+    Route::get('group-availability', [GroupClassAvailabilityController::class, 'index']);
+    Route::post('group-availability', [GroupClassAvailabilityController::class, 'store']);
+    Route::get('group-availability/{id}', [GroupClassAvailabilityController::class, 'show']);
+    Route::delete('group-availability/{id}', [GroupClassAvailabilityController::class, 'destroy']);
+    Route::delete('group-availability', [GroupClassAvailabilityController::class, 'destroyBatch']);
+
+    Route::get('group-classes', [GroupClassController::class, 'index']);
+    Route::post('group-classes', [GroupClassController::class, 'store']);
+    Route::get('group-classes/{id}', [GroupClassController::class, 'show']);
+    Route::put('group-classes/{id}', [GroupClassController::class, 'update']);
+    Route::delete('group-classes/{id}', [GroupClassController::class, 'destroy']);
+    Route::post('group-classes/{id}/lessons', [GroupClassController::class, 'storeLessons']);
     // lessons
     Route::post('/courses/{course_id}/lessons', [LessonController::class, 'store']);
     Route::put('/lessons/{id}', [LessonController::class, 'update']);

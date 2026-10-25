@@ -41,7 +41,10 @@ class Sessions extends Model
         'homework',
         'materials_shared',
         'student_rating',
-        'teacher_rating'
+        'teacher_rating',
+        'group_class_id',
+        'group_class_time_slot_id',
+        'topic'
     ];
 
     protected $casts = [
@@ -83,6 +86,16 @@ class Sessions extends Model
     public function reviews()
     {
         return $this->hasMany(Review::class, 'session_id');
+    }
+
+    public function groupClass(): BelongsTo
+    {
+        return $this->belongsTo(GroupClass::class, 'group_class_id');
+    }
+
+    public function groupClassTimeSlot(): BelongsTo
+    {
+        return $this->belongsTo(GroupClassAvailabilitySlot::class, 'group_class_time_slot_id');
     }
 
     // Scopes
