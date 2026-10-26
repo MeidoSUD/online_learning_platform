@@ -13,8 +13,13 @@ class GroupClassAvailabilityController extends Controller
     {
         $teacherId = $request->user()->id;
 
-        $slots = GroupClassAvailabilitySlot::forTeacher($teacherId)
-            ->orderBy('day_number')
+        $query = GroupClassAvailabilitySlot::forTeacher($teacherId);
+
+        if ($request->boolean('available_only')) {
+            $query->where('is_available', true)->where('is_booked', false);
+        }
+
+        $slots = $query->orderBy('day_number')
             ->orderBy('start_time')
             ->get();
 
@@ -28,6 +33,8 @@ class GroupClassAvailabilityController extends Controller
                     'id' => $slot->id,
                     'time' => $timeString,
                     'duration' => $slot->duration ?? 60,
+                    'is_available' => (bool)$slot->is_available,
+                    'is_booked' => (bool)$slot->is_booked,
                 ];
             })->values();
 

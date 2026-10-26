@@ -129,6 +129,160 @@ class GroupClassController extends Controller
         ]);
     }
 
+    public function storeLesson(Request $request, $id)
+    {
+        $teacherId = $request->user()->id;
+        $groupClass = GroupClass::where('teacher_id', $teacherId)->findOrFail($id);
+
+        $validator = Validator::make($request->all(), [
+            'slot_id' => 'required|integer|exists:group_class_time_slots,id',
+            'topic' => 'nullable|string',
+            'lesson_id' => 'nullable|integer|exists:group_class_lessons,id',
+            'lesson_date' => 'nullable|date',
+            'lesson_number' => 'nullable|integer|min:1',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first(),
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $slot = GroupClassAvailabilitySlot::where('teacher_id', $teacherId)->find($request->slot_id);
+        if (!$slot) {
+            return response()->json([
+                'success' => false,
+                'message' => 'موعد الحصة غير متاح أو غير تابع للمعلم',
+            ], 422);
+        }
+
+        $existingLesson = null;
+        if (!empty($request->lesson_id)) {
+            $existingLesson = GroupClassLesson::where('group_class_id', $groupClass->id)
+                ->where('teacher_id', $teacherId)
+                ->find($request->lesson_id);
+        }
+
+        $isSameSlot = $existingLesson && (int)$existingLesson->group_class_time_slot_id === (int)$slot->id;
+
+        if (!$isSameSlot && ($slot->is_booked || !$slot->is_available)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'هذا الوقت محجوز بالفعل وغير متاح، يرجى اختيار موعد آخر',
+            ], 422);
+        }
+
+        $savedLesson = DB::transaction(function () use ($request, $groupClass, $teacherId, $slot, $existingLesson) {
+            if ($existingLesson && $existingLesson->group_class_time_slot_id && (int)$existingLesson->group_class_time_slot_id !== (int)$slot->id) {
+                GroupClassAvailabilitySlot::where('id', $existingLesson->group_class_time_slot_id)
+                    ->update([
+                        'is_available' => true,
+                        'is_booked' => false,
+                    ]);
+            }
+
+            $slot->update([
+                'is_available' => false,
+                'is_booked' => true,
+            ]);
+
+            $startTime = $slot->start_time instanceof Carbon
+                ? $slot->start_time->format('H:i:s')
+                : (string) $slot->start_time;
+
+            $duration = $slot->duration ?? 60;
+            $endTime = $slot->end_time
+                ? ($slot->end_time instanceof Carbon ? $slot->end_time->format('H:i:s') : (string) $slot->end_time)
+                : Carbon::parse($startTime)->addMinutes($duration)->format('H:i:s');
+
+            $lessonDate = !empty($request->lesson_date)
+                ? Carbon::parse($request->lesson_date)->format('Y-m-d')
+                : ($slot->date ? Carbon::parse($slot->date)->format('Y-m-d') : Carbon::now()->format('Y-m-d'));
+
+            if ($existingLesson) {
+                $existingLesson->update([
+                    'group_class_time_slot_id' => $slot->id,
+                    'topic' => $request->topic,
+                    'lesson_date' => $lessonDate,
+                    'start_time' => $startTime,
+                    'end_time' => $endTime,
+                    'duration' => $duration,
+                ]);
+                $lesson = $existingLesson;
+            } else {
+                $lessonNumber = $request->lesson_number ?? (GroupClassLesson::where('group_class_id', $groupClass->id)->count() + 1);
+                $lesson = GroupClassLesson::create([
+                    'teacher_id' => $teacherId,
+                    'group_class_id' => $groupClass->id,
+                    'group_class_time_slot_id' => $slot->id,
+                    'lesson_number' => $lessonNumber,
+                    'title' => $groupClass->title ?? ('الحصة ' . $lessonNumber),
+                    'topic' => $request->topic,
+                    'lesson_date' => $lessonDate,
+                    'start_time' => $startTime,
+                    'end_time' => $endTime,
+                    'duration' => $duration,
+                    'status' => 'scheduled',
+                ]);
+            }
+
+            $groupClass->update([
+                'total_sessions' => GroupClassLesson::where('group_class_id', $groupClass->id)->count(),
+            ]);
+
+            return $lesson;
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم حفظ الحصة بنجاح',
+            'data' => $savedLesson->load('groupClassTimeSlot'),
+        ]);
+    }
+
+    public function destroyLesson(Request $request, $id, $lessonId)
+    {
+        $teacherId = $request->user()->id;
+        $groupClass = GroupClass::where('teacher_id', $teacherId)->findOrFail($id);
+        $lesson = GroupClassLesson::where('group_class_id', $groupClass->id)
+            ->where('teacher_id', $teacherId)
+            ->find($lessonId);
+
+        if (!$lesson) {
+            $groupClass->update([
+                'total_sessions' => GroupClassLesson::where('group_class_id', $groupClass->id)->count(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم حذف الحصة بنجاح',
+            ]);
+        }
+
+        DB::transaction(function () use ($lesson, $groupClass) {
+            if ($lesson->group_class_time_slot_id) {
+                GroupClassAvailabilitySlot::where('id', $lesson->group_class_time_slot_id)
+                    ->update([
+                        'is_available' => true,
+                        'is_booked' => false,
+                    ]);
+            }
+
+            $lesson->delete();
+
+            $groupClass->update([
+                'total_sessions' => GroupClassLesson::where('group_class_id', $groupClass->id)->count(),
+            ]);
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم حذف الحصة بنجاح',
+        ]);
+    }
+
     public function storeLessons(Request $request, $id)
     {
         $teacherId = $request->user()->id;
@@ -149,9 +303,42 @@ class GroupClassController extends Controller
             ], 422);
         }
 
+        $existingSlotIds = GroupClassLesson::where('group_class_id', $groupClass->id)
+            ->whereNotNull('group_class_time_slot_id')
+            ->pluck('group_class_time_slot_id')
+            ->map(fn($v) => (int)$v)
+            ->toArray();
+
+        foreach ($request->lessons as $lessonItem) {
+            $slot = GroupClassAvailabilitySlot::where('teacher_id', $teacherId)->find($lessonItem['slot_id']);
+            if (!$slot) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'أحد المواعيد المحددة غير متاح أو غير تابع للمعلم',
+                ], 422);
+            }
+            if (!in_array((int)$slot->id, $existingSlotIds, true) && ($slot->is_booked || !$slot->is_available)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'الموعد المحدد للحصة محجوز بالفعل وغير متاح، يرجى اختيار موعد آخر',
+                ], 422);
+            }
+        }
+
         $createdLessons = [];
 
-        DB::transaction(function () use ($request, $groupClass, $teacherId, &$createdLessons) {
+        DB::transaction(function () use ($request, $groupClass, $teacherId, $existingSlotIds, &$createdLessons) {
+            $newSlotIds = array_map(fn($l) => (int)$l['slot_id'], $request->lessons);
+            $slotsToFree = array_diff($existingSlotIds, $newSlotIds);
+
+            if (!empty($slotsToFree)) {
+                GroupClassAvailabilitySlot::whereIn('id', $slotsToFree)
+                    ->update([
+                        'is_available' => true,
+                        'is_booked' => false,
+                    ]);
+            }
+
             GroupClassLesson::where('group_class_id', $groupClass->id)->delete();
 
             $index = 1;
@@ -160,6 +347,11 @@ class GroupClassController extends Controller
                 if (!$slot) {
                     continue;
                 }
+
+                $slot->update([
+                    'is_available' => false,
+                    'is_booked' => true,
+                ]);
 
                 $startTime = $slot->start_time instanceof Carbon
                     ? $slot->start_time->format('H:i:s')
@@ -208,7 +400,24 @@ class GroupClassController extends Controller
     {
         $teacherId = $request->user()->id;
         $groupClass = GroupClass::where('teacher_id', $teacherId)->findOrFail($id);
-        $groupClass->delete();
+
+        DB::transaction(function () use ($groupClass) {
+            $slotIds = GroupClassLesson::where('group_class_id', $groupClass->id)
+                ->whereNotNull('group_class_time_slot_id')
+                ->pluck('group_class_time_slot_id')
+                ->filter()
+                ->toArray();
+
+            if (!empty($slotIds)) {
+                GroupClassAvailabilitySlot::whereIn('id', $slotIds)
+                    ->update([
+                        'is_available' => true,
+                        'is_booked' => false,
+                    ]);
+            }
+
+            $groupClass->delete();
+        });
 
         return response()->json([
             'success' => true,
