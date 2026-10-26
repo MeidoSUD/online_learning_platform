@@ -141,6 +141,7 @@ Route::get('abilities', [AbilityController::class, 'index']);
 Route::get('/teachers', [UserController::class, 'listTeachers']);
 Route::get('/teachers/{id}', [UserController::class, 'teacherDetails']);
 Route::get('/teachers/{id}/group-availability', [GroupClassAvailabilityController::class, 'getTeacherGroupSlots']);
+Route::get('/teachers/{id}/group-classes', [GroupClassController::class, 'getTeacherGroupClasses']);
 Route::get('/teachers/{id}/students', [BookingController::class, 'getTeacherStudentsPublic']);
 Route::get('/students/{id}/teachers', [BookingController::class, 'getStudentTeachersPublic']);
 Route::get('/education-levels', [EducationLevelController::class, 'levelsWithClassesAndSubjects']);

@@ -424,4 +424,26 @@ class GroupClassController extends Controller
             'message' => 'تم حذف الحصة الجماعية بنجاح',
         ]);
     }
+
+    public function getTeacherGroupClasses($teacherId)
+    {
+        $classes = GroupClass::with(['educationLevel', 'class', 'subject', 'lessons.groupClassTimeSlot'])
+            ->where('teacher_id', $teacherId)
+            ->where('status', '!=', 'cancelled')
+            ->orderByDesc('id')
+            ->get();
+
+        foreach ($classes as $class) {
+            $actualCount = $class->lessons->count();
+            if ($actualCount > 0 && (int)$class->total_sessions !== $actualCount) {
+                $class->total_sessions = $actualCount;
+                $class->save();
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $classes,
+        ]);
+    }
 }
