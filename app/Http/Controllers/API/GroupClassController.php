@@ -17,7 +17,18 @@ class GroupClassController extends Controller
     {
         $teacherId = $request->user()->id;
 
-        $classes = GroupClass::with(['educationLevel', 'class', 'subject', 'lessons'])
+        $classes = GroupClass::with([
+            'educationLevel',
+            'class',
+            'subject',
+            'lessons' => function ($q) {
+                $q->withCount(['bookingLessons as students_count' => function ($bq) {
+                    $bq->whereHas('booking', function ($query) {
+                        $query->whereNotIn('status', ['cancelled']);
+                    });
+                }]);
+            },
+        ])
             ->where('teacher_id', $teacherId)
             ->orderByDesc('id')
             ->get();
@@ -32,7 +43,19 @@ class GroupClassController extends Controller
     {
         $teacherId = $request->user()->id;
 
-        $groupClass = GroupClass::with(['educationLevel', 'class', 'subject', 'lessons.groupClassTimeSlot'])
+        $groupClass = GroupClass::with([
+            'educationLevel',
+            'class',
+            'subject',
+            'lessons' => function ($q) {
+                $q->withCount(['bookingLessons as students_count' => function ($bq) {
+                    $bq->whereHas('booking', function ($query) {
+                        $query->whereNotIn('status', ['cancelled']);
+                    });
+                }]);
+            },
+            'lessons.groupClassTimeSlot',
+        ])
             ->where('teacher_id', $teacherId)
             ->findOrFail($id);
 
@@ -427,7 +450,19 @@ class GroupClassController extends Controller
 
     public function getTeacherGroupClasses($teacherId)
     {
-        $classes = GroupClass::with(['educationLevel', 'class', 'subject', 'lessons.groupClassTimeSlot'])
+        $classes = GroupClass::with([
+            'educationLevel',
+            'class',
+            'subject',
+            'lessons' => function ($q) {
+                $q->withCount(['bookingLessons as students_count' => function ($bq) {
+                    $bq->whereHas('booking', function ($query) {
+                        $query->whereNotIn('status', ['cancelled']);
+                    });
+                }]);
+            },
+            'lessons.groupClassTimeSlot',
+        ])
             ->where('teacher_id', $teacherId)
             ->where('status', '!=', 'cancelled')
             ->orderByDesc('id')

@@ -58,4 +58,9 @@ class GroupClass extends Model
     {
         return $this->hasMany(GroupClassLesson::class, 'group_class_id');
     }
+
+    public function bookings(): HasMany
+    {
+        return $this->hasMany(Booking::class, 'group_class_id');
+    }
 }

@@ -42,9 +42,6 @@ class Sessions extends Model
         'materials_shared',
         'student_rating',
         'teacher_rating',
-        'group_class_id',
-        'group_class_time_slot_id',
-        'topic'
     ];
 
     protected $casts = [

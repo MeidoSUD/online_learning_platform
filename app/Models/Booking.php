@@ -23,6 +23,8 @@ class Booking extends Model
         'booking_reference','timeslot_id',
         'student_id',
         'teacher_id',
+        'booking_type',
+        'group_class_id',
         'availability_slot_id',
         'service_id',
         'course_id',
@@ -111,17 +113,17 @@ class Booking extends Model
         });
     }
 
-    // Status constants
     const STATUS_PENDING_PAYMENT = 'pending_payment';
     const STATUS_CONFIRMED = 'confirmed';
     const STATUS_IN_PROGRESS = 'in_progress';
     const STATUS_COMPLETED = 'completed';
     const STATUS_CANCELLED = 'cancelled';
 
-    // Session type constants
     const TYPE_SINGLE = 'single';
     const TYPE_PACKAGE = 'package';
-    // Relationships
+
+    const BOOKING_TYPE_INDIVIDUAL = 'individual';
+    const BOOKING_TYPE_GROUP = 'group';
 
     public function student(): BelongsTo
     {
@@ -165,6 +167,11 @@ class Booking extends Model
         return $this->belongsTo(Subscription::class, 'subscription_id');
     }
 
+    public function groupClass(): BelongsTo
+    {
+        return $this->belongsTo(GroupClass::class, 'group_class_id');
+    }
+
     public function payment(): HasOne
     {
         return $this->hasOne(Payment::class);
@@ -183,6 +190,11 @@ class Booking extends Model
     public function reviews(): HasMany
     {
         return $this->hasMany(Review::class);
+    }
+
+    public function groupClassLessons(): HasMany
+    {
+        return $this->hasMany(GroupClassBookingLesson::class, 'booking_id');
     }
 
     // Scopes

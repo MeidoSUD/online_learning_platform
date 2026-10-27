@@ -21,6 +21,7 @@ use App\Http\Controllers\API\FavoriteController;
 use App\Http\Controllers\API\StudentPackageController;
 use App\Http\Controllers\API\ConsultationController;
 use App\Http\Controllers\API\GeneralServiceController;
+use App\Http\Controllers\API\GroupClassBookingController;
 
 // Student routes with 'student' role middleware
 Route::prefix('student')->middleware(['auth:sanctum', 'role:student'])->group(function () {
@@ -140,4 +141,7 @@ Route::prefix('student')->middleware(['auth:sanctum', 'role:student'])->group(fu
     Route::get('/subscriptions', [StudentPackageController::class, 'mySubscriptions']);
     Route::get('/subscriptions/{id}', [StudentPackageController::class, 'subscriptionDetails']);
     Route::post('/subscriptions/{id}/book', [StudentPackageController::class, 'bookSession']);
+
+    Route::post('/group-class/booking', [GroupClassBookingController::class, 'createBooking']);
+    Route::get('/group-class/booking/{bookingId}', [GroupClassBookingController::class, 'getBookingDetails']);
 });

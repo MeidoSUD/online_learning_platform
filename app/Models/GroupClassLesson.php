@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class GroupClassLesson extends Model
 {
@@ -33,6 +34,11 @@ class GroupClassLesson extends Model
         'lesson_number' => 'integer',
         'duration' => 'integer',
         'lesson_date' => 'date:Y-m-d',
+        'students_count' => 'integer',
+    ];
+
+    protected $appends = [
+        'students_count',
     ];
 
     public function groupClass(): BelongsTo
@@ -48,5 +54,23 @@ class GroupClassLesson extends Model
     public function teacher(): BelongsTo
     {
         return $this->belongsTo(User::class, 'teacher_id');
+    }
+
+    public function bookingLessons(): HasMany
+    {
+        return $this->hasMany(GroupClassBookingLesson::class, 'group_class_lesson_id');
+    }
+
+    public function getStudentsCountAttribute(): int
+    {
+        if (array_key_exists('students_count', $this->attributes)) {
+            return (int) $this->attributes['students_count'];
+        }
+
+        return (int) $this->bookingLessons()
+            ->whereHas('booking', function ($q) {
+                $q->whereNotIn('status', ['cancelled']);
+            })
+            ->count();
     }
 }
