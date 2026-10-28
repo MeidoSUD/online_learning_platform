@@ -6,6 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\GroupClass;
 use App\Models\GroupClassAvailabilitySlot;
 use App\Models\GroupClassLesson;
+use App\Models\GroupClassSession;
+use App\Models\GroupClassSessionStudent;
+use App\Models\GroupClassBookingLesson;
+use App\Services\AgoraService;
+use App\Services\NotificationService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -28,10 +33,33 @@ class GroupClassController extends Controller
                     });
                 }]);
             },
+            'lessons.bookingLessons.booking:id,student_id,status',
         ])
             ->where('teacher_id', $teacherId)
             ->orderByDesc('id')
             ->get();
+
+        foreach ($classes as $class) {
+            $uniqueStudents = DB::table('group_class_booking_lessons')
+                ->join('group_class_lessons', 'group_class_booking_lessons.group_class_lesson_id', '=', 'group_class_lessons.id')
+                ->join('bookings', 'group_class_booking_lessons.booking_id', '=', 'bookings.id')
+                ->where('group_class_lessons.group_class_id', $class->id)
+                ->whereNotIn('bookings.status', ['cancelled'])
+                ->distinct()
+                ->count('bookings.student_id');
+
+            $totalBookings = DB::table('group_class_booking_lessons')
+                ->join('group_class_lessons', 'group_class_booking_lessons.group_class_lesson_id', '=', 'group_class_lessons.id')
+                ->join('bookings', 'group_class_booking_lessons.booking_id', '=', 'bookings.id')
+                ->where('group_class_lessons.group_class_id', $class->id)
+                ->whereNotIn('bookings.status', ['cancelled'])
+                ->count();
+
+            $class->unique_students_count = $uniqueStudents;
+            $class->students_count = $uniqueStudents;
+            $class->total_bookings_count = $totalBookings;
+            $class->bookings_count = $totalBookings;
+        }
 
         return response()->json([
             'success' => true,
@@ -55,9 +83,30 @@ class GroupClassController extends Controller
                 }]);
             },
             'lessons.groupClassTimeSlot',
+            'lessons.bookingLessons.booking.student',
         ])
             ->where('teacher_id', $teacherId)
             ->findOrFail($id);
+
+        $uniqueStudents = DB::table('group_class_booking_lessons')
+            ->join('group_class_lessons', 'group_class_booking_lessons.group_class_lesson_id', '=', 'group_class_lessons.id')
+            ->join('bookings', 'group_class_booking_lessons.booking_id', '=', 'bookings.id')
+            ->where('group_class_lessons.group_class_id', $groupClass->id)
+            ->whereNotIn('bookings.status', ['cancelled'])
+            ->distinct()
+            ->count('bookings.student_id');
+
+        $totalBookings = DB::table('group_class_booking_lessons')
+            ->join('group_class_lessons', 'group_class_booking_lessons.group_class_lesson_id', '=', 'group_class_lessons.id')
+            ->join('bookings', 'group_class_booking_lessons.booking_id', '=', 'bookings.id')
+            ->where('group_class_lessons.group_class_id', $groupClass->id)
+            ->whereNotIn('bookings.status', ['cancelled'])
+            ->count();
+
+        $groupClass->unique_students_count = $uniqueStudents;
+        $groupClass->students_count = $uniqueStudents;
+        $groupClass->total_bookings_count = $totalBookings;
+        $groupClass->bookings_count = $totalBookings;
 
         return response()->json([
             'success' => true,
@@ -479,6 +528,112 @@ class GroupClassController extends Controller
         return response()->json([
             'success' => true,
             'data' => $classes,
+        ]);
+    }
+
+    public function startSession(Request $request, $lessonId)
+    {
+        $teacherId = $request->user()->id;
+
+        $lesson = GroupClassLesson::with(['groupClass'])
+            ->where('teacher_id', $teacherId)
+            ->findOrFail($lessonId);
+
+        $session = GroupClassSession::firstOrCreate(
+            [
+                'group_class_lesson_id' => $lesson->id,
+            ],
+            [
+                'group_class_id' => $lesson->group_class_id,
+                'teacher_id' => $teacherId,
+                'session_title' => $lesson->topic ?: ($lesson->title ?: 'حصة جماعية'),
+                'session_date' => $lesson->lesson_date ?: now()->toDateString(),
+                'start_time' => $lesson->start_time ?: now()->format('H:i:s'),
+                'end_time' => $lesson->end_time,
+                'duration' => $lesson->duration ?: 60,
+                'status' => GroupClassSession::STATUS_LIVE,
+                'started_at' => now(),
+            ]
+        );
+
+        if ($session->status !== GroupClassSession::STATUS_LIVE) {
+            $session->status = GroupClassSession::STATUS_LIVE;
+            if (!$session->started_at) {
+                $session->started_at = now();
+            }
+            $session->save();
+        }
+
+        $bookingLessons = GroupClassBookingLesson::where('group_class_lesson_id', $lesson->id)
+            ->whereHas('booking', function ($q) {
+                $q->whereNotIn('status', ['cancelled']);
+            })
+            ->with(['booking.student'])
+            ->get();
+
+        foreach ($bookingLessons as $bl) {
+            if ($bl->booking && $bl->booking->student_id) {
+                GroupClassSessionStudent::firstOrCreate(
+                    [
+                        'group_class_session_id' => $session->id,
+                        'student_id' => $bl->booking->student_id,
+                    ],
+                    [
+                        'booking_id' => $bl->booking_id,
+                        'status' => GroupClassSessionStudent::STATUS_SCHEDULED,
+                    ]
+                );
+            }
+        }
+
+        $channel = 'group_session_' . $session->id;
+        $teacherAccount = 'teacher_' . $session->teacher_id;
+        $agora = new AgoraService();
+
+        $host = null;
+        try {
+            $host = $agora->generateTokenForAccount($channel, $teacherAccount, \App\Agora\RtcTokenBuilder::RolePublisher);
+        } catch (\Throwable $e) {
+        }
+
+        $session->meeting_id = $channel;
+        $session->save();
+
+        try {
+            $ns = new NotificationService();
+            foreach ($bookingLessons as $bl) {
+                if ($bl->booking?->student) {
+                    $ns->send(
+                        $bl->booking->student,
+                        'group_session_started',
+                        'بدء الحصة الجماعية',
+                        "بدأت الآن الحصة الجماعية: {$session->session_title}",
+                        [
+                            'group_class_session_id' => $session->id,
+                            'group_class_lesson_id' => $lesson->id,
+                        ]
+                    );
+                }
+            }
+        } catch (\Throwable $e) {
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم بدء الجلسة الجماعية بنجاح',
+            'data' => [
+                'session' => $session->load(['groupClass', 'lesson', 'sessionStudents.student']),
+                'session_status' => 'live',
+                'agora' => [
+                    'channel' => $host['channel'] ?? $channel,
+                    'token' => $host['token'] ?? '',
+                    'uid' => (string) ($host['uid'] ?? '0'),
+                    'role' => 'host',
+                    'expires_in' => $host['expires_in'] ?? 3600,
+                    'chat_channel' => $host['channel'] ?? $channel,
+                    'app_id' => config('services.agora.app_id'),
+                ],
+            ],
         ]);
     }
 }

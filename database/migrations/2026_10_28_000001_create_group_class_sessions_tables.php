@@ -7,6 +7,9 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
+        Schema::dropIfExists('group_class_session_students');
+        Schema::dropIfExists('group_class_sessions');
+
         Schema::create('group_class_sessions', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('group_class_id');
@@ -49,9 +52,9 @@ return new class extends Migration {
             $table->foreign('group_class_session_id')->references('id')->on('group_class_sessions')->onDelete('cascade');
             $table->foreign('student_id')->references('id')->on('users')->onDelete('cascade');
             $table->foreign('booking_id')->references('id')->on('bookings')->onDelete('cascade');
-            $table->unique(['group_class_session_id', 'student_id']);
-            $table->index(['student_id', 'status']);
-            $table->index('booking_id');
+            $table->unique(['group_class_session_id', 'student_id'], 'uq_gcss_session_student');
+            $table->index(['student_id', 'status'], 'idx_gcss_student_status');
+            $table->index('booking_id', 'idx_gcss_booking');
         });
     }
 

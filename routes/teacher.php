@@ -83,6 +83,7 @@ Route::prefix('teacher')->middleware(['auth:sanctum', 'role:teacher'])->group(fu
     Route::post('group-classes/{id}/lessons', [GroupClassController::class, 'storeLessons']);
     Route::post('group-classes/{id}/lesson', [GroupClassController::class, 'storeLesson']);
     Route::delete('group-classes/{id}/lessons/{lessonId}', [GroupClassController::class, 'destroyLesson']);
+    Route::post('group-class-lessons/{lessonId}/start-session', [GroupClassController::class, 'startSession']);
     // lessons
     Route::post('/courses/{course_id}/lessons', [LessonController::class, 'store']);
     Route::put('/lessons/{id}', [LessonController::class, 'update']);
