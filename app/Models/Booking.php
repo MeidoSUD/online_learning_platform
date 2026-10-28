@@ -197,6 +197,12 @@ class Booking extends Model
         return $this->hasMany(GroupClassBookingLesson::class, 'booking_id');
     }
 
+    public function groupClassSessionStudents(): HasMany
+    {
+        return $this->hasMany(GroupClassSessionStudent::class, 'booking_id');
+    }
+
+
     // Scopes
     public function scopeActive($query)
     {

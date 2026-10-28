@@ -63,4 +63,9 @@ class GroupClass extends Model
     {
         return $this->hasMany(Booking::class, 'group_class_id');
     }
+
+    public function sessions(): HasMany
+    {
+        return $this->hasMany(GroupClassSession::class, 'group_class_id');
+    }
 }

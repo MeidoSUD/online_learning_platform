@@ -61,6 +61,12 @@ class GroupClassLesson extends Model
         return $this->hasMany(GroupClassBookingLesson::class, 'group_class_lesson_id');
     }
 
+    public function sessions(): HasMany
+    {
+        return $this->hasMany(GroupClassSession::class, 'group_class_lesson_id');
+    }
+
+
     public function getStudentsCountAttribute(): int
     {
         if (array_key_exists('students_count', $this->attributes)) {
