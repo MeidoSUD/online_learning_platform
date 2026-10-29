@@ -30,6 +30,10 @@ use App\Models\Subject;
 use App\Models\EducationLevel;
 use App\Models\ClassModel;
 use App\Models\Languages;
+use App\Models\Wallet;
+use App\Models\UserPaymentMethod;
+use App\Models\PlatformPercentage;
+use App\Helpers\Helpers;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
@@ -319,10 +323,66 @@ class UsersController extends Controller
 
     public function teacherDetails(Request $request, $id)
     {
-
-        $user = User::with('profile')->findOrFail($id);
+        $userModel = User::with(['profile', 'teacherBankAccount.banks'])->findOrFail($id);
         $userController = new UserController();
-        $user = $userController->getFullTeacherData($user);
+        $user = $userController->getFullTeacherData($userModel);
+
+        $wallet = Wallet::getOrCreateForUser($id);
+        Helpers::getPendingBalance($id);
+        $wallet->refresh();
+
+        $teacherPercentage = PlatformPercentage::getActive(PlatformPercentage::TYPE_TEACHER);
+        $commissionRate = $teacherPercentage ? (float) $teacherPercentage->value : 0.0;
+        $netBalance = round((float) $wallet->balance * (1 - ($commissionRate / 100)), 2);
+        $netPendingBalance = round((float) $wallet->pending_balance * (1 - ($commissionRate / 100)), 2);
+
+        $walletTransactions = WalletTransaction::where('wallet_id', $wallet->id)
+            ->orderByDesc('id')
+            ->get();
+
+        $payouts = Payout::where('teacher_id', $id)
+            ->with(['paymentMethod.banks', 'card'])
+            ->orderByDesc('id')
+            ->get();
+
+        $bankAccounts = UserPaymentMethod::where('user_id', $id)
+            ->whereNotNull('bank_id')
+            ->with('banks')
+            ->orderByDesc('is_default')
+            ->get();
+
+        $creditSum = (float) $wallet->transactions()
+            ->where('type', 'credit')
+            ->sum('amount');
+
+        $totalWithdrawn = (float) $payouts
+            ->whereIn('status', ['approved', 'completed'])
+            ->sum('amount');
+
+        $totalEarnings = $creditSum > 0 ? $creditSum : max((float) $wallet->balance, 0) + $totalWithdrawn;
+
+        $walletData = [
+            'id' => $wallet->id,
+            'balance' => (float) $wallet->balance,
+            'net_balance' => $netBalance,
+            'pending_balance' => (float) $wallet->pending_balance,
+            'net_pending_balance' => $netPendingBalance,
+            'total_balance' => round($netBalance + $netPendingBalance, 2),
+            'commission_rate' => $commissionRate,
+            'company_fee_on_available' => round((float) $wallet->balance - $netBalance, 2),
+            'total_earnings' => round($totalEarnings, 2),
+            'total_withdrawn' => round($totalWithdrawn, 2),
+            'transactions' => $walletTransactions,
+            'payouts' => $payouts,
+            'bank_accounts' => $bankAccounts,
+            'bank_account' => $bankAccounts->first() ?: ($userModel->teacherBankAccount ? $userModel->teacherBankAccount->load('banks') : null),
+        ];
+
+        $user['wallet'] = $walletData;
+        if (isset($user['profile']) && is_array($user['profile'])) {
+            $user['profile']['wallet'] = $walletData;
+        }
+
         return response()->json([
             'success' => true,
             'data' => $user

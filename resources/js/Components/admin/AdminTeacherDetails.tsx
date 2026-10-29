@@ -5,11 +5,12 @@ import {
     ArrowLeft, Loader2, Mail, Phone, Globe, User, GraduationCap, Star,
     CalendarDays, Clock, BadgeCheck, Ban, CheckCircle, BookOpen, Languages,
     PlayCircle, Wallet, Users, AlertCircle, Shield, BookMarked, Pencil, Save,
-    X
+    X, TrendingUp, ArrowUpRight, ArrowDownLeft, Building, Copy, Check, Eye
 } from 'lucide-react';
 import { adminService } from '../../Services/api';
 import { getStorageUrl } from '../../Services/api';
 import { Button } from '../ui/Button';
+import { Modal } from '../ui/Modal';
 
 interface AdminTeacherDetailsProps {
     userId: number;
@@ -41,8 +42,60 @@ export const AdminTeacherDetails: React.FC<AdminTeacherDetailsProps> = ({ userId
     const [optionsLoaded, setOptionsLoaded] = useState(false);
     const [selectedEducationLevelId, setSelectedEducationLevelId] = useState(0);
     const [selectedClassId, setSelectedClassId] = useState(0);
+    const [walletTab, setWalletTab] = useState<'transactions' | 'payouts'>('transactions');
+    const [copiedIban, setCopiedIban] = useState(false);
+    const [selectedReceipt, setSelectedReceipt] = useState<{ url?: string; reason?: string; title: string } | null>(null);
 
     const ar = language === 'ar';
+
+    const formatDate = (date: string | null | undefined) => {
+        if (!date) return '-';
+        return new Date(date).toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US', {
+            day: 'numeric', month: 'short', year: 'numeric'
+        });
+    };
+
+    const formatDateTime = (date: string | null | undefined) => {
+        if (!date) return '-';
+        return new Date(date).toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US', {
+            day: 'numeric', month: 'short', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
+    };
+
+    const handleCopyIban = (iban: string) => {
+        if (!iban) return;
+        navigator.clipboard.writeText(iban);
+        setCopiedIban(true);
+        showToast(ar ? 'تم نسخ الآيبان إلى الحافظة' : 'IBAN copied to clipboard', 'success');
+        setTimeout(() => setCopiedIban(false), 2000);
+    };
+
+    const getPayoutStatusBadge = (status: string) => {
+        const s = (status || '').toLowerCase();
+        let bg = 'bg-slate-100 text-slate-700';
+        let label = status;
+
+        if (s === 'approved' || s === 'completed' || s === 'sent') {
+            bg = 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+            label = ar ? 'مكتمل / معتمد' : 'Approved';
+        } else if (s === 'pending') {
+            bg = 'bg-amber-50 text-amber-700 border border-amber-200';
+            label = ar ? 'قيد الانتظار' : 'Pending';
+        } else if (s === 'rejected' || s === 'failed') {
+            bg = 'bg-red-50 text-red-700 border border-red-200';
+            label = ar ? 'مرفوض' : 'Rejected';
+        } else if (s === 'cancelled') {
+            bg = 'bg-slate-100 text-slate-600 border border-slate-200';
+            label = ar ? 'ملغي' : 'Cancelled';
+        }
+
+        return (
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${bg}`}>
+                {label}
+            </span>
+        );
+    };
 
     const normalizeTime = useCallback((value: string) => {
         if (!value) return value;
@@ -193,6 +246,18 @@ export const AdminTeacherDetails: React.FC<AdminTeacherDetailsProps> = ({ userId
     const code = profile?.code || teacher?.code || '';
     const bio = profile?.bio || teacher?.bio || '';
     const primaryServiceId = profile?.service;
+
+    const wallet = teacher?.wallet || profile?.wallet || null;
+    const walletBalance = Number(wallet?.balance ?? profile?.earnings?.total_earnings ?? 0);
+    const netBalance = Number(wallet?.net_balance ?? walletBalance);
+    const pendingBalance = Number(wallet?.pending_balance ?? 0);
+    const netPendingBalance = Number(wallet?.net_pending_balance ?? pendingBalance);
+    const totalWithdrawn = Number(wallet?.total_withdrawn ?? 0);
+    const totalEarnings = Number(wallet?.total_earnings ?? (walletBalance + totalWithdrawn));
+    const commissionRate = Number(wallet?.commission_rate ?? 0);
+    const transactions = wallet?.transactions || [];
+    const payouts = wallet?.payouts || [];
+    const bankAccount = wallet?.bank_account || (wallet?.bank_accounts || [])[0] || null;
 
     const primaryService = services.find((s: any) => Number(s.service_id) === Number(primaryServiceId)) || services[0] || null;
     const serviceKeys = (services || []).map((s: any) => (s.key_name || '').toLowerCase());
@@ -395,7 +460,9 @@ export const AdminTeacherDetails: React.FC<AdminTeacherDetailsProps> = ({ userId
                 </div>
 
                 {/* Stats */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-6">
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-3 mt-6">
+                    {statCard(ar ? 'رصيد المحفظة' : 'Wallet Balance', `${walletBalance.toFixed(2)} ${ar ? 'ر.س' : 'SAR'}`, Wallet, 'text-emerald-700 bg-emerald-50')}
+                    {statCard(ar ? 'إجمالي الأرباح' : 'Total Earnings', `${totalEarnings.toFixed(2)} ${ar ? 'ر.س' : 'SAR'}`, TrendingUp, 'text-primary bg-primary-pale')}
                     {statCard(ar ? 'الطلاب' : 'Students', profile?.total_students ?? teacher?.total_students ?? 0, Users, 'text-primary bg-primary-pale')}
                     {statCard(ar ? 'الدروس' : 'Lessons', profile?.total_lessons ?? teacher?.total_lessons ?? 0, PlayCircle, 'text-secondary bg-secondary-pale')}
                     {statCard(ar ? 'الحجوزات' : 'Bookings', profile?.bookings_count ?? 0, CalendarDays, 'text-[var(--accent)] bg-secondary-pale')}
@@ -575,6 +642,337 @@ export const AdminTeacherDetails: React.FC<AdminTeacherDetailsProps> = ({ userId
                 </div>
             )}
 
+            {/* Wallet & Financial Details */}
+            <div className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] p-6 space-y-6">
+                <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-[var(--border)]">
+                    <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
+                            <Wallet size={20} />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-[var(--text-main)]">
+                                {ar ? 'المحفظة والبيانات المالية للمعلم' : 'Teacher Wallet & Financial Details'}
+                            </h3>
+                            <p className="text-xs text-[var(--text-muted)]">
+                                {ar ? 'متابعة الأرصدة، السحوبات، الحساب البنكي، وسجل المعاملات المالية' : 'Track balances, withdrawals, bank accounts, and transaction records'}
+                            </p>
+                        </div>
+                    </div>
+                    {commissionRate > 0 && (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                            {ar ? `نسبة عمولة المنصة: ${commissionRate}%` : `Platform Commission: ${commissionRate}%`}
+                        </span>
+                    )}
+                </div>
+
+                {/* 4 Financial KPI Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Available Balance */}
+                    <div className="p-4 rounded-[var(--radius-md)] bg-gradient-to-br from-emerald-50/70 to-emerald-50/20 border border-emerald-200/80">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-medium text-emerald-800">{ar ? 'الرصيد المتاح' : 'Available Balance'}</span>
+                            <div className="h-7 w-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                                <Wallet size={14} />
+                            </div>
+                        </div>
+                        <div className="text-2xl font-black text-emerald-700 leading-tight">
+                            {walletBalance.toFixed(2)} <span className="text-xs font-bold">{ar ? 'ر.س' : 'SAR'}</span>
+                        </div>
+                        {commissionRate > 0 ? (
+                            <div className="text-[11px] text-emerald-800/80 mt-1">
+                                {ar ? `الصافي للمعلم: ${netBalance.toFixed(2)} ر.س` : `Net for teacher: ${netBalance.toFixed(2)} SAR`}
+                            </div>
+                        ) : (
+                            <div className="text-[11px] text-emerald-800/80 mt-1">
+                                {ar ? 'متاح للسحب والتحويل' : 'Ready for withdrawal'}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Pending Balance */}
+                    <div className="p-4 rounded-[var(--radius-md)] bg-gradient-to-br from-amber-50/70 to-amber-50/20 border border-amber-200/80">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-medium text-amber-800">{ar ? 'الرصيد المعلق' : 'Pending Balance'}</span>
+                            <div className="h-7 w-7 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center">
+                                <Clock size={14} />
+                            </div>
+                        </div>
+                        <div className="text-2xl font-black text-amber-700 leading-tight">
+                            {pendingBalance.toFixed(2)} <span className="text-xs font-bold">{ar ? 'ر.س' : 'SAR'}</span>
+                        </div>
+                        <div className="text-[11px] text-amber-800/80 mt-1">
+                            {ar ? 'من الحجوزات الجارية قيد التنفيذ' : 'From in-progress bookings'}
+                        </div>
+                    </div>
+
+                    {/* Total Earnings */}
+                    <div className="p-4 rounded-[var(--radius-md)] bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-medium text-primary">{ar ? 'إجمالي الأرباح' : 'Total Earnings'}</span>
+                            <div className="h-7 w-7 rounded-full bg-primary-pale text-primary flex items-center justify-center">
+                                <TrendingUp size={14} />
+                            </div>
+                        </div>
+                        <div className="text-2xl font-black text-primary leading-tight">
+                            {totalEarnings.toFixed(2)} <span className="text-xs font-bold">{ar ? 'ر.س' : 'SAR'}</span>
+                        </div>
+                        <div className="text-[11px] text-[var(--text-muted)] mt-1">
+                            {ar ? 'إجمالي العائدات التراكمية' : 'Cumulative earnings'}
+                        </div>
+                    </div>
+
+                    {/* Total Withdrawn */}
+                    <div className="p-4 rounded-[var(--radius-md)] bg-gradient-to-br from-purple-50/70 to-purple-50/20 border border-purple-200/80">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-medium text-purple-800">{ar ? 'إجمالي السحوبات' : 'Total Withdrawn'}</span>
+                            <div className="h-7 w-7 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center">
+                                <ArrowUpRight size={14} />
+                            </div>
+                        </div>
+                        <div className="text-2xl font-black text-purple-700 leading-tight">
+                            {totalWithdrawn.toFixed(2)} <span className="text-xs font-bold">{ar ? 'ر.س' : 'SAR'}</span>
+                        </div>
+                        <div className="text-[11px] text-purple-800/80 mt-1">
+                            {payouts.filter((p: any) => p.status === 'approved' || p.status === 'completed').length} {ar ? 'سحوبات معتمدة' : 'completed payouts'}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Bank Account Section */}
+                <div className="p-4 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--light-bg)]/40">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                            <Building size={16} className="text-primary" />
+                            <h4 className="text-sm font-bold text-[var(--text-main)]">
+                                {ar ? 'بيانات الحساب البنكي لتحويل المستحقات' : 'Bank Account for Payouts'}
+                            </h4>
+                        </div>
+                        {bankAccount?.is_default ? (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary-pale text-primary">
+                                {ar ? 'الحساب الافتراضي' : 'Default Account'}
+                            </span>
+                        ) : null}
+                    </div>
+
+                    {bankAccount ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
+                            <div className="p-3 rounded-lg bg-white border border-[var(--border)]">
+                                <span className="text-xs text-[var(--text-muted)] block mb-1">{ar ? 'اسم البنك' : 'Bank Name'}</span>
+                                <span className="font-semibold text-navy">
+                                    {ar ? (bankAccount.banks?.name_ar || bankAccount.banks?.name_en || 'البنك المسجل') : (bankAccount.banks?.name_en || bankAccount.banks?.name_ar || 'Registered Bank')}
+                                </span>
+                            </div>
+                            <div className="p-3 rounded-lg bg-white border border-[var(--border)]">
+                                <span className="text-xs text-[var(--text-muted)] block mb-1">{ar ? 'اسم صاحب الحساب' : 'Account Holder'}</span>
+                                <span className="font-semibold text-navy">{bankAccount.account_holder_name || `${teacher.first_name} ${teacher.last_name}`}</span>
+                            </div>
+                            <div className="p-3 rounded-lg bg-white border border-[var(--border)] sm:col-span-2">
+                                <div className="flex items-center justify-between mb-1">
+                                    <span className="text-xs text-[var(--text-muted)]">{ar ? 'رقم الآيبان (IBAN)' : 'IBAN'}</span>
+                                    {bankAccount.iban && (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleCopyIban(bankAccount.iban)}
+                                            className="text-xs text-primary hover:underline inline-flex items-center gap-1 font-medium"
+                                        >
+                                            {copiedIban ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                                            {copiedIban ? (ar ? 'تم النسخ!' : 'Copied!') : (ar ? 'نسخ الآيبان' : 'Copy IBAN')}
+                                        </button>
+                                    )}
+                                </div>
+                                <span className="font-mono font-semibold text-navy tracking-wider text-xs block" dir="ltr">
+                                    {bankAccount.iban || bankAccount.account_number || '—'}
+                                </span>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="text-center py-4 text-xs text-[var(--text-muted)] bg-white rounded-lg border border-dashed border-[var(--border)]">
+                            <AlertCircle size={20} className="mx-auto text-amber-500 mb-1" />
+                            {ar ? 'لم يقم المعلم بإضافة بيانات الحساب البنكي بعد' : 'The teacher has not added bank account details yet.'}
+                        </div>
+                    )}
+                </div>
+
+                {/* Wallet Activity Tabs */}
+                <div className="space-y-4">
+                    <div className="flex items-center gap-2 border-b border-[var(--border)] pb-2">
+                        <button
+                            type="button"
+                            onClick={() => setWalletTab('transactions')}
+                            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                                walletTab === 'transactions'
+                                    ? 'bg-primary text-white shadow-sm'
+                                    : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--light-bg)]'
+                            }`}
+                        >
+                            <TrendingUp size={14} />
+                            {ar ? 'سجل معاملات المحفظة' : 'Wallet Transactions'}
+                            <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${walletTab === 'transactions' ? 'bg-white/20 text-white' : 'bg-[var(--light-bg)] text-[var(--text-muted)]'}`}>
+                                {transactions.length}
+                            </span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setWalletTab('payouts')}
+                            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                                walletTab === 'payouts'
+                                    ? 'bg-primary text-white shadow-sm'
+                                    : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--light-bg)]'
+                            }`}
+                        >
+                            <ArrowUpRight size={14} />
+                            {ar ? 'طلبات السحب' : 'Payout Requests'}
+                            <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${walletTab === 'payouts' ? 'bg-white/20 text-white' : 'bg-[var(--light-bg)] text-[var(--text-muted)]'}`}>
+                                {payouts.length}
+                            </span>
+                        </button>
+                    </div>
+
+                    {/* Transactions Tab */}
+                    {walletTab === 'transactions' && (
+                        transactions.length > 0 ? (
+                            <div className="overflow-x-auto rounded-[var(--radius-md)] border border-[var(--border)]">
+                                <table className="w-full text-sm">
+                                    <thead className="bg-[var(--light-bg)] text-xs text-[var(--text-muted)] uppercase">
+                                        <tr>
+                                            <th className="px-4 py-2.5 text-start">{ar ? 'النوع' : 'Type'}</th>
+                                            <th className="px-4 py-2.5 text-start">{ar ? 'المبلغ' : 'Amount'}</th>
+                                            <th className="px-4 py-2.5 text-start">{ar ? 'الرصيد قبل' : 'Balance Before'}</th>
+                                            <th className="px-4 py-2.5 text-start">{ar ? 'الرصيد بعد' : 'Balance After'}</th>
+                                            <th className="px-4 py-2.5 text-start">{ar ? 'الوصف' : 'Description'}</th>
+                                            <th className="px-4 py-2.5 text-start">{ar ? 'التاريخ والوقت' : 'Date & Time'}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-[var(--border)]">
+                                        {transactions.map((tx: any) => {
+                                            const isCredit = tx.type === 'credit';
+                                            return (
+                                                <tr key={tx.id} className="hover:bg-[var(--light-bg)] transition-colors">
+                                                    <td className="px-4 py-3">
+                                                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                                                            isCredit ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'
+                                                        }`}>
+                                                            {isCredit ? <ArrowDownLeft size={12} /> : <ArrowUpRight size={12} />}
+                                                            {isCredit ? (ar ? 'إيداع / أرباح' : 'Credit') : (ar ? 'سحب / خصم' : 'Debit')}
+                                                        </span>
+                                                    </td>
+                                                    <td className={`px-4 py-3 font-bold ${isCredit ? 'text-emerald-700' : 'text-red-700'}`}>
+                                                        {isCredit ? '+' : '-'}{Number(tx.amount).toFixed(2)} {ar ? 'ر.س' : 'SAR'}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-xs text-[var(--text-muted)]">
+                                                        {tx.balance_before !== null ? `${Number(tx.balance_before).toFixed(2)} ${ar ? 'ر.س' : 'SAR'}` : '—'}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-xs font-semibold text-navy">
+                                                        {tx.balance_after !== null ? `${Number(tx.balance_after).toFixed(2)} ${ar ? 'ر.س' : 'SAR'}` : '—'}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-xs text-[var(--text-main)] max-w-[220px] truncate" title={tx.description}>
+                                                        {tx.description || '—'}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-xs text-[var(--text-muted)] whitespace-nowrap">
+                                                        {formatDateTime(tx.created_at)}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="text-center py-10 bg-[var(--light-bg)]/30 rounded-[var(--radius-md)] border border-dashed border-[var(--border)]">
+                                <Wallet size={36} className="mx-auto text-[var(--text-muted)]/50 mb-2" />
+                                <p className="text-sm font-medium text-[var(--text-muted)]">
+                                    {ar ? 'لا توجد معاملات مسجلة في محفظة المعلم حتى الآن' : 'No transactions recorded in this teacher\'s wallet yet'}
+                                </p>
+                            </div>
+                        )
+                    )}
+
+                    {/* Payouts Tab */}
+                    {walletTab === 'payouts' && (
+                        payouts.length > 0 ? (
+                            <div className="overflow-x-auto rounded-[var(--radius-md)] border border-[var(--border)]">
+                                <table className="w-full text-sm">
+                                    <thead className="bg-[var(--light-bg)] text-xs text-[var(--text-muted)] uppercase">
+                                        <tr>
+                                            <th className="px-4 py-2.5 text-start">#</th>
+                                            <th className="px-4 py-2.5 text-start">{ar ? 'المبلغ' : 'Amount'}</th>
+                                            <th className="px-4 py-2.5 text-start">{ar ? 'الحساب المستهدف' : 'Bank Account'}</th>
+                                            <th className="px-4 py-2.5 text-start">{ar ? 'الحالة' : 'Status'}</th>
+                                            <th className="px-4 py-2.5 text-start">{ar ? 'تاريخ الطلب' : 'Requested Date'}</th>
+                                            <th className="px-4 py-2.5 text-start">{ar ? 'تاريخ المعالجة' : 'Processed Date'}</th>
+                                            <th className="px-4 py-2.5 text-start">{ar ? 'الإيصال / الملاحظات' : 'Receipt / Notes'}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-[var(--border)]">
+                                        {payouts.map((p: any) => {
+                                            const pMethod = p.payment_method;
+                                            const bankName = ar ? (pMethod?.banks?.name_ar || pMethod?.banks?.name_en || '') : (pMethod?.banks?.name_en || pMethod?.banks?.name_ar || '');
+                                            return (
+                                                <tr key={p.id} className="hover:bg-[var(--light-bg)] transition-colors">
+                                                    <td className="px-4 py-3 font-medium text-navy">#{p.id}</td>
+                                                    <td className="px-4 py-3 font-bold text-primary">
+                                                        {Number(p.amount).toFixed(2)} {ar ? 'ر.س' : 'SAR'}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-xs">
+                                                        <div className="font-semibold text-navy">{bankName || (ar ? 'تحويل بنكي' : 'Bank Transfer')}</div>
+                                                        {pMethod?.iban && (
+                                                            <div className="text-[11px] text-[var(--text-muted)] font-mono" dir="ltr">
+                                                                •••• {String(pMethod.iban).slice(-4)}
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-4 py-3">{getPayoutStatusBadge(p.status)}</td>
+                                                    <td className="px-4 py-3 text-xs text-[var(--text-muted)] whitespace-nowrap">
+                                                        {formatDate(p.requested_at || p.created_at)}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-xs text-[var(--text-muted)] whitespace-nowrap">
+                                                        {p.processed_at ? formatDate(p.processed_at) : '—'}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-xs">
+                                                        {p.receipt ? (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setSelectedReceipt({
+                                                                    url: getStorageUrl(p.receipt),
+                                                                    title: `${ar ? 'إيصال سحب' : 'Payout Receipt'} #${p.id}`
+                                                                })}
+                                                                className="inline-flex items-center gap-1 text-primary hover:underline font-semibold"
+                                                            >
+                                                                <Eye size={12} /> {ar ? 'عرض الإيصال' : 'View Receipt'}
+                                                            </button>
+                                                        ) : p.reject_reason ? (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setSelectedReceipt({
+                                                                    reason: p.reject_reason,
+                                                                    title: `${ar ? 'سبب رفض الطلب' : 'Rejection Reason'} #${p.id}`
+                                                                })}
+                                                                className="inline-flex items-center gap-1 text-red-600 hover:underline font-semibold"
+                                                            >
+                                                                <AlertCircle size={12} /> {ar ? 'سبب الرفض' : 'Reason'}
+                                                            </button>
+                                                        ) : (
+                                                            <span className="text-[var(--text-muted)]">—</span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="text-center py-10 bg-[var(--light-bg)]/30 rounded-[var(--radius-md)] border border-dashed border-[var(--border)]">
+                                <ArrowUpRight size={36} className="mx-auto text-[var(--text-muted)]/50 mb-2" />
+                                <p className="text-sm font-medium text-[var(--text-muted)]">
+                                    {ar ? 'لا توجد طلبات سحب لهذا المعلم حتى الآن' : 'No payout requests for this teacher yet'}
+                                </p>
+                            </div>
+                        )
+                    )}
+                </div>
+            </div>
+
             <div className="grid lg:grid-cols-3 gap-6">
                 {/* Left column */}
                 <div className="space-y-6 lg:col-span-2">
@@ -730,6 +1128,36 @@ export const AdminTeacherDetails: React.FC<AdminTeacherDetailsProps> = ({ userId
                     </div>
                 </div>
             </div>
+
+            {selectedReceipt && (
+                <Modal
+                    isOpen={!!selectedReceipt}
+                    onClose={() => setSelectedReceipt(null)}
+                    title={selectedReceipt.title}
+                >
+                    <div className="space-y-4">
+                        {selectedReceipt.url ? (
+                            <div className="flex justify-center p-2 bg-[var(--light-bg)] rounded-lg">
+                                <img
+                                    src={selectedReceipt.url}
+                                    alt="Receipt"
+                                    className="max-h-[70vh] rounded object-contain border border-[var(--border)]"
+                                />
+                            </div>
+                        ) : selectedReceipt.reason ? (
+                            <div className="p-4 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm">
+                                <div className="font-bold mb-1">{ar ? 'سبب الرفض المسجل:' : 'Rejection Reason:'}</div>
+                                <p>{selectedReceipt.reason}</p>
+                            </div>
+                        ) : null}
+                        <div className="flex justify-end">
+                            <Button variant="outline" size="sm" onClick={() => setSelectedReceipt(null)}>
+                                {ar ? 'إغلاق' : 'Close'}
+                            </Button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
         </div>
     );
 };
