@@ -9,6 +9,7 @@ use App\Models\GroupClassLesson;
 use App\Models\GroupClassSession;
 use App\Models\GroupClassSessionStudent;
 use App\Models\GroupClassBookingLesson;
+use App\Models\User;
 use App\Services\AgoraService;
 use App\Services\NotificationService;
 use Carbon\Carbon;
@@ -596,8 +597,30 @@ class GroupClassController extends Controller
         } catch (\Throwable $e) {
         }
 
+        if (!$host || empty($host['token'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'فشل إنشاء رمز الاتصال بالجلسة',
+            ], 500);
+        }
+
         $session->meeting_id = $channel;
         $session->save();
+
+        $chatCredentials = $agora->generateChatCredentials(
+            (int) $session->id,
+            (int) $session->teacher_id,
+            'teacher',
+            null,
+            $channel
+        );
+
+        $teacherUser = $request->user();
+        if ($chatCredentials && $teacherUser && $teacherUser->agora_chat_uid !== $chatCredentials['agora_uid']) {
+            User::where('id', $teacherUser->id)->update(['agora_chat_uid' => $chatCredentials['agora_uid']]);
+        }
+
+        $chatRoomId = $agora->getOrCreateChatRoomForGroupSession($session);
 
         try {
             $ns = new NotificationService();
@@ -609,6 +632,7 @@ class GroupClassController extends Controller
                         'بدء الحصة الجماعية',
                         "بدأت الآن الحصة الجماعية: {$session->session_title}",
                         [
+                            'session_id' => $session->id,
                             'group_class_session_id' => $session->id,
                             'group_class_lesson_id' => $lesson->id,
                         ]
@@ -631,7 +655,12 @@ class GroupClassController extends Controller
                     'role' => 'host',
                     'expires_in' => $host['expires_in'] ?? 3600,
                     'chat_channel' => $host['channel'] ?? $channel,
-                    'app_id' => config('services.agora.app_id'),
+                    'app_id' => $chatCredentials['app_id'] ?? config('services.agora.app_id'),
+                    'chat_token' => $chatCredentials['token'] ?? null,
+                    'chat_uid' => $chatCredentials['uid'] ?? null,
+                    'chat_expires_in' => $chatCredentials['expires_in'] ?? null,
+                    'chat_agora_uid' => $chatCredentials['agora_uid'] ?? null,
+                    'chat_room_id' => $chatRoomId,
                 ],
             ],
         ]);

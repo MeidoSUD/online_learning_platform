@@ -48,9 +48,13 @@ class GroupClassSession extends Model
     ];
 
     const STATUS_SCHEDULED = 'scheduled';
+    const STATUS_IN_PROGRESS = 'in_progress';
     const STATUS_LIVE = 'live';
+    const STATUS_ENDED = 'ended';
     const STATUS_COMPLETED = 'completed';
     const STATUS_CANCELLED = 'cancelled';
+    const STATUS_NO_SHOW = 'no_show';
+    const STATUS_WAIT_TEACHER = 'wait_for_teacher';
 
     public function groupClass(): BelongsTo
     {

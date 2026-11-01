@@ -132,16 +132,14 @@ class AgoraService
      *   2. Generate a Chat USER token (AccessToken2 + PRIVILEGE_USER)
      *   3. Return everything the mobile app needs
      */
-    public function generateChatCredentials(int $sessionId, int $userId, string $userType, ?int $expireSeconds = null): ?array
+    public function generateChatCredentials(int $sessionId, int $userId, string $userType, ?int $expireSeconds = null, ?string $channel = null): ?array
     {
         $username      = $userType . '_' . $userId;
-        $channel       = 'session_' . $sessionId;
+        $channel       = $channel ?: ('session_' . $sessionId);
         $expireSeconds = $expireSeconds ?? (int) config('services.agora.token_ttl', 3600);
 
-        // 1. Register user on Agora Chat (idempotent)
         $agoraUid = $this->registerChatUser($username);
 
-        // 2. Generate a Chat USER token (not RTM, not App token)
         $chatToken = $this->generateChatUserToken($username, $expireSeconds);
 
         if (! $chatToken) {
@@ -417,6 +415,39 @@ public function getOrCreateChatRoomForSession(\App\Models\Sessions $session): ?s
             $session->chat_room_id = $roomId;      // update in-memory too
         } catch (\Throwable $e) {
             Log::warning('Failed to persist chat_room_id', [
+                'session_id' => $session->id,
+                'error'      => $e->getMessage(),
+            ]);
+        }
+    }
+
+    return $roomId;
+}
+
+public function getOrCreateChatRoomForGroupSession(\App\Models\GroupClassSession $session): ?string
+{
+    if (! empty($session->chat_room_id)) {
+        return $session->chat_room_id;
+    }
+
+    $roomName      = 'group_session_' . $session->id;
+    $ownerUsername = 'teacher_' . $session->teacher_id;
+
+    $roomId = $this->createChatRoom($roomName, $ownerUsername);
+
+    if (! $roomId) {
+        $roomId = $this->fetchChatRoomIdByName($roomName);
+    }
+
+    if ($roomId) {
+        try {
+            \App\Models\GroupClassSession::where('id', $session->id)
+                ->whereNull('chat_room_id')
+                ->update(['chat_room_id' => $roomId]);
+
+            $session->chat_room_id = $roomId;
+        } catch (\Throwable $e) {
+            Log::warning('Failed to persist chat_room_id for group session', [
                 'session_id' => $session->id,
                 'error'      => $e->getMessage(),
             ]);

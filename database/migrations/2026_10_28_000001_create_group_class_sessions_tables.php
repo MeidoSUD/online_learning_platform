@@ -20,7 +20,7 @@ return new class extends Migration {
             $table->time('start_time')->nullable();
             $table->time('end_time')->nullable();
             $table->integer('duration')->default(60);
-            $table->string('status')->default('scheduled');
+            $table->enum('status', ['scheduled', 'in_progress', 'live', 'ended', 'completed', 'cancelled', 'no_show', 'wait_for_teacher'])->default('scheduled');
             $table->text('join_url')->nullable();
             $table->text('host_url')->nullable();
             $table->string('meeting_id')->nullable();

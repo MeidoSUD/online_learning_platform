@@ -7,13 +7,18 @@ use App\Models\Booking;
 use App\Models\GroupClass;
 use App\Models\GroupClassBookingLesson;
 use App\Models\GroupClassLesson;
+use App\Models\GroupClassSession;
+use App\Models\GroupClassSessionStudent;
 use App\Models\Sessions;
 use App\Models\Subscription;
+use App\Models\User;
+use App\Services\AgoraService;
 use App\Services\NotificationService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class GroupClassBookingController extends Controller
@@ -296,6 +301,145 @@ class GroupClassBookingController extends Controller
         return response()->json([
             'success' => true,
             'data' => $booking,
+        ], 200);
+    }
+
+    public function studentSessions(Request $request): JsonResponse
+    {
+        $studentId = auth()->id();
+        $status = $request->query('status');
+
+        $query = GroupClassSessionStudent::with([
+            'session' => function ($q) {
+                $q->withCount('sessionStudents');
+            },
+            'session.groupClass.educationLevel',
+            'session.groupClass.class',
+            'session.groupClass.subject',
+            'session.lesson',
+            'session.teacher.teacherInfo',
+            'booking',
+        ])
+        ->where('student_id', $studentId);
+
+        if ($status && $status !== 'all') {
+            if ($status === 'active') {
+                $query->whereHas('session', function ($q) {
+                    $q->whereIn('status', ['scheduled', 'in_progress', 'live', 'wait_for_teacher']);
+                });
+            } elseif ($status === 'ended' || $status === 'completed' || $status === 'finished') {
+                $query->whereHas('session', function ($q) {
+                    $q->whereIn('status', ['ended', 'completed', 'cancelled', 'no_show']);
+                });
+            } elseif (in_array($status, ['scheduled', 'in_progress', 'live', 'ended', 'completed', 'cancelled', 'no_show', 'wait_for_teacher'])) {
+                $query->whereHas('session', function ($q) use ($status) {
+                    $q->where('status', $status);
+                });
+            } else {
+                $query->where('status', $status);
+            }
+        }
+
+        $items = $query->orderByDesc('id')->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $items,
+        ], 200);
+    }
+
+    public function joinSession($id): JsonResponse
+    {
+        $studentId = auth()->id();
+        $sessionStudent = GroupClassSessionStudent::with(['session.teacher', 'session.groupClass'])
+            ->where('student_id', $studentId)
+            ->where(function ($q) use ($id) {
+                $q->where('id', $id)->orWhere('group_class_session_id', $id);
+            })
+            ->first();
+
+        if (!$sessionStudent || !$sessionStudent->session) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Session not found or you are not enrolled',
+                'message_ar' => 'الجلسة غير موجودة أو أنك غير مسجل بها',
+            ], 404);
+        }
+
+        $session = $sessionStudent->session;
+        if ($session->status !== GroupClassSession::STATUS_LIVE) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Waiting for teacher to start the session',
+                'message_ar' => 'بانتظار المعلم لبدء الجلسة',
+                'data' => ['session_status' => 'waiting_for_teacher'],
+            ], 423);
+        }
+
+        $channel = $session->meeting_id ?: ('group_session_' . $session->id);
+        $account = 'student_' . $studentId;
+        $agora = new AgoraService();
+
+        $tokenData = null;
+        try {
+            $tokenData = $agora->generateTokenForAccount(
+                $channel,
+                $account,
+                \App\Agora\RtcTokenBuilder::RolePublisher
+            );
+        } catch (\Throwable $e) {
+        }
+
+        if (!$tokenData || empty($tokenData['token'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate token',
+                'message_ar' => 'فشل إنشاء رمز الاتصال بالجلسة',
+            ], 500);
+        }
+
+        $chatCredentials = $agora->generateChatCredentials(
+            (int) $session->id,
+            (int) $studentId,
+            'student',
+            null,
+            $channel
+        );
+
+        $user = auth()->user();
+        if ($chatCredentials && $user && $user->agora_chat_uid !== $chatCredentials['agora_uid']) {
+            User::where('id', $user->id)->update(['agora_chat_uid' => $chatCredentials['agora_uid']]);
+        }
+
+        $chatRoomId = $agora->getOrCreateChatRoomForGroupSession($session);
+
+        $sessionStudent->update([
+            'status' => GroupClassSessionStudent::STATUS_ATTENDED,
+            'joined_at' => now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Joined session successfully',
+            'message_ar' => 'تم الانضمام للجلسة بنجاح',
+            'data' => [
+                'session' => $session->load(['groupClass', 'lesson', 'teacher.teacherInfo']),
+                'session_status' => 'live',
+                'agora' => [
+                    'channel' => $tokenData['channel'] ?? $channel,
+                    'token' => $tokenData['token'] ?? '',
+                    'uid' => (string) ($tokenData['uid'] ?? '0'),
+                    'role' => 'participant',
+                    'expires_in' => $tokenData['expires_in'] ?? 3600,
+                    'chat_channel' => $tokenData['channel'] ?? $channel,
+                    'app_id' => $chatCredentials['app_id'] ?? config('services.agora.app_id'),
+                    'chat_token' => $chatCredentials['token'] ?? null,
+                    'chat_uid' => $chatCredentials['uid'] ?? null,
+                    'chat_expires_in' => $chatCredentials['expires_in'] ?? null,
+                    'chat_agora_uid' => $chatCredentials['agora_uid'] ?? null,
+                    'chat_room_id' => $chatRoomId,
+                ],
+            ],
         ], 200);
     }
 }

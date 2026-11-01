@@ -144,4 +144,6 @@ Route::prefix('student')->middleware(['auth:sanctum', 'role:student'])->group(fu
 
     Route::post('/group-class/booking', [GroupClassBookingController::class, 'createBooking']);
     Route::get('/group-class/booking/{bookingId}', [GroupClassBookingController::class, 'getBookingDetails']);
+    Route::get('/group-class-sessions', [GroupClassBookingController::class, 'studentSessions']);
+    Route::post('/group-class-sessions/{id}/join', [GroupClassBookingController::class, 'joinSession']);
 });
