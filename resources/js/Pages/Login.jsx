@@ -4,23 +4,24 @@ import { tokenService } from '../Services/api';
 import { router } from '@inertiajs/react';
 
 export default function Login() {
-  // NOTE: removed automatic redirect on mount. Auto-redirecting when a token
-  // exists caused immediate navigation/refresh in some dev setups and prevented
-  // users from interacting with the login form. We keep redirecting after a
-  // successful login in handleLoginSuccess.
+  useEffect(() => {
+    if (tokenService.isAuthenticated()) {
+      router.visit('/dashboard');
+    }
+  }, []);
 
   const handleLoginSuccess = (data) => {
-    console.log("[Login Page] Login success:", data);
     try {
-      // If API returns the token in data.data.token (AuthResponse shape), persist and redirect
       const token = data?.data?.token || data?.token || null;
       if (token) {
         tokenService.setToken(token);
       }
+      const user = data?.data?.user || data?.user || null;
+      if (user) {
+        localStorage.setItem('user_session_data', JSON.stringify(user));
+      }
     } catch (e) {
-      console.error("[Login Page] Failed to persist token:", e);
     }
-    // Navigate to dashboard after successful login
     router.visit('/dashboard');
   };
 

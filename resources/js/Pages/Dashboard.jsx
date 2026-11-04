@@ -3,8 +3,6 @@ import { AdminDashboardScreen } from '../Components/AdminDashboardScreen';
 import { StudentDashboardScreen } from '../Components/StudentDashboardScreen';
 import { TeacherDashboardScreen } from '../Components/TeacherDashboardScreen';
 import { authService, tokenService } from '../Services/api';
-// eslint-disable-next-line no-unused-vars
-
 import { router } from '@inertiajs/react';
 import { Loader2 } from 'lucide-react';
 
@@ -12,18 +10,28 @@ const USER_DATA_KEY = 'user_session_data';
 
 const processUserObject = (userObj, token) => {
   if (!userObj) return null;
-  const rid = Number(userObj.role_id !== undefined ? userObj.role_id : userObj.roleId);
-  if (isNaN(rid)) return null;
+  const target = userObj.data || userObj;
+  const rid = Number(target.role_id !== undefined ? target.role_id : target.roleId);
 
   let finalRole;
-  switch (rid) {
-    case 1: finalRole = 'admin'; break;
-    case 3: finalRole = 'teacher'; break;
-    case 4: finalRole = 'student'; break;
-    case 5: finalRole = 'support'; break;
-    default: return null;
+  if (!isNaN(rid)) {
+    switch (rid) {
+      case 1: finalRole = 'admin'; break;
+      case 3: finalRole = 'teacher'; break;
+      case 4: finalRole = 'student'; break;
+      case 5: finalRole = 'support'; break;
+    }
   }
-  return { user: { role: finalRole, data: userObj }, token };
+
+  if (!finalRole && (userObj.role || target.role)) {
+    const r = String(userObj.role || target.role).toLowerCase();
+    if (['admin', 'teacher', 'student', 'support'].includes(r)) {
+      finalRole = r;
+    }
+  }
+
+  if (!finalRole) return null;
+  return { user: { role: finalRole, data: target }, token };
 };
 
 export default function Dashboard() {
@@ -31,6 +39,8 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
+
     const initAuth = async () => {
       const token = tokenService.getToken();
       if (!token) {
@@ -39,51 +49,69 @@ export default function Dashboard() {
       }
 
       const cached = localStorage.getItem(USER_DATA_KEY);
+      let hasValidCache = false;
+
       if (cached) {
         try {
           const cachedData = JSON.parse(cached);
-          if (cachedData && cachedData.user && cachedData.token === token) {
-            setUserData(cachedData);
+          const cachedUser = cachedData?.user?.data || cachedData?.user || cachedData?.data || cachedData;
+          const processedCached = processUserObject(cachedUser, token);
+
+          if (processedCached && isMounted) {
+            setUserData(processedCached);
             setIsLoading(false);
-            return;
+            hasValidCache = true;
           }
-          localStorage.removeItem(USER_DATA_KEY);
-        } catch (e) {
-          localStorage.removeItem(USER_DATA_KEY);
-        }
+        } catch (e) {}
       }
 
       try {
         const response = await authService.getProfile();
+        if (!isMounted) return;
+
         const candidates = [
-          response.user?.data,
-          response.data,
-          response.user,
+          response?.user?.data,
+          response?.data,
+          response?.user,
           response
         ];
-        const isValidUser = (obj) => obj && (obj.role_id !== undefined || obj.roleId !== undefined);
+        const isValidUser = (obj) => obj && (obj.role_id !== undefined || obj.roleId !== undefined || obj.role !== undefined);
         const finalUserObj = candidates.find(isValidUser);
 
-        if (!finalUserObj) {
-          throw new Error("Invalid Profile Data");
+        if (finalUserObj) {
+          const processedData = processUserObject(finalUserObj, token);
+          if (processedData && isMounted) {
+            setUserData(processedData);
+            localStorage.setItem(USER_DATA_KEY, JSON.stringify(processedData));
+          }
         }
-
-        const processedData = processUserObject(finalUserObj, token);
-        if (!processedData) {
-          throw new Error("Invalid Role ID");
-        }
-
-        setUserData(processedData);
-        localStorage.setItem(USER_DATA_KEY, JSON.stringify(processedData));
       } catch (error) {
-        tokenService.removeToken();
-        localStorage.removeItem(USER_DATA_KEY);
-        router.visit('/login');
+        const is401 = error?.status === 401 ||
+          (error?.message && (
+            error.message.includes('401') ||
+            error.message.includes('Unauthenticated') ||
+            error.message.includes('Session expired')
+          ));
+
+        if (is401) {
+          tokenService.removeToken();
+          localStorage.removeItem(USER_DATA_KEY);
+          router.visit('/login');
+        } else if (!hasValidCache && isMounted) {
+          setIsLoading(false);
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
+
     initAuth();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleLogout = () => {

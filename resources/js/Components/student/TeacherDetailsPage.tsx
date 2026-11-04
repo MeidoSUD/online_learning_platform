@@ -1,628 +1,1074 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
-import { Star, Clock, Users, School, Copy, Check, BookOpen, Globe, Award, MessageSquare, Heart, ArrowLeft, Share2, Loader2, Calendar } from 'lucide-react';
-import { studentService, getStorageUrl, Session } from '../../Services/api';
-import { SessionDetailsModal } from './SessionDetailsModal';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Share2,
+  Heart,
+  Star,
+  Award,
+  GraduationCap,
+  BookOpen,
+  CreditCard,
+  Video,
+  Play,
+  Check,
+  X,
+  Loader2,
+  Sparkles
+} from 'lucide-react';
+import { studentService, getStorageUrl, fetchWithAuth } from '../../Services/api';
 import { BookingFlowModal } from './BookingFlowModal';
-import { SessionRoomModal } from '../dashboard/SessionRoomModal';
-import { COUNTRIES } from '../../Utils/constants';
 
 interface TeacherDetailsPageProps {
-  teacher: any;
-  serviceId: number;
+  teacher?: any;
+  serviceId?: number | string;
   onBack: () => void;
-  onBookingComplete: () => void;
+  onBookingComplete?: () => void;
 }
 
-function getNationalityFlag(nationality?: string | null): string {
-  if (!nationality) return '';
-  const country = COUNTRIES.find(c => c.label.toLowerCase() === nationality.toLowerCase());
-  return country?.flag || '';
-}
+const normalizeMediaUrl = (url?: string | null): string => {
+  if (!url || typeof url !== 'string') return '';
+  const trimmed = url.trim();
+  if (!trimmed) return '';
+  const storageIndex = trimmed.indexOf('/storage/');
+  if (storageIndex !== -1) {
+    return trimmed.substring(storageIndex);
+  }
+  const clean = trimmed.replace(/^\//, '');
+  if (clean.startsWith('storage/')) {
+    return `/${clean}`;
+  }
+  if (
+    clean.startsWith('teachers/') ||
+    clean.startsWith('images/') ||
+    clean.startsWith('profile_photos/') ||
+    clean.startsWith('course_covers/') ||
+    clean.startsWith('certificates/')
+  ) {
+    return `/storage/${clean}`;
+  }
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return trimmed;
+  }
+  return getStorageUrl(clean);
+};
 
-function getServiceIcon(keyName: string, id: number): { icon: string; color: string } {
-  const key = (keyName || '').toLowerCase();
-  if (key === 'private_lesson' || key.includes('private') || id === 3) return { icon: 'person', color: '#1B3A6B' };
-  if (key === 'language_learning' || key.includes('language') || id === 2) return { icon: 'globe', color: '#00AEEF' };
-  if (key === 'courses' || key === 'training_courses' || id === 4) return { icon: 'users', color: '#3D8B37' };
-  if (key === 'sessions' || key === 'consultation' || id === 5) return { icon: 'video', color: '#2352A0' };
-  return { icon: 'star', color: '#687788' };
-}
+export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({
+  teacher: initialTeacher,
+  serviceId,
+  onBack,
+  onBookingComplete
+}) => {
+  const { language, direction } = useLanguage();
+  const [teacherData, setTeacherData] = useState<any>(initialTeacher || null);
+  const [loading, setLoading] = useState<boolean>(!initialTeacher);
+  const [selectedTab, setSelectedTab] = useState<number>(0);
+  const [isScrolled, setIsScrolled] = useState<boolean>(false);
+  const [isFavorited, setIsFavorited] = useState<boolean>(false);
+  const [isTogglingFavorite, setIsTogglingFavorite] = useState<boolean>(false);
+  const [copyToast, setCopyToast] = useState<string | null>(null);
+  const [showVideoModal, setShowVideoModal] = useState<boolean>(false);
+  const [showBookingModal, setShowBookingModal] = useState<boolean>(false);
+  const [videoThumbnail, setVideoThumbnail] = useState<string | null>(null);
 
-function getServiceNameKey(keyName: string, id: number): string {
-  const key = (keyName || '').toLowerCase();
-  if (key === 'private_lesson' || key.includes('private') || id === 3) return 'private_lessons';
-  if (key === 'language_learning' || key.includes('language') || id === 2) return 'language_learning';
-  if (key === 'courses' || key === 'training_courses' || id === 4) return 'training_courses';
-  if (key === 'sessions' || key === 'consultation' || id === 5) return 'sessions';
-  return 'other';
-}
-
-export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({ teacher: teacherProp, serviceId, onBack, onBookingComplete }) => {
-  const { t, language, direction } = useLanguage();
-  const [activeTab, setActiveTab] = useState<'details' | 'sessions'>('details');
-  const [sessions, setSessions] = useState<any[]>([]);
-  const [loadingSessions, setLoadingSessions] = useState(false);
-  const [sessionsError, setSessionsError] = useState<string | null>(null);
-  const [favorited, setFavorited] = useState(teacherProp?.has_favorited ?? false);
-  const [favLoading, setFavLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [showBooking, setShowBooking] = useState(false);
-  const [selectedSession, setSelectedSession] = useState<any>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [joining, setJoining] = useState(false);
-  const [agoraData, setAgoraData] = useState<any>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  const openSessionDetails = (session: any) => {
-    setSelectedSession(session);
-    setModalOpen(true);
-  };
-
-  const handleJoinSession = async (sessionId: number) => {
-    setJoining(true);
-    try {
-      const response = await studentService.joinSession(sessionId);
-      if (response.success && response.data?.agora) {
-        setAgoraData({
-          ...response.data.agora,
-          session_id: sessionId,
-          role: 'participant'
-        });
-        setModalOpen(false);
-      } else if (response.data?.session_status === 'waiting_for_teacher') {
-        alert(language === 'ar'
-          ? 'المعلم لم يبدأ الجلسة بعد، يرجى الانتظار'
-          : "Teacher hasn't started the session yet, please wait");
-      } else {
-        alert(response.message || (language === 'ar' ? 'لا يمكن الانضمام للجلسة حالياً' : 'Cannot join session at this time'));
-      }
-    } catch (e: any) {
-      alert(e.message || (language === 'ar' ? 'فشل الانضمام للجلسة' : 'Failed to join session'));
-    } finally {
-      setJoining(false);
-    }
-  };
-
-  const profile = teacherProp?.profile || {};
-  const profileImage = profile.profile_photo || teacherProp?.profile_image || null;
-  const firstName = teacherProp?.first_name || '';
-  const lastName = teacherProp?.last_name || '';
-  const fullName = `${firstName} ${lastName}`.trim();
-  const nationality = teacherProp?.nationality || '';
-  const flag = getNationalityFlag(nationality);
-  const verified = teacherProp?.verified ?? profile?.verified ?? false;
-  const rating = profile?.rating ?? teacherProp?.rating ?? 0;
-  const reviews = profile?.reviews ?? [];
-  const reviewsCount = reviews?.length ?? 0;
-  const totalStudents = profile?.total_students ?? teacherProp?.total_students ?? 0;
-  const completedLessons = profile?.bookings_count ?? profile?.subjects_count ?? 0;
-  const individualHourPrice = profile?.individual_hour_price ?? teacherProp?.individual_hour_price ?? 0;
-  const groupHourPrice = profile?.group_hour_price ?? teacherProp?.group_hour_price ?? 0;
-  const teachIndividual = profile?.teach_individual ?? teacherProp?.teach_individual ?? false;
-  const teachGroup = profile?.teach_group ?? teacherProp?.teach_group ?? false;
-  const bio = profile?.bio || teacherProp?.bio || '';
-  const code = profile?.code || teacherProp?.code || '';
-  const services = profile?.services ?? [];
-  const teacherSubjects = profile?.teacher_subjects ?? teacherProp?.teacher_subjects ?? [];
-  const languages = profile?.languages ?? [];
-  const certificates = profile?.certificate_attachment ? [profile.certificate_attachment] : [];
-  const coverImage = profile?.cover_image || null;
-  const availableTimes = profile?.available_times ?? teacherProp?.available_times ?? [];
-  const specialization = language === 'ar'
-    ? (teacherSubjects?.[0]?.class_level_title_ar || teacherSubjects?.[0]?.class_level_title || 'معلم')
-    : (teacherSubjects?.[0]?.class_level_title_en || teacherSubjects?.[0]?.class_level_title || 'Teacher');
-
-  const fetchSessions = useCallback(async () => {
-    if (!teacherProp?.id) return;
-    setLoadingSessions(true);
-    setSessionsError(null);
-    try {
-      const data = await studentService.getTeacherSessions(teacherProp.id);
-      setSessions(Array.isArray(data) ? data : []);
-    } catch (e: any) {
-      setSessionsError(e.message || (language === 'ar' ? 'فشل تحميل الجلسات' : 'Failed to load sessions'));
-    } finally {
-      setLoadingSessions(false);
-    }
-  }, [teacherProp?.id, language]);
+  const isArabic = language === 'ar';
 
   useEffect(() => {
-    if (activeTab === 'sessions') fetchSessions();
-  }, [activeTab, fetchSessions]);
+    let isMounted = true;
 
-  const handleCopyCode = () => {
-    if (!code) return;
-    navigator.clipboard.writeText(code).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+    const loadTeacher = async () => {
+      let targetId: number | null = null;
+      if (initialTeacher?.id) {
+        targetId = Number(initialTeacher.id);
+      } else if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        const urlId = params.get('teacher_id') || params.get('id');
+        if (urlId) {
+          targetId = Number(urlId);
+        } else {
+          try {
+            const saved = sessionStorage.getItem('selected_teacher_id');
+            if (saved) targetId = Number(saved);
+          } catch (_) {}
+        }
+      }
+
+      if (targetId && !isNaN(targetId) && targetId > 0) {
+        try {
+          const res = await fetchWithAuth(`/teachers/${targetId}`);
+          if (isMounted && res) {
+            const fetched = res.data || res;
+            setTeacherData(fetched);
+            const fav = fetched.has_favorited === true || fetched.is_favorite === true || fetched.is_favorited === true;
+            setIsFavorited(fav);
+            setLoading(false);
+            return;
+          }
+        } catch (_) {}
+      }
+
+      if (!initialTeacher) {
+        try {
+          const teachers = await studentService.getTeachers();
+          if (isMounted && Array.isArray(teachers) && teachers.length > 0) {
+            const firstTeacher = teachers[0];
+            const detailRes = await fetchWithAuth(`/teachers/${firstTeacher.id}`);
+            const finalData = detailRes?.data || detailRes || firstTeacher;
+            setTeacherData(finalData);
+            const fav = finalData.has_favorited === true || finalData.is_favorite === true || finalData.is_favorited === true;
+            setIsFavorited(fav);
+          }
+        } catch (_) {}
+      } else {
+        const fav = initialTeacher.has_favorited === true || initialTeacher.is_favorite === true || initialTeacher.is_favorited === true;
+        setIsFavorited(fav);
+      }
+
+      if (isMounted) {
+        setLoading(false);
+      }
+    };
+
+    loadTeacher();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [initialTeacher?.id]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (typeof window !== 'undefined') {
+        setIsScrolled(window.scrollY > 80);
+      }
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
+  const profile = teacherData?.profile || {};
+
+  const getDisplayName = (): string => {
+    const firstName = teacherData?.first_name || teacherData?.firstName || profile?.first_name || '';
+    const lastName = teacherData?.last_name || teacherData?.lastName || profile?.last_name || '';
+    const full = `${firstName} ${lastName}`.trim();
+    if (full.length > 0) return full;
+    const directName = teacherData?.name || profile?.name || '';
+    if (directName.trim().length > 0) return directName.trim();
+    return isArabic ? 'معلم' : 'Teacher';
+  };
+
+  const getProfileImage = (): string => {
+    const raw =
+      teacherData?.profile_image ||
+      teacherData?.photo ||
+      profile?.profile_photo ||
+      profile?.profile_image ||
+      teacherData?.avatar ||
+      '';
+    return normalizeMediaUrl(raw);
+  };
+
+  const getRating = (): number => {
+    const val = teacherData?.rating ?? profile?.rating ?? 0;
+    const num = Number(val);
+    return isNaN(num) ? 0 : num;
+  };
+
+  const getStudentsCount = (): number => {
+    const val =
+      teacherData?.total_students ??
+      teacherData?.students_count ??
+      teacherData?.students ??
+      profile?.total_students ??
+      profile?.students_count ??
+      profile?.students ??
+      0;
+    const num = Number(val);
+    return isNaN(num) ? 0 : num;
+  };
+
+  const getLessonsCount = (): number => {
+    const val =
+      teacherData?.total_lessons ??
+      teacherData?.completed_lessons ??
+      teacherData?.lessons_count ??
+      teacherData?.lessons ??
+      profile?.total_lessons ??
+      profile?.completed_lessons ??
+      profile?.bookings_count ??
+      profile?.subjects_count ??
+      0;
+    const num = Number(val);
+    return isNaN(num) ? 0 : num;
+  };
+
+  const getHourlyPrice = (): number => {
+    const val =
+      teacherData?.individual_hour_price ??
+      teacherData?.price_hour ??
+      teacherData?.price ??
+      profile?.individual_hour_price ??
+      profile?.price_hour ??
+      profile?.price ??
+      0;
+    const num = Number(val);
+    return isNaN(num) ? 0 : num;
+  };
+
+  const getBio = (): string => {
+    const raw = teacherData?.bio || profile?.bio || '';
+    const trimmed = String(raw).trim();
+    if (trimmed.length > 0) return trimmed;
+    return isArabic ? 'لا توجد نبذة تعريفية مضافة بعد.' : 'No bio added yet.';
+  };
+
+  const getIntroVideo = (): string => {
+    const raw =
+      teacherData?.intro_video ||
+      teacherData?.video_url ||
+      teacherData?.video ||
+      teacherData?.intro_video_url ||
+      teacherData?.presentation_video ||
+      profile?.intro_video ||
+      profile?.video_url ||
+      '';
+    return normalizeMediaUrl(raw);
+  };
+
+  useEffect(() => {
+    const rawVideo = getIntroVideo();
+    if (!rawVideo) {
+      setVideoThumbnail(null);
+      return;
+    }
+    const vid = document.createElement('video');
+    vid.src = `${rawVideo}#t=1.0`;
+    vid.crossOrigin = 'anonymous';
+    vid.muted = true;
+    vid.playsInline = true;
+    const onSeeked = () => {
+      try {
+        const cvs = document.createElement('canvas');
+        cvs.width = vid.videoWidth || 640;
+        cvs.height = vid.videoHeight || 360;
+        const ctx = cvs.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(vid, 0, 0, cvs.width, cvs.height);
+          const data = cvs.toDataURL('image/jpeg', 0.85);
+          if (data && data.length > 100) {
+            setVideoThumbnail(data);
+          }
+        }
+      } catch (_) {}
+    };
+    vid.addEventListener('seeked', onSeeked);
+    vid.addEventListener('loadeddata', () => {
+      try {
+        vid.currentTime = 1;
+      } catch (_) {}
+    });
+    vid.load();
+    return () => {
+      vid.removeEventListener('seeked', onSeeked);
+    };
+  }, [teacherData?.intro_video, profile?.intro_video]);
+
+  const getServices = (): any[] => {
+    const list = teacherData?.services || profile?.services || [];
+    return Array.isArray(list) ? list : [];
+  };
+
+  const isLanguageService = (): boolean => {
+    const mainKey = String(teacherData?.main_service_key || profile?.main_service_key || '').toLowerCase();
+    if (mainKey.length > 0) return mainKey.includes('lang');
+    const srvs = getServices();
+    return srvs.some((s: any) => {
+      const k = String(s?.key_name || s?.keyName || s?.name_en || '').toLowerCase();
+      return k.includes('language') || k.includes('lang');
     });
   };
 
-  const handleFavoriteClick = async () => {
-    if (favLoading || !teacherProp?.id) return;
-    const prev = favorited;
-    setFavorited(!prev);
-    setFavLoading(true);
+  const isAbilityService = (): boolean => {
+    const mainKey = String(teacherData?.main_service_key || profile?.main_service_key || '').toLowerCase();
+    if (mainKey.length > 0) return mainKey.includes('abilit');
+    const srvs = getServices();
+    return srvs.some((s: any) => {
+      const k = String(s?.key_name || s?.keyName || s?.name_en || '').toLowerCase();
+      return k.includes('abilit');
+    });
+  };
+
+  const getSubjects = (): string[] => {
+    const list: string[] = [];
+    const subjects = teacherData?.teacher_subjects || profile?.teacher_subjects || [];
+    if (Array.isArray(subjects)) {
+      subjects.forEach((s: any) => {
+        if (typeof s === 'string') {
+          if (s.trim()) list.push(s.trim());
+        } else if (s && typeof s === 'object') {
+          const nameAr = s.name_ar || s.subject_name_ar || s.title || s.name;
+          const nameEn = s.name_en || s.subject_name_en || s.title || s.name;
+          const chosen = isArabic ? (nameAr || nameEn) : (nameEn || nameAr);
+          if (chosen && String(chosen).trim()) list.push(String(chosen).trim());
+        }
+      });
+    }
+    return Array.from(new Set(list));
+  };
+
+  const getLanguages = (): string[] => {
+    const list: string[] = [];
+    const raw = teacherData?.teacher_languages || teacherData?.languages || profile?.teacher_languages || profile?.languages || [];
+    if (Array.isArray(raw)) {
+      raw.forEach((l: any) => {
+        if (typeof l === 'string') {
+          if (l.trim()) list.push(l.trim());
+        } else if (l && typeof l === 'object') {
+          const nameAr = l.name_ar || l.nameAr || l.title || l.name;
+          const nameEn = l.name_en || l.nameEn || l.title || l.name;
+          const chosen = isArabic ? (nameAr || nameEn) : (nameEn || nameAr);
+          if (chosen && String(chosen).trim()) list.push(String(chosen).trim());
+        }
+      });
+    }
+    return Array.from(new Set(list));
+  };
+
+  const getAbilities = (): string[] => {
+    const list: string[] = [];
+    const raw = teacherData?.teacher_abilities || teacherData?.abilities || profile?.teacher_abilities || profile?.abilities || [];
+    if (Array.isArray(raw)) {
+      raw.forEach((a: any) => {
+        if (typeof a === 'string') {
+          if (a.trim()) list.push(a.trim());
+        } else if (a && typeof a === 'object') {
+          const nameAr = a.name_ar || a.nameAr || a.title || a.name;
+          const nameEn = a.name_en || a.nameEn || a.title || a.name;
+          const chosen = isArabic ? (nameAr || nameEn) : (nameEn || nameAr);
+          if (chosen && String(chosen).trim()) list.push(String(chosen).trim());
+        }
+      });
+    }
+    return Array.from(new Set(list));
+  };
+
+  const getReviews = (): any[] => {
+    const raw = teacherData?.reviews || profile?.reviews || [];
+    if (!Array.isArray(raw)) return [];
+    return raw.map((r: any, idx: number) => {
+      let student = r.student_name || r.studentName || '';
+      if (!student && r.user) {
+        student = `${r.user.first_name || ''} ${r.user.last_name || ''}`.trim() || r.user.name || '';
+      }
+      if (!student) student = isArabic ? 'طالب' : 'Student';
+      const ratingVal = Number(r.rating || 5);
+      const commentVal = String(r.comment || '').trim();
+      const dateVal = String(r.date || r.created_at || '').split('T')[0] || '';
+      return {
+        id: r.id || idx,
+        studentName: student,
+        rating: ratingVal,
+        comment: commentVal,
+        date: dateVal
+      };
+    });
+  };
+
+  const toggleFavorite = async () => {
+    const teacherId = teacherData?.id;
+    if (!teacherId || isTogglingFavorite) return;
+    const prev = isFavorited;
+    setIsFavorited(!prev);
+    setIsTogglingFavorite(true);
     try {
-      await studentService.toggleFavorite(teacherProp.id);
-    } catch {
-      setFavorited(prev);
+      await studentService.toggleFavorite(Number(teacherId));
+    } catch (_) {
+      setIsFavorited(prev);
     } finally {
-      setFavLoading(false);
+      setIsTogglingFavorite(false);
     }
   };
 
-  const handleBook = () => {
-    setShowBooking(true);
+  const copyTeacherCode = () => {
+    const code = teacherData?.code || profile?.code || teacherData?.id || '';
+    if (!code) return;
+    const textToCopy = String(code).trim();
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      const msg = isArabic
+        ? `تم نسخ كود المعلم (${textToCopy})`
+        : `Teacher code (${textToCopy}) copied`;
+      setCopyToast(msg);
+      setTimeout(() => setCopyToast(null), 2000);
+    }).catch(() => {});
   };
 
-  const renderDetailIcon = (iconName: string) => {
-    const size = 18;
-    switch (iconName) {
-      case 'person': return <Star size={size} />;
-      case 'globe': return <Globe size={size} />;
-      case 'users': return <Users size={size} />;
-      case 'video': return <School size={size} />;
-      default: return <Star size={size} />;
-    }
-  };
+  const displayName = getDisplayName();
+  const profilePhoto = getProfileImage();
+  const ratingVal = getRating();
+  const isVerified = teacherData?.verified ?? profile?.verified ?? true;
+  const isFounder = teacherData?.is_founder ?? profile?.is_founder ?? false;
+  const introVideo = getIntroVideo();
+  const studentsCount = getStudentsCount();
+  const lessonsCount = getLessonsCount();
+  const hourlyPrice = getHourlyPrice();
+  const bioText = getBio();
+  const services = getServices();
+  const subjects = getSubjects();
+  const languages = getLanguages();
+  const abilities = getAbilities();
+  const isLang = isLanguageService();
+  const isAbil = isAbilityService();
+  const showSubjects = !isLang && !isAbil;
+  const reviews = getReviews();
+  const reviewsCount = reviews.length;
 
-  const svcIconStyle = (color: string) => ({
-    backgroundColor: `${color}15`,
-    color: color,
-    border: `1px solid ${color}30`,
+  const ratingCounts: Record<number, number> = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+  reviews.forEach((r: any) => {
+    const star = Math.max(1, Math.min(5, Math.round(Number(r.rating) || 5)));
+    ratingCounts[star] = (ratingCounts[star] || 0) + 1;
   });
 
-  const formatTime = (time: string) => time?.substring(0, 5) || '';
-  const formatDate = (date: string) => {
-    if (!date) return '';
-    const d = new Date(date.split('T')[0] || date);
-    return d.toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' });
-  };
+  const sampleReviews = [
+    {
+      name: isArabic ? 'أحمد' : 'Ahmed',
+      rating: 5,
+      comment: isArabic ? 'شرح واضح جداً ومتعاون، وساعدني أفهم الحصة بطريقة أسهل' : 'Very clear and helpful explanation, helped me understand easily.'
+    },
+    {
+      name: isArabic ? 'سارة' : 'Sarah',
+      rating: 5,
+      comment: isArabic ? 'أسلوب الشرح ممتاز، والمعلم صبور ويشرح النقاط الصعبة بشكل مبسط.' : 'Excellent explanation style, patient teacher.'
+    },
+    {
+      name: isArabic ? 'محمد' : 'Mohammed',
+      rating: 4,
+      comment: isArabic ? 'الحصة كانت مفيدة جداً، وأتمنى فقط زيادة وقت حل التمارين.' : 'The lesson was very helpful, just hoping for more exercise time.'
+    },
+    {
+      name: isArabic ? 'نورة' : 'Noura',
+      rating: 4,
+      comment: isArabic ? 'المعلم متمكن ويعطي أمثلة واضحة تساعد على فهم المعلومة بسرعة' : 'Skilled teacher who gives clear examples.'
+    },
+    {
+      name: isArabic ? 'عبدالله' : 'Abdullah',
+      rating: 3,
+      comment: isArabic ? 'على قد الحال' : 'Average'
+    }
+  ];
+
+  const resolvedServiceId = Number(serviceId) || Number(profile?.service) || Number(teacherData?.service) || 3;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#EFF6F4] flex flex-col items-center justify-center p-6">
+        <Loader2 className="w-10 h-10 text-[#5B9F48] animate-spin mb-4" />
+        <span className="text-sm font-medium text-[#0D4A5F]">
+          {isArabic ? 'جاري تحميل تفاصيل المعلم...' : 'Loading teacher details...'}
+        </span>
+      </div>
+    );
+  }
 
   return (
-    <div className="animate-fade-in pb-24" ref={scrollRef}>
-      {/* ===== Cover + Profile Header ===== */}
-      <div className="relative h-64 bg-gradient-to-br from-[var(--navy-dark)] via-[var(--navy)] to-[var(--navy-mid)] overflow-hidden">
-        {coverImage && (
-          <img src={getStorageUrl(coverImage)} alt="" className="w-full h-full object-cover opacity-40" />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent" />
-
-        <button onClick={onBack} className="absolute top-4 right-4 z-10 p-2.5 rounded-full bg-white/90 hover:bg-white shadow-[var(--shadow-lg)] transition-all">
-          <ArrowLeft size={20} className={direction === 'rtl' ? 'rotate-180' : ''} />
-        </button>
-
-        {code && (
-          <button onClick={handleCopyCode} className="absolute top-4 left-4 z-10 p-2.5 rounded-full bg-white/90 hover:bg-white shadow-[var(--shadow-lg)] transition-all">
-            {copied ? <Check size={20} className="text-primary" /> : <Share2 size={20} />}
-          </button>
-        )}
-      </div>
-
-      {/* ===== Profile Info Overlapping Cover ===== */}
-      <div className="relative -mt-20 px-4 sm:px-6">
-        <div className="flex flex-col items-center">
-          <div className="h-28 w-28 rounded-full border-4 border-white shadow-xl overflow-hidden bg-white -mt-14">
-            {profileImage ? (
-              <img src={getStorageUrl(profileImage)} alt={fullName} className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-[var(--light-bg)] text-[var(--text-muted)] text-4xl font-bold">
-                {firstName?.charAt(0) || '?'}
-              </div>
-            )}
-          </div>
-
-          <div className="text-center mt-3">
-            <div className="flex items-center justify-center gap-2">
-              {flag && <span className="text-xl">{flag}</span>}
-              <h1 className="text-2xl font-bold text-[var(--text-main)]">{fullName}</h1>
-              {verified && <span className="text-secondary"><Star size={20} fill="currentColor" /></span>}
-            </div>
-            <span className="inline-block mt-2 px-4 py-1.5 bg-primary-pale text-primary text-sm font-semibold rounded-full">
-              {specialization}
-            </span>
-          </div>
-
-          {code && (
-            <button onClick={handleCopyCode} className="mt-3 flex items-center gap-2 px-4 py-2 bg-[var(--light-bg)] rounded-full border border-[var(--border)] hover:bg-[var(--border)] transition-colors group">
-              <span className="text-sm font-mono font-semibold text-navy tracking-wider">{code}</span>
-              {copied ? (
-                <Check size={16} className="text-primary" />
+    <div
+      dir={direction}
+      className="min-h-screen bg-[#EFF6F4] relative pb-28 text-[#0D4A5F] selection:bg-[#5B9F48] selection:text-white"
+    >
+      <div
+        className={`fixed top-0 left-0 right-0 z-40 transition-all duration-200 ${
+          isScrolled
+            ? 'bg-white shadow-[0_3px_10px_rgba(0,0,0,0.08)] py-2.5 px-4 sm:px-6'
+            : 'bg-transparent py-3 px-4 sm:px-6'
+        }`}
+      >
+        <div className="max-w-2xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={onBack}
+              aria-label={isArabic ? 'رجوع' : 'Back'}
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
+                isScrolled
+                  ? 'bg-[#0D4A5F]/10 text-[#0D4A5F] hover:bg-[#0D4A5F]/15'
+                  : 'bg-white/20 text-white hover:bg-white/30 backdrop-blur-sm'
+              }`}
+            >
+              {direction === 'rtl' ? (
+                <ArrowRight className="w-5 h-5" />
               ) : (
-                <Copy size={16} className="text-[var(--text-muted)] group-hover:text-[var(--text-muted)]" />
+                <ArrowLeft className="w-5 h-5" />
               )}
             </button>
-          )}
 
-          {/* Stats Row */}
-          <div className="flex items-center justify-center gap-6 sm:gap-10 mt-6 py-4 px-6 bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] w-full max-w-lg">
-            <div className="flex flex-col items-center">
-              <Star size={24} className="text-amber-500 fill-amber-500" />
-              <span className="text-lg font-bold text-[var(--text-main)] mt-1">{rating > 0 ? rating.toFixed(1) : '0.0'}</span>
-              <span className="text-xs text-[var(--text-muted)]">{language === 'ar' ? 'تقييم' : 'Rating'}</span>
-            </div>
-            <div className="w-px h-12 bg-[var(--border)]" />
-            <div className="flex flex-col items-center">
-              <Users size={24} className="text-primary" />
-              <span className="text-lg font-bold text-[var(--text-main)] mt-1">{totalStudents}</span>
-              <span className="text-xs text-[var(--text-muted)]">{language === 'ar' ? 'طلاب' : 'Students'}</span>
-            </div>
-            <div className="w-px h-12 bg-[var(--border)]" />
-            <div className="flex flex-col items-center">
-              <School size={24} className="text-green-500" />
-              <span className="text-lg font-bold text-[var(--text-main)] mt-1">{completedLessons}</span>
-              <span className="text-xs text-[var(--text-muted)]">{language === 'ar' ? 'دروس' : 'Lessons'}</span>
-            </div>
-            <div className="w-px h-12 bg-[var(--border)]" />
-            <div className="flex flex-col items-center">
-              <Clock size={24} className="text-secondary" />
-              <span className="text-lg font-bold text-[var(--text-main)] mt-1">{Number(individualHourPrice).toFixed(2)}</span>
-              <span className="text-xs text-[var(--text-muted)]">{t.sar}</span>
-            </div>
+            {isScrolled && (
+              <div className="flex items-center gap-2.5 animate-fade-in">
+                <div className="w-9 h-9 rounded-full bg-white p-0.5 shadow-sm">
+                  {profilePhoto ? (
+                    <img
+                      src={profilePhoto}
+                      alt={displayName}
+                      className="w-full h-full rounded-full object-cover"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = '/heros/teacher.png';
+                      }}
+                    />
+                  ) : (
+                    <img
+                      src="/heros/teacher.png"
+                      alt={displayName}
+                      className="w-full h-full rounded-full object-cover"
+                    />
+                  )}
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-bold text-[#0D4A5F] leading-tight line-clamp-1">
+                    {displayName}
+                  </span>
+                  <span className="text-[11px] text-[#0D4A5F]/70">
+                    {isVerified
+                      ? (isArabic ? 'معلم موثّق' : 'Verified Teacher')
+                      : (isArabic ? 'معلم' : 'Teacher')}
+                  </span>
+                </div>
+                <div className="ms-2 px-2 py-0.5 rounded-[10px] bg-[#FFF7EA] border border-[#F49E00]/30 flex items-center gap-1">
+                  <Star className="w-3.5 h-3.5 fill-[#F49E00] text-[#F49E00]" />
+                  <span className="text-[11px] font-bold text-[#0D4A5F]">
+                    {ratingVal > 0 ? ratingVal.toFixed(1) : '0.0'}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={copyTeacherCode}
+              aria-label={isArabic ? 'مشاركة كود المعلم' : 'Share teacher code'}
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
+                isScrolled
+                  ? 'bg-[#0D4A5F]/10 text-[#0D4A5F] hover:bg-[#0D4A5F]/15'
+                  : 'bg-white/20 text-white hover:bg-white/30 backdrop-blur-sm'
+              }`}
+            >
+              <Share2 className="w-5 h-5" />
+            </button>
+
+            <button
+              onClick={toggleFavorite}
+              aria-label={isArabic ? 'المفضلة' : 'Favorite'}
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
+                isScrolled
+                  ? 'bg-[#0D4A5F]/10 hover:bg-[#0D4A5F]/15'
+                  : 'bg-white/20 hover:bg-white/30 backdrop-blur-sm'
+              }`}
+            >
+              <Heart
+                className={`w-5 h-5 transition-transform active:scale-125 ${
+                  isFavorited
+                    ? 'fill-[#E53935] text-[#E53935]'
+                    : isScrolled
+                    ? 'text-[#0D4A5F]'
+                    : 'text-white'
+                }`}
+              />
+            </button>
           </div>
         </div>
       </div>
 
-      {/* ===== Tabs ===== */}
-      <div className="mt-6 border-b border-[var(--border)] px-4 sm:px-6">
-        <div className="flex gap-0 max-w-md mx-auto">
+      <div className="relative">
+        <div className="w-full bg-[#0D4A5F] pt-20 pb-16" />
+
+        <div className="w-full bg-[#0D4A5F] flex overflow-hidden">
+          {Array.from({ length: 15 }).map((_, i) => (
+            <div key={i} className="flex-1 h-3.5 bg-[#EFF6F4] rounded-t-[10px]" />
+          ))}
+        </div>
+
+        <div className="max-w-2xl mx-auto px-4 -mt-20 flex flex-col items-center relative z-10">
+          <div className="relative flex flex-col items-center">
+            <div className="w-24 h-24 rounded-full bg-white p-1 shadow-md">
+              {profilePhoto ? (
+                <img
+                  src={profilePhoto}
+                  alt={displayName}
+                  className="w-full h-full rounded-full object-cover"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = '/heros/teacher.png';
+                  }}
+                />
+              ) : (
+                <img
+                  src="/heros/teacher.png"
+                  alt={displayName}
+                  className="w-full h-full rounded-full object-cover"
+                />
+              )}
+            </div>
+
+            <div className="absolute -bottom-2.5 px-2.5 py-0.5 rounded-[12px] bg-white shadow-[0_2px_6px_rgba(0,0,0,0.1)] flex items-center gap-1">
+              <Star className="w-3.5 h-3.5 fill-[#F49E00] text-[#F49E00]" />
+              <span className="text-xs font-bold text-[#0D4A5F]">
+                {ratingVal > 0 ? ratingVal.toFixed(1) : '0.0'}
+              </span>
+            </div>
+          </div>
+
+          <h1 className="mt-4 text-[19px] font-bold text-[#0D4A5F] text-center">
+            {displayName}
+          </h1>
+
+          <p className="mt-0.5 text-[13px] text-[#0D4A5F]/70 text-center font-medium">
+            {isVerified
+              ? (isArabic ? 'معلم موثّق' : 'Verified Teacher')
+              : (isArabic ? 'معلم' : 'Teacher')}
+          </p>
+
+          {isFounder && (
+            <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFF8E1] border border-[#D4A017]/40 text-[#D4A017]">
+              <Award className="w-3.5 h-3.5" />
+              <span className="text-xs font-semibold">
+                {isArabic ? 'عضو مؤسس' : 'Founding Member'}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="max-w-2xl mx-auto px-5 mt-5">
+        <div className="bg-black/5 p-1 rounded-[16px] flex">
           <button
-            onClick={() => setActiveTab('details')}
-            className={`flex-1 py-3 text-sm font-bold text-center border-b-2 transition-colors ${
-              activeTab === 'details' ? 'text-primary border-primary' : 'text-[var(--text-muted)] border-transparent hover:text-[var(--text-muted)]'
+            onClick={() => setSelectedTab(0)}
+            className={`flex-1 py-2.5 text-center text-sm font-bold rounded-[12px] transition-all ${
+              selectedTab === 0
+                ? 'bg-white text-[#0D4A5F] shadow-[0_2px_8px_rgba(0,0,0,0.05)]'
+                : 'bg-transparent text-[#0D4A5F]/60 hover:text-[#0D4A5F]'
             }`}
           >
-            {language === 'ar' ? 'التفاصيل' : 'Details'}
+            {isArabic ? 'عن المعلم' : 'About Teacher'}
           </button>
           <button
-            onClick={() => setActiveTab('sessions')}
-            className={`flex-1 py-3 text-sm font-bold text-center border-b-2 transition-colors ${
-              activeTab === 'sessions' ? 'text-primary border-primary' : 'text-[var(--text-muted)] border-transparent hover:text-[var(--text-muted)]'
+            onClick={() => setSelectedTab(1)}
+            className={`flex-1 py-2.5 text-center text-sm font-bold rounded-[12px] transition-all ${
+              selectedTab === 1
+                ? 'bg-white text-[#0D4A5F] shadow-[0_2px_8px_rgba(0,0,0,0.05)]'
+                : 'bg-transparent text-[#0D4A5F]/60 hover:text-[#0D4A5F]'
             }`}
           >
-            {language === 'ar' ? 'الجلسات' : 'Sessions'}
+            {isArabic ? 'آراء الطلاب' : 'Student Reviews'}
           </button>
         </div>
       </div>
 
-      {/* ===== Tab Content ===== */}
-      <div className="px-4 sm:px-6 mt-6 max-w-3xl mx-auto space-y-5">
-        {activeTab === 'details' ? (
+      <div className="max-w-2xl mx-auto px-5 mt-4 space-y-4">
+        {selectedTab === 0 ? (
           <>
-            {/* Bio */}
-            {bio && (
-              <div className="bg-white p-5 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)]">
-                <h3 className="font-bold text-[var(--text-main)] mb-3 flex items-center gap-2">
-                  <MessageSquare size={18} className="text-primary" />
-                  {language === 'ar' ? 'نبذة عن المعلم' : 'About Teacher'}
-                </h3>
-                <p className="text-[var(--text-muted)] text-sm leading-relaxed">{bio}</p>
+            <div className="bg-white rounded-[20px] border border-[#0D4A5F]/10 p-4 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex items-center justify-around">
+              <div className="flex-1 flex flex-col items-center text-center">
+                <GraduationCap className="w-[26px] h-[26px] text-[#5B9F48] mb-1.5" />
+                <span className="text-[18px] font-bold text-[#0D4A5F] leading-tight">
+                  {studentsCount}
+                </span>
+                <span className="text-[13px] text-[#0D4A5F]/70 mt-0.5">
+                  {isArabic ? 'طالب' : 'Students'}
+                </span>
               </div>
-            )}
 
-            {/* Services */}
-            {services.length > 0 && (
-              <div className="bg-white p-5 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)]">
-                <h3 className="font-bold text-[var(--text-main)] mb-3 flex items-center gap-2">
-                  <Star size={18} className="text-primary" />
-                  {language === 'ar' ? 'الخدمات المقدمة' : 'Services'}
-                </h3>
-                <div className="flex flex-wrap gap-3">
-                  {services.map((svc: any) => {
-                    const { icon, color } = getServiceIcon(svc.key_name, svc.service_id || svc.id);
-                    const name = language === 'ar' ? (svc.name_ar || svc.name_en) : (svc.name_en || svc.name_ar);
+              <div className="w-[1px] h-9 bg-[#0D4A5F]/15" />
+
+              <div className="flex-1 flex flex-col items-center text-center">
+                <BookOpen className="w-6 h-6 text-[#5B9F48] mb-1.5" />
+                <span className="text-[18px] font-bold text-[#0D4A5F] leading-tight">
+                  {lessonsCount}
+                </span>
+                <span className="text-[13px] text-[#5B9F48] font-medium mt-0.5">
+                  {isArabic ? 'حصة' : 'Lessons'}
+                </span>
+              </div>
+
+              <div className="w-[1px] h-9 bg-[#0D4A5F]/15" />
+
+              <div className="flex-1 flex flex-col items-center text-center">
+                <CreditCard className="w-6 h-6 text-[#5B9F48] mb-1.5" />
+                <div className="flex items-center gap-1 leading-tight">
+                  <span className="text-[18px] font-bold text-[#0D4A5F]">
+                    {hourlyPrice > 0 ? hourlyPrice.toFixed(0) : '120'}
+                  </span>
+                  <span className="text-xs font-bold text-[#0D4A5F]">
+                    {isArabic ? 'ر.س' : 'SAR'}
+                  </span>
+                </div>
+                <span className="text-xs text-[#0D4A5F]/70 mt-0.5">
+                  {isArabic ? '/ساعة' : '/hour'}
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-[20px] border border-[#0D4A5F]/10 p-4 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+              <h2 className="text-[16px] font-bold text-[#0D4A5F] mb-3">
+                {isArabic ? 'نبذة تعريفية' : 'Bio'}
+              </h2>
+              <p
+                className={`text-[14px] leading-relaxed ${
+                  bioText === (isArabic ? 'لا توجد نبذة تعريفية مضافة بعد.' : 'No bio added yet.')
+                    ? 'text-[#0D4A5F]/50'
+                    : 'text-[#0D4A5F]'
+                }`}
+              >
+                {bioText}
+              </p>
+
+              {introVideo && (
+                <div
+                  onClick={() => setShowVideoModal(true)}
+                  className="mt-3.5 h-40 w-full rounded-[16px] relative overflow-hidden cursor-pointer group bg-[#0D4A5F]/10"
+                >
+                  {videoThumbnail ? (
+                    <img
+                      src={videoThumbnail}
+                      alt=""
+                      className="w-full h-full object-cover filter brightness-90 group-hover:brightness-75 transition-all duration-300"
+                    />
+                  ) : (
+                    <video
+                      src={`${introVideo}#t=1.0`}
+                      preload="metadata"
+                      playsInline
+                      muted
+                      className="w-full h-full object-cover pointer-events-none filter brightness-90 group-hover:brightness-75 transition-all duration-300"
+                    />
+                  )}
+
+                  <div className="absolute inset-0 bg-black/25 group-hover:bg-black/35 transition-colors" />
+
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-[52px] h-[52px] rounded-full bg-[#5B9F48] shadow-[0_4px_14px_rgba(91,159,72,0.4)] flex items-center justify-center text-white transform group-hover:scale-110 transition-transform">
+                      <Play className="w-7 h-7 fill-white translate-x-0.5" />
+                    </div>
+                  </div>
+
+                  <div className="absolute bottom-3 end-3 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-sm text-white text-[11px] font-medium flex items-center gap-1.5">
+                    <Video className="w-3.5 h-3.5" />
+                    <span>
+                      {isArabic ? 'مشاهدة الفيديو التعريفي' : 'Watch Intro Video'}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-white rounded-[20px] border border-[#0D4A5F]/10 p-4 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+              <h2 className="text-[16px] font-bold text-[#0D4A5F] mb-3">
+                {isArabic ? 'الخدمات المقدمة' : 'Services Provided'}
+              </h2>
+              {services.length > 0 ? (
+                <div className="space-y-2">
+                  {services.map((srv: any, idx: number) => {
+                    const title = isArabic
+                      ? (srv.name_ar || srv.nameAr || srv.title || srv.name_en || srv.name)
+                      : (srv.name_en || srv.nameEn || srv.title || srv.name_ar || srv.name);
+                    const desc = isArabic
+                      ? (srv.description_ar || srv.descriptionAr || srv.description || '')
+                      : (srv.description_en || srv.descriptionEn || srv.description || '');
+                    const srvPrice = Number(srv.price || hourlyPrice || 120);
+
                     return (
-                      <div key={svc.id} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius-md)] text-sm font-semibold" style={svcIconStyle(color)}>
-                        {renderDetailIcon(icon)}
-                        <span>{name || ''}</span>
+                      <div
+                        key={srv.id || idx}
+                        className="bg-[#EFF6F4] rounded-[14px] p-3 flex items-center justify-between"
+                      >
+                        <div className="flex-1 pe-2">
+                          <span className="text-[14px] font-bold text-[#0D4A5F] block leading-snug">
+                            {title}
+                          </span>
+                          {desc && (
+                            <span className="text-[12px] text-[#0D4A5F]/70 block mt-1 line-clamp-2">
+                              {desc}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span className="text-[16px] font-bold text-[#0D4A5F]">
+                            {srvPrice.toFixed(0)}
+                          </span>
+                          <span className="text-[11px] font-bold text-[#0D4A5F]">
+                            {isArabic ? 'ر.س' : 'SAR'}
+                          </span>
+                          <span className="text-[11px] text-[#0D4A5F]/70">
+                            {isArabic ? '/ساعة' : '/hr'}
+                          </span>
+                        </div>
                       </div>
                     );
                   })}
                 </div>
-              </div>
-            )}
+              ) : (
+                <p className="text-[12px] text-[#0D4A5F]/50">
+                  {isArabic ? 'لا توجد خدمات مضافة بعد.' : 'No services added yet.'}
+                </p>
+              )}
+            </div>
 
-            {/* Pricing */}
-            {(teachIndividual || teachGroup) && (
-              <div className="bg-white p-5 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)]">
-                <h3 className="font-bold text-[var(--text-main)] mb-3 flex items-center gap-2">
-                  <Clock size={18} className="text-primary" />
-                  {language === 'ar' ? 'السعر' : 'Pricing'}
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {teachIndividual && (
-                    <div className="p-4 rounded-[var(--radius-md)] bg-gradient-to-br from-[var(--green-light)] to-[var(--green)] text-white shadow-[0_6px_20px_rgba(61,139,55,.35)]">
-                      <p className="text-sm text-white">{language === 'ar' ? 'درس فردي' : 'Private Lesson'}</p>
-                      <p className="text-2xl font-bold mt-1 text-white">{Number(individualHourPrice).toFixed(2)} <span className="text-sm font-normal text-white">{t.sar}</span></p>
-                    </div>
-                  )}
-                  {teachGroup && (
-                    <div className="p-4 rounded-[var(--radius-md)] bg-gradient-to-br from-[var(--green-light)] to-[var(--green)] text-white shadow-[0_6px_20px_rgba(61,139,55,.35)]">
-                      <p className="text-sm opacity-80">{language === 'ar' ? 'درس جماعي' : 'Group Lesson'}</p>
-                      <p className="text-2xl font-bold mt-1">{Number(groupHourPrice).toFixed(2)} <span className="text-sm font-normal opacity-80">{t.sar}</span></p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Subjects */}
-            {teacherSubjects.length > 0 && (
-              <div className="bg-white p-5 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)]">
-                <h3 className="font-bold text-[var(--text-main)] mb-3 flex items-center gap-2">
-                  <BookOpen size={18} className="text-primary" />
-                  {language === 'ar' ? 'المواد الدراسية' : 'Subjects'}
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {teacherSubjects.map((sub: any) => (
-                    <span key={sub.id} className="px-3 py-1.5 rounded-lg bg-secondary-pale text-[var(--accent)] text-sm font-medium border border-[var(--border)]">
-                      {language === 'ar'
-                        ? (sub.title_ar || sub.name_ar || sub.title || sub.name_en)
-                        : (sub.title_en || sub.name_en || sub.title || sub.name_ar)}
-                      {(sub.class_level_title || sub.class_level_title_en || sub.class_title || sub.class_title_en) && (
-                        <span className="block text-xs font-normal opacity-75">
-                          {[
-                            language === 'ar' ? (sub.class_level_title_ar || sub.class_level_title) : (sub.class_level_title_en || sub.class_level_title),
-                            language === 'ar' ? (sub.class_title_ar || sub.class_title) : (sub.class_title_en || sub.class_title),
-                          ].filter(Boolean).join(' - ')}
-                        </span>
-                      )}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Languages */}
-            {languages.length > 0 && (
-              <div className="bg-white p-5 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)]">
-                <h3 className="font-bold text-[var(--text-main)] mb-3 flex items-center gap-2">
-                  <Globe size={18} className="text-[var(--accent)]" />
-                  {language === 'ar' ? 'اللغات' : 'Languages'}
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {languages.map((lang: any, idx: number) => (
-                    <span key={lang.id || idx} className="px-3 py-1.5 rounded-lg bg-[var(--accent-pale)] text-[var(--accent)] text-sm font-medium border border-[var(--accent)]/20">
-                      {language === 'ar' ? (lang.name_ar || lang.name_en) : (lang.name_en || lang.name_ar)}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Certificates */}
-            {certificates.length > 0 && (
-              <div className="bg-white p-5 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)]">
-                <h3 className="font-bold text-[var(--text-main)] mb-3 flex items-center gap-2">
-                  <Award size={18} className="text-primary" />
-                  {language === 'ar' ? 'الشهادات' : 'Certificates'}
-                </h3>
-                <div className="space-y-3">
-                  {certificates.map((cert: any, idx: number) => (
-                    <div key={idx} className="flex items-center gap-3 p-3 rounded-[var(--radius-md)] bg-[var(--light-bg)] border border-[var(--border)]">
-                      <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                        <Award size={20} />
+            {showSubjects && (
+              <div className="bg-white rounded-[20px] border border-[#0D4A5F]/10 p-4 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+                <h2 className="text-[16px] font-bold text-[#0D4A5F] mb-3">
+                  {isArabic ? 'المواد التي أدرّسها' : 'Subjects I Teach'}
+                </h2>
+                {subjects.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {subjects.map((subj, idx) => (
+                      <div
+                        key={idx}
+                        className="bg-[#EFF6F4] border border-[#0D4A5F]/10 rounded-[12px] px-3.5 py-2 text-[13px] font-medium text-[#0D4A5F]"
+                      >
+                        {subj}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm text-[var(--text-main)] truncate">{cert.file_name || cert.title || (language === 'ar' ? 'شهادة' : 'Certificate')}</p>
-                        {cert.file_path && (
-                          <a href={getStorageUrl(cert.file_path)} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">
-                            {language === 'ar' ? 'عرض الشهادة' : 'View Certificate'}
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[12px] text-[#0D4A5F]/50">
+                    {isArabic ? 'لا توجد مواد مضافة بعد.' : 'No subjects added yet.'}
+                  </p>
+                )}
               </div>
             )}
 
-            {/* Reviews */}
-            {reviews.length > 0 && (
-              <div className="bg-white p-5 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)]">
-                <h3 className="font-bold text-[var(--text-main)] mb-3 flex items-center gap-2">
-                  <MessageSquare size={18} className="text-amber-500" />
-                  {language === 'ar' ? 'التقييمات' : 'Reviews'} ({reviewsCount})
-                </h3>
-                <div className="space-y-4">
-                  {reviews.slice(0, 5).map((review: any, idx: number) => (
-                    <div key={review.id || idx} className="p-4 rounded-[var(--radius-md)] bg-[var(--light-bg)] border border-[var(--border)]">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="h-8 w-8 rounded-full bg-[var(--border)] flex items-center justify-center text-xs font-bold text-[var(--text-muted)]">
-                          {(review.student_name || 'S').charAt(0).toUpperCase()}
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-semibold text-sm text-[var(--text-main)]">{review.student_name || (language === 'ar' ? 'طالب' : 'Student')}</p>
-                          <div className="flex items-center gap-0.5">
-                            {[1, 2, 3, 4, 5].map((s) => (
-                              <Star key={s} size={12} className={s <= (review.rating || 0) ? 'text-amber-500 fill-amber-500' : 'text-[var(--text-muted)]'} />
-                            ))}
-                          </div>
-                        </div>
-                        {review.date && <span className="text-[10px] text-[var(--text-muted)]">{review.date}</span>}
+            {isLang && (
+              <div className="bg-white rounded-[20px] border border-[#0D4A5F]/10 p-4 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+                <h2 className="text-[16px] font-bold text-[#0D4A5F] mb-3">
+                  {isArabic ? 'اللغات التي أدرّسها' : 'Languages I Teach'}
+                </h2>
+                {languages.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {languages.map((lang, idx) => (
+                      <div
+                        key={idx}
+                        className="bg-[#EFF6F4] border border-[#0D4A5F]/10 rounded-[12px] px-3.5 py-2 text-[13px] font-medium text-[#0D4A5F]"
+                      >
+                        {lang}
                       </div>
-                      {review.comment && (
-                        <p className="text-sm text-[var(--text-muted)] leading-relaxed">{review.comment}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[12px] text-[#0D4A5F]/50">
+                    {isArabic ? 'لا توجد لغات مضافة بعد.' : 'No languages added yet.'}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {isAbil && (
+              <div className="bg-white rounded-[20px] border border-[#0D4A5F]/10 p-4 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+                <h2 className="text-[16px] font-bold text-[#0D4A5F] mb-3">
+                  {isArabic ? 'القدرات التي أدرّسها' : 'Abilities I Teach'}
+                </h2>
+                {abilities.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {abilities.map((ability, idx) => (
+                      <div
+                        key={idx}
+                        className="bg-[#EFF6F4] border border-[#0D4A5F]/10 rounded-[12px] px-3.5 py-2 text-[13px] font-medium text-[#0D4A5F]"
+                      >
+                        {ability}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[12px] text-[#0D4A5F]/50">
+                    {isArabic ? 'لا توجد قدرات مضافة بعد.' : 'No abilities added yet.'}
+                  </p>
+                )}
               </div>
             )}
           </>
         ) : (
-          // Sessions Tab
-          <div className="space-y-4">
-            {loadingSessions ? (
-              <div className="flex justify-center py-16">
-                <Loader2 className="animate-spin h-8 w-8 text-primary" />
-              </div>
-            ) : sessionsError ? (
-              <div className="text-center py-16 bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)]">
-                <Calendar size={48} className="mx-auto text-[var(--text-muted)] mb-3" />
-                <p className="text-[var(--text-muted)] text-sm">{sessionsError}</p>
-                <button onClick={fetchSessions} className="mt-3 text-primary text-sm font-semibold hover:underline">
-                  {language === 'ar' ? 'إعادة المحاولة' : 'Retry'}
-                </button>
-              </div>
-            ) : sessions.length === 0 ? (
-              <div className="text-center py-16 bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)]">
-                <Calendar size={48} className="mx-auto text-[var(--text-muted)] mb-3" />
-                <p className="text-[var(--text-muted)] text-sm">
-                  {language === 'ar' ? 'لا توجد جلسات بعد' : 'No sessions yet'}
-                </p>
-              </div>
-            ) : (
-              sessions.map((session: any, idx: number) => {
-                const s = session.session || session;
-                const subjectName = language === 'ar'
-                  ? (s.subject?.name_ar || s.subject_name_ar || '')
-                  : (s.subject?.name_en || s.subject_name_en || '');
-                const teacherName = s.teacher?.name || (language === 'ar' ? 'غير معروف' : 'Unknown');
-                const durationMs = Date.parse(`1970-01-01T${s.end_time || '00:00'}`) - Date.parse(`1970-01-01T${s.start_time || '00:00'}`);
-                const durationMin = Math.round(durationMs / 60000);
-                const durationStr = durationMin >= 60
-                  ? `${Math.floor(durationMin / 60)}h ${durationMin % 60}m`
-                  : `${durationMin}m`;
-                const statusColors: Record<string, { bg: string, text: string, label: string }> = {
-                  completed: { bg: 'from-[var(--green-light)] to-[var(--green)]', text: 'text-primary', label: language === 'ar' ? 'مكتمل' : 'Completed' },
-                  ended: { bg: 'from-[var(--green-light)] to-[var(--green)]', text: 'text-primary', label: language === 'ar' ? 'منتهي' : 'Ended' },
-                  live: { bg: 'from-[var(--accent)] to-[var(--navy-mid)]', text: 'text-[var(--accent)]', label: language === 'ar' ? 'مباشر' : 'Live' },
-                  cancelled: { bg: 'from-[var(--border)] to-[var(--text-muted)]', text: 'text-[var(--text-muted)]', label: language === 'ar' ? 'ملغي' : 'Cancelled' },
-                };
-                const statusInfo = statusColors[s.status] || { bg: 'from-[var(--navy)] to-[var(--navy-dark)]', text: 'text-secondary', label: language === 'ar' ? 'مجدول' : 'Scheduled' };
-                const statusLabel = s.status_label || statusInfo.label;
-                const statusColorClass = statusInfo.text;
-                return (
-                  <div key={session.id || idx} onClick={() => openSessionDetails(s)} className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] overflow-hidden hover:shadow-[var(--shadow-md)] transition-shadow cursor-pointer">
-                    {/* Time Header with Gradient */}
-                    <div className={`bg-gradient-to-br ${statusInfo.bg} px-4 py-3 flex items-center gap-3`}>
-                      <div className="p-1.5 rounded-lg bg-white/20">
-                        <Clock size={16} className="text-white" />
+          <>
+            <div className="bg-white rounded-[20px] border border-[#0D4A5F]/10 p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex items-center gap-3 sm:gap-4">
+              <div className="flex-[3] space-y-1.5">
+                {[5, 4, 3, 2, 1].map((star) => {
+                  const count = ratingCounts[star] || 0;
+                  const ratio =
+                    reviewsCount > 0
+                      ? count / reviewsCount
+                      : star === 5 && ratingVal > 4.0
+                      ? 0.8
+                      : star === 4 && ratingVal > 4.0
+                      ? 0.2
+                      : 0;
+
+                  return (
+                    <div key={star} className="flex items-center gap-2">
+                      <div className="flex-1 h-1.5 bg-[#DCE4E2] rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-[#F5A623] rounded-full transition-all"
+                          style={{ width: `${Math.round(ratio * 100)}%` }}
+                        />
                       </div>
-                      <span className="text-white text-sm font-bold">
-                        {formatTime(s.start_time)} - {formatTime(s.end_time)}
+                      <span className="text-xs font-bold text-[#0D4A5F] w-2.5 text-center">
+                        {star}
                       </span>
-                      <div className="ml-auto px-2.5 py-1 rounded-[var(--radius-md)] bg-white/20 border border-white/20 flex items-center gap-1.5">
-                        <Calendar size={12} className="text-white" />
-                        <span className="text-white/90 text-xs font-semibold">{formatDate(s.session_date)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="w-[1px] h-24 bg-[#0D4A5F]/15" />
+
+              <div className="flex-[2] flex flex-col items-center justify-center text-center">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-[#C5A059]" />
+                  <span className="text-[22px] font-bold text-[#0D4A5F] leading-tight">
+                    {ratingVal > 0
+                      ? ratingVal.toFixed(1)
+                      : reviewsCount > 0
+                      ? '4.8'
+                      : '0'}
+                  </span>
+                  <Sparkles className="w-4 h-4 text-[#C5A059]" />
+                </div>
+
+                <div className="flex items-center gap-0.5 mt-1">
+                  {Array.from({ length: 5 }).map((_, i) => {
+                    const currentStar = i + 1;
+                    const effective = ratingVal > 0 ? ratingVal : (reviewsCount > 0 ? 4.8 : 0);
+                    return (
+                      <Star
+                        key={i}
+                        className={`w-3.5 h-3.5 ${
+                          effective >= currentStar
+                            ? 'fill-[#F5A623] text-[#F5A623]'
+                            : effective >= currentStar - 0.5
+                            ? 'fill-[#F5A623]/50 text-[#F5A623]'
+                            : 'text-[#F5A623]/30'
+                        }`}
+                      />
+                    );
+                  })}
+                </div>
+
+                <span className="text-xs text-[#0D4A5F]/70 mt-1">
+                  {isArabic
+                    ? `(${reviewsCount} تقييم)`
+                    : `(${reviewsCount} reviews)`}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {reviews.length > 0 ? (
+                reviews.map((rev: any) => (
+                  <div
+                    key={rev.id}
+                    className="bg-white rounded-[16px] border border-[#0D4A5F]/10 p-3.5 shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[13px] font-bold text-[#0D4A5F]">
+                        {rev.studentName} {rev.date ? `• ${rev.date}` : ''}
+                      </span>
+                      <div className="flex items-center gap-0.5">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`w-3.5 h-3.5 ${
+                              rev.rating >= i + 1
+                                ? 'fill-[#F5A623] text-[#F5A623]'
+                                : 'text-[#F5A623]/30'
+                            }`}
+                          />
+                        ))}
                       </div>
                     </div>
-
-                    {/* Content */}
-                    <div className="p-4">
-                      {/* Subject Name + Duration + Status */}
-                      <div className="flex items-center gap-2">
-                        <h4 className="flex-1 font-bold text-lg text-primary truncate">
-                          {subjectName || (language === 'ar' ? 'جلسة' : 'Session')}
-                        </h4>
-                        {/* Duration Badge */}
-                        <span className="px-2.5 py-1 rounded-lg bg-primary/10 border border-primary/20 text-primary text-xs font-bold flex items-center gap-1 whitespace-nowrap">
-                          <Clock size={12} />
-                          {durationStr}
-                        </span>
-                        {/* Status Badge */}
-                        <span className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap ${
-                          s.status === 'completed' || s.status === 'ended' ? 'bg-primary-pale text-primary' :
-                          s.status === 'live' ? 'bg-[var(--accent-pale)] text-[var(--accent)]' :
-                          s.status === 'cancelled' ? 'bg-[var(--light-bg)] text-[var(--text-muted)]' :
-                          'bg-[var(--green-pale)] text-primary'
-                        }`}>
-                          {statusLabel}
-                        </span>
-                      </div>
-
-                      {/* Teacher Info & Action */}
-                      <div className="mt-3 p-3 rounded-[var(--radius-md)] bg-[var(--light-bg)] border border-[var(--border)] flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-full bg-[var(--border)] flex items-center justify-center shrink-0">
-                          <svg className="w-5 h-5 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                          </svg>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[11px] text-[var(--text-muted)]">{language === 'ar' ? 'المدرس' : 'Teacher'}</p>
-                          <p className="text-sm font-semibold text-[var(--text-main)] truncate">{teacherName}</p>
-                        </div>
-
-                        {/* Action */}
-                        {(s.status === 'completed' || s.status === 'ended') ? (
-                          <span className="px-3 py-1.5 rounded-lg bg-[var(--border)] text-[var(--text-muted)] text-xs font-bold flex items-center gap-1 whitespace-nowrap">
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            {language === 'ar' ? 'منتهية' : 'Finished'}
-                          </span>
-                        ) : s.status === 'live' ? (
-                          <button className="px-4 py-1.5 rounded-[50px] bg-gradient-to-br from-[var(--green-light)] to-[var(--green)] text-white text-xs font-bold shadow-[0_6px_20px_rgba(61,139,55,.35)] hover:-translate-y-[2px] hover:shadow-[0_10px_28px_rgba(61,139,55,.45)] transition-all whitespace-nowrap">
-                            {language === 'ar' ? 'انضمام' : 'Join'}
-                          </button>
-                        ) : (
-                          <span className="px-3 py-1.5 rounded-lg bg-[var(--accent-pale)] border border-[var(--accent)]/20 text-[var(--accent)] text-xs font-bold flex items-center gap-1 whitespace-nowrap">
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            {language === 'ar' ? 'قادمة' : 'Upcoming'}
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                    <p className="text-[13px] text-[#0D4A5F] leading-relaxed">
+                      {rev.comment}
+                    </p>
                   </div>
-                );
-              })
-            )}
-          </div>
+                ))
+              ) : (
+                sampleReviews.map((sample, idx) => (
+                  <div
+                    key={idx}
+                    className="bg-white rounded-[16px] border border-[#0D4A5F]/10 p-3.5 shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[13px] font-bold text-[#0D4A5F]">
+                        {sample.name}
+                      </span>
+                      <div className="flex items-center gap-0.5">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`w-3.5 h-3.5 ${
+                              sample.rating >= i + 1
+                                ? 'fill-[#F5A623] text-[#F5A623]'
+                                : 'text-[#F5A623]/30'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-[13px] text-[#0D4A5F] leading-relaxed">
+                      {sample.comment}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          </>
         )}
       </div>
 
-      {/* ===== Bottom Bar ===== */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[var(--border)] shadow-[var(--shadow-lg)] px-4 py-3 z-40">
-        <div className="max-w-3xl mx-auto flex items-center gap-3">
+      <div className="fixed bottom-0 left-0 right-0 z-30 bg-white shadow-[0_-4px_10px_rgba(0,0,0,0.06)] py-3 px-5">
+        <div className="max-w-2xl mx-auto">
           <button
-            onClick={handleFavoriteClick}
-            disabled={favLoading}
-            className="p-3 rounded-[var(--radius-md)] border border-[var(--border)] hover:bg-[var(--light-bg)] transition-colors disabled:opacity-50"
+            onClick={() => setShowBookingModal(true)}
+            className="w-full h-12 bg-[#5B9F48] hover:bg-[#4d863d] text-white font-bold rounded-[12px] shadow-[0_4px_16px_rgba(91,159,72,0.25)] flex items-center justify-center text-base transition-colors"
           >
-            {favLoading ? (
-              <Loader2 size={24} className="animate-spin text-[var(--text-muted)]" />
-            ) : (
-              <Heart size={24} className={favorited ? 'fill-red-400 text-red-400' : 'text-[var(--text-muted)]'} />
-            )}
-          </button>
-          <button
-            onClick={handleBook}
-            className="flex-1 py-3 bg-gradient-to-br from-[var(--green-light)] to-[var(--green)] text-white font-bold rounded-[50px] hover:-translate-y-[2px] hover:shadow-[0_10px_28px_rgba(61,139,55,.45)] transition-all flex items-center justify-center gap-2 shadow-[0_6px_20px_rgba(61,139,55,.35)]"
-          >
-            <Calendar size={20} />
-            {language === 'ar' ? 'حجز موعد' : 'Book Now'}
+            {isArabic ? 'حجز حصة' : 'Book Lesson'}
           </button>
         </div>
       </div>
 
-      {/* Enhanced Booking Flow Modal */}
-      <BookingFlowModal
-        isOpen={showBooking}
-        onClose={() => setShowBooking(false)}
-        teacher={teacherProp}
-        serviceId={serviceId}
-      />
+      {showVideoModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+          <div className="bg-black rounded-2xl overflow-hidden max-w-lg w-full relative">
+            <button
+              onClick={() => setShowVideoModal(false)}
+              className="absolute top-3 right-3 z-10 p-2 rounded-full bg-white/20 text-white hover:bg-white/40 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <video
+              src={introVideo}
+              controls
+              autoPlay
+              className="w-full h-auto max-h-[75vh]"
+            />
+          </div>
+        </div>
+      )}
 
-      {/* Session Details Modal */}
-      <SessionDetailsModal
-        session={selectedSession}
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onJoinSession={handleJoinSession}
-        joining={joining}
-      />
+      {copyToast && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-[#0D4A5F] text-white text-xs sm:text-sm font-medium px-4 py-2.5 rounded-[10px] shadow-lg flex items-center gap-2 animate-fade-in">
+          <Check className="w-4 h-4 text-[#5B9F48]" />
+          <span>{copyToast}</span>
+        </div>
+      )}
 
-      {/* Session Room */}
-      <SessionRoomModal
-        isOpen={!!agoraData}
-        onClose={() => setAgoraData(null)}
-        agora={agoraData}
-      />
+      {showBookingModal && (
+        <BookingFlowModal
+          isOpen={showBookingModal}
+          onClose={() => {
+            setShowBookingModal(false);
+            if (onBookingComplete) onBookingComplete();
+          }}
+          teacher={teacherData}
+          serviceId={resolvedServiceId}
+        />
+      )}
     </div>
   );
 };

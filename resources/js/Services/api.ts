@@ -173,7 +173,7 @@ const extractPaginatedData = (response: any) => {
   };
 };
 
-const fetchWithAuth = async (endpoint: string, options: RequestInit = {}) => {
+export const fetchWithAuth = async (endpoint: string, options: RequestInit = {}) => {
   const token = tokenService.getToken();
 
   const headers: HeadersInit = {
@@ -333,7 +333,27 @@ export const teacherService = {
   deletePaymentMethod: (id: number) => fetchWithAuth(`/teacher/payment-methods/${id}`, { method: 'DELETE' }),
   setDefaultPaymentMethod: (id: number) => fetchWithAuth(`/teacher/payment-methods/set-default/${id}`, { method: 'PUT' }),
   togglePackageOnOff: (value: boolean) => fetchWithAuth('/teacher/packages/on-off', { method: 'PUT', body: JSON.stringify({ package_on_off: value ? '1' : '0' }) }),
-  // Consultations assigned to me
+  getActiveStatus: () => fetchWithAuth('/teacher/active-status').then(res => res.data || res),
+  setActiveStatus: (active: boolean) => fetchWithAuth('/teacher/active-status', { method: 'PUT', body: JSON.stringify({ active: active ? 1 : 0 }) }),
+  browseOrders: (filters: any = {}) => {
+    const query = new URLSearchParams(filters).toString();
+    return fetchWithAuth(`/teacher/orders/browse${query ? '?' + query : ''}`).then(res => res.data?.data || res.data || []);
+  },
+  applyToOrder: (orderId: number, data: { proposal_price: number; proposal_notes?: string; estimated_sessions?: number }) =>
+    fetchWithAuth(`/teacher/orders/${orderId}/apply`, { method: 'POST', body: JSON.stringify(data) }),
+  getMyApplications: () => fetchWithAuth('/teacher/my-applications').then(res => res.data || res),
+  cancelApplication: (applicationId: number) => fetchWithAuth(`/teacher/applications/${applicationId}`, { method: 'DELETE' }),
+  getGroupClasses: () => fetchWithAuth('/teacher/group-classes').then(extractArray),
+  getGroupClass: (id: number) => fetchWithAuth(`/teacher/group-classes/${id}`).then(res => res.data || res),
+  createGroupClass: (data: any) => fetchWithAuth('/teacher/group-classes', { method: 'POST', body: JSON.stringify(data) }),
+  updateGroupClass: (id: number, data: any) => fetchWithAuth(`/teacher/group-classes/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteGroupClass: (id: number) => fetchWithAuth(`/teacher/group-classes/${id}`, { method: 'DELETE' }),
+  addGroupClassLessons: (id: number, data: any) => fetchWithAuth(`/teacher/group-classes/${id}/lessons`, { method: 'POST', body: JSON.stringify(data) }),
+  addGroupClassLesson: (id: number, data: any) => fetchWithAuth(`/teacher/group-classes/${id}/lesson`, { method: 'POST', body: JSON.stringify(data) }),
+  deleteGroupClassLesson: (classId: number, lessonId: number) => fetchWithAuth(`/teacher/group-classes/${classId}/lessons/${lessonId}`, { method: 'DELETE' }),
+  getGroupAvailability: () => fetchWithAuth('/teacher/group-availability').then(extractArray),
+  addGroupAvailability: (data: any) => fetchWithAuth('/teacher/group-availability', { method: 'POST', body: JSON.stringify(data) }),
+  deleteGroupAvailability: (id: number) => fetchWithAuth(`/teacher/group-availability/${id}`, { method: 'DELETE' }),
   getConsultations: () => fetchWithAuth('/teacher/consultations').then(res => res.data || []),
   getConsultationDetails: (id: number) => fetchWithAuth(`/teacher/consultations/${id}`).then(res => res.data || res),
   scheduleConsultation: (id: number, data: { scheduled_date: string; scheduled_start_time: string; scheduled_end_time: string; admin_notes?: string }) =>
@@ -372,7 +392,9 @@ export const studentService = {
     return data.map((item: any) => item.language).filter(Boolean);
   }),
   getTeachers: (filters: any = {}) => {
-    const query = new URLSearchParams(filters).toString();
+    const params: any = { ...filters };
+    Object.keys(params).forEach(k => (params[k] === '' || params[k] === undefined || params[k] === null || params[k] === 'null') && delete params[k]);
+    const query = new URLSearchParams(params).toString();
     return fetchWithAuth(`/student/teachers?${query}`).then(extractArray);
   },
   getTeachersPaginated: (filters: any = {}, page: number = 1) => {
@@ -408,10 +430,16 @@ export const studentService = {
     if (status && status !== 'all') query.set('status', status);
     query.set('page', String(page));
     query.set('per_page', String(perPage));
-    return fetchWithAuth(`/student/booking?${query.toString()}`).then(res => ({
-      bookings: Array.isArray(res.data) ? res.data : [],
-      pagination: res.pagination || { current_page: 1, last_page: 1, per_page: 10, total: 0 },
-    }));
+    return fetchWithAuth(`/student/booking?${query.toString()}`).then(res => {
+      const bookings = Array.isArray(res.data) ? res.data : (Array.isArray(res.data?.data) ? res.data.data : []);
+      const pagination = res.pagination || res.data?.pagination || {
+        current_page: res.data?.current_page || 1,
+        last_page: res.data?.last_page || 1,
+        per_page: res.data?.per_page || perPage,
+        total: res.data?.total || bookings.length,
+      };
+      return { bookings, pagination };
+    });
   },
   getBookingDetails: (bookingId: number) => fetchWithAuth(`/student/booking/${bookingId}`).then(res => res.data || res),
   cancelBooking: (bookingId: number) =>
@@ -436,14 +464,15 @@ export const studentService = {
   createOrder: (data: any) => fetchWithAuth('/student/orders', { method: 'POST', body: JSON.stringify(data) }),
   updateOrder: (id: number, data: any) => fetchWithAuth(`/student/orders/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteOrder: (id: number) => fetchWithAuth(`/student/orders/${id}`, { method: 'DELETE' }),
-  getOrderApplications: (orderId: number) => fetchWithAuth(`/student/orders/${orderId}/applications`),
-  acceptApplication: (orderId: number, applicationId: number) =>
-    fetchWithAuth(`/student/orders/${orderId}/applications/${applicationId}/accept`, { method: 'POST' }),
+  getOrderApplications: (orderId: number) => fetchWithAuth(`/student/orders/${orderId}/applications`).then(res => res.data || res),
+  acceptApplication: (orderId: number, applicationId: number, data: any = {}) =>
+    fetchWithAuth(`/student/orders/${orderId}/applications/${applicationId}/accept`, { method: 'POST', body: JSON.stringify(data) }),
   // --- Course Enrollment ---
   enrollCourse: (courseId: number, data: { availability_slot_id?: number; course_group_id?: number; note?: string }) =>
     fetchWithAuth(`/student/courses/${courseId}/enroll`, { method: 'POST', body: JSON.stringify(data) }),
   // --- Sessions ---
   getSessions: () => fetchWithAuth('/student/sessions').then(extractArray),
+  getStudentTeachers: (studentId: number) => fetchWithAuth(`/students/${studentId}/teachers`).then(extractArray),
   getSessionsPaginated: (page: number = 1, perPage: number = 15) =>
     fetchWithAuth(`/student/sessions?page=${page}&per_page=${perPage}`).then(res => ({
       sessions: Array.isArray(res.data) ? res.data : [],
@@ -462,6 +491,7 @@ export const studentService = {
   toggleFavorite: (teacherId: number) => fetchWithAuth(`/student/favorites/${teacherId}/toggle`, { method: 'POST' }),
   getFavorites: () => fetchWithAuth('/student/favorites'),
   getTeacherSessions: (teacherId: number) => fetchWithAuth(`/student/teachers/${teacherId}/sessions`).then(extractArray),
+  getTeacherDetails: (teacherId: number) => fetchWithAuth(`/teachers/${teacherId}`),
   getPaymentMethods: () => fetchWithAuth('/student/payment-methods').then(extractArray),
   addPaymentMethod: (data: any) => fetchWithAuth('/student/payment-methods', { method: 'POST', body: JSON.stringify(data) }),
   deletePaymentMethod: (id: number) => fetchWithAuth(`/student/payment-methods/${id}`, { method: 'DELETE' }),
@@ -482,6 +512,33 @@ export const studentService = {
     const url = `${API_BASE_URL}/student/certificates/${id}/download?token=${token}`;
     window.open(url, '_blank');
   },
+  getPublicPackages: () => fetchWithAuth('/packages').then(extractArray),
+  purchasePackage: (packageId: number, paymentMethod: string = 'card') =>
+    fetchWithAuth('/student/packages/purchase', { method: 'POST', body: JSON.stringify({ package_id: packageId, payment_method: paymentMethod }) }),
+  confirmPackagePurchase: (paymentId: number) =>
+    fetchWithAuth('/student/packages/purchase/confirm', { method: 'POST', body: JSON.stringify({ payment_id: paymentId }) }),
+  getTeacherGroupClasses: (teacherId: number) => fetchWithAuth(`/teachers/${teacherId}/group-classes`).then(extractArray),
+  bookGroupClass: (data: { group_class_id: number; teacher_id: number; lesson_ids: number[]; subscription_id?: number; special_requests?: string }) =>
+    fetchWithAuth('/student/group-class/booking', { method: 'POST', body: JSON.stringify(data) }),
+  getGroupClassBookingDetails: (bookingId: number) => fetchWithAuth(`/student/group-class/booking/${bookingId}`).then(res => res.data || res),
+  getStudentGroupClassSessions: (status?: string) => {
+    const query = status && status !== 'all' ? `?status=${status}` : '';
+    return fetchWithAuth(`/student/group-class-sessions${query}`).then(extractArray);
+  },
+  joinGroupClassSession: (sessionId: number) => fetchWithAuth(`/student/group-class-sessions/${sessionId}/join`, { method: 'POST' }),
+  getServicePreferences: () => fetchWithAuth('/student/service-preferences').then(res => res.data || res),
+  updateServicePreferences: (preferences: any) => fetchWithAuth('/student/service-preferences', { method: 'POST', body: JSON.stringify(preferences) }),
+  getMyComplaints: () => fetchWithAuth('/student/complaints/my').then(extractArray),
+  getMyDisputes: () => fetchWithAuth('/student/disputes/my').then(extractArray),
+  createDispute: (data: any) => fetchWithAuth('/student/disputes', { method: 'POST', body: JSON.stringify(data) }),
+};
+
+export const cardService = {
+  getCards: () => fetchWithAuth('/user/cards').then(res => res.data || res),
+  addCard: (data: any) => fetchWithAuth('/user/cards', { method: 'POST', body: JSON.stringify(data) }),
+  updateCard: (id: number, data: any) => fetchWithAuth(`/user/cards/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  setDefaultCard: (id: number) => fetchWithAuth(`/user/cards/${id}/default`, { method: 'POST' }),
+  deleteCard: (id: number) => fetchWithAuth(`/user/cards/${id}`, { method: 'DELETE' }),
 };
 
 export const aiService = {

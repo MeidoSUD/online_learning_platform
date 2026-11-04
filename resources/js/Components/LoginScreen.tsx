@@ -114,6 +114,13 @@ export const LoginScreen = ({ onSwitch, onLoginSuccess }) => {
       if (token) {
         tokenService.setToken(token);
       }
+      const userData = res?.data?.user || res?.user;
+      if (userData) {
+        try {
+          localStorage.setItem('user_session_data', JSON.stringify(userData));
+        } catch (e) {
+        }
+      }
 
       onLoginSuccess(res);
       showToast(isAr ? "تم تسجيل الدخول بنجاح" : "Login successful", 'success');

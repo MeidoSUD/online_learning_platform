@@ -8,6 +8,7 @@ import { TeacherCard } from './TeacherCard';
 
 interface PrivateLessonsTabProps {
   onTeacherSelect?: (teacher: any) => void;
+  initialServiceId?: string | number;
 }
 
 interface ActiveFilter {
@@ -15,7 +16,7 @@ interface ActiveFilter {
   label: string;
 }
 
-export const PrivateLessonsTab: React.FC<PrivateLessonsTabProps> = ({ onTeacherSelect }) => {
+export const PrivateLessonsTab: React.FC<PrivateLessonsTabProps> = ({ onTeacherSelect, initialServiceId }) => {
   const { t, direction, language } = useLanguage();
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [priceRange, setPriceRange] = useState(500);
@@ -36,7 +37,7 @@ export const PrivateLessonsTab: React.FC<PrivateLessonsTabProps> = ({ onTeacherS
   const [selectedLevel, setSelectedLevel] = useState('');
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
-  const [selectedService, setSelectedService] = useState('');
+  const [selectedService, setSelectedService] = useState(initialServiceId ? String(initialServiceId) : '');
   const [selectedLanguage, setSelectedLanguage] = useState('');
   const [selectedRating, setSelectedRating] = useState(0);
 
@@ -139,6 +140,54 @@ export const PrivateLessonsTab: React.FC<PrivateLessonsTabProps> = ({ onTeacherS
   useEffect(() => {
     fetchTeachers(1, false);
   }, []);
+
+  useEffect(() => {
+    const nextService = initialServiceId ? String(initialServiceId) : '';
+    if (!isFirstLoad && nextService !== selectedService) {
+      applyServiceFilter(nextService);
+    }
+  }, [initialServiceId]);
+
+  const nonTeacherKeys = ['study-books', 'study_books', 'books', 'smart-assistant', 'smart_assistant', 'ai-assistant', 'ai_assistant'];
+  const teacherServicesList = services.filter(s => {
+    const key = (s.key_name || '').toLowerCase();
+    const name = ((s.name_ar || '') + ' ' + (s.name_en || '')).toLowerCase();
+    if (nonTeacherKeys.includes(key)) return false;
+    if (name.includes('كتب') || name.includes('ذكاء') || key.includes('ai') || s.id === 5 || s.id === 7) return false;
+    return true;
+  });
+
+  const applyServiceFilter = (targetService: string) => {
+    setSelectedService(targetService);
+    setSelectedLanguage('');
+    setSelectedLevel('');
+    setSelectedClass('');
+    setSelectedSubject('');
+
+    setLoading(true);
+    const filters: any = { page: 1 };
+    if (targetService) filters.service_id = targetService;
+    if (priceRange && priceRange < 500) filters.max_price = priceRange;
+    if (selectedRating > 0) filters.min_rate = selectedRating;
+    if (searchQuery) filters.search = searchQuery;
+    if (codeQuery) filters.search = codeQuery;
+
+    studentService.getTeachersPaginated(filters, 1)
+      .then(result => {
+        setTeachers(result.teachers || []);
+        const pag = result.pagination || {};
+        setTotalTeachers(pag.total || 0);
+        setHasMore(1 < (pag.last_page || 1));
+        setCurrentPage(1);
+      })
+      .catch(() => setTeachers([]))
+      .finally(() => setLoading(false));
+  };
+
+  const handleServiceChipClick = (serviceId: string) => {
+    const nextService = selectedService === serviceId ? '' : serviceId;
+    applyServiceFilter(nextService);
+  };
 
   const handleApplyFilters = () => {
     fetchTeachers(1, false);
@@ -374,6 +423,40 @@ export const PrivateLessonsTab: React.FC<PrivateLessonsTabProps> = ({ onTeacherS
             <span className="hidden sm:inline text-sm font-medium">{t.code || (language === 'ar' ? 'كود' : 'Code')}</span>
           </button>
         </div>
+
+        {teacherServicesList.length > 0 && (
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 no-scrollbar">
+            <button
+              type="button"
+              onClick={() => handleServiceChipClick('')}
+              className={`px-4 py-2 rounded-full text-xs sm:text-sm font-bold transition-all whitespace-nowrap shrink-0 shadow-sm ${
+                !selectedService
+                  ? 'bg-primary text-white shadow-md'
+                  : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
+              }`}
+            >
+              {language === 'ar' ? 'الكل' : 'All'}
+            </button>
+            {teacherServicesList.map((svc) => {
+              const sid = String(svc.id);
+              const isSelected = selectedService === sid;
+              return (
+                <button
+                  key={svc.id}
+                  type="button"
+                  onClick={() => handleServiceChipClick(sid)}
+                  className={`px-4 py-2 rounded-full text-xs sm:text-sm font-bold transition-all whitespace-nowrap shrink-0 shadow-sm ${
+                    isSelected
+                      ? 'bg-primary text-white shadow-md'
+                      : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
+                  }`}
+                >
+                  {getName(svc)}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {activeFilters.length > 0 && (
           <div className="flex items-center gap-2 flex-wrap">

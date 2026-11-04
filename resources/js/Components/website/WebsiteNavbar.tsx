@@ -3,6 +3,7 @@ import { useLanguage } from '../../Contexts/LanguageContext';
 import { Logo } from '../Logo';
 import { ChevronDown, Globe, X } from 'lucide-react';
 import { Link, router, usePage } from '@inertiajs/react';
+import { tokenService } from '../../Services/api';
 
 export const WebsiteNavbar: React.FC = () => {
   const { t, language, setLanguage } = useLanguage();
@@ -10,9 +11,14 @@ export const WebsiteNavbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [scrolled, setScrolled] = useState(false);
+  const [isAuth, setIsAuth] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const currentPath = url;
+
+  useEffect(() => {
+    setIsAuth(tokenService.isAuthenticated());
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 40);
@@ -122,7 +128,6 @@ export const WebsiteNavbar: React.FC = () => {
             ))}
           </div>
 
-          {/* Actions */}
           <div className="hidden md:flex items-center gap-3">
              <button 
                 onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}
@@ -131,12 +136,20 @@ export const WebsiteNavbar: React.FC = () => {
                 <Globe size={14} />
                 {language === 'en' ? 'AR' : 'EN'}
              </button>
-             <Link href="/login" className="btn-login">
-                 {t.loginBtn}
-             </Link>
-             <Link href="/register" className="btn-register">
-                 {t.registerBtn}
-             </Link>
+             {isAuth ? (
+               <Link href="/dashboard" className="btn-register">
+                 {language === 'ar' ? 'لوحة التحكم' : 'Dashboard'}
+               </Link>
+             ) : (
+               <>
+                 <Link href="/login" className="btn-login">
+                     {t.loginBtn}
+                 </Link>
+                 <Link href="/register" className="btn-register">
+                     {t.registerBtn}
+                 </Link>
+               </>
+             )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -190,12 +203,20 @@ export const WebsiteNavbar: React.FC = () => {
                  >
                     <Globe size={18} /> {t.language}
                  </button>
-                 <Link href="/login" onClick={() => setIsMenuOpen(false)} className="btn-login justify-center">
-                     {t.loginBtn}
-                 </Link>
-                 <Link href="/register" onClick={() => setIsMenuOpen(false)} className="btn-register justify-center">
-                     {t.registerBtn}
-                 </Link>
+                 {isAuth ? (
+                   <Link href="/dashboard" onClick={() => setIsMenuOpen(false)} className="btn-register justify-center">
+                     {language === 'ar' ? 'لوحة التحكم' : 'Dashboard'}
+                   </Link>
+                 ) : (
+                   <>
+                     <Link href="/login" onClick={() => setIsMenuOpen(false)} className="btn-login justify-center">
+                         {t.loginBtn}
+                     </Link>
+                     <Link href="/register" onClick={() => setIsMenuOpen(false)} className="btn-register justify-center">
+                         {t.registerBtn}
+                     </Link>
+                   </>
+                 )}
             </div>
           </div>
         </div>

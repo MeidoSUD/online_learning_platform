@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthResponse } from '../Services/api';
 import { 
   AdminSidebar, UsersTab, EducationTab, PayoutsTab, VerificationsTab, 
@@ -18,9 +18,25 @@ interface AdminDashboardScreenProps {
 
 export const AdminDashboardScreen: React.FC<AdminDashboardScreenProps> = ({ data, onLogout, role }) => {
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState(role === 'support' ? 'users' : 'overview');
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const tab = new URLSearchParams(window.location.search).get('tab');
+      if (tab) return tab;
+    }
+    return role === 'support' ? 'users' : 'overview';
+  });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [teacherDetailsId, setTeacherDetailsId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && activeTab) {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get('tab') !== activeTab) {
+        url.searchParams.set('tab', activeTab);
+        window.history.replaceState({}, '', url.toString());
+      }
+    }
+  }, [activeTab]);
 
   const handleBackToUsers = () => {
     setTeacherDetailsId(null);

@@ -43,14 +43,20 @@ export const VerificationScreen: React.FC<VerificationScreenProps> = ({ userId, 
       if (response.token) {
         tokenService.setToken(response.token);
       }
-      localStorage.removeItem('user_session_data');
+      const userData = response?.user || response?.data?.user;
+      if (userData) {
+        try {
+          localStorage.setItem('user_session_data', JSON.stringify(userData));
+        } catch (e) {
+        }
+      }
       showToast("Verification successful!", 'success');
       setTimeout(onSuccess, 1500);
     } catch (err: any) {
       const msg = err.message || "Verification failed. Invalid code.";
       setError(msg);
       showToast(msg, 'error');
-      setCode(''); // Clear inputs on wrong code
+      setCode('');
     } finally {
       setLoading(false);
     }

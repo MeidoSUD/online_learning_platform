@@ -1,31 +1,51 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
-import { Calendar, Clock, Video, Loader2, FilterX, Star, School } from 'lucide-react';
+import {
+    Clock,
+    Calendar,
+    Video,
+    Loader2,
+    SlidersHorizontal,
+    ChevronLeft,
+    ChevronRight,
+    BookOpen,
+    ListOrdered,
+    X,
+    Timer
+} from 'lucide-react';
 import { studentService, Session } from '../../Services/api';
 import { SessionRoomModal } from '../dashboard/SessionRoomModal';
 import { SessionDetailsModal } from './SessionDetailsModal';
-import { COUNTRIES } from '../../Utils/constants';
 import { getSessionState } from '../../Utils/sessionStatus';
 
 interface StudentTeacherInfo {
     id: number;
     name: string;
-    first_name: string;
-    last_name: string;
+    first_name?: string;
+    last_name?: string;
     email?: string;
+    phone_number?: string;
+    image?: string | null;
     profile_image?: string | null;
     nationality?: string;
     rating?: number;
     bookings_count: number;
+    hourly_rate?: number;
 }
 
-function formatTime(time: string): string {
+interface MySessionsTabProps {
+    user?: any;
+    onTeacherSelect?: (teacher: any) => void;
+}
+
+function formatTime(time: string, language: string): string {
     if (!time) return '';
     try {
         const [h, m] = time.split(':');
-        const hour = parseInt(h);
-        const minute = parseInt(m);
-        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const hour = parseInt(h, 10);
+        const minute = parseInt(m, 10);
+        const isAr = language === 'ar';
+        const ampm = isAr ? (hour >= 12 ? 'م' : 'ص') : (hour >= 12 ? 'PM' : 'AM');
         const h12 = hour % 12 || 12;
         return `${h12}:${minute.toString().padStart(2, '0')} ${ampm}`;
     } catch {
@@ -37,41 +57,59 @@ function formatDate(dateStr: string, language: string): string {
     if (!dateStr) return '';
     try {
         const d = new Date(dateStr.split('T')[0] || dateStr);
-        return d.toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+        return d.toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US', {
+            weekday: 'short',
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric'
+        });
     } catch {
         return dateStr;
     }
 }
 
-function getDuration(start: string, end: string): string {
+function getDuration(start: string, end: string, language: string): string {
     if (!start || !end) return '';
-    const [sh, sm] = start.split(':').map(Number);
-    const [eh, em] = end.split(':').map(Number);
-    const diff = (eh * 60 + em) - (sh * 60 + sm);
-    const h = Math.floor(diff / 60);
-    const m = diff % 60;
-    if (h === 0) return `${m}m`;
-    return `${h}h ${m}m`;
+    try {
+        const [sh, sm] = start.split(':').map(Number);
+        const [eh, em] = end.split(':').map(Number);
+        let diff = (eh * 60 + em) - (sh * 60 + sm);
+        if (diff < 0) diff += 24 * 60;
+        const h = Math.floor(diff / 60);
+        const m = diff % 60;
+        if (language === 'ar') {
+            if (h > 0 && m > 0) return `${h} ساعة و ${m} دقيقة`;
+            if (h > 0) return `${h} ساعة`;
+            return `${m} دقيقة`;
+        }
+        if (h === 0) return `${m}m`;
+        return `${h}h ${m}m`;
+    } catch {
+        return '';
+    }
 }
 
-export const MySessionsTab: React.FC = () => {
-    const { t, direction, language } = useLanguage();
-    const [activeTab, setActiveTab] = useState<'coming' | 'ended' | 'teachers'>('coming');
+export const MySessionsTab: React.FC<MySessionsTabProps> = ({ user, onTeacherSelect }) => {
+    const { language, direction } = useLanguage();
+    const isAr = language === 'ar';
+    const [activeTab, setActiveTab] = useState<'active' | 'finished' | 'teachers'>('active');
     const [sessions, setSessions] = useState<Session[]>([]);
     const [teachers, setTeachers] = useState<StudentTeacherInfo[]>([]);
     const [loading, setLoading] = useState(true);
+    const [teachersLoading, setTeachersLoading] = useState(false);
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
     const [agoraData, setAgoraData] = useState<any>(null);
     const [joining, setJoining] = useState<number | null>(null);
     const [selectedSession, setSelectedSession] = useState<Session | null>(null);
+
+    const dateInputRef = useRef<HTMLInputElement>(null);
 
     const loadSessions = async () => {
         setLoading(true);
         try {
             const data = await studentService.getSessions();
             setSessions(Array.isArray(data) ? data : []);
-        } catch (e) {
-            console.error(e);
+        } catch {
             setSessions([]);
         } finally {
             setLoading(false);
@@ -79,54 +117,57 @@ export const MySessionsTab: React.FC = () => {
     };
 
     const fetchTeachers = async () => {
+        setTeachersLoading(true);
         try {
-            let teacherDetailsMap = new Map<number, any>();
-            try {
-                const allTeachers = await studentService.getTeachers();
-                if (Array.isArray(allTeachers)) {
-                    for (const t of allTeachers) {
-                        const profile = t?.profile || {};
-                        teacherDetailsMap.set(t.id, {
-                            profile_image: profile.profile_photo || null,
-                            nationality: t.nationality,
-                            rating: profile.rating || 0,
-                            first_name: t.first_name || '',
-                            last_name: t.last_name || '',
-                        });
-                    }
-                }
-            } catch (_) { /* fallback to session data */ }
+            const studentId = user?.id;
+            let loadedTeachers: StudentTeacherInfo[] = [];
 
-            const data = await studentService.getSessions();
-            const teacherMap = new Map<number, StudentTeacherInfo>();
-            if (Array.isArray(data)) {
-                for (const session of data) {
-                    if (session.teacher?.id) {
-                        const existing = teacherMap.get(session.teacher.id);
-                        const details = teacherDetailsMap.get(session.teacher.id);
+            if (studentId) {
+                try {
+                    const res = await studentService.getStudentTeachers(studentId);
+                    if (Array.isArray(res) && res.length > 0) {
+                        loadedTeachers = res.map((t: any) => ({
+                            id: t.id,
+                            name: t.name || `${t.first_name || ''} ${t.last_name || ''}`.trim(),
+                            first_name: t.first_name,
+                            last_name: t.last_name,
+                            email: t.email,
+                            phone_number: t.phone_number,
+                            image: t.image,
+                            profile_image: t.image,
+                            bookings_count: Number(t.bookings_count) || 1,
+                            hourly_rate: 120,
+                        }));
+                    }
+                } catch {}
+            }
+
+            if (loadedTeachers.length === 0) {
+                const teacherMap = new Map<number, StudentTeacherInfo>();
+                for (const s of sessions) {
+                    if (s.teacher?.id) {
+                        const existing = teacherMap.get(s.teacher.id);
                         if (existing) {
                             existing.bookings_count++;
                         } else {
-                            const parts = (session.teacher.name || '').split(' ');
-                            teacherMap.set(session.teacher.id, {
-                                id: session.teacher.id,
-                                name: session.teacher.name || `${details?.first_name || ''} ${details?.last_name || ''}`.trim(),
-                                first_name: details?.first_name || parts[0] || '',
-                                last_name: details?.last_name || parts.slice(1).join(' ') || '',
-                                email: session.teacher.email,
-                                profile_image: details?.profile_image || null,
-                                nationality: details?.nationality || '',
-                                rating: details?.rating || 0,
+                            teacherMap.set(s.teacher.id, {
+                                id: s.teacher.id,
+                                name: s.teacher.name || '',
+                                email: s.teacher.email,
                                 bookings_count: 1,
+                                hourly_rate: 120,
                             });
                         }
                     }
                 }
+                loadedTeachers = Array.from(teacherMap.values());
             }
-            setTeachers(Array.from(teacherMap.values()));
-        } catch (e) {
-            console.error(e);
+
+            setTeachers(loadedTeachers);
+        } catch {
             setTeachers([]);
+        } finally {
+            setTeachersLoading(false);
         }
     };
 
@@ -135,15 +176,87 @@ export const MySessionsTab: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        if (activeTab === 'teachers') fetchTeachers();
-    }, [activeTab]);
+        if (activeTab === 'teachers') {
+            fetchTeachers();
+        }
+    }, [activeTab, sessions.length]);
 
-    const dateFiltered = selectedDate
-        ? sessions.filter(s => { const d = (s.session_date || '').split('T')[0]?.split(' ')[0]; return d === selectedDate; })
-        : sessions;
+    const orderData = useMemo(() => {
+        const groups = new Map<number, Session[]>();
+        for (const s of sessions) {
+            const key = s.booking_id || s.booking?.id || -s.id;
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key)!.push(s);
+        }
 
-    const comingSessions = dateFiltered.filter(s => getSessionState(s) !== 'finished');
-    const endedSessions = dateFiltered.filter(s => getSessionState(s) === 'finished');
+        const orderMap = new Map<number, number>();
+        const totalMap = new Map<number, number>();
+
+        groups.forEach((list) => {
+            const sorted = [...list].sort((a, b) => {
+                const da = a.session_date || '';
+                const db = b.session_date || '';
+                const c = da.localeCompare(db);
+                if (c !== 0) return c;
+                const ta = a.start_time || '';
+                const tb = b.start_time || '';
+                const c2 = ta.localeCompare(tb);
+                if (c2 !== 0) return c2;
+                return (a.id || 0) - (b.id || 0);
+            });
+
+            const total = sorted.length;
+            sorted.forEach((item, index) => {
+                orderMap.set(item.id, index + 1);
+                const backendTotal = (item as any).booking?.total_sessions || (item as any).booking?.totalSessions || total;
+                totalMap.set(item.id, Math.max(total, backendTotal));
+            });
+        });
+
+        return { orderMap, totalMap };
+    }, [sessions]);
+
+    const dateFilteredSessions = useMemo(() => {
+        if (!selectedDate) return sessions;
+        return sessions.filter((s) => {
+            const d = (s.session_date || '').split('T')[0]?.split(' ')[0];
+            return d === selectedDate;
+        });
+    }, [sessions, selectedDate]);
+
+    const activeSessions = useMemo(() => {
+        const filtered = dateFilteredSessions.filter((s) => {
+            const status = (s.status || '').toLowerCase();
+            return status === 'scheduled' || status === 'live' || status === 'wait_for_teacher' || status === '';
+        });
+
+        return filtered.sort((a, b) => {
+            const da = a.session_date || '';
+            const db = b.session_date || '';
+            const c = da.localeCompare(db);
+            if (c !== 0) return c;
+            const ta = a.start_time || '';
+            const tb = b.start_time || '';
+            return ta.localeCompare(tb);
+        });
+    }, [dateFilteredSessions]);
+
+    const finishedSessions = useMemo(() => {
+        const filtered = dateFilteredSessions.filter((s) => {
+            const status = (s.status || '').toLowerCase();
+            return status === 'ended' || status === 'completed' || status === 'finished' || status === 'cancelled';
+        });
+
+        return filtered.sort((a, b) => {
+            const da = a.session_date || '';
+            const db = b.session_date || '';
+            const c = db.localeCompare(da);
+            if (c !== 0) return c;
+            const ta = a.start_time || '';
+            const tb = b.start_time || '';
+            return tb.localeCompare(ta);
+        });
+    }, [dateFilteredSessions]);
 
     const handleJoinSession = async (sessionId: number) => {
         setJoining(sessionId);
@@ -153,261 +266,358 @@ export const MySessionsTab: React.FC = () => {
                 setAgoraData({
                     ...response.data.agora,
                     session_id: sessionId,
-                    role: 'participant',
+                    role: 'audience'
                 });
             } else {
-                alert(response.message || (language === 'ar' ? 'لا يمكن الانضمام للجلسة حالياً' : 'Cannot join session at this time'));
+                alert(response.message || (isAr ? 'فشل الانضمام للجلسة' : 'Failed to join session'));
             }
         } catch (e: any) {
-            alert(e.message || (language === 'ar' ? 'فشل الانضمام للجلسة' : 'Failed to join session'));
+            alert(e.message || (isAr ? 'فشل الانضمام للجلسة' : 'Failed to join session'));
         } finally {
             setJoining(null);
         }
     };
 
-    const handleDateClick = () => {
-        if (selectedDate) {
-            setSelectedDate(null);
-        } else {
-            const input = document.createElement('input');
-            input.type = 'date';
-            input.onchange = (e: any) => setSelectedDate(e.target.value || null);
-            input.click();
+    const handleOpenDatePicker = () => {
+        if (dateInputRef.current) {
+            if (typeof (dateInputRef.current as any).showPicker === 'function') {
+                (dateInputRef.current as any).showPicker();
+            } else {
+                dateInputRef.current.click();
+            }
         }
     };
 
-    const renderSessionCard = (session: Session) => {
-        const actionState = getSessionState(session);
-        const subjectName = language === 'ar'
-            ? (session.subject?.name_ar || session.subject?.name_en || '')
-            : (session.subject?.name_en || session.subject?.name_ar || '');
+    const ChevronIcon = direction === 'rtl' ? ChevronLeft : ChevronRight;
+
+    const tabs = [
+        { id: 'active' as const, label: isAr ? 'نشطة' : 'Active' },
+        { id: 'finished' as const, label: isAr ? 'منتهية' : 'Finished' },
+        { id: 'teachers' as const, label: isAr ? 'مُعلّميّ' : 'My Teachers' },
+    ];
+
+    const renderEmpty = (title: string, subtitle: string) => (
+        <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+            <img
+                src="/images/v2/empty_time_slots.png"
+                alt=""
+                className="w-28 h-28 object-contain mb-4"
+                onError={(e) => {
+                    (e.target as HTMLElement).style.display = 'none';
+                }}
+            />
+            <h3 className="text-base font-bold text-[#0D4A5F] mb-1.5">
+                {title}
+            </h3>
+            <p className="text-sm text-[#738989] max-w-sm">
+                {subtitle}
+            </p>
+        </div>
+    );
+
+    const renderSessionCard = (session: Session, isEnded: boolean) => {
+        const rawStatus = (session.status || '').toLowerCase();
+        const actionState = getSessionState(session, 15);
+        const isLive = rawStatus === 'live' || rawStatus === 'wait_for_teacher' || actionState === 'live';
+
+        const subjectName = isAr
+            ? (session.subject?.name_ar || session.subject?.name || (session as any).course?.title_ar || (session as any).course?.name || session.session_title || 'الدرس')
+            : (session.subject?.name_en || session.subject?.name || (session as any).course?.title || (session as any).course?.name || session.session_title || 'Lesson');
+
+        const durationText = getDuration(session.start_time, session.end_time, language);
+        const dateText = formatDate(session.session_date, language);
+        const startTimeText = formatTime(session.start_time, language);
+        const endTimeText = formatTime(session.end_time, language);
+        const timeRangeText = `${startTimeText} - ${endTimeText}`;
+
+        const sid = session.id;
+        const displayNumber = orderData.orderMap.get(sid) ?? session.session_number;
+        const displayTotal = orderData.totalMap.get(sid) ?? (session.booking as any)?.total_sessions ?? 1;
+        const showOrder = displayNumber !== undefined && displayTotal > 1;
+
+        const rawTeacherName = session.teacher?.name || '';
+        const displayTeacherName = rawTeacherName
+            ? (rawTeacherName.startsWith('أ.') ? rawTeacherName : `أ. ${rawTeacherName}`)
+            : (isAr ? 'غير محدد' : 'Unknown');
 
         return (
             <div
                 key={session.id}
                 onClick={() => setSelectedSession(session)}
-                className="bg-white rounded-[var(--radius-md)] shadow-[var(--shadow-sm)] border border-[var(--border)] overflow-hidden hover:shadow-[var(--shadow-md)] transition-shadow cursor-pointer"
+                className="bg-white rounded-2xl p-4 sm:p-5 shadow-[0_3px_10px_rgba(0,0,0,0.04)] border border-[#E6E6E6]/60 hover:shadow-md transition-all cursor-pointer"
             >
-                <div className="bg-gradient-to-r from-primary to-primary/85 px-5 py-3">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-white/25">
-                                <Clock className="text-white" size={18} />
+                <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <h3 className="text-base font-bold text-[#0D4A5F] truncate">
+                            {subjectName}
+                        </h3>
+                        <img
+                            src="/images/v2/lesson.png"
+                            alt=""
+                            className="w-8 h-8 object-contain shrink-0"
+                            onError={(e) => {
+                                (e.target as HTMLElement).style.display = 'none';
+                            }}
+                        />
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                        {showOrder && (
+                            <div className="bg-[#E8F0FE] text-[#0D4A5F] px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1">
+                                <span>
+                                    {isAr
+                                        ? `الحصة ${displayNumber} من ${displayTotal}`
+                                        : `Session ${displayNumber} of ${displayTotal}`}
+                                </span>
+                                <ListOrdered size={13} className="text-[#0D4A5F]" />
                             </div>
-                            <p className="text-white font-bold text-sm">
-                                {formatTime(session.start_time)} - {formatTime(session.end_time)}
-                            </p>
-                        </div>
-                        <div className="flex items-center gap-1.5 bg-white/20 rounded-[var(--radius-md)] px-3 py-1.5 border border-white/30">
-                            <Calendar size={13} className="text-white" />
-                            <span className="text-white text-xs font-semibold">
-                                {formatDate(session.session_date, language)}
+                        )}
+                        <div
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold ${
+                                isEnded
+                                    ? 'bg-[#F0F4F5] text-[#738989]'
+                                    : isLive
+                                    ? 'bg-[#EAF5E9] text-[#5B9F48] flex items-center gap-1.5'
+                                    : 'bg-[#EAF5E9] text-[#5B9F48]'
+                            }`}
+                        >
+                            {isLive && !isEnded && (
+                                <span className="w-2 h-2 rounded-full bg-[#5B9F48] animate-ping" />
+                            )}
+                            <span>
+                                {isEnded
+                                    ? (isAr ? 'منتهية' : 'Finished')
+                                    : isLive
+                                    ? (isAr ? 'مباشر الآن' : 'Live Now')
+                                    : (isAr ? 'نشطة' : 'Active')}
                             </span>
                         </div>
                     </div>
                 </div>
 
-                <div className="p-4">
-                    <div className="flex items-center gap-2 mb-3">
-                        <h3 className="flex-1 text-lg font-bold text-primary truncate">
-                            {subjectName || session.booking?.reference || (language === 'ar' ? 'جلسة' : 'Session')}
-                        </h3>
-                        <div className="flex items-center gap-1.5 bg-secondary-pale border border-secondary/30 rounded-lg px-2.5 py-1">
-                            <Clock size={13} className="text-primary" />
-                            <span className="text-secondary text-xs font-bold">
-                                {getDuration(session.start_time, session.end_time) || `${session.duration || 0}min`}
-                            </span>
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 mt-3 text-xs text-[#738989]">
+                    {durationText && (
+                        <div className="flex items-center gap-1.5">
+                            <span>{durationText}</span>
+                            <Timer size={14} className="text-[#738989]" />
                         </div>
+                    )}
+                    <div className="flex items-center gap-1.5">
+                        <span>{dateText}</span>
+                        <Calendar size={14} className="text-[#738989]" />
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                        <span>{timeRangeText}</span>
+                        <Clock size={14} className="text-[#738989]" />
+                    </div>
+                </div>
+
+                <div className="my-3.5 border-t border-[#F3F4F5]" />
+
+                <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-7 h-7 rounded-full overflow-hidden border border-[#E6E6E6] shrink-0 bg-gray-100 flex items-center justify-center">
+                            <img
+                                src={session.teacher?.profile_image || '/images/v2/male_teacher.png'}
+                                alt=""
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                    (e.target as HTMLImageElement).src = '/images/v2/male_teacher.png';
+                                }}
+                            />
+                        </div>
+                        <p className="font-semibold text-sm text-[#0D4A5F] truncate">
+                            {displayTeacherName}
+                        </p>
                     </div>
 
-                    <div className="bg-[var(--light-bg)] rounded-[var(--radius-md)] p-3 border border-[var(--border)]">
-                        <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-3 min-w-0">
-                                <div className="w-8 h-8 rounded-full bg-secondary-pale flex items-center justify-center shrink-0">
-                                    <School className="text-secondary" size={16} />
-                                </div>
-                                <div className="min-w-0">
-                                    <p className="text-xs text-[var(--text-muted)]">
-                                        {language === 'ar' ? 'المعلم' : 'Teacher'}
-                                    </p>
-                                    <p className="font-semibold text-[var(--text-main)] text-sm truncate">
-                                        {session.teacher?.name || (language === 'ar' ? 'غير محدد' : 'Unknown')}
-                                    </p>
-                                </div>
-                            </div>
-
-                            {actionState === 'live' ? (
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); handleJoinSession(session.id); }}
-                                    disabled={joining === session.id}
-                                    className="flex items-center gap-1.5 bg-gradient-to-br from-[var(--green-light)] to-[var(--green)] text-white text-xs font-bold px-4 py-2 rounded-[50px] hover:-translate-y-[2px] hover:shadow-[0_10px_28px_rgba(61,139,55,.45)] transition-all shadow-[0_6px_20px_rgba(61,139,55,.35)] disabled:opacity-50 shrink-0"
-                                >
-                                    {joining === session.id ? (
-                                        <Loader2 size={14} className="animate-spin" />
-                                    ) : (
-                                        <Video size={14} />
-                                    )}
-                                    {language === 'ar' ? 'انضمام' : 'Join'}
-                                </button>
-                            ) : actionState === 'upcoming' ? (
-                                <span className="flex items-center gap-1 bg-orange-50 border border-orange-300 rounded-lg px-2.5 py-1 shrink-0">
-                                    <Clock size={13} className="text-orange-600" />
-                                    <span className="text-orange-700 text-xs font-bold">
-                                        {language === 'ar' ? 'قادمة' : 'Upcoming'}
-                                    </span>
-                                </span>
-                            ) : (
-                                <span className="flex items-center gap-1 bg-[var(--border)] rounded-lg px-2.5 py-1 shrink-0">
-                                    <Clock size={13} className="text-[var(--text-muted)]" />
-                                    <span className="text-[var(--text-muted)] text-xs font-bold">
-                                        {language === 'ar' ? 'انتهت' : 'Finished'}
-                                    </span>
-                                </span>
-                            )}
-                        </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                        {isLive && !isEnded && (
+                            <button
+                                type="button"
+                                disabled={joining === session.id}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleJoinSession(session.id);
+                                }}
+                                className="px-3 py-1.5 rounded-lg bg-[#5B9F48] text-white text-xs font-bold hover:bg-[#4d863d] transition-colors flex items-center gap-1.5 shadow-sm"
+                            >
+                                {joining === session.id ? (
+                                    <Loader2 size={13} className="animate-spin" />
+                                ) : (
+                                    <Video size={13} />
+                                )}
+                                <span>{isAr ? 'انضمام' : 'Join'}</span>
+                            </button>
+                        )}
+                        <ChevronIcon size={22} className="text-[#0D4A5F]" />
                     </div>
                 </div>
             </div>
         );
     };
 
-    const renderEmpty = (label: string) => (
-        <div className="text-center py-16 bg-[var(--light-bg)] rounded-[var(--radius-md)] border border-dashed border-[var(--border)]">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[var(--light-bg)] mb-4">
-                <Calendar className="text-[var(--text-muted)]" size={28} />
-            </div>
-            <p className="text-[var(--text-muted)] font-medium">{label}</p>
-        </div>
-    );
-
-    const tabs = [
-        { id: 'coming' as const, label: language === 'ar' ? 'الجلسات القادمة' : 'Coming Sessions', count: comingSessions.length },
-        { id: 'ended' as const, label: language === 'ar' ? 'الجلسات المنتهية' : 'Ended Sessions', count: endedSessions.length },
-        { id: 'teachers' as const, label: language === 'ar' ? 'معلمي' : 'My Teachers', count: teachers.length },
-    ];
-
     return (
-        <div className="space-y-6 animate-fade-in" dir={direction}>
-            <h2 className="text-2xl font-bold text-[var(--text-main)]">
-                {language === 'ar' ? 'جلساتي' : 'My Sessions'}
-            </h2>
+        <div className="max-w-3xl mx-auto space-y-4 pb-20" dir={direction}>
+            <input
+                ref={dateInputRef}
+                type="date"
+                value={selectedDate || ''}
+                onChange={(e) => setSelectedDate(e.target.value || null)}
+                className="hidden"
+            />
 
-            <div className="bg-white rounded-[var(--radius-md)] shadow-[var(--shadow-sm)] border border-[var(--border)] px-4 py-3">
-                <button
-                    onClick={handleDateClick}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-[var(--radius-md)] border transition-colors text-sm ${
-                        selectedDate
-                            ? 'bg-primary/5 border-primary/20 text-primary font-semibold'
-                            : 'bg-[var(--light-bg)] border-[var(--border)] text-[var(--text-muted)]'
-                    }`}
-                >
-                    <Calendar size={18} className={selectedDate ? 'text-primary' : 'text-[var(--text-muted)]'} />
-                    <span>
-                        {selectedDate
-                            ? formatDate(selectedDate, language)
-                            : (language === 'ar' ? 'اختر تاريخ' : 'Select Date')
-                        }
-                    </span>
-                </button>
-                {selectedDate && (
-                    <button
-                        onClick={() => setSelectedDate(null)}
-                        className="flex items-center gap-1 px-3 py-2 rounded-[var(--radius-md)] border border-red-200 bg-red-50 text-red-600 text-sm hover:bg-red-100 transition-colors ml-2"
-                    >
-                        <FilterX size={16} />
-                        <span className="hidden sm:inline">{language === 'ar' ? 'مسح' : 'Clear'}</span>
-                    </button>
-                )}
-            </div>
-
-            <div className="border-b border-[var(--border)]">
-                <div className="flex gap-6 overflow-x-auto">
-                    {tabs.map(tab => (
+            <div className="bg-white rounded-2xl p-1 shadow-sm border border-[#E6E6E6]/60 grid grid-cols-3 gap-1 h-[52px]">
+                {tabs.map((tab) => {
+                    const isSelected = activeTab === tab.id;
+                    return (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`pb-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                                activeTab === tab.id
-                                    ? 'border-primary text-primary'
-                                    : 'border-transparent text-[var(--text-muted)] hover:text-navy'
+                            className={`flex items-center justify-center text-sm transition-all rounded-xl ${
+                                isSelected
+                                    ? 'bg-[#E8F1F3] text-[#0D4A5F] font-bold'
+                                    : 'text-[#738989] font-medium hover:text-[#0D4A5F] bg-transparent'
                             }`}
                         >
-                            {tab.label}
-                            {tab.count > 0 && (
-                                <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${activeTab === tab.id ? 'bg-primary/10 text-primary' : 'bg-[var(--light-bg)] text-[var(--text-muted)]'}`}>
-                                    {tab.count}
-                                </span>
-                            )}
+                            <span>{tab.label}</span>
                         </button>
-                    ))}
-                </div>
+                    );
+                })}
             </div>
 
             {loading ? (
-                <div className="flex justify-center p-10">
-                    <Loader2 className="animate-spin text-primary" size={32} />
+                <div className="flex justify-center py-20">
+                    <Loader2 className="animate-spin text-[#5B9F48]" size={36} />
                 </div>
             ) : activeTab === 'teachers' ? (
-                teachers.length === 0 ? (
-                    renderEmpty(language === 'ar' ? 'لا يوجد معلمون بعد' : 'No teachers yet')
+                teachersLoading ? (
+                    <div className="flex justify-center py-20">
+                        <Loader2 className="animate-spin text-[#5B9F48]" size={36} />
+                    </div>
+                ) : teachers.length === 0 ? (
+                    renderEmpty(
+                        isAr ? 'لا يوجد معلمون بعد' : 'No teachers yet',
+                        isAr ? 'لم تقم بحجز حصص مع أي معلم حتى الآن' : 'You have not booked sessions with any teacher yet'
+                    )
                 ) : (
                     <div className="space-y-3">
-                        {teachers.map(teacher => {
-                            const flag = COUNTRIES.find(c => c.label.toLowerCase() === (teacher.nationality || '').toLowerCase())?.flag || '';
+                        {teachers.map((teacher) => {
+                            const rawName = teacher.name || `${teacher.first_name || ''} ${teacher.last_name || ''}`.trim();
+                            const displayName = rawName.startsWith('أ.') ? rawName : `أ. ${rawName}`;
+                            const bookingsLabel = isAr
+                                ? (teacher.bookings_count === 1
+                                    ? 'حجز واحد'
+                                    : teacher.bookings_count === 2
+                                    ? 'حجزان'
+                                    : `${teacher.bookings_count} حجوزات`)
+                                : `${teacher.bookings_count} booking${teacher.bookings_count !== 1 ? 's' : ''}`;
+
                             return (
                                 <div
                                     key={teacher.id}
-                                    className="bg-white rounded-[var(--radius-md)] shadow-[var(--shadow-sm)] border border-[var(--border)] p-4 flex items-center justify-between hover:shadow-[var(--shadow-md)] transition-shadow"
+                                    onClick={() => {
+                                        if (onTeacherSelect) {
+                                            onTeacherSelect(teacher);
+                                        }
+                                    }}
+                                    className="bg-white rounded-2xl p-3.5 sm:p-4 shadow-[0_2px_8px_rgba(0,0,0,0.03)] border border-[#E6E6E6]/60 flex items-center justify-between hover:shadow-md transition-shadow cursor-pointer"
                                 >
-                                    <div className="flex items-center gap-4">
-                                        <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg overflow-hidden">
-                                            {teacher.profile_image ? (
-                                                <img src={teacher.profile_image} alt={teacher.name} className="h-full w-full object-cover" />
-                                            ) : (
-                                                (teacher.name.charAt(0) || '?').toUpperCase()
-                                            )}
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="w-12 h-12 rounded-full overflow-hidden border border-[#E6E6E6] shrink-0 bg-gray-100 flex items-center justify-center">
+                                            <img
+                                                src={teacher.image || teacher.profile_image || '/images/v2/male_teacher.png'}
+                                                alt=""
+                                                className="w-full h-full object-cover"
+                                                onError={(e) => {
+                                                    (e.target as HTMLImageElement).src = '/images/v2/male_teacher.png';
+                                                }}
+                                            />
                                         </div>
-                                        <div>
-                                            <div className="flex items-center gap-1.5">
-                                                {flag && <span className="text-base">{flag}</span>}
-                                                <p className="font-semibold text-[var(--text-main)]">{teacher.name}</p>
+                                        <div className="min-w-0">
+                                            <p className="font-bold text-sm text-[#171717] truncate">
+                                                {displayName}
+                                            </p>
+                                            <div className="flex items-center gap-1.5 text-xs text-[#738989] mt-0.5">
+                                                <BookOpen size={13} className="shrink-0" />
+                                                <span className="truncate">
+                                                    {teacher.nationality || (isAr ? 'المواد الدراسية' : 'School Subjects')}
+                                                </span>
                                             </div>
-                                            {teacher.rating ? (
-                                                <div className="flex items-center gap-1 text-xs text-amber-500 mt-0.5">
-                                                    <Star size={12} fill="currentColor" />
-                                                    <span className="text-[var(--text-muted)] font-medium">{teacher.rating.toFixed(1)}</span>
-                                                </div>
-                                            ) : teacher.email && (
-                                                <p className="text-xs text-[var(--text-muted)] truncate">{teacher.email}</p>
-                                            )}
                                         </div>
                                     </div>
-                                    <div className="bg-primary/5 text-primary text-xs font-bold px-3 py-1.5 rounded-full">
-                                        {language === 'ar'
-                                            ? `${teacher.bookings_count} حجز`
-                                            : `${teacher.bookings_count} booking${teacher.bookings_count !== 1 ? 's' : ''}`
-                                        }
+
+                                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                                        <div className="bg-[#A6D388] text-[#144D25] px-2.5 py-1 rounded-lg text-[10.5px] font-bold">
+                                            {bookingsLabel}
+                                        </div>
+                                        <div className="flex items-center gap-1 text-[#0D4A5F]">
+                                            <span className="font-bold text-sm">{teacher.hourly_rate || 120}</span>
+                                            <span className="text-[10px]">{isAr ? 'ر.س / ساعة' : 'SAR / hr'}</span>
+                                        </div>
                                     </div>
                                 </div>
                             );
                         })}
                     </div>
                 )
-            ) : (activeTab === 'coming' ? comingSessions : endedSessions).length === 0 ? (
+            ) : (activeTab === 'active' ? activeSessions : finishedSessions).length === 0 ? (
                 renderEmpty(
-                    activeTab === 'coming'
-                        ? (language === 'ar' ? 'لا توجد جلسات قادمة' : 'No coming sessions')
-                        : (language === 'ar' ? 'لا توجد جلسات منتهية' : 'No ended sessions')
+                    activeTab === 'active'
+                        ? (isAr ? 'لا توجد حصص نشطة حاليًا' : 'No active sessions currently')
+                        : (isAr ? 'لا توجد حصص منتهية حاليًا' : 'No finished sessions currently'),
+                    activeTab === 'active'
+                        ? (isAr ? 'ستظهر هنا جميع حصصك القادمة والنشطة' : 'All your upcoming and active sessions will appear here')
+                        : (isAr ? 'ستظهر هنا الحصص التي أكملتها' : 'Sessions you have completed will appear here')
                 )
             ) : (
-                <div className="space-y-4">
-                    {(activeTab === 'coming' ? comingSessions : endedSessions).map(session => renderSessionCard(session))}
+                <div className="space-y-3">
+                    {(activeTab === 'active' ? activeSessions : finishedSessions).map((session) =>
+                        renderSessionCard(session, activeTab === 'finished')
+                    )}
+                </div>
+            )}
+
+            {activeTab !== 'teachers' && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30">
+                    <div
+                        className={`h-[38px] px-4 rounded-xl flex items-center gap-2 bg-white shadow-[0_3px_12px_rgba(0,0,0,0.12)] border transition-all ${
+                            selectedDate
+                                ? 'border-[#5B9F48] text-[#5B9F48]'
+                                : 'border-[#E6E6E6] text-[#0D4A5F]'
+                        }`}
+                    >
+                        <button
+                            type="button"
+                            onClick={handleOpenDatePicker}
+                            className="flex items-center gap-2 text-xs sm:text-sm font-bold"
+                        >
+                            <span>
+                                {selectedDate
+                                    ? formatDate(selectedDate, language)
+                                    : (isAr ? 'تصفية' : 'Filter')}
+                            </span>
+                            <SlidersHorizontal size={15} />
+                        </button>
+                        {selectedDate && (
+                            <button
+                                type="button"
+                                onClick={() => setSelectedDate(null)}
+                                className="p-0.5 hover:bg-red-50 rounded-full text-red-500 transition-colors"
+                            >
+                                <X size={15} />
+                            </button>
+                        )}
+                    </div>
                 </div>
             )}
 
             <SessionRoomModal
                 isOpen={!!agoraData}
-                onClose={() => { setAgoraData(null); loadSessions(); }}
+                onClose={() => {
+                    setAgoraData(null);
+                    loadSessions();
+                }}
                 agora={agoraData}
             />
 
@@ -415,6 +625,8 @@ export const MySessionsTab: React.FC = () => {
                 session={selectedSession}
                 isOpen={!!selectedSession}
                 onClose={() => setSelectedSession(null)}
+                displayNumber={selectedSession ? orderData.orderMap.get(selectedSession.id) : undefined}
+                displayTotal={selectedSession ? orderData.totalMap.get(selectedSession.id) : undefined}
                 onJoinSession={(id) => {
                     setSelectedSession(null);
                     handleJoinSession(id);

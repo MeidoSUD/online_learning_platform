@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { authService, AuthResponse, UserData } from '../Services/api';
 import { Navbar } from './Navbar';
@@ -17,6 +16,13 @@ import { ConsultationTab } from './teacher/ConsultationTab';
 import { DisputesTab } from './student/DisputesTab';
 import { SupportTab } from './dashboard/SupportTab';
 import { AiAssistantTab } from './dashboard/AiAssistantTab';
+import { TeacherPackagesTab } from './teacher/TeacherPackagesTab';
+import { TeacherGroupClassesTab } from './teacher/TeacherGroupClassesTab';
+import { TeacherOrdersTab } from './teacher/TeacherOrdersTab';
+import { WithdrawalOptionsTab } from './dashboard/WithdrawalOptionsTab';
+import { TeacherMoreTab } from './teacher/TeacherMoreTab';
+import { FaqTab } from './dashboard/FaqTab';
+import { AboutAppTab } from './dashboard/AboutAppTab';
 import { ArrowRight, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { useLanguage } from '../Contexts/LanguageContext';
 import { AdsBanner } from './dashboard/AdsBanner';
@@ -28,14 +34,28 @@ interface TeacherDashboardScreenProps {
 }
 
 export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ data, onLogout }) => {
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const tab = new URLSearchParams(window.location.search).get('tab');
+      if (tab) return tab;
+    }
+    return 'overview';
+  });
   const [freshUser, setFreshUser] = useState<UserData | null>(null);
   const { t, language } = useLanguage();
 
+  useEffect(() => {
+    if (typeof window !== 'undefined' && activeTab) {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get('tab') !== activeTab) {
+        url.searchParams.set('tab', activeTab);
+        window.history.replaceState({}, '', url.toString());
+      }
+    }
+  }, [activeTab]);
+
   const user = data.user.data as UserData;
 
-  // Refresh profile data whenever the teacher switches tabs so the
-  // completion alert always reflects the latest saved state.
   useEffect(() => {
     let cancelled = false;
     authService.getUserDetails()
@@ -46,14 +66,7 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
       })
       .catch(() => {});
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
-
-  // =========================================================
-  // !! CRITICAL VERIFICATION RULE !!
-  // ONLY check 'user.verified' (root level). 
-  // Do NOT check profile.verified, profile.is_active, or services.
-  // =========================================================
 
   const currentUser: UserData = freshUser || user;
   const completeness = getTeacherProfileCompleteness(currentUser);
@@ -69,6 +82,7 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
         return <SubjectsTab user={currentUser} />;
       case 'courses':
         return <TeacherCoursesTab user={currentUser} />;
+      case 'sessions':
       case 'my-lessons':
         return <TeacherLessonsTab user={currentUser} />;
       case 'consultations':
@@ -79,8 +93,22 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
         return <TeacherAbilitiesTab user={currentUser} />;
       case 'wallet':
         return <WalletTab user={currentUser} onNavigate={setActiveTab} />;
+      case 'withdrawal-options':
+        return <WithdrawalOptionsTab user={currentUser} onNavigate={setActiveTab} />;
       case 'bank-accounts':
         return <BankAccountsPage user={currentUser} onNavigate={setActiveTab} />;
+      case 'packages':
+        return <TeacherPackagesTab user={currentUser} />;
+      case 'group-classes':
+        return <TeacherGroupClassesTab user={currentUser} />;
+      case 'orders':
+        return <TeacherOrdersTab />;
+      case 'more':
+        return <TeacherMoreTab user={currentUser} onNavigate={setActiveTab} onLogout={onLogout} />;
+      case 'faq':
+        return <FaqTab />;
+      case 'about':
+        return <AboutAppTab />;
       case 'profile':
         return <ProfileTab onNavigate={setActiveTab} />;
       case 'services':

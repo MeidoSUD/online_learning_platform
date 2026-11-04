@@ -157,16 +157,15 @@ class SessionsController extends Controller
         // Get subject data if booking exists
         $subjectData = null;
         if ($session->booking) {
-            // If booking has course, get course name as subject
             if ($session->booking->course) {
                 $subjectData = [
                     'id' => $session->booking->course->id,
                     'name' => $session->booking->course->name,
+                    'name_en' => $session->booking->course->name ?? $session->booking->course->title,
+                    'name_ar' => $session->booking->course->name_ar ?? $session->booking->course->title_ar ?? $session->booking->course->name,
                     'course_id' => $session->booking->course->id,
                 ];
             } else {
-                // Check if booking has a subject_id directly
-                // (for service bookings without course)
                 if (isset($session->booking->subject_id)) {
                     $subject = \App\Models\Subject::find($session->booking->subject_id);
                     if ($subject) {
@@ -180,12 +179,11 @@ class SessionsController extends Controller
             }
         }
 
-        // Normalize session date to Y-m-d and provide day info
         $rawDate = $session->session_date;
         try {
             if ($rawDate instanceof \Carbon\Carbon) {
                 $sessionDateFormatted = $rawDate->format('Y-m-d');
-                $dayNumber = $rawDate->dayOfWeek; // 0 (Sunday) .. 6 (Saturday)
+                $dayNumber = $rawDate->dayOfWeek;
                 $dayName = $rawDate->format('l');
             } else {
                 $dt = \Carbon\Carbon::parse((string) $rawDate);
@@ -194,7 +192,6 @@ class SessionsController extends Controller
                 $dayName = $dt->format('l');
             }
         } catch (\Exception $e) {
-            // Fallback: take first 10 chars
             $sessionDateFormatted = substr((string) $rawDate, 0, 10);
             try {
                 $dt = \Carbon\Carbon::parse($sessionDateFormatted);
@@ -223,16 +220,16 @@ class SessionsController extends Controller
                 : $session->end_time,
             'duration' => $session->duration,
             'status' => $session->status,
-            'teacher' => [
+            'teacher' => $session->teacher ? [
                 'id' => $session->teacher->id,
-                'name' => $session->teacher->first_name . ' ' . $session->teacher->last_name,
+                'name' => trim($session->teacher->first_name . ' ' . $session->teacher->last_name),
                 'email' => $session->teacher->email,
-            ],
-            'student' => [
+            ] : null,
+            'student' => $session->student ? [
                 'id' => $session->student->id,
-                'name' => $session->student->first_name . ' ' . $session->student->last_name,
+                'name' => trim($session->student->first_name . ' ' . $session->student->last_name),
                 'email' => $session->student->email,
-            ],
+            ] : null,
             'meeting' => [
                 'meeting_id' => $session->meeting_id,
                 'join_url' => $session->join_url,

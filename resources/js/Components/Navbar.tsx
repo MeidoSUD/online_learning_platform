@@ -161,18 +161,25 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
         links.push({ id: 'abilities', label: language === 'ar' ? 'قدرات' : 'Abilities' });
     }
 
-    // AI Educational Assistant
+    links.push({ id: 'group-classes', label: language === 'ar' ? 'حصص جماعية' : 'Group Classes' });
+    links.push({ id: 'sessions', label: language === 'ar' ? 'جلساتي' : 'My Sessions' });
+    links.push({ id: 'orders', label: language === 'ar' ? 'طلبات الطلاب' : 'Orders' });
+    links.push({ id: 'packages', label: language === 'ar' ? 'الباقات' : 'Packages' });
     links.push({ id: 'ai', label: language === 'ar' ? 'الذكاء الاصطناعي' : 'AI Assistant' });
+    links.push({ id: 'more', label: language === 'ar' ? 'المزيد' : 'More' });
 
     return links;
   };
 
   const studentLinks = [
     { id: 'overview', label: language === 'ar' ? 'الرئيسية' : 'Home' },
+    { id: 'sessions', label: language === 'ar' ? 'جلساتي' : 'My Sessions' },
+    { id: 'group-classes', label: language === 'ar' ? 'حصص جماعية' : 'Group Classes' },
+    { id: 'orders', label: language === 'ar' ? 'طلباتي' : 'My Requests' },
+    { id: 'subscriptions', label: language === 'ar' ? 'اشتراكاتي' : 'Subscriptions' },
     { id: 'schedule', label: t.mySchedule },
-    { id: 'favorites', label: language === 'ar' ? 'المفضلة' : 'My Favorites' },
     { id: 'ai', label: language === 'ar' ? 'الذكاء الاصطناعي' : 'AI Assistant' },
-    { id: 'profile', label: t.profile },
+    { id: 'more', label: language === 'ar' ? 'المزيد' : 'More' },
   ];
 
   const navLinks = userRole === 'student' ? studentLinks : getTeacherLinks();
@@ -366,6 +373,9 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
                     <AlertCircle size={16} /> {t.disputes}
                   </button>
                   
+                  <button onClick={() => { setActiveTab('more'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">
+                    <Layers size={16} /> {language === 'ar' ? 'المزيد من الخيارات' : 'More Options'}
+                  </button>
                   <div className="border-t border-[var(--border)] my-1"></div>
                   <button onClick={onLogout} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50">
                     <LogOut size={16} /> {t.logout}
