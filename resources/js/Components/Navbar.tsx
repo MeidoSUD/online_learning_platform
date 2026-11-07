@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useLanguage } from '../Contexts/LanguageContext';
-import { Bell, LogOut, User, Globe, Menu, AlertCircle, CreditCard, FileText, Award, Layers, Video, X, Check, School, CreditCard as PaymentIcon, BellRing, Clock, Loader2, Trash2, Headphones } from 'lucide-react';
+import { Bell, LogOut, User, Globe, Menu, AlertCircle, CreditCard, FileText, Award, Layers, Video, X, Check, School, CreditCard as PaymentIcon, BellRing, Clock, Loader2, Trash2, Headphones, Heart } from 'lucide-react';
 import { AuthResponse, notificationService, AppNotification } from '../Services/api';
 import { Logo } from './Logo';
 
@@ -346,6 +346,9 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
                     <>
                       <button onClick={() => { setActiveTab('sessions'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">
                         <Video size={16} /> {language === 'ar' ? 'جلساتي' : 'My Sessions'}
+                      </button>
+                      <button onClick={() => { setActiveTab('favorites'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">
+                        <Heart size={16} /> {language === 'ar' ? 'المفضلة' : 'Favorites'}
                       </button>
                       <button onClick={() => { setActiveTab('wallet'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">
                         <CreditCard size={16} /> {t.paymentMethods}

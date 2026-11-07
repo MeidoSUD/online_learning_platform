@@ -171,11 +171,13 @@ export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = () => {
         return filtered.sort((a, b) => {
             const da = a.session_date || '';
             const db = b.session_date || '';
-            const c = db.localeCompare(da);
+            const c = da.localeCompare(db);
             if (c !== 0) return c;
             const ta = a.start_time || '';
             const tb = b.start_time || '';
-            return tb.localeCompare(ta);
+            const c2 = ta.localeCompare(tb);
+            if (c2 !== 0) return c2;
+            return (a.id || 0) - (b.id || 0);
         });
     }, [dateFilteredSessions]);
 

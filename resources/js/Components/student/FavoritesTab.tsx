@@ -122,14 +122,14 @@ export const FavoritesTab: React.FC = () => {
                                 <button
                                     onClick={() => handleUnfavorite(teacher.id)}
                                     disabled={unfavoriting === teacher.id}
-                                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-red-200 bg-red-50 text-red-600 text-xs font-bold hover:bg-red-100 transition-colors shrink-0"
+                                    className="p-2 rounded-full text-red-500 hover:bg-red-50 transition-colors shrink-0 disabled:opacity-50"
+                                    aria-label={language === 'ar' ? 'المفضلة' : 'Favorite'}
                                 >
                                     {unfavoriting === teacher.id ? (
-                                        <Loader2 size={14} className="animate-spin" />
+                                        <Loader2 size={20} className="animate-spin text-red-500" />
                                     ) : (
-                                        <Heart size={14} fill="currentColor" />
+                                        <Heart size={20} className="fill-red-500 text-red-500" />
                                     )}
-                                    {language === 'ar' ? 'إزالة' : 'Remove'}
                                 </button>
                             </div>
                         );

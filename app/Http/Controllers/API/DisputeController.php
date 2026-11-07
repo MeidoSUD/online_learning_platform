@@ -14,7 +14,7 @@ class DisputeController extends Controller
     public function index(Request $request)
     {
         $userId = $request->user()->id;
-        $disputes = Dispute::where('raised_by', $userId)->with(['booking', 'payment'])->get();
+        $disputes = Dispute::where('raised_by', $userId)->with(['booking', 'payment'])->orderByDesc('id')->get();
 
         return response()->json([
             'success' => true,

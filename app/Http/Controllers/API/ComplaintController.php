@@ -13,6 +13,7 @@ class ComplaintController extends Controller
         $userId = $request->user()->id;
         $complaints = Complaint::where('student_id', $userId)
             ->with(['session', 'teacher'])
+            ->orderByDesc('id')
             ->get();
 
         return response()->json([
