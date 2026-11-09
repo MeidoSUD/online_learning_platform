@@ -384,6 +384,10 @@ export const studentService = {
       pagination: res.pagination || { current_page: 1, last_page: 1, per_page: 10, total: 0 },
     }));
   },
+  getTeacherById: (id: number) =>
+    fetchWithAuth(`/teachers/${id}`)
+      .catch(() => fetchWithAuth(`/student/teachers/${id}`))
+      .then(res => res.data || res),
   getCourseCategories: () => fetchWithAuth('/categories').then(res => res.data || []),
   getCourses: (filters: any = {}) => {
     const query = new URLSearchParams(filters).toString();
@@ -431,6 +435,12 @@ export const studentService = {
   getSubscriptionDetails: (id: number) => fetchWithAuth(`/student/subscriptions/${id}`),
   bookWithSubscription: (subscriptionId: number, data: { availability_slot_id: number; teacher_id: number; sessions_count: number }) =>
     fetchWithAuth(`/student/subscriptions/${subscriptionId}/book`, { method: 'POST', body: JSON.stringify(data) }),
+  getPublicPackages: () => fetchWithAuth('/packages').then(res => res.data || []),
+  purchasePackage: (data: { package_id: number; payment_method: string }) =>
+    fetchWithAuth('/student/packages/purchase', { method: 'POST', body: JSON.stringify(data) }),
+  getServicePreferences: () => fetchWithAuth('/student/service-preferences').then(res => res.data || []),
+  updateServicePreferences: (hidden_service_ids: number[]) =>
+    fetchWithAuth('/student/service-preferences', { method: 'POST', body: JSON.stringify({ hidden_service_ids }) }),
   // --- Orders (Student requests for teachers) ---
   getOrders: () => fetchWithAuth('/student/orders').then(res => res.data || []),
   createOrder: (data: any) => fetchWithAuth('/student/orders', { method: 'POST', body: JSON.stringify(data) }),
@@ -469,6 +479,7 @@ export const studentService = {
   addTeacherReview: (teacherId: number, data: { rating: number; comment?: string; session_id: number }) =>
     fetchWithAuth(`/teachers/${teacherId}/reviews`, { method: 'POST', body: JSON.stringify(data) }),
   getSessionComplaint: (sessionId: number) => fetchWithAuth(`/student/complaints/by-session/${sessionId}`),
+  getComplaints: () => fetchWithAuth('/student/complaints/my').then(res => res.data || []),
   submitComplaint: (data: { session_id: number; teacher_id: number; reason: string }) =>
     fetchWithAuth('/student/complaints', { method: 'POST', body: JSON.stringify(data) }),
   getCertificates: () => fetchWithAuth('/student/certificates').then(extractArray),
@@ -903,7 +914,13 @@ export const marketingAnnouncementService = {
 
 export const getStorageUrl = (path: string | null | undefined) => {
   if (!path || typeof path !== 'string') return '';
-  if (path.startsWith('http')) return path;
+  const trimmed = path.trim();
+  if (!trimmed) return '';
+  if (trimmed.includes('/storage/')) {
+    const afterStorage = trimmed.split('/storage/')[1];
+    return `${window.location.origin}/storage/${afterStorage}`;
+  }
+  if (trimmed.startsWith('http')) return trimmed;
   const baseUrl = API_BASE_URL.replace(/\/api\/?$/, '');
-  return `${baseUrl}/storage/${path.replace(/^\//, '')}`;
+  return `${baseUrl}/storage/${trimmed.replace(/^\//, '')}`;
 };

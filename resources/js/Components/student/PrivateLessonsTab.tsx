@@ -8,6 +8,7 @@ import { TeacherCard } from './TeacherCard';
 
 interface PrivateLessonsTabProps {
   onTeacherSelect?: (teacher: any) => void;
+  initialServiceId?: number | string;
 }
 
 interface ActiveFilter {
@@ -15,7 +16,7 @@ interface ActiveFilter {
   label: string;
 }
 
-export const PrivateLessonsTab: React.FC<PrivateLessonsTabProps> = ({ onTeacherSelect }) => {
+export const PrivateLessonsTab: React.FC<PrivateLessonsTabProps> = ({ onTeacherSelect, initialServiceId }) => {
   const { t, direction, language } = useLanguage();
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [priceRange, setPriceRange] = useState(500);
@@ -36,9 +37,15 @@ export const PrivateLessonsTab: React.FC<PrivateLessonsTabProps> = ({ onTeacherS
   const [selectedLevel, setSelectedLevel] = useState('');
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
-  const [selectedService, setSelectedService] = useState('');
+  const [selectedService, setSelectedService] = useState(initialServiceId ? String(initialServiceId) : '');
   const [selectedLanguage, setSelectedLanguage] = useState('');
   const [selectedRating, setSelectedRating] = useState(0);
+
+  useEffect(() => {
+    if (initialServiceId !== undefined && initialServiceId !== null && initialServiceId !== '') {
+      setSelectedService(String(initialServiceId));
+    }
+  }, [initialServiceId]);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);

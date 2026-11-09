@@ -24,6 +24,36 @@ function formatTime(time: string): string {
     }
 }
 
+function parseSessionDateTime(sessionDate?: string | null, startTime?: string | null): number {
+    if (!sessionDate) return 0;
+    try {
+        const rawDate = sessionDate.split('T')[0].split(' ')[0];
+        const [y, m, d] = rawDate.split('-').map(Number);
+        if (!y || !m || !d) return 0;
+        let h = 0;
+        let min = 0;
+        if (startTime && startTime.includes(':')) {
+            const parts = startTime.split(':');
+            h = parseInt(parts[0], 10) || 0;
+            min = parseInt(parts[1], 10) || 0;
+        }
+        return new Date(y, m - 1, d, h, min).getTime();
+    } catch {
+        return 0;
+    }
+}
+
+function sortSessions(list: Session[], isAscending = true): Session[] {
+    return list.slice().sort((a, b) => {
+        const timeA = parseSessionDateTime(a.session_date, a.start_time);
+        const timeB = parseSessionDateTime(b.session_date, b.start_time);
+        if (timeA !== timeB) {
+            return isAscending ? timeA - timeB : timeB - timeA;
+        }
+        return isAscending ? (a.id || 0) - (b.id || 0) : (b.id || 0) - (a.id || 0);
+    });
+}
+
 function formatDate(dateStr: string): string {
     if (!dateStr) return '';
     try {
@@ -92,12 +122,14 @@ export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = ({ user }) =>
         ? sessions.filter(s => s.session_date === selectedDate)
         : sessions;
 
-    const activeSessions = dateFiltered.filter(s => {
+    const baseSortedSessions = sortSessions(dateFiltered, true);
+
+    const activeSessions = baseSortedSessions.filter(s => {
         const status = (s.status || '').toLowerCase();
         return ['scheduled', 'live', 'wait_for_teacher', ''].includes(status);
     });
 
-    const finishedSessions = dateFiltered.filter(s => {
+    const finishedSessions = baseSortedSessions.filter(s => {
         const status = (s.status || '').toLowerCase();
         return ['ended', 'completed', 'cancelled', 'finished'].includes(status);
     });

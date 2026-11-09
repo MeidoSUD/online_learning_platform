@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useLanguage } from '../Contexts/LanguageContext';
-import { Bell, LogOut, User, Globe, Menu, AlertCircle, CreditCard, FileText, Award, Layers, Video, X, Check, School, CreditCard as PaymentIcon, BellRing, Clock, Loader2, Trash2, Headphones } from 'lucide-react';
+import { Bell, LogOut, User, Globe, Menu, AlertCircle, CreditCard, FileText, Award, Layers, Video, X, Check, School, CreditCard as PaymentIcon, BellRing, Clock, Loader2, Trash2, Headphones, Package, SlidersHorizontal } from 'lucide-react';
 import { AuthResponse, notificationService, AppNotification } from '../Services/api';
 import { Logo } from './Logo';
 
@@ -169,10 +169,12 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
 
   const studentLinks = [
     { id: 'overview', label: language === 'ar' ? 'الرئيسية' : 'Home' },
+    { id: 'orders', label: language === 'ar' ? 'طلباتي' : 'My Requests' },
+    { id: 'subscriptions', label: language === 'ar' ? 'باقاتي' : 'My Packages' },
     { id: 'schedule', label: t.mySchedule },
     { id: 'favorites', label: language === 'ar' ? 'المفضلة' : 'My Favorites' },
     { id: 'ai', label: language === 'ar' ? 'الذكاء الاصطناعي' : 'AI Assistant' },
-    { id: 'profile', label: t.profile },
+    { id: 'more', label: language === 'ar' ? 'المزيد' : 'More' },
   ];
 
   const navLinks = userRole === 'student' ? studentLinks : getTeacherLinks();
@@ -339,6 +341,15 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
                     <>
                       <button onClick={() => { setActiveTab('sessions'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">
                         <Video size={16} /> {language === 'ar' ? 'جلساتي' : 'My Sessions'}
+                      </button>
+                      <button onClick={() => { setActiveTab('orders'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">
+                        <FileText size={16} /> {language === 'ar' ? 'طلباتي' : 'My Requests'}
+                      </button>
+                      <button onClick={() => { setActiveTab('subscriptions'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">
+                        <Package size={16} /> {language === 'ar' ? 'باقاتي واشتراكاتي' : 'My Subscriptions'}
+                      </button>
+                      <button onClick={() => { setActiveTab('preferences'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">
+                        <SlidersHorizontal size={16} /> {language === 'ar' ? 'تفضيلات الخدمات' : 'Service Preferences'}
                       </button>
                       <button onClick={() => { setActiveTab('wallet'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">
                         <CreditCard size={16} /> {t.paymentMethods}
