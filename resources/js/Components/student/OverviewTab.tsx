@@ -175,16 +175,67 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate, onTe
 
   const getSubjectName = (booking: Booking): string => {
     if (booking.teacher_subject) {
-      return language === 'ar' ? booking.teacher_subject.name_ar : booking.teacher_subject.name_en;
+      return language === 'ar' ? (booking.teacher_subject.name_ar || booking.teacher_subject.name_en) : (booking.teacher_subject.name_en || booking.teacher_subject.name_ar);
     }
     if (typeof booking.subject === 'object' && booking.subject !== null) {
       const subj = booking.subject as any;
-      return language === 'ar' ? (subj.name_ar || subj.name) : (subj.name_en || subj.name);
+      return language === 'ar' ? (subj.name_ar || subj.name || subj.title_ar || subj.title || subj.name_en) : (subj.name_en || subj.name || subj.title_en || subj.title || subj.name_ar);
     }
-    if (typeof booking.subject === 'string') {
+    if (typeof booking.subject === 'string' && booking.subject.trim()) {
       return booking.subject;
     }
-    return 'N/A';
+    if (booking.language) {
+      return language === 'ar' ? (booking.language.name_ar || booking.language.name_en) : (booking.language.name_en || booking.language.name_ar);
+    }
+    if (booking.course) {
+      return language === 'ar' ? (booking.course.title_ar || booking.course.name_ar || booking.course.title || booking.course.name) : (booking.course.title_en || booking.course.name_en || booking.course.title || booking.course.name);
+    }
+    if (booking.service) {
+      return language === 'ar' ? (booking.service.name_ar || booking.service.name_en) : (booking.service.name_en || booking.service.name_ar);
+    }
+    if (booking.general_service) {
+      return language === 'ar' ? (booking.general_service.title_ar || booking.general_service.name_ar) : (booking.general_service.title_en || booking.general_service.name_en);
+    }
+    if (booking.service_id === 2) {
+      return language === 'ar' ? 'تعلم اللغات' : 'Language Learning';
+    }
+    if (booking.service_id === 3) {
+      return language === 'ar' ? 'الدروس الخصوصية' : 'Private Lessons';
+    }
+    if (booking.service_id === 6) {
+      return language === 'ar' ? 'القدرات والتحصيلي' : 'Abilities and Achievement';
+    }
+    return language === 'ar' ? 'جلسة تعليمية' : 'Educational Session';
+  };
+
+  const getStatusBadgeData = (status: string) => {
+    switch (status) {
+      case 'confirmed':
+        return {
+          label: language === 'ar' ? 'مؤكد' : 'Confirmed',
+          className: 'bg-[var(--green-pale)] text-primary'
+        };
+      case 'pending_payment':
+        return {
+          label: language === 'ar' ? 'في انتظار الدفع' : 'Pending Payment',
+          className: 'bg-yellow-100 text-yellow-800'
+        };
+      case 'completed':
+        return {
+          label: language === 'ar' ? 'مكتمل' : 'Completed',
+          className: 'bg-emerald-100 text-emerald-800'
+        };
+      case 'cancelled':
+        return {
+          label: language === 'ar' ? 'ملغي' : 'Cancelled',
+          className: 'bg-red-100 text-red-700'
+        };
+      default:
+        return {
+          label: status,
+          className: 'bg-[var(--accent-pale)] text-[var(--accent)]'
+        };
+    }
   };
 
   if (loading) {
@@ -355,12 +406,27 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate, onTe
               </div>
               <div>
                 <h3 className="font-bold text-[var(--text-main)]">{getSubjectName(lastBooking)}</h3>
-                <p className="text-[var(--text-muted)] text-sm">with {lastBooking.teacher?.first_name} {lastBooking.teacher?.last_name}</p>
+                <p className="text-[var(--text-muted)] text-sm">{language === 'ar' ? 'مع' : 'with'} {lastBooking.teacher?.first_name} {lastBooking.teacher?.last_name}</p>
                 <div className="flex items-center gap-2 mt-1 text-xs text-[var(--text-muted)]">
-                  <span>{new Date(lastBooking.created_at || Date.now()).toLocaleDateString()}</span>
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${lastBooking.status === 'confirmed' ? 'bg-[var(--green-pale)] text-primary' : 'bg-[var(--accent-pale)] text-[var(--accent)]'}`}>
-                    {lastBooking.status}
+                  <span>
+                    {(() => {
+                      const d = lastBooking.schedule?.first_session_date || lastBooking.booking_date || lastBooking.created_at;
+                      if (!d) return '';
+                      try {
+                        return new Date(d).toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US');
+                      } catch {
+                        return String(d).split('T')[0];
+                      }
+                    })()}
                   </span>
+                  {(() => {
+                    const badge = getStatusBadgeData(lastBooking.status);
+                    return (
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${badge.className}`}>
+                        {badge.label}
+                      </span>
+                    );
+                  })()}
                 </div>
               </div>
             </div>

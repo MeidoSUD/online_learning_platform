@@ -363,7 +363,8 @@ export const abilityService = {
 export const studentService = {
   saveFcmToken: (token: string) => fetchWithAuth('/student/save-fcm-token', { method: 'POST', body: JSON.stringify({ fcm_token: token }) }),
   getServices: () => fetchWithAuth('/services').then(extractArray),
-  getSubjects: () => fetchWithAuth('/student/subjects').then(extractArray),
+  getSubjects: () => fetchWithAuth('/common-subjects').then(extractArray),
+  getSubjectsByClass: (classId: number) => fetchWithAuth(`/subjectsClasses/${classId}`).then(extractArray),
   getEducationLevels: () => fetchWithAuth('/education-levels').then(extractArray),
   getClasses: (levelId: number) => fetchWithAuth(`/classes/${levelId}`).then(extractArray),
   getReferenceSubjects: (classId: number) => fetchWithAuth(`/subjectsClasses/${classId}`).then(extractArray),
@@ -412,10 +413,19 @@ export const studentService = {
     if (status && status !== 'all') query.set('status', status);
     query.set('page', String(page));
     query.set('per_page', String(perPage));
-    return fetchWithAuth(`/student/booking?${query.toString()}`).then(res => ({
-      bookings: Array.isArray(res.data) ? res.data : [],
-      pagination: res.pagination || { current_page: 1, last_page: 1, per_page: 10, total: 0 },
-    }));
+    return fetchWithAuth(`/student/booking?${query.toString()}`).then(res => {
+      const raw = res?.data;
+      const bookings = Array.isArray(raw)
+        ? raw
+        : (Array.isArray(raw?.data) ? raw.data : (Array.isArray(res?.bookings) ? res.bookings : []));
+      const pagination = res?.pagination || (raw && raw.current_page ? {
+        current_page: raw.current_page,
+        last_page: raw.last_page,
+        per_page: raw.per_page,
+        total: raw.total,
+      } : { current_page: 1, last_page: 1, per_page: 10, total: 0 });
+      return { bookings, pagination };
+    });
   },
   getBookingDetails: (bookingId: number) => fetchWithAuth(`/student/booking/${bookingId}`).then(res => res.data || res),
   cancelBooking: (bookingId: number) =>

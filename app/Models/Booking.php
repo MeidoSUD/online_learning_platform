@@ -141,6 +141,12 @@ class Booking extends Model
     {
         return $this->belongsTo(GeneralService::class, 'general_service_id');
     }
+
+    public function language(): BelongsTo
+    {
+        return $this->belongsTo(Languages::class, 'language_id');
+    }
+
     public function order()
 {
     return $this->belongsTo(\App\Models\Orders::class, 'order_id');

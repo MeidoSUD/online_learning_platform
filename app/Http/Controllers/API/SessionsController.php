@@ -154,10 +154,8 @@ class SessionsController extends Controller
      */
     private function transformSession($session, $user): array
     {
-        // Get subject data if booking exists
         $subjectData = null;
         if ($session->booking) {
-            // If booking has course, get course name as subject
             if ($session->booking->course) {
                 $subjectData = [
                     'id' => $session->booking->course->id,
@@ -165,8 +163,6 @@ class SessionsController extends Controller
                     'course_id' => $session->booking->course->id,
                 ];
             } else {
-                // Check if booking has a subject_id directly
-                // (for service bookings without course)
                 if (isset($session->booking->subject_id)) {
                     $subject = \App\Models\Subject::find($session->booking->subject_id);
                     if ($subject) {
@@ -174,6 +170,36 @@ class SessionsController extends Controller
                             'id' => $subject->id,
                             'name_en' => $subject->name_en,
                             'name_ar' => $subject->name_ar,
+                        ];
+                    }
+                }
+                if (!$subjectData && isset($session->booking->language_id)) {
+                    $lang = \App\Models\Languages::find($session->booking->language_id);
+                    if ($lang) {
+                        $subjectData = [
+                            'id' => $lang->id,
+                            'name_en' => $lang->name_en,
+                            'name_ar' => $lang->name_ar,
+                        ];
+                    }
+                }
+                if (!$subjectData && isset($session->booking->general_service_id)) {
+                    $gs = \App\Models\GeneralService::find($session->booking->general_service_id);
+                    if ($gs) {
+                        $subjectData = [
+                            'id' => $gs->id,
+                            'name_en' => $gs->title_en ?? $gs->name_en ?? '',
+                            'name_ar' => $gs->title_ar ?? $gs->name_ar ?? '',
+                        ];
+                    }
+                }
+                if (!$subjectData && isset($session->booking->service_id)) {
+                    $svc = \App\Models\Services::find($session->booking->service_id);
+                    if ($svc) {
+                        $subjectData = [
+                            'id' => $svc->id,
+                            'name_en' => $svc->name_en,
+                            'name_ar' => $svc->name_ar,
                         ];
                     }
                 }

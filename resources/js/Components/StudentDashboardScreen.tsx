@@ -34,7 +34,17 @@ interface StudentDashboardScreenProps {
 export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ data, onLogout }) => {
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedTeacher, setSelectedTeacher] = useState<any | null>(null);
-  const [selectedServiceId, setSelectedServiceId] = useState<number>(3);
+  const [selectedServiceId, setSelectedServiceId] = useState<number | undefined>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const serviceIdParam = params.get('service_id');
+      if (serviceIdParam) {
+        const sId = parseInt(serviceIdParam, 10);
+        if (!isNaN(sId) && sId > 0) return sId;
+      }
+    }
+    return undefined;
+  });
   const [loadingTeacher, setLoadingTeacher] = useState(false);
 
   const { t } = useLanguage();
@@ -88,7 +98,13 @@ export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ 
 
     if (serviceIdParam) {
       const sId = parseInt(serviceIdParam, 10);
-      if (!isNaN(sId) && sId > 0) setSelectedServiceId(sId);
+      if (!isNaN(sId) && sId > 0) {
+        setSelectedServiceId(sId);
+      } else {
+        setSelectedServiceId(undefined);
+      }
+    } else {
+      setSelectedServiceId(undefined);
     }
 
     if (tabParam === 'teacher-details' && teacherIdParam) {
@@ -109,7 +125,13 @@ export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ 
 
       if (currentServiceId) {
         const sId = parseInt(currentServiceId, 10);
-        if (!isNaN(sId) && sId > 0) setSelectedServiceId(sId);
+        if (!isNaN(sId) && sId > 0) {
+          setSelectedServiceId(sId);
+        } else {
+          setSelectedServiceId(undefined);
+        }
+      } else {
+        setSelectedServiceId(undefined);
       }
 
       setActiveTab(currentTab);
@@ -153,7 +175,17 @@ export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ 
       case 'overview':
         return <OverviewTab user={data.user.data} onNavigate={handleNavigate} onTeacherSelect={(t, serviceId) => handleTeacherSelect(t, serviceId || 3)} />;
       case 'private-lessons':
-        return <PrivateLessonsTab initialServiceId={selectedServiceId} onTeacherSelect={(t) => handleTeacherSelect(t, selectedServiceId || 3)} />;
+        return (
+          <PrivateLessonsTab
+            initialServiceId={selectedServiceId}
+            onTeacherSelect={(t) => handleTeacherSelect(t, selectedServiceId || 3)}
+            onBack={() => handleNavigate('overview')}
+            onServiceChange={(sId) => {
+              setSelectedServiceId(sId);
+              updateUrl('private-lessons', undefined, sId);
+            }}
+          />
+        );
       case 'courses':
         return <SubjectsTab />;
       case 'language-learning':
@@ -168,13 +200,23 @@ export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ 
           );
         }
         if (!selectedTeacher) {
-          return <PrivateLessonsTab initialServiceId={selectedServiceId || 3} onTeacherSelect={(t) => handleTeacherSelect(t, 3)} />;
+          return (
+            <PrivateLessonsTab
+              initialServiceId={selectedServiceId}
+              onTeacherSelect={(t) => handleTeacherSelect(t, 3)}
+              onBack={() => handleNavigate('overview')}
+              onServiceChange={(sId) => {
+                setSelectedServiceId(sId);
+                updateUrl('private-lessons', undefined, sId);
+              }}
+            />
+          );
         }
         return (
           <TeacherDetailsPage
             teacher={selectedTeacher}
-            serviceId={selectedServiceId}
-            onBack={() => handleNavigate('overview')}
+            serviceId={selectedServiceId || 3}
+            onBack={() => handleNavigate('private-lessons', selectedServiceId)}
             onBookingComplete={() => handleNavigate('bookings')}
           />
         );
@@ -189,7 +231,7 @@ export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ 
       case 'orders':
         return <StudentOrdersTab />;
       case 'subscriptions':
-        return <StudentSubscriptionsTab onNavigateToBooking={() => handleNavigate('private-lessons')} />;
+        return <StudentSubscriptionsTab onNavigateToBooking={() => handleNavigate('private-lessons')} onBack={() => handleNavigate('overview')} />;
       case 'preferences':
         return <ServicePreferencesTab onBack={() => handleNavigate('more')} />;
       case 'more':
