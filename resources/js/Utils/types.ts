@@ -215,6 +215,8 @@ export interface TimeSlot {
   id: number;
   time: string;
   session?: any | null;
+  is_booked?: boolean;
+  is_available?: boolean;
 }
 
 export interface AvailableTime {

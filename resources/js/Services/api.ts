@@ -307,7 +307,7 @@ export const teacherService = {
   getServicesList: () => fetchWithAuth('/teacher/services').then(extractArray),
   getTeacherServices: () => fetchWithAuth('/teacher/get-services').then(res => res.data || res),
   addTeacherService: (payload: { service_id: number }) => fetchWithAuth('/teacher/teacher-service', { method: 'POST', body: JSON.stringify(payload) }),
-  // تعيين خدمة المعلم (واحدة فقط — تستبدل الحالية)
+  deleteTeacherService: (serviceId: number) => fetchWithAuth(`/teacher/teacher-service/${serviceId}`, { method: 'DELETE' }),
   setTeacherService: (payload: { service_id: number }) => fetchWithAuth('/teacher/teacher-service', { method: 'PUT', body: JSON.stringify(payload) }),
   uploadTeacherCertificate: (formData: FormData) => fetchWithAuth('/teacher/teacher-upload-certificate', { method: 'POST', body: formData }),
   updateInfo: (data: any) => fetchWithAuth('/profile/teacher/info', { method: 'POST', body: JSON.stringify(data) }),
@@ -333,6 +333,30 @@ export const teacherService = {
   deletePaymentMethod: (id: number) => fetchWithAuth(`/teacher/payment-methods/${id}`, { method: 'DELETE' }),
   setDefaultPaymentMethod: (id: number) => fetchWithAuth(`/teacher/payment-methods/set-default/${id}`, { method: 'PUT' }),
   togglePackageOnOff: (value: boolean) => fetchWithAuth('/teacher/packages/on-off', { method: 'PUT', body: JSON.stringify({ package_on_off: value ? '1' : '0' }) }),
+  getActiveStatus: () => fetchWithAuth('/teacher/active-status').then(res => res?.data ?? res),
+  updateActiveStatus: (isActive: boolean) => fetchWithAuth('/teacher/active-status', { method: 'PUT', body: JSON.stringify({ is_active: isActive }) }),
+  getTeacherOrders: (params?: { status?: string; created_at?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.status && params.status !== 'all') q.set('status', params.status);
+    if (params?.created_at) q.set('created_at', params.created_at);
+    const queryString = q.toString() ? `?${q.toString()}` : '';
+    return fetchWithAuth(`/teacher/orders/browse${queryString}`).then(res => res?.data ?? res);
+  },
+  applyForOrder: (orderId: number, message?: string) =>
+    fetchWithAuth(`/teacher/orders/${orderId}/apply`, {
+      method: 'POST',
+      body: JSON.stringify(message ? { message } : {}),
+    }),
+  getMyApplications: () => fetchWithAuth('/teacher/my-applications').then(res => res?.data ?? res),
+  cancelApplication: (id: number) => fetchWithAuth(`/teacher/applications/${id}`, { method: 'DELETE' }),
+  getPackages: () => fetchWithAuth('/packages').then(res => res?.data ?? res),
+  getWithdrawalCards: () => fetchWithAuth('/user/cards').then(res => res?.data ?? res),
+  addWithdrawalCard: (data: any) => fetchWithAuth('/user/cards', { method: 'POST', body: JSON.stringify(data) }).then(res => res?.data ?? res),
+  updateWithdrawalCard: (id: number, data: any) => fetchWithAuth(`/user/cards/${id}`, { method: 'PUT', body: JSON.stringify(data) }).then(res => res?.data ?? res),
+  deleteWithdrawalCard: (id: number) => fetchWithAuth(`/user/cards/${id}`, { method: 'DELETE' }),
+  setDefaultWithdrawalCard: (id: number) => fetchWithAuth(`/user/cards/${id}/default`, { method: 'POST', body: JSON.stringify({}) }),
+  getWithdrawalMethods: () => fetchWithAuth('/teacher/withdrawal-methods').then(res => res?.data ?? res).catch(() => ({ isBankAccountActive: true, isCardActive: true })),
+  getTeacherDetails: (teacherId: number) => fetchWithAuth(`/teachers/${teacherId}`).then(res => res?.data ?? res),
   // Consultations assigned to me
   getConsultations: () => fetchWithAuth('/teacher/consultations').then(res => res.data || []),
   getConsultationDetails: (id: number) => fetchWithAuth(`/teacher/consultations/${id}`).then(res => res.data || res),
@@ -358,6 +382,42 @@ export const abilityService = {
   // حذف قدرة واحدة: DELETE /teacher/abilities/{abilityId}
   deleteTeacherAbility: (abilityId: number) =>
     fetchWithAuth(`/teacher/abilities/${abilityId}`, { method: 'DELETE' }),
+};
+
+export const languageService = {
+  getAll: () => fetchWithAuth('/language-study').then(res => {
+    const raw = res?.data ?? res;
+    if (Array.isArray(raw)) {
+      return raw.map((item: any) => (item?.language ? item.language : item)).filter(Boolean);
+    }
+    return [];
+  }),
+  getTeacherLanguages: (teacherId: number) =>
+    fetchWithAuth(`/teacher/language-study/${teacherId}`).then(res => {
+      const list = res?.data?.languages ?? res?.languages ?? res?.data ?? [];
+      return Array.isArray(list) ? list : [];
+    }).catch(err => {
+      if (err?.status === 404) return [];
+      return [];
+    }),
+  addTeacherLanguages: (languageIds: number[]) =>
+    fetchWithAuth('/teacher/language-study/languages', {
+      method: 'POST',
+      body: JSON.stringify({ language_ids: languageIds }),
+    }).then(res => {
+      const list = res?.data?.languages ?? res?.languages ?? res?.data ?? [];
+      return Array.isArray(list) ? list : [];
+    }),
+  updateTeacherLanguages: (languageIds: number[]) =>
+    fetchWithAuth('/teacher/language-study/languages', {
+      method: 'PUT',
+      body: JSON.stringify({ language_ids: languageIds }),
+    }).then(res => {
+      const list = res?.data?.languages ?? res?.languages ?? res?.data ?? [];
+      return Array.isArray(list) ? list : [];
+    }),
+  deleteTeacherLanguage: (languageId: number) =>
+    fetchWithAuth(`/teacher/language-study/${languageId}`, { method: 'DELETE' }),
 };
 
 export const studentService = {

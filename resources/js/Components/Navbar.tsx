@@ -161,8 +161,9 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
         links.push({ id: 'abilities', label: language === 'ar' ? 'قدرات' : 'Abilities' });
     }
 
-    // AI Educational Assistant
+    links.push({ id: 'orders', label: language === 'ar' ? 'طلبات الطلاب' : 'Student Requests' });
     links.push({ id: 'ai', label: language === 'ar' ? 'الذكاء الاصطناعي' : 'AI Assistant' });
+    links.push({ id: 'more', label: language === 'ar' ? 'المزيد' : 'More' });
 
     return links;
   };
@@ -363,11 +364,18 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
                     </>
                   )}
 
-                  {/* Teacher Specific Menu Items */}
                   {userRole === 'teacher' && (
+                    <>
+                      <button onClick={() => { setActiveTab('packages'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">
+                        <Package size={16} /> {language === 'ar' ? 'الباقات التعليمية' : 'Packages'}
+                      </button>
+                      <button onClick={() => { setActiveTab('withdrawal-options'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">
+                        <CreditCard size={16} /> {language === 'ar' ? 'خيارات السحب' : 'Withdrawal Options'}
+                      </button>
                       <button onClick={() => { setActiveTab('services'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">
                         <Layers size={16} /> {language === 'ar' ? 'الخدمات' : 'Services'}
                       </button>
+                    </>
                   )}
 
                   <button onClick={() => { setActiveTab('support'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">

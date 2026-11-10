@@ -1,22 +1,37 @@
-// =====================================================
-// ProfileTab — Flutter parity (edit_profile_screen_v2.dart)
-// - أقسام منفصلة مثل فلاتر: الاسم / الجوال / البريد / كلمة المرور
-//   (+ للمعلم: نبذة / مواد-لغات-قدرات / السعر / المؤهلات / معاينة)
-// - كل قسم له حوار تعديل خاص وحفظ فوري، ورفع الصورة فوري.
-// =====================================================
-
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
 import { useToast } from '../../Contexts/ToastContext';
 import {
-  Camera, ChevronLeft, ChevronRight, Eye, Loader2, Pencil, Trash2,
+  Camera,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  Loader2,
+  Pencil,
+  Trash2,
+  CheckCircle,
+  CheckCircle2,
+  Settings,
+  BadgeCheck,
+  Video,
+  Upload,
+  Globe,
+  GraduationCap,
+  BookOpen,
+  Award
 } from 'lucide-react';
 import {
-  authService, profileService, teacherService, UserData, getStorageUrl, tokenService,
+  authService,
+  profileService,
+  teacherService,
+  UserData,
+  getStorageUrl,
+  tokenService,
 } from '../../Services/api';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 import { Input } from '../ui/Input';
+import { TeacherPublicProfileModal } from '../teacher/TeacherPublicProfileModal';
 
 interface ProfileTabProps {
   onNavigate?: (tab: string) => void;
@@ -33,24 +48,27 @@ const PHONE_CODES = [
   { code: '+1', country: 'أمريكا', countryEn: 'USA', flag: '🇺🇸' },
 ];
 
-/** بطاقة قسم بنفس شكل فلاتر _buildSectionCard */
 const SectionCard: React.FC<{
   title: string;
   icon?: React.ReactNode;
   onIconTap?: () => void;
   children: React.ReactNode;
 }> = ({ title, icon, onIconTap, children }) => (
-  <div className="w-full bg-white rounded-[18px] shadow-[0_3px_10px_rgba(0,0,0,0.03)]">
+  <div className="w-full bg-white rounded-[18px] shadow-[0_3px_10px_rgba(0,0,0,0.03)] border border-slate-100">
     <div className="flex items-center justify-between px-4 pt-[14px] pb-[10px]">
-      <span className="font-bold text-[15px] text-[#1F3D3A]">{title}</span>
+      <span className="font-bold text-[15px] text-[#0D4A5F]">{title}</span>
       {onIconTap ? (
         <button
           type="button"
           onClick={onIconTap}
-          className="w-8 h-8 rounded-full bg-black/[0.04] flex items-center justify-center text-[#1F3D3A]/70 hover:bg-black/10 transition-colors"
+          className="w-8 h-8 rounded-full bg-black/[0.04] flex items-center justify-center text-[#0D4A5F]/70 hover:bg-black/10 transition-colors"
         >
           {icon}
         </button>
+      ) : icon ? (
+        <div className="w-8 h-8 rounded-full bg-black/[0.04] flex items-center justify-center text-[#0D4A5F]/70">
+          {icon}
+        </div>
       ) : (
         <span className="w-8 h-8" />
       )}
@@ -74,8 +92,8 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
-  // حقول الحوارات
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phoneCode, setPhoneCode] = useState('+966');
@@ -83,26 +101,10 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
   const [email, setEmail] = useState('');
   const [bio, setBio] = useState('');
   const [price, setPrice] = useState('');
+  const [teacherServicesList, setTeacherServicesList] = useState<any[]>([]);
 
   const okMsg = (ar: string, en: string) => (isAr ? ar : en);
 
-  const fetchProfile = async () => {
-    if (!loading) setLoading(true);
-    try {
-      const response = await authService.getProfile();
-      const userData: UserData = response.user?.data || response.data || response.user || response;
-      if (!userData?.id) throw new Error('Invalid user data from API');
-      setUser(userData);
-      syncFromUser(userData);
-      setPhotoPreview(null);
-    } catch (error) {
-      console.error('Failed to load profile', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /** نفس منطق _syncProfileData في فلاتر */
   const syncFromUser = (u: UserData) => {
     setFirstName(u.first_name || '');
     setLastName(u.last_name || '');
@@ -141,9 +143,33 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
     }
   };
 
+  const fetchProfile = async () => {
+    try {
+      const response = await authService.getProfile();
+      const userData: UserData = response.user?.data || response.data || response.user || response;
+      if (!userData?.id) throw new Error('Invalid user data from API');
+      setUser(userData);
+      syncFromUser(userData);
+      setPhotoPreview(null);
+
+      if (userData.role_id === 3) {
+        teacherService.getTeacherServices()
+          .then((res: any) => {
+            const data = res?.data || res;
+            const current = Array.isArray(data?.current_services) ? data.current_services : [];
+            setTeacherServicesList(current);
+          })
+          .catch(() => {});
+      }
+    } catch (error) {
+      console.error('Failed to load profile', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchProfile();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const isTeacher = user?.role_id === 3;
@@ -165,7 +191,6 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
   const displayPrice: string =
     price !== '' ? price : (profile?.individual_hour_price != null ? Number(profile.individual_hour_price).toFixed(2) : '0.00');
 
-  // ---- قسم التدريس (مواد / لغات / قدرات) بنفس منطق فلاتر ----
   const mainKey: string = String(
     profile?.main_service_key ??
     profile?.services?.[0]?.key_name ??
@@ -174,6 +199,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
   ).toLowerCase();
   const isLanguageService = mainKey.includes('lang');
   const isAbilityService = mainKey.includes('abilit');
+  const isCourseService = mainKey.includes('course') || mainKey.includes('training');
 
   const pickName = (m: any): string => {
     const ar = m?.name_ar ?? m?.nameAr;
@@ -208,7 +234,6 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
       }
     }
     return out;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, isAr]);
 
   const liveAbilities: string[] = useMemo(() => {
@@ -223,21 +248,74 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
       }
     }
     return out;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, isAr]);
+
+  const liveCourses: string[] = useMemo(() => {
+    const arr = profile?.courses;
+    if (!Array.isArray(arr)) return [];
+    const out: string[] = [];
+    for (const e of arr) {
+      if (typeof e === 'string' && e.trim()) out.push(e.trim());
+      else if (e && typeof e === 'object') {
+        const n = String(e.name || e.title || '').trim();
+        if (n) out.push(n);
+      }
+    }
+    return out;
+  }, [profile]);
 
   const teachTitle = isLanguageService
     ? okMsg('اللغات التي أدرّسها', 'Languages I teach')
     : isAbilityService
       ? okMsg('القدرات التي أدرّسها', 'Abilities I teach')
-      : okMsg('المواد التي أدرّسها', 'Subjects I teach');
-  const teachItems = isLanguageService ? liveLanguages : isAbilityService ? liveAbilities : liveSubjects;
+      : isCourseService
+        ? okMsg('الدورات التدريبية', 'Training courses')
+        : okMsg('المواد التي أدرّسها', 'Subjects I teach');
+  const teachItems = isLanguageService ? liveLanguages : isAbilityService ? liveAbilities : isCourseService ? liveCourses : liveSubjects;
   const teachEmpty = isLanguageService
     ? okMsg('لا توجد لغات مضافة بعد.', 'No languages added yet.')
     : isAbilityService
       ? okMsg('لا توجد قدرات مضافة بعد.', 'No abilities added yet.')
-      : okMsg('لا توجد مواد مضافة بعد.', 'No subjects added yet.');
-  const teachTab = isLanguageService ? 'languages' : isAbilityService ? 'abilities' : 'private-lessons';
+      : isCourseService
+        ? okMsg('لا توجد دورات تدريبية مضافة بعد.', 'No courses added yet.')
+        : okMsg('لا توجد مواد مضافة بعد.', 'No subjects added yet.');
+  const teachTab = isLanguageService ? 'languages' : isAbilityService ? 'abilities' : isCourseService ? 'courses' : 'private-lessons';
+
+  const userServicesList: any[] = useMemo(() => {
+    if (Array.isArray(profile?.services) && profile.services.length > 0) {
+      return profile.services;
+    }
+    if (Array.isArray(teacherServicesList) && teacherServicesList.length > 0) {
+      return teacherServicesList;
+    }
+    return [];
+  }, [profile, teacherServicesList]);
+
+  const currentServiceName = useMemo(() => {
+    if (userServicesList.length > 0) {
+      const match = userServicesList.find((s: any) => {
+        const k = String(s?.key_name || s?.keyName || '').toLowerCase();
+        return mainKey && k === mainKey;
+      });
+      if (match) {
+        return pickName(match);
+      }
+      return pickName(userServicesList[0]);
+    }
+    if (mainKey.includes('book')) return isAr ? 'الكتب الدراسية' : 'Study Books';
+    if (mainKey.includes('lang')) return isAr ? 'تعليم اللغات' : 'Language Learning';
+    if (mainKey.includes('abilit')) return isAr ? 'اختبارات القدرات' : 'Abilities Tests';
+    if (mainKey.includes('course') || mainKey.includes('training')) return isAr ? 'الدورات التدريبية' : 'Training Courses';
+    return isAr ? 'الدروس الخصوصية' : 'Private Lessons';
+  }, [userServicesList, mainKey, isAr]);
+
+  const introVideoUrl: string = useMemo(() => {
+    const raw = String(profile?.intro_video || '').trim();
+    if (!raw) return '';
+    if (/^https?:\/\//i.test(raw)) return raw;
+    const clean = raw.replace(/^\//, '').replace(/^storage\//, '');
+    return getStorageUrl(clean);
+  }, [profile]);
 
   const hasCertificate = Boolean(
     (profile?.certificate && String(profile.certificate).length > 0) ||
@@ -248,19 +326,23 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
     const raw: string =
       profile?.certificate || profile?.certificate_attachment?.file_path || profile?.certificate_attachment?.filePath || profile?.resume || '';
     if (!raw) return '';
-    // رابط كامل؟ يُستخدم كما هو — وإلا يُبنى من مسار التخزين مع منع تكرار storage/
     if (/^https?:\/\//i.test(raw)) return raw;
     const clean = String(raw).replace(/^\//, '').replace(/^storage\//, '');
     return getStorageUrl(clean);
   })();
 
-  // ---- حفظ ----
-  const saveProfileFields = async (fields: Record<string, string>, file?: File, key = 'save') => {
+  const saveProfileFields = async (
+    fields: Record<string, string>,
+    photoFile?: File,
+    key = 'save',
+    videoFile?: File,
+  ) => {
     setSavingKey(key);
     try {
       const fd = new FormData();
       Object.entries(fields).forEach(([k, v]) => fd.append(k, v));
-      if (file) fd.append('profile_photo', file);
+      if (photoFile) fd.append('profile_photo', photoFile);
+      if (videoFile) fd.append('intro_video', videoFile);
       await profileService.updateProfile(fd);
       await fetchProfile();
       showToast(okMsg('تم الحفظ بنجاح', 'Saved successfully'), 'success');
@@ -276,9 +358,15 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setPhotoPreview(URL.createObjectURL(file));
-    // رفع فوري مثل فلاتر _pickImage
     await saveProfileFields({}, file, 'photo');
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleVideoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await saveProfileFields({}, undefined, 'video', file);
+    if (videoInputRef.current) videoInputRef.current.value = '';
   };
 
   const handleSaveName = async () => {
@@ -327,8 +415,6 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
     }
   };
 
-
-
   const handleDeleteAccount = async () => {
     if (!confirm(okMsg('هل أنت متأكد؟ سيتم حذف حسابك نهائياً.', 'Are you sure? This will permanently delete your account.'))) return;
     try {
@@ -366,19 +452,16 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
     : dialog === 'email' ? okMsg('تعديل البريد الإلكتروني', 'Edit email')
     : dialog === 'bio' ? okMsg('تعديل نبذة عني', 'Edit bio')
     : dialog === 'price' ? okMsg('تعديل سعر الساعة', 'Edit hourly price')
-    : dialog === 'password' ? okMsg('تغيير كلمة المرور', 'Change password')
     : '';
 
   const avatarSrc = photoPreview || imageUrl || '';
-  const chevIcon = direction === 'rtl'
-    ? <ChevronLeft size={18} className="text-primary" />
-    : <ChevronRight size={18} className="text-primary" />;
+
+  const displayServices = userServicesList.length > 0 ? userServicesList : [{ id: 3, name_ar: currentServiceName, name_en: currentServiceName }];
 
   return (
-    <div className="max-w-3xl mx-auto px-5 py-5 space-y-4 animate-fade-in" dir={direction}>
-      {/* الصورة الشخصية */}
+    <div className="max-w-3xl mx-auto px-5 py-5 space-y-4 animate-fade-in font-sans" dir={direction}>
       <div className="flex flex-col items-center">
-        <div className="w-[92px] h-[92px] rounded-full bg-black/[0.05] overflow-hidden flex items-center justify-center text-3xl font-bold text-[#1F3D3A]">
+        <div className="w-[92px] h-[92px] rounded-full bg-black/[0.05] overflow-hidden flex items-center justify-center text-3xl font-bold text-[#0D4A5F]">
           {avatarSrc
             ? <img src={avatarSrc} alt="Profile" className="h-full w-full object-cover" />
             : (displayName.charAt(0)?.toUpperCase() || 'U')}
@@ -387,50 +470,153 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={savingKey === 'photo'}
-          className="mt-3 px-[18px] py-2 rounded-[14px] bg-[#6B8782] text-white text-[13px] font-bold hover:opacity-90 transition-opacity disabled:opacity-60 inline-flex items-center gap-2"
+          className="mt-3 px-[18px] py-2 rounded-[14px] bg-[#6B8782] text-white text-[13px] font-bold hover:opacity-90 transition-opacity disabled:opacity-60 inline-flex items-center gap-2 shadow-sm"
         >
           {savingKey === 'photo' ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
-          {okMsg('تغيير الصورة الشخصية', 'Change profile photo')}
+          <span>{okMsg('تغيير الصورة الشخصية', 'Change profile photo')}</span>
         </button>
         <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handlePhotoChange} />
       </div>
 
       <div className="h-2" />
 
-      {/* الاسم */}
       <SectionCard title={okMsg('الاسم', 'Name')} icon={<Pencil size={18} />} onIconTap={() => openDialogWithFresh('name')}>
-        <p className={`text-[15px] font-medium ${displayName ? 'text-[#1F3D3A]' : 'text-[#1F3D3A]/50'}`}>
+        <p className={`text-[15px] font-medium ${displayName ? 'text-[#0D4A5F]' : 'text-[#0D4A5F]/50'}`}>
           {displayName || okMsg('لا يوجد اسم مضاف', 'No name added')}
         </p>
       </SectionCard>
 
-      {/* رقم الجوال */}
       <SectionCard title={okMsg('رقم الجوال', 'Phone number')} icon={<Pencil size={18} />} onIconTap={() => openDialogWithFresh('phone')}>
         <div dir="ltr" className="flex items-center gap-[6px]">
-          <span className="text-[15px] font-bold text-[#1F3D3A]">{phoneCode}</span>
-          <span className="text-[15px] font-medium text-[#1F3D3A]">{phoneNumber || user.phone_number}</span>
+          <span className="text-[15px] font-bold text-[#0D4A5F]">{phoneCode}</span>
+          <span className="text-[15px] font-medium text-[#0D4A5F]">{phoneNumber || user.phone_number}</span>
         </div>
       </SectionCard>
 
-      {/* البريد الإلكتروني */}
       <SectionCard title={okMsg('البريد الإلكتروني', 'Email')} icon={<Pencil size={18} />} onIconTap={() => openDialogWithFresh('email')}>
-        <p className={`text-[15px] font-medium ${user.email ? 'text-[#1F3D3A]' : 'text-[#1F3D3A]/50'}`}>
+        <p className={`text-[15px] font-medium ${user.email ? 'text-[#0D4A5F]' : 'text-[#0D4A5F]/50'}`}>
           {user.email || okMsg('لا يوجد بريد إلكتروني', 'No email')}
         </p>
       </SectionCard>
 
-
-
       {isTeacher && (
         <>
-          {/* نبذة عني */}
           <SectionCard title={t.bio || okMsg('نبذة عني', 'Bio')} icon={<Pencil size={18} />} onIconTap={() => openDialogWithFresh('bio')}>
-            <p className={`text-sm leading-[1.6] ${displayBio ? 'text-[#1F3D3A]' : 'text-[#1F3D3A]/50'}`}>
+            <p className={`text-sm leading-[1.6] ${displayBio ? 'text-[#0D4A5F]' : 'text-[#0D4A5F]/50'}`}>
               {displayBio || okMsg('لا توجد نبذة تعريفية مضافة بعد.', 'No bio added yet.')}
             </p>
           </SectionCard>
 
-          {/* المواد / اللغات / القدرات */}
+          <SectionCard
+            title={okMsg('فيديو تعريفي', 'Intro Video')}
+            icon={<Video size={18} />}
+            onIconTap={() => videoInputRef.current?.click()}
+          >
+            <div className="space-y-3">
+              {introVideoUrl ? (
+                <div className="w-full rounded-2xl overflow-hidden bg-black/5 border border-slate-200 aspect-video max-h-64">
+                  <video src={introVideoUrl} controls className="w-full h-full object-contain" />
+                </div>
+              ) : null}
+
+              <button
+                type="button"
+                onClick={() => videoInputRef.current?.click()}
+                disabled={savingKey === 'video'}
+                className="w-full py-2.5 px-4 rounded-xl border border-primary text-primary hover:bg-emerald-50 transition-colors flex items-center justify-center gap-2 text-xs font-bold"
+              >
+                {savingKey === 'video' ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                <span>
+                  {introVideoUrl
+                    ? okMsg('تغيير الفيديو التعريفي', 'Change intro video')
+                    : okMsg('رفع فيديو تعريفي', 'Upload intro video')}
+                </span>
+              </button>
+              <input type="file" ref={videoInputRef} className="hidden" accept="video/*" onChange={handleVideoChange} />
+
+              <p className="text-xs text-[#0D4A5F]/60 leading-relaxed">
+                {okMsg(
+                  'أضف فيديو قصير (دقيقة إلى دقيقتين) تعرّف فيه عن نفسك وخبراتك وأسلوبك في التدريس لمساعدة الطلاب على اختيارك.',
+                  'Add a short video (1-2 minutes) introducing yourself, your experience, and your teaching style to help students choose you.',
+                )}
+              </p>
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title={okMsg('الخدمة الحالية', 'Current Service')}
+            icon={<BadgeCheck size={18} />}
+          >
+            <p className="text-[15px] font-bold text-[#0D4A5F]">
+              {currentServiceName}
+            </p>
+          </SectionCard>
+
+          <SectionCard
+            title={okMsg('إدارة الخدمات', 'Service Management')}
+            icon={<Settings size={18} />}
+            onIconTap={() => onNavigate && onNavigate('services')}
+          >
+            <div className="space-y-3">
+              <p className="text-xs text-[#0D4A5F]/60 font-medium">
+                {okMsg('خدماتك الحالية', 'Your current services')}
+              </p>
+
+              {displayServices.map((service: any, index: number) => {
+                const sId = Number(service.id || index + 1);
+                const sName = pickName(service) || currentServiceName;
+                const isBlue = sId === 1;
+                const isGreen = sId === 2;
+
+                const chipBg = isBlue
+                  ? 'bg-blue-50/60 border-blue-200'
+                  : isGreen
+                  ? 'bg-emerald-50/60 border-emerald-200'
+                  : 'bg-amber-50/60 border-amber-200';
+                const iconBg = isBlue
+                  ? 'bg-blue-100/80 text-blue-600'
+                  : isGreen
+                  ? 'bg-emerald-100/80 text-emerald-600'
+                  : 'bg-amber-100/80 text-amber-600';
+                const checkColor = isBlue
+                  ? 'text-blue-500'
+                  : isGreen
+                  ? 'text-emerald-500'
+                  : 'text-amber-500';
+
+                return (
+                  <div
+                    key={sId || index}
+                    className={`flex items-center justify-between p-3 rounded-2xl border ${chipBg}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${iconBg}`}>
+                        {isBlue ? (
+                          <GraduationCap size={18} />
+                        ) : isGreen ? (
+                          <Globe size={18} />
+                        ) : (
+                          <BookOpen size={18} />
+                        )}
+                      </div>
+                      <span className="text-sm font-semibold text-[#0D4A5F]">{sName}</span>
+                    </div>
+                    <CheckCircle2 size={20} className={checkColor} />
+                  </div>
+                );
+              })}
+
+              <button
+                type="button"
+                onClick={() => onNavigate && onNavigate('services')}
+                className="w-full mt-2 py-2.5 px-4 rounded-xl border border-primary text-primary hover:bg-emerald-50 transition-colors flex items-center justify-center gap-2 text-xs font-bold"
+              >
+                <Settings size={16} />
+                <span>{okMsg('إدارة الخدمات', 'Manage Services')}</span>
+              </button>
+            </div>
+          </SectionCard>
+
           <SectionCard
             title={teachTitle}
             icon={<Pencil size={18} />}
@@ -439,25 +625,23 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
             {teachItems.length > 0 ? (
               <div className="flex flex-wrap gap-2">
                 {teachItems.map((s, i) => (
-                  <span key={i} className="px-[14px] py-2 rounded-xl bg-[#F4F7F6] text-[#1F3D3A] text-[13px] font-semibold">
+                  <span key={i} className="px-[14px] py-2 rounded-xl bg-[#EFF6F4] text-[#0D4A5F] text-[13px] font-semibold">
                     {s}
                   </span>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-[#1F3D3A]/50">{teachEmpty}</p>
+              <p className="text-sm text-[#0D4A5F]/50">{teachEmpty}</p>
             )}
           </SectionCard>
 
-          {/* الخدمات والأسعار */}
           <SectionCard title={okMsg('الخدمات والأسعار', 'Services & Pricing')} icon={<Pencil size={18} />} onIconTap={() => openDialogWithFresh('price')}>
             <div className="flex items-center gap-1" dir={isAr ? 'rtl' : 'ltr'}>
-              <span className="text-xl font-bold text-[#1F3D3A]">{displayPrice} </span>
-              <span className="text-sm text-[#1F3D3A]/70">{t.sar || (isAr ? 'ر.س' : 'SAR')}{t.perHour || (isAr ? '/ساعة' : '/hr')}</span>
+              <span className="text-xl font-bold text-[#0D4A5F]">{displayPrice} </span>
+              <span className="text-sm text-[#0D4A5F]/70">{t.sar || (isAr ? 'ر.س' : 'SAR')}{t.perHour || (isAr ? '/ساعة' : '/hr')}</span>
             </div>
           </SectionCard>
 
-          {/* المؤهلات التعليمية */}
           <SectionCard
             title={okMsg('المؤهلات التعليمية', 'Qualifications')}
             icon={<Pencil size={18} />}
@@ -468,31 +652,29 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
                 {okMsg('المؤهلات التعليمية مرفقة (عرض الملف)', 'Qualifications attached (view file)')}
               </a>
             ) : (
-              <p className="text-sm text-[#1F3D3A]/50">{okMsg('لا توجد بيانات مرفقة', 'No attachments')}</p>
+              <p className="text-sm text-[#0D4A5F]/50">{okMsg('لا توجد بيانات مرفقة', 'No attachments')}</p>
             )}
           </SectionCard>
 
           <div className="h-2" />
 
-          {/* معاينة ملفي التعريفي */}
           <button
             type="button"
             onClick={() => setPreviewOpen(true)}
-            className="w-full h-[52px] rounded-2xl border-[1.5px] border-primary bg-white text-primary text-base font-bold hover:bg-primary hover:text-white transition-colors inline-flex items-center justify-center gap-2"
+            className="w-full h-[52px] rounded-2xl border-[1.5px] border-primary bg-white text-primary text-base font-bold hover:bg-primary hover:text-white transition-colors inline-flex items-center justify-center gap-2 shadow-sm"
           >
             <Eye size={18} />
-            {okMsg('معاينة ملفي التعريفي', 'Preview my profile')}
+            <span>{okMsg('معاينة ملفي التعريفي', 'Preview my profile')}</span>
           </button>
         </>
       )}
 
       <div className="pt-4 border-t border-[var(--border)] flex justify-center">
         <button onClick={handleDeleteAccount} className="flex items-center gap-2 text-red-500 hover:text-red-700 text-sm font-medium transition-colors">
-          <Trash2 size={16} /> {isAr ? 'حذف الحساب' : 'Delete Account'}
+          <Trash2 size={16} /> <span>{isAr ? 'حذف الحساب' : 'Delete Account'}</span>
         </button>
       </div>
 
-      {/* ===== الحوارات (كل حوار مستقل مثل فلاتر) ===== */}
       <Modal isOpen={dialog !== null} onClose={() => setDialog(null)} title={dialogTitle}>
         {dialog === 'name' && (
           <div className="space-y-3">
@@ -512,7 +694,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
                 value={phoneCode}
                 onChange={(e) => setPhoneCode(e.target.value)}
                 disabled={isStudent}
-                className="rounded-xl border border-[var(--border)] bg-[#F4F7F6] px-2 py-3 text-sm font-medium focus:outline-none disabled:opacity-70 max-w-[150px]"
+                className="rounded-xl border border-[var(--border)] bg-[#EFF6F4] px-2 py-3 text-sm font-medium focus:outline-none disabled:opacity-70 max-w-[150px]"
               >
                 {(isStudent ? PHONE_CODES.filter((c) => c.code === '+966') : PHONE_CODES).map((c) => (
                   <option key={c.code} value={c.code}>{c.flag} {c.code}</option>
@@ -580,28 +762,13 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
             </div>
           </div>
         )}
-
-
       </Modal>
 
-      {/* معاينة الملف التعريفي */}
-      <Modal isOpen={previewOpen} onClose={() => setPreviewOpen(false)} title={okMsg('معاينة ملفي التعريفي', 'My public profile')}>
-        <div className="flex flex-col items-center text-center space-y-3">
-          <div className="w-20 h-20 rounded-full overflow-hidden bg-black/[0.05] flex items-center justify-center text-2xl font-bold text-[#1F3D3A]">
-            {avatarSrc ? <img src={avatarSrc} alt="" className="h-full w-full object-cover" /> : displayName.charAt(0)?.toUpperCase()}
-          </div>
-          <h3 className="text-lg font-bold">{displayName}</h3>
-          {displayBio && <p className="text-sm text-[var(--text-muted)] leading-relaxed">{displayBio}</p>}
-          {teachItems.length > 0 && (
-            <div className="flex flex-wrap justify-center gap-2">
-              {teachItems.map((s, i) => (
-                <span key={i} className="px-3 py-1 rounded-lg bg-[#F4F7F6] text-xs font-semibold text-[#1F3D3A]">{s}</span>
-              ))}
-            </div>
-          )}
-          <p className="font-bold text-[#1F3D3A]">{displayPrice} {t.sar || (isAr ? 'ر.س' : 'SAR')}{t.perHour || (isAr ? '/ساعة' : '/hr')}</p>
-        </div>
-      </Modal>
+      <TeacherPublicProfileModal
+        user={user}
+        isOpen={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+      />
     </div>
   );
 };

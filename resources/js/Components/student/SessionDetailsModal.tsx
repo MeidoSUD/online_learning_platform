@@ -395,6 +395,12 @@ export const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({
                                             {review.comment}
                                         </p>
                                     )}
+                                    <p className="text-xs text-[#738989] pt-1">
+                                        {isAr
+                                            ? `بواسطة: ${review.reviewer?.name || (review.reviewer?.first_name ? `${review.reviewer.first_name} ${review.reviewer.last_name || ''}`.trim() : null) || session.student?.name || 'طالب'}`
+                                            : `By: ${review.reviewer?.name || (review.reviewer?.first_name ? `${review.reviewer.first_name} ${review.reviewer.last_name || ''}`.trim() : null) || session.student?.name || 'Student'}`
+                                        }
+                                    </p>
                                 </div>
                             ) : canReview && !showReviewForm ? (
                                 <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 text-center space-y-2">
