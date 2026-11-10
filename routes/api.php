@@ -202,6 +202,10 @@ Route::prefix('auth')->group(function () {
     // NEW: OTP passwordless login (additive — existing routes untouched)
     Route::post('login-otp/request', [AuthController::class, 'requestLoginOtp']);
     Route::post('login-otp/verify', [AuthController::class, 'verifyLoginOtp']);
+    // Embedded Social Sign-Up & Sign-In (Google & Apple ID)
+    Route::post('social-login', [AuthController::class, 'socialLogin']);
+    Route::post('social/google', [AuthController::class, 'socialLoginGoogle']);
+    Route::post('social/apple', [AuthController::class, 'socialLoginApple']);
     Route::post('resend-code', [AuthController::class, 'resendCode']);
     Route::post('verify-reset-code', [AuthController::class, 'verifyResetCode']);
     Route::post('reset-password', [AuthController::class, 'resetPassword']);

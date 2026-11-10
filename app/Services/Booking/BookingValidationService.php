@@ -214,14 +214,50 @@ class BookingValidationService
         $count = max(1, min(50, $sessionsCount));
         $availability = $this->getNextBookableSessions($slot, $studentId, $count);
         $upcomingSessions = $availability['sessions'];
+
+        $teacher = $slot->teacher;
+        $teacherTimezone = $teacher?->timezone_name ?? config('app.timezone', 'Asia/Riyadh');
+        $teacherOffset = $teacher?->timezone_offset ?? \App\Helpers\CountryTimezone::getOffset($teacherTimezone);
+        $platformTimezone = config('app.timezone', 'Asia/Riyadh');
+        $platformOffset = \App\Helpers\CountryTimezone::getOffset($platformTimezone);
+
         foreach ($upcomingSessions as &$session) {
             $session['day_name_ar'] = $dayNameAr;
             $session['day_name_en'] = $dayNameEn;
+            if (!empty($session['session_date']) && !empty($session['start_time'])) {
+                try {
+                    $startDt = Carbon::parse($session['session_date'] . ' ' . $session['start_time'], $platformTimezone);
+                    $session['start_datetime_iso'] = $startDt->toIso8601String();
+                    $session['teacher_datetime_iso'] = $startDt->copy()->setTimezone($teacherTimezone)->toIso8601String();
+                    $session['teacher_start_time'] = $startDt->copy()->setTimezone($teacherTimezone)->format('H:i');
+                    if (!empty($session['end_time'])) {
+                        $endDt = Carbon::parse($session['session_date'] . ' ' . $session['end_time'], $platformTimezone);
+                        $session['end_datetime_iso'] = $endDt->toIso8601String();
+                        $session['teacher_end_datetime_iso'] = $endDt->copy()->setTimezone($teacherTimezone)->toIso8601String();
+                        $session['teacher_end_time'] = $endDt->copy()->setTimezone($teacherTimezone)->format('H:i');
+                    }
+                } catch (\Throwable $e) {
+                }
+            }
         }
         unset($session);
         $canBook = $availability['can_book'];
         if ($canBook && !empty($upcomingSessions[0]['session_date'])) {
             $resolvedFirstDate = $upcomingSessions[0]['session_date'];
+        }
+
+        $startDateTimeIso = null;
+        $endDateTimeIso = null;
+        $teacherStartDateTimeIso = null;
+        $teacherEndDateTimeIso = null;
+        try {
+            $startDt = Carbon::parse($resolvedFirstDate . ' ' . $startTime, $platformTimezone);
+            $endDt = Carbon::parse($resolvedFirstDate . ' ' . $endTime, $platformTimezone);
+            $startDateTimeIso = $startDt->toIso8601String();
+            $endDateTimeIso = $endDt->toIso8601String();
+            $teacherStartDateTimeIso = $startDt->copy()->setTimezone($teacherTimezone)->toIso8601String();
+            $teacherEndDateTimeIso = $endDt->copy()->setTimezone($teacherTimezone)->toIso8601String();
+        } catch (\Throwable $e) {
         }
 
         $reason = null;
@@ -240,6 +276,8 @@ class BookingValidationService
             'data' => [
                 'slot_id' => $slot->id,
                 'teacher_id' => $slot->teacher_id,
+                'teacher_timezone' => $teacherTimezone,
+                'teacher_timezone_offset' => $teacherOffset,
                 'day_number' => $slot->day_number,
                 'day_name_ar' => $dayNameAr,
                 'day_name_en' => $dayNameEn,
@@ -247,6 +285,10 @@ class BookingValidationService
                 'formatted_date' => Carbon::parse($resolvedFirstDate)->format('Y-m-d'),
                 'start_time' => $startTime,
                 'end_time' => $endTime,
+                'start_datetime_iso' => $startDateTimeIso,
+                'end_datetime_iso' => $endDateTimeIso,
+                'teacher_start_datetime_iso' => $teacherStartDateTimeIso,
+                'teacher_end_datetime_iso' => $teacherEndDateTimeIso,
                 'duration' => $slot->duration ?? 60,
                 'is_available' => PackageBookingHelper::isSlotBookable($slot),
                 'is_booked' => PackageBookingHelper::isRecurringSlot($slot) ? false : (bool) $slot->is_booked,

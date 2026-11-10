@@ -220,11 +220,16 @@ export interface TimeSlot {
 export interface AvailableTime {
   id?: number;
   day: number | string;
-  times?: (string | { id: number; time: string })[];
+  day_number?: number;
+  teacher_timezone?: string;
+  teacher_timezone_offset?: string;
+  times?: (string | { id: number; time: string; start_time?: string; end_time?: string })[];
   time_slots?: TimeSlot[];
 }
 
 export interface AvailabilityPayload {
+  timezone?: string;
+  timezone_offset?: string;
   available_times: {
     day: number;
     times: string[];
@@ -281,6 +286,23 @@ export interface Session {
   end_time: string;
   duration: number;
   status: string;
+  timezone?: string;
+  timezone_offset?: string;
+  start_at_iso?: string;
+  end_at_iso?: string;
+  user_local_time?: {
+    timezone: string;
+    timezone_offset: string;
+    session_date: string;
+    day_name: string;
+    day_number: number;
+    start_time: string;
+    end_time: string;
+    start_at_iso: string;
+    end_at_iso: string;
+  };
+  can_start?: boolean;
+  can_join?: boolean;
   teacher: {
     id: number;
     name: string;

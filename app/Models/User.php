@@ -40,6 +40,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'agora_chat_uid',
         'notional_id',
         'is_active',
+        'social_provider',
+        'social_provider_id',
     ];
 
     /**
@@ -247,5 +249,29 @@ class User extends Authenticatable implements MustVerifyEmail
     public function activeSubscriptions(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->subscriptions()->where('status', Subscription::STATUS_ACTIVE);
+    }
+
+    /**
+     * Get user resolved timezone name (e.g. 'Asia/Riyadh', 'Africa/Cairo', 'Asia/Dubai')
+     */
+    public function getTimezoneNameAttribute(): string
+    {
+        if ($this->timezone && \App\Helpers\CountryTimezone::isValidTimezone($this->timezone)) {
+            return $this->timezone;
+        }
+
+        if ($this->nationality) {
+            return \App\Helpers\CountryTimezone::fromCountry(null, $this->nationality);
+        }
+
+        return config('app.timezone', 'Asia/Riyadh');
+    }
+
+    /**
+     * Get user's current UTC offset string (e.g. '+03:00', '+02:00', '-05:00')
+     */
+    public function getTimezoneOffsetAttribute(): string
+    {
+        return \App\Helpers\CountryTimezone::getOffset($this->timezone_name);
     }
 }

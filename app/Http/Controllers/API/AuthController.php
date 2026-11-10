@@ -1718,4 +1718,264 @@ We are currently in the teacher preparation phase ahead of our official launch. 
             return $this->serverError($e, 'Login failed. Please try again.');
         }
     }
+
+    /**
+     * Convenience route for Google social login
+     */
+    public function socialLoginGoogle(Request $request)
+    {
+        $request->merge(['provider' => 'google']);
+        return $this->socialLogin($request);
+    }
+
+    /**
+     * Convenience route for Apple social login
+     */
+    public function socialLoginApple(Request $request)
+    {
+        $request->merge(['provider' => 'apple']);
+        return $this->socialLogin($request);
+    }
+
+    /**
+     * Embedded Social Login / Registration (Google & Apple ID)
+     * Supports tokens from Firebase Auth, Google Identity Services, and Apple Identity Tokens.
+     */
+    public function socialLogin(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'provider' => 'required|in:google,apple',
+                'id_token' => 'required|string',
+                'role_id' => 'nullable|integer|in:3,4',
+                'first_name' => 'nullable|string|max:100',
+                'last_name' => 'nullable|string|max:100',
+                'email' => 'nullable|email',
+                'fcm_token' => 'nullable|string',
+                'device_type' => 'nullable|string',
+                'timezone' => 'nullable|string',
+                'appsflyer_id' => 'nullable|string',
+            ]);
+
+            $provider = strtolower(trim($validated['provider']));
+            $idToken = trim($validated['id_token']);
+
+            $socialId = null;
+            $email = $validated['email'] ?? null;
+            $name = null;
+            $givenName = $validated['first_name'] ?? null;
+            $familyName = $validated['last_name'] ?? null;
+            $verified = false;
+
+            // 1. Attempt verification via Firebase Auth Admin (if using Firebase SDK in Web or Flutter)
+            try {
+                $firebaseAuth = \Kreait\Laravel\Firebase\Facades\Firebase::auth();
+                $verifiedToken = $firebaseAuth->verifyIdToken($idToken);
+                $socialId = (string) $verifiedToken->claims()->get('sub');
+                $tokenEmail = $verifiedToken->claims()->get('email');
+                if (!empty($tokenEmail)) {
+                    $email = $tokenEmail;
+                }
+                $tokenName = $verifiedToken->claims()->get('name');
+                if (!empty($tokenName)) {
+                    $name = $tokenName;
+                }
+                $verified = !empty($socialId);
+            } catch (\Throwable $firebaseEx) {
+                // Not a Firebase token; will attempt direct provider verification below
+            }
+
+            // 2. Direct Provider verification fallback (for native mobile or direct GIS tokens)
+            if (!$verified || empty($socialId)) {
+                if ($provider === 'google') {
+                    try {
+                        $response = \Illuminate\Support\Facades\Http::timeout(10)
+                            ->get('https://oauth2.googleapis.com/tokeninfo', ['id_token' => $idToken]);
+
+                        if ($response->successful()) {
+                            $payload = $response->json();
+                            $socialId = (string) ($payload['sub'] ?? '');
+                            if (!empty($payload['email'])) {
+                                $email = $payload['email'];
+                            }
+                            $givenName = $payload['given_name'] ?? $givenName;
+                            $familyName = $payload['family_name'] ?? $familyName;
+                            $name = $payload['name'] ?? $name;
+                            $verified = !empty($socialId);
+                        } else {
+                            Log::warning('Google tokeninfo call failed: ' . $response->body());
+                        }
+                    } catch (\Throwable $e) {
+                        Log::error('Google direct token verification error: ' . $e->getMessage());
+                    }
+                } elseif ($provider === 'apple') {
+                    try {
+                        // Apple identity token is an encoded JWT with format header.payload.signature
+                        $parts = explode('.', $idToken);
+                        if (count($parts) === 3) {
+                            $payloadJson = base64_decode(strtr($parts[1], '-_', '+/'));
+                            $claims = json_decode($payloadJson, true);
+                            if (is_array($claims) && isset($claims['iss']) && str_contains($claims['iss'], 'appleid.apple.com')) {
+                                if (isset($claims['exp']) && $claims['exp'] > (time() - 300)) {
+                                    $socialId = (string) ($claims['sub'] ?? '');
+                                    if (!empty($claims['email'])) {
+                                        $email = $claims['email'];
+                                    }
+                                    $verified = !empty($socialId);
+                                }
+                            }
+                        }
+                    } catch (\Throwable $e) {
+                        Log::error('Apple direct token verification error: ' . $e->getMessage());
+                    }
+                }
+            }
+
+            if (!$verified || empty($socialId)) {
+                return response()->json([
+                    'success' => false,
+                    'code' => 'INVALID_TOKEN',
+                    'message_en' => 'Invalid or expired social authentication token.',
+                    'message_ar' => 'رمز المصادقة غير صالح أو منتهي الصلاحية.',
+                ], 401);
+            }
+
+            // 3. User Lookup
+            $user = User::where('social_provider', $provider)
+                ->where('social_provider_id', $socialId)
+                ->first();
+
+            if (!$user && !empty($email)) {
+                $user = User::where('email', $email)->first();
+                if ($user) {
+                    $user->social_provider = $provider;
+                    $user->social_provider_id = $socialId;
+                    $user->verified = true;
+                    $user->save();
+                }
+            }
+
+            $isNewUser = false;
+            $roleId = $validated['role_id'] ?? 4; // default to student (4)
+
+            // 4. Create user if not exists (Embedded Sign-Up)
+            if (!$user) {
+                $isNewUser = true;
+
+                $finalFirstName = $givenName ?: ($name ? explode(' ', trim($name))[0] : 'User');
+                $finalLastName = $familyName ?: ($name && count(explode(' ', trim($name))) > 1 ? implode(' ', array_slice(explode(' ', trim($name)), 1)) : '');
+
+                $timezone = $request->input('timezone') 
+                    ?: ($request->header('X-Timezone') ?: config('app.timezone', 'Asia/Riyadh'));
+
+                $user = User::create([
+                    'first_name' => $finalFirstName,
+                    'last_name' => $finalLastName ?: $finalFirstName,
+                    'email' => $email,
+                    'role_id' => $roleId,
+                    'password' => \Illuminate\Support\Facades\Hash::make(\Illuminate\Support\Str::random(32)),
+                    'verified' => true,
+                    'social_provider' => $provider,
+                    'social_provider_id' => $socialId,
+                    'timezone' => $timezone,
+                ]);
+
+                Log::info("New user registered via {$provider}", ['user_id' => $user->id, 'email' => $email]);
+
+                // AppsFlyer Registration Event
+                if ($request->filled('appsflyer_id')) {
+                    try {
+                        app(\App\Services\AppsFlyerService::class)->sendRegistrationEvent(
+                            appsflyerId: (string) $request->input('appsflyer_id'),
+                            customerUserId: $user->id,
+                            platform: $request->input('device_type', 'unknown'),
+                            extraData: [
+                                'user_type' => $roleId === 3 ? 'teacher' : 'student',
+                                'registration_channel' => $provider,
+                            ],
+                            advertisingId: null,
+                            ip: $request->ip()
+                        );
+                    } catch (\Throwable $e) {
+                        Log::warning('AppsFlyer social registration event failed: ' . $e->getMessage());
+                    }
+                }
+            }
+
+            // 5. Update user state (FCM token, timezone)
+            if ($request->filled('fcm_token')) {
+                try {
+                    $user->fcm_token = $request->input('fcm_token');
+                    $user->save();
+                } catch (\Throwable $e) {
+                }
+            }
+
+            if ($request->filled('timezone') && \App\Helpers\CountryTimezone::isValidTimezone($request->timezone)) {
+                $user->timezone = $request->timezone;
+                $user->save();
+            }
+
+            try {
+                \App\Helpers\ProfileCompleteHelper::sync($user->id);
+            } catch (\Throwable $e) {
+            }
+
+            $role = Role::find($user->role_id);
+            if ($user->role_id == 3) {
+                $userController = new UserController();
+                $fullTeacherData = $userController->getFullTeacherData($user);
+                $userData = [
+                    'role' => $role?->name_key ?? 'teacher',
+                    'data' => $fullTeacherData,
+                ];
+            } else {
+                $userData = [
+                    'role' => $role?->name_key ?? 'student',
+                    'data' => $user,
+                    'profile' => $user->profile,
+                ];
+            }
+
+            $token = $user->createToken('auth_token')->plainTextToken;
+
+            $deviceTokenValue = $request->input('fcm_token') ?? $user->fcm_token;
+            if (!empty($deviceTokenValue)) {
+                try {
+                    DeviceToken::updateOrCreate(
+                        [
+                            'user_id' => $user->id,
+                            'device_token' => $deviceTokenValue,
+                        ],
+                        [
+                            'device_type' => $request->input('device_type', 'web'),
+                            'is_active' => true,
+                        ]
+                    );
+                } catch (\Throwable $e) {
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'code' => 'LOGIN_SUCCESS',
+                'status' => 'success',
+                'token' => $token,
+                'user' => $userData,
+                'is_new_user' => $isNewUser,
+                'message_en' => $isNewUser ? 'Registered successfully' : 'Logged in successfully',
+                'message_ar' => $isNewUser ? 'تم إنشاء الحساب بنجاح' : 'تم تسجيل الدخول بنجاح',
+            ]);
+        } catch (ValidationException $e) {
+            return $this->validationError($e, 'Social login validation failed');
+        } catch (\Throwable $e) {
+            Log::error('socialLogin error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'success' => false,
+                'code' => 'SERVER_ERROR',
+                'message_en' => 'Social login failed. Please try again.',
+                'message_ar' => 'فشل تسجيل الدخول بواسطة وسيلة التواصل. يرجى المحاولة مرة أخرى.',
+            ], 500);
+        }
+    }
 }

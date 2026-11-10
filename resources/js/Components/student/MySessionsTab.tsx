@@ -195,13 +195,13 @@ export const MySessionsTab: React.FC = () => {
                                 <Clock className="text-white" size={18} />
                             </div>
                             <p className="text-white font-bold text-sm">
-                                {formatTime(session.start_time)} - {formatTime(session.end_time)}
+                                {formatTime(session.user_local_time?.start_time || session.start_time)} - {formatTime(session.user_local_time?.end_time || session.end_time)}
                             </p>
                         </div>
                         <div className="flex items-center gap-1.5 bg-white/20 rounded-[var(--radius-md)] px-3 py-1.5 border border-white/30">
                             <Calendar size={13} className="text-white" />
                             <span className="text-white text-xs font-semibold">
-                                {formatDate(session.session_date, language)}
+                                {formatDate(session.user_local_time?.session_date || session.session_date, language)}
                             </span>
                         </div>
                     </div>

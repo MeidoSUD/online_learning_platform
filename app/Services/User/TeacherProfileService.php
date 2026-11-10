@@ -472,8 +472,23 @@ class TeacherProfileService
         }
 
         $availabilitySlots = AvailabilitySlot::where('teacher_id', $teacher->id)
-            ->get()
-            ->groupBy('day_number');
+            ->orderBy('day_number')
+            ->orderBy('start_time')
+            ->get();
+
+        $teacherTimezone = $teacher->timezone_name;
+        $teacherOffset = $teacher->timezone_offset;
+
+        $platformTimezone = config('app.timezone', 'Asia/Riyadh');
+        $platformOffset = \App\Helpers\CountryTimezone::getOffset($platformTimezone);
+
+        // Determine viewer timezone and offset
+        $viewer = request()->user();
+        $viewerTzInput = request()->header('X-Timezone') ?? request()->query('timezone') ?? ($viewer ? $viewer->timezone_name : null);
+        $viewerOffsetInput = request()->header('X-Timezone-Offset') ?? request()->query('timezone_offset') ?? ($viewer ? $viewer->timezone_offset : null);
+
+        $viewerTimezone = \App\Helpers\CountryTimezone::fromInput($viewerTzInput, $viewerOffsetInput, $platformTimezone);
+        $viewerOffset = $viewerOffsetInput ?: \App\Helpers\CountryTimezone::getOffset($viewerTimezone);
 
         $dayNamesAr = [
             1 => 'السبت',
@@ -495,32 +510,96 @@ class TeacherProfileService
             7 => 'Friday',
         ];
 
+        // Convert and group slots from platform storage time (Asia/Riyadh) into viewer local time
+        $convertedSlots = $availabilitySlots->map(function ($slot) use ($platformOffset, $viewerOffset, $teacherOffset) {
+            $rawTime = $slot->start_time instanceof \Carbon\Carbon
+                ? $slot->start_time->format('H:i')
+                : substr((string) $slot->start_time, 0, 5);
+
+            // Viewer conversion
+            $viewerConverted = \App\Helpers\CountryTimezone::convertSlotBetweenOffsets(
+                $rawTime,
+                (int) $slot->day_number,
+                $platformOffset,
+                $viewerOffset
+            );
+
+            // Teacher conversion
+            $teacherConverted = \App\Helpers\CountryTimezone::convertSlotBetweenOffsets(
+                $rawTime,
+                (int) $slot->day_number,
+                $platformOffset,
+                $teacherOffset
+            );
+
+            $slot->viewer_day = $viewerConverted['day'];
+            $slot->viewer_start_time = $viewerConverted['start_time'];
+            $slot->viewer_end_time = $viewerConverted['end_time'];
+
+            $slot->teacher_day = $teacherConverted['day'];
+            $slot->teacher_start_time = $teacherConverted['start_time'];
+            $slot->teacher_end_time = $teacherConverted['end_time'];
+
+            $slot->platform_start_time = $rawTime;
+            return $slot;
+        })->sortBy(['viewer_day', 'viewer_start_time']);
+
         $availableTimes = [];
-        foreach ($availabilitySlots as $dayNumber => $slots) {
+        $groupedByViewerDay = $convertedSlots->groupBy('viewer_day');
+
+        foreach ($groupedByViewerDay as $dayNumber => $slots) {
             $dayNameAr = $dayNamesAr[$dayNumber] ?? 'unknown';
             $dayNameEn = $dayNamesEn[$dayNumber] ?? 'unknown';
 
             $times = $slots->map(function ($slot) {
                 $recurringSlot = PackageBookingHelper::isRecurringSlot($slot);
+                $viewerStart = $slot->viewer_start_time;
+                $viewerEnd = $slot->viewer_end_time;
+                $teacherStart = $slot->teacher_start_time;
+                $teacherEnd = $slot->teacher_end_time;
+
+                $vParsed = null;
+                $tParsed = null;
+                try {
+                    $vParsed = \Carbon\Carbon::createFromFormat('H:i', $viewerStart);
+                } catch (\Throwable $e) {}
+                try {
+                    $tParsed = \Carbon\Carbon::createFromFormat('H:i', $teacherStart);
+                } catch (\Throwable $e) {}
+
                 return [
                     'id' => $slot->id,
-                    'is_booked' => $recurringSlot ? false : $slot->is_booked,
-                    'is_available' => $recurringSlot ? true : $slot->is_available,
-                    'time' => $slot->start_time instanceof \Carbon\Carbon ? $slot->start_time->format('h:i A') : $slot->start_time,
-                    'start_time' => $slot->start_time instanceof \Carbon\Carbon ? $slot->start_time->format('H:i:s') : $slot->start_time,
-                    'end_time' => $slot->end_time instanceof \Carbon\Carbon ? $slot->end_time->format('H:i:s') : $slot->end_time,
+                    'is_booked' => $recurringSlot ? false : (bool) $slot->is_booked,
+                    'is_available' => $recurringSlot ? true : (bool) $slot->is_available,
+                    // Viewer local time formatted
+                    'time' => $vParsed ? $vParsed->format('h:i A') : $viewerStart,
+                    'start_time' => $viewerStart . ':00',
+                    'end_time' => $viewerEnd . ':00',
                     'duration' => $slot->duration ?? 60,
+                    // Teacher local time
+                    'teacher_time' => $tParsed ? $tParsed->format('h:i A') : $teacherStart,
+                    'teacher_start_time' => $teacherStart . ':00',
+                    'teacher_end_time' => $teacherEnd . ':00',
+                    'teacher_day_number' => $slot->teacher_day,
+                    // Platform storage time (Asia/Riyadh)
+                    'platform_start_time' => $slot->platform_start_time . ':00',
+                    'storage_day_number' => (int) $slot->day_number,
                 ];
             })->values()->toArray();
 
             $availableTimes[] = [
-                'id' => $dayNumber,
+                'id' => (int) $dayNumber,
+                'day_number' => (int) $dayNumber,
                 'day' => $dayNameAr,
                 'day_ar' => $dayNameAr,
                 'day_en' => $dayNameEn,
                 'day_name' => $dayNameAr,
                 'day_name_ar' => $dayNameAr,
                 'day_name_en' => $dayNameEn,
+                'teacher_timezone' => $teacherTimezone,
+                'teacher_timezone_offset' => $teacherOffset,
+                'viewer_timezone' => $viewerTimezone,
+                'viewer_timezone_offset' => $viewerOffset,
                 'times' => $times
             ];
         }
@@ -588,6 +667,11 @@ class TeacherProfileService
             'verification_code' => (string) ($teacher->verification_code ?? ''),
             'social_provider' => (string) ($teacher->social_provider ?? ''),
             'social_provider_id' => (string) ($teacher->social_provider_id ?? ''),
+            'teacher_timezone' => $teacherTimezone,
+            'teacher_timezone_offset' => $teacherOffset,
+            'viewer_timezone' => $viewerTimezone,
+            'viewer_timezone_offset' => $viewerOffset,
+            'available_times' => $availableTimes,
             'total_students' => (int) $totalStudents,
             'students_count' => (int) $totalStudents,
             'total_lessons' => (int) $totalLessons,
@@ -623,6 +707,12 @@ class TeacherProfileService
                 'languages' => $languages,
                 'abilities' => $abilities,
                 'available_times' => $availableTimes,
+                'teacher_timezone' => $teacherTimezone,
+                'teacher_timezone_offset' => $teacherOffset,
+                'viewer_timezone' => $viewerTimezone,
+                'viewer_timezone_offset' => $viewerOffset,
+                'timezone' => $teacherTimezone,
+                'timezone_offset' => $teacherOffset,
                 'certificate_attachment' => $certificateAttachment,
                 'earnings' => $earnings,
                 'currentLessons' => $currentLessons,

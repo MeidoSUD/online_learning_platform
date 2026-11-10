@@ -175,6 +175,7 @@ const extractPaginatedData = (response: any) => {
 
 const fetchWithAuth = async (endpoint: string, options: RequestInit = {}) => {
   const token = tokenService.getToken();
+  const clientTimezone = typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'Asia/Riyadh';
 
   const headers: HeadersInit = {
     'Accept': 'application/json',
@@ -183,6 +184,7 @@ const fetchWithAuth = async (endpoint: string, options: RequestInit = {}) => {
     'cf-nnt': '1',
     'X-Requested-With': 'XMLHttpRequest',
     'Cache-Control': 'no-cache',
+    'X-Timezone': clientTimezone,
     ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     ...options.headers,
   };
@@ -286,6 +288,18 @@ export const authService = {
   deleteAccount: () => fetchWithAuth('/auth/user', { method: 'DELETE' }),
   requestLoginOtp: (data: { email?: string, phone_number?: string }) => fetchWithAuth('/auth/login-otp/request', { method: 'POST', body: JSON.stringify(data) }),
   verifyLoginOtp: (data: { user_id: number, code: string, fcm_token?: string }) => fetchWithAuth('/auth/login-otp/verify', { method: 'POST', body: JSON.stringify(data) }),
+  socialLogin: (payload: {
+    provider: 'google' | 'apple';
+    id_token: string;
+    role_id?: number;
+    first_name?: string;
+    last_name?: string;
+    email?: string;
+    fcm_token?: string;
+    device_type?: string;
+    timezone?: string;
+    appsflyer_id?: string;
+  }) => fetchWithAuth('/auth/social-login', { method: 'POST', body: JSON.stringify(payload) }),
 };
 
 export const profileService = {

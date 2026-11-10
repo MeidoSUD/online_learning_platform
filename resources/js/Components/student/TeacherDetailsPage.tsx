@@ -503,11 +503,11 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({ teacher:
                         <Clock size={16} className="text-white" />
                       </div>
                       <span className="text-white text-sm font-bold">
-                        {formatTime(s.start_time)} - {formatTime(s.end_time)}
+                        {formatTime(s.user_local_time?.start_time || s.start_time)} - {formatTime(s.user_local_time?.end_time || s.end_time)}
                       </span>
                       <div className="ml-auto px-2.5 py-1 rounded-[var(--radius-md)] bg-white/20 border border-white/20 flex items-center gap-1.5">
                         <Calendar size={12} className="text-white" />
-                        <span className="text-white/90 text-xs font-semibold">{formatDate(s.session_date)}</span>
+                        <span className="text-white/90 text-xs font-semibold">{formatDate(s.user_local_time?.session_date || s.session_date)}</span>
                       </div>
                     </div>
 

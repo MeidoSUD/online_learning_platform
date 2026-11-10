@@ -98,12 +98,37 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({ user }) => {
       }
   };
 
+  const getClientTimezone = () => {
+      try {
+          return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Riyadh';
+      } catch {
+          return 'Asia/Riyadh';
+      }
+  };
+
+  const getClientTimezoneOffset = () => {
+      try {
+          const offsetMinutes = -new Date().getTimezoneOffset();
+          const sign = offsetMinutes >= 0 ? '+' : '-';
+          const abs = Math.abs(offsetMinutes);
+          const hours = String(Math.floor(abs / 60)).padStart(2, '0');
+          const minutes = String(abs % 60).padStart(2, '0');
+          return `${sign}${hours}:${minutes}`;
+      } catch {
+          return '+03:00';
+      }
+  };
+
   const handleAddSlot = async () => {
       if (!selectedTime || !user) return;
       setSaving(true);
       try {
+          const clientTz = getClientTimezone();
+          const clientOffset = getClientTimezoneOffset();
           const payload = {
               teacher_id: user.id,
+              timezone: clientTz,
+              timezone_offset: clientOffset,
               available_times: [{ day: Number(selectedDay), times: [selectedTime] }]
           };
           await teacherService.saveAvailability(payload);
@@ -132,21 +157,26 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({ user }) => {
   };
 
   const isSessionStartedOrLeft = (session: Session) => {
+      if (session.status === 'completed' || session.status === 'finished') return 'completed';
+      if (session.status === 'live') return 'ready';
+      if (session.can_start) return 'ready';
+
       const now = new Date();
-      // Parsing "2025-12-24" + "20:00:00"
-      const sessionDate = new Date(`${session.session_date}T${session.start_time}`);
-      
+      // Parsing standard ISO-8601 when available
+      const sessionDate = session.start_at_iso
+          ? new Date(session.start_at_iso)
+          : new Date(`${session.session_date}T${session.start_time}`);
+
       const justDateNow = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const justDateSession = new Date(sessionDate.getFullYear(), sessionDate.getMonth(), sessionDate.getDate());
-      
+
       if (justDateSession < justDateNow) return 'left';
 
       // 15 minutes rule: current time must be >= session start time - 15 mins
       const startAllowedTime = new Date(sessionDate.getTime() - (15 * 60 * 1000));
-      
+
       if (now < startAllowedTime) return 'upcoming';
-      if (session.status === 'completed' || session.status === 'finished') return 'completed';
-      
+
       return 'ready';
   };
 
@@ -283,8 +313,8 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({ user }) => {
                       <div key={session.id} className={`bg-white p-6 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] flex flex-col md:flex-row justify-between items-center gap-6 transition-opacity ${isPast ? 'opacity-50 grayscale' : ''}`}>
                           <div className="flex items-center gap-4 w-full md:w-auto">
                               <div className={`h-16 w-16 rounded-[var(--radius-md)] flex flex-col items-center justify-center font-bold border ${isPast ? 'bg-[var(--light-bg)] border-[var(--border)] text-[var(--text-muted)]' : 'bg-secondary-pale border-secondary/30 text-primary'}`}>
-                                  <span className="text-xl">{new Date(session.session_date).getDate()}</span>
-                                  <span className="text-[10px] uppercase">{new Date(session.session_date).toLocaleString('default', { month: 'short' })}</span>
+                                  <span className="text-xl">{new Date(session.user_local_time?.session_date || session.session_date).getDate()}</span>
+                                  <span className="text-[10px] uppercase">{new Date(session.user_local_time?.session_date || session.session_date).toLocaleString('default', { month: 'short' })}</span>
                               </div>
                               <div>
                                   <div className="flex items-center gap-2 mb-1">
@@ -294,7 +324,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({ user }) => {
                                       {isPast && <span className="bg-[var(--border)] text-[var(--text-muted)] px-2 py-0.5 rounded text-[10px] font-bold uppercase">Past</span>}
                                   </div>
                                   <div className="flex flex-wrap items-center gap-4 text-sm text-[var(--text-muted)]">
-                                      <span className="flex items-center gap-1.5"><Clock size={14} className="text-[var(--text-muted)]" /> {session.start_time} - {session.end_time}</span>
+                                      <span className="flex items-center gap-1.5"><Clock size={14} className="text-[var(--text-muted)]" /> {(session.user_local_time?.start_time || session.start_time).substring(0, 5)} - {(session.user_local_time?.end_time || session.end_time).substring(0, 5)}</span>
                                       <span className="flex items-center gap-1.5"><User size={14} className="text-[var(--text-muted)]" /> {session.student?.name || 'Student'}</span>
                                   </div>
                               </div>

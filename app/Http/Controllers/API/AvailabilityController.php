@@ -33,7 +33,17 @@ class AvailabilityController extends Controller
     public function index(Request $request)
     {
         // Auth Teacher ID
-        $teacherId = $request->user()->id;
+        $teacher = $request->user();
+        $teacherId = $teacher->id;
+
+        $inTimezone = $request->input('timezone') ?? $request->input('timezone_name') ?? $request->header('X-Timezone');
+        $inOffset = $request->input('timezone_offset') ?? $request->input('teacher_timezone_offset');
+
+        $teacherTimezone = \App\Helpers\CountryTimezone::fromInput($inTimezone, $inOffset, $teacher->timezone_name);
+        $teacherOffset = $inOffset ?: \App\Helpers\CountryTimezone::getOffset($teacherTimezone);
+
+        $platformTimezone = config('app.timezone', 'Asia/Riyadh');
+        $platformOffset = \App\Helpers\CountryTimezone::getOffset($platformTimezone);
 
         // Get all slots for this teacher sorted
         $slots = AvailabilitySlot::forTeacher($teacherId)
@@ -41,13 +51,31 @@ class AvailabilityController extends Controller
             ->orderBy('start_time')
             ->get();
 
-        // Group by day_number
-        $groupedByDay = $slots->groupBy('day_number')->map(function ($daySlots, $dayNumber) {
+        // Convert slots from platform storage time (Asia/Riyadh) to teacher local display time
+        $convertedSlots = $slots->map(function ($slot) use ($platformOffset, $teacherOffset) {
+            $rawTime = $slot->start_time instanceof \Carbon\Carbon
+                ? $slot->start_time->format('H:i')
+                : substr((string) $slot->start_time, 0, 5);
+
+            $converted = \App\Helpers\CountryTimezone::convertSlotBetweenOffsets(
+                $rawTime,
+                (int) $slot->day_number,
+                $platformOffset,
+                $teacherOffset
+            );
+
+            $slot->converted_day = $converted['day'];
+            $slot->converted_time = $converted['start_time'];
+            return $slot;
+        })->sortBy(['converted_day', 'converted_time']);
+
+        // Group by converted_day
+        $groupedByDay = $convertedSlots->groupBy('converted_day')->map(function ($daySlots, $dayNumber) use ($teacherTimezone, $teacherOffset) {
 
             $timeSlots = $daySlots->map(function ($slot) {
                 $slotData = [
                     'id' => $slot->id,
-                    'time' => $slot->start_time->format('H:i'),
+                    'time' => $slot->converted_time ?? $slot->start_time->format('H:i'),
                     'session' => null,
                     'is_booked' => $slot->is_booked,
                 ];
@@ -85,6 +113,8 @@ class AvailabilityController extends Controller
 
             return [
                 'day' => (int) $dayNumber,
+                'teacher_timezone_offset' => $teacherOffset,
+                'teacher_timezone' => $teacherTimezone,
                 'time_slots' => $timeSlots,
             ];
         })->values();
@@ -92,6 +122,8 @@ class AvailabilityController extends Controller
 
         return response()->json([
             'success' => true,
+            'timezone' => $teacherTimezone,
+            'timezone_offset' => $teacherOffset,
             'data' => $groupedByDay
         ]);
     }
@@ -121,9 +153,29 @@ class AvailabilityController extends Controller
             'course_id' => 'nullable|exists:courses,id',
             'order_id' => 'nullable|exists:orders,id',
             'repeat_type' => 'nullable|in:none,weekly,daily',
+            'timezone' => 'nullable|string',
+            'timezone_name' => 'nullable|string',
+            'timezone_offset' => 'nullable|string',
+            'teacher_timezone_offset' => 'nullable|string',
         ]);
 
-        $teacherId = $request->user()->id;
+        $teacher = $request->user();
+        $teacherId = $teacher->id;
+
+        // Resolve teacher's timezone and offset from any client variation (Flutter, Web, etc.)
+        $inTimezone = $request->input('timezone') ?? $request->input('timezone_name') ?? $request->header('X-Timezone');
+        $inOffset = $request->input('timezone_offset') ?? $request->input('teacher_timezone_offset');
+
+        $teacherTimezone = \App\Helpers\CountryTimezone::fromInput($inTimezone, $inOffset, $teacher->timezone_name);
+        $teacherOffset = $inOffset ?: \App\Helpers\CountryTimezone::getOffset($teacherTimezone);
+
+        if ($teacherTimezone && $teacher->timezone !== $teacherTimezone) {
+            $teacher->update(['timezone' => $teacherTimezone]);
+        }
+
+        $platformTimezone = config('app.timezone', 'Asia/Riyadh');
+        $platformOffset = \App\Helpers\CountryTimezone::getOffset($platformTimezone);
+
         $createdSlots = [];
         $failedDuplicates = [];
 
@@ -169,11 +221,21 @@ class AvailabilityController extends Controller
                 }
                 $endTime = $endParsed->format('H:i');
 
-                // Check for duplicate: same teacher + day + start_time
-                // If course_id or order_id is provided, also check those
+                // Normalize time slot from teacher local time to platform base storage time (Asia/Riyadh)
+                $converted = \App\Helpers\CountryTimezone::convertSlotBetweenOffsets(
+                    $startTime,
+                    (int) $day,
+                    $teacherOffset,
+                    $platformOffset
+                );
+                $storageDay = $converted['day'];
+                $storageStartTime = $converted['start_time'];
+                $storageEndTime = $converted['end_time'];
+
+                // Check for duplicate: same teacher + day + start_time in storage
                 $duplicateQuery = AvailabilitySlot::where('teacher_id', $teacherId)
-                    ->where('day_number', (int) $day)
-                    ->where('start_time', $startTime);
+                    ->where('day_number', (int) $storageDay)
+                    ->where('start_time', $storageStartTime);
 
                 // If course_id is provided, check for duplicate within same course
                 if ($request->filled('course_id')) {
@@ -186,7 +248,6 @@ class AvailabilityController extends Controller
                 }
 
                 // If neither course_id nor order_id is provided, check across all personal slots
-                // (slots with no specific course or order)
                 if (!$request->filled('course_id') && !$request->filled('order_id')) {
                     $duplicateQuery->whereNull('course_id')
                         ->whereNull('order_id');
@@ -208,9 +269,9 @@ class AvailabilityController extends Controller
                         'teacher_id' => $teacherId,
                         'course_id' => $request->course_id,
                         'order_id' => $request->order_id,
-                        'day_number' => (int) $day,
-                        'start_time' => $startTime,
-                        'end_time' => $endTime,
+                        'day_number' => (int) $storageDay,
+                        'start_time' => $storageStartTime,
+                        'end_time' => $storageEndTime,
                         'is_available' => true,
                         'is_booked' => false,
                         'repeat_type' => $request->repeat_type ?? AvailabilitySlot::REPEAT_NONE,
@@ -222,13 +283,24 @@ class AvailabilityController extends Controller
                         'errors' => ['start_time' => [$e->getMessage()]]
                     ], 422);
                 }
-                $createdSlots[] = $slot;
+
+                // Return slot data decorated with teacher's original local time and day
+                $slotData = $slot->toArray();
+                $slotData['day_number'] = (int) $day;
+                $slotData['start_time'] = $startTime;
+                $slotData['end_time'] = $endTime;
+                $slotData['storage_day_number'] = $storageDay;
+                $slotData['storage_start_time'] = $storageStartTime;
+                $createdSlots[] = $slotData;
             }
         }
 
+        $teacher->refresh();
         // Return response with created slots and any duplicates that were skipped
         $response = [
             'success' => true,
+            'timezone' => $teacherTimezone,
+            'timezone_offset' => $teacherOffset,
             'message' => count($createdSlots) > 0 ? 'Time slots created successfully' : 'No new time slots created',
             'data' => $createdSlots,
         ];
@@ -274,7 +346,23 @@ class AvailabilityController extends Controller
 
     public function update(Request $request, $id)
     {
-        $teacherId = $request->user()->id;
+        $teacher = $request->user();
+        $teacher = $request->user();
+        $teacherId = $teacher->id;
+
+        // Resolve teacher's timezone and offset
+        $inTimezone = $request->input('timezone') ?? $request->input('timezone_name') ?? $request->header('X-Timezone');
+        $inOffset = $request->input('timezone_offset') ?? $request->input('teacher_timezone_offset');
+
+        $teacherTimezone = \App\Helpers\CountryTimezone::fromInput($inTimezone, $inOffset, $teacher->timezone_name);
+        $teacherOffset = $inOffset ?: \App\Helpers\CountryTimezone::getOffset($teacherTimezone);
+
+        if ($teacherTimezone && $teacher->timezone !== $teacherTimezone) {
+            $teacher->update(['timezone' => $teacherTimezone]);
+        }
+
+        $platformTimezone = config('app.timezone', 'Asia/Riyadh');
+        $platformOffset = \App\Helpers\CountryTimezone::getOffset($platformTimezone);
 
         // If client sends a bulk available_times payload to replace/update availability for days,
         // handle it here: sync by replacing all slots for the given days.
@@ -284,11 +372,15 @@ class AvailabilityController extends Controller
                 'course_id' => 'nullable|exists:courses,id',
                 'order_id' => 'nullable|exists:orders,id',
                 'repeat_type' => 'nullable|in:none,weekly,daily',
+                'timezone' => 'nullable|string',
+                'timezone_name' => 'nullable|string',
+                'timezone_offset' => 'nullable|string',
+                'teacher_timezone_offset' => 'nullable|string',
             ]);
 
             $timeFormats = ['g:i A', 'h:i A', 'H:i', 'G:i'];
 
-            return DB::transaction(function () use ($request, $teacherId, $timeFormats) {
+            return DB::transaction(function () use ($request, $teacher, $teacherId, $timeFormats, $teacherTimezone, $teacherOffset, $platformOffset) {
                 $created = [];
                 $failedDuplicates = [];
 
@@ -297,8 +389,11 @@ class AvailabilityController extends Controller
                     if (!$day)
                         continue;
 
-                    // Remove existing slots for this teacher & day (optionally constrain by course/order if provided)
-                    $query = AvailabilitySlot::where('teacher_id', $teacherId)->where('day_number', (int) $day);
+                    // Remove existing slots for this teacher & day (matching storage days)
+                    $approxStorageDayConverted = \App\Helpers\CountryTimezone::convertSlotBetweenOffsets('12:00', (int) $day, $teacherOffset, $platformOffset);
+                    $storageDaysToClean = array_unique([(int) $day, (int) $approxStorageDayConverted['day']]);
+
+                    $query = AvailabilitySlot::where('teacher_id', $teacherId)->whereIn('day_number', $storageDaysToClean);
                     if ($request->filled('course_id'))
                         $query->where('course_id', $request->course_id);
                     if ($request->filled('order_id'))
@@ -311,6 +406,7 @@ class AvailabilityController extends Controller
                     foreach ($entry['times'] as $time) {
                         $timeStr = trim($time);
                         $parsed = null;
+                        $timeStr = str_replace(['ص', 'م'], ['AM', 'PM'], $timeStr);
                         foreach ($timeFormats as $fmt) {
                             try {
                                 $parsed = \Carbon\Carbon::createFromFormat($fmt, $timeStr);
@@ -332,11 +428,21 @@ class AvailabilityController extends Controller
                         }
                         $endTime = $endParsed->format('H:i');
 
-                        // Check for duplicate within the same scope (same teacher, day, start_time)
-                        // considering course_id and order_id
+                        // Normalize slot from teacher local time to platform base storage time (Asia/Riyadh)
+                        $converted = \App\Helpers\CountryTimezone::convertSlotBetweenOffsets(
+                            $startTime,
+                            (int) $day,
+                            $teacherOffset,
+                            $platformOffset
+                        );
+                        $storageDay = $converted['day'];
+                        $storageStartTime = $converted['start_time'];
+                        $storageEndTime = $converted['end_time'];
+
+                        // Check for duplicate within the same scope
                         $duplicateQuery = AvailabilitySlot::where('teacher_id', $teacherId)
-                            ->where('day_number', (int) $day)
-                            ->where('start_time', $startTime);
+                            ->where('day_number', (int) $storageDay)
+                            ->where('start_time', $storageStartTime);
 
                         if ($request->filled('course_id')) {
                             $duplicateQuery->where('course_id', $request->course_id);
@@ -365,9 +471,9 @@ class AvailabilityController extends Controller
                                 'teacher_id' => $teacherId,
                                 'course_id' => $request->course_id,
                                 'order_id' => $request->order_id,
-                                'day_number' => (int) $day,
-                                'start_time' => $startTime,
-                                'end_time' => $endTime,
+                                'day_number' => (int) $storageDay,
+                                'start_time' => $storageStartTime,
+                                'end_time' => $storageEndTime,
                                 'is_available' => true,
                                 'is_booked' => false,
                                 'repeat_type' => $request->repeat_type ?? AvailabilitySlot::REPEAT_NONE,
@@ -379,12 +485,20 @@ class AvailabilityController extends Controller
                                 'errors' => ['start_time' => [$e->getMessage()]]
                             ], 422);
                         }
-                        $created[] = $slot;
+
+                        $slotData = $slot->toArray();
+                        $slotData['day_number'] = (int) $day;
+                        $slotData['start_time'] = $startTime;
+                        $slotData['end_time'] = $endTime;
+                        $created[] = $slotData;
                     }
                 }
 
+                $teacher->refresh();
                 $response = [
                     'success' => true,
+                    'timezone' => $teacherTimezone,
+                    'timezone_offset' => $teacherOffset,
                     'message' => 'Availability synced',
                     'data' => $created
                 ];
@@ -408,23 +522,31 @@ class AvailabilityController extends Controller
             'repeat_type' => 'nullable|in:none,weekly,daily',
             'course_id' => 'nullable|exists:courses,id',
             'order_id' => 'nullable|exists:orders,id',
+            'timezone' => 'nullable|string',
+            'timezone_name' => 'nullable|string',
+            'timezone_offset' => 'nullable|string',
+            'teacher_timezone_offset' => 'nullable|string',
         ]);
 
         $data = $request->only(['day_number', 'start_time', 'is_available', 'repeat_type', 'course_id', 'order_id']);
 
-        // If start_time is present, try multiple formats and set end_time to start_time + 1 hour
+        $displayDay = $data['day_number'] ?? null;
+        $displayStartTime = $data['start_time'] ?? null;
+
+        // If start_time is present, try multiple formats and normalize to platform storage
         if (isset($data['start_time'])) {
             $parsed = null;
+            $startStr = str_replace(['ص', 'م'], ['AM', 'PM'], trim($data['start_time']));
             foreach (['g:i A', 'h:i A', 'H:i', 'G:i'] as $fmt) {
                 try {
-                    $parsed = \Carbon\Carbon::createFromFormat($fmt, trim($data['start_time']));
+                    $parsed = \Carbon\Carbon::createFromFormat($fmt, $startStr);
                     if ($parsed)
                         break;
                 } catch (\Exception $e) {
                 }
             }
             if ($parsed) {
-                $data['start_time'] = $parsed->format('H:i');
+                $rawStartTime = $parsed->format('H:i');
                 $endParsed = $parsed->copy()->addHour();
                 if ($endParsed->lessThanOrEqualTo($parsed)) {
                     return response()->json([
@@ -432,10 +554,39 @@ class AvailabilityController extends Controller
                         'message' => "Invalid time slot '{$data['start_time']}': slot would end after midnight."
                     ], 422);
                 }
-                $data['end_time'] = $endParsed->format('H:i');
+                $rawDay = $data['day_number'] ?? $slot->day_number;
+
+                // Normalize to platform storage
+                $converted = \App\Helpers\CountryTimezone::convertSlotBetweenOffsets(
+                    $rawStartTime,
+                    (int) $rawDay,
+                    $teacherOffset,
+                    $platformOffset
+                );
+
+                $data['day_number'] = $converted['day'];
+                $data['start_time'] = $converted['start_time'];
+                $data['end_time'] = $converted['end_time'];
             } else {
                 return response()->json(['success' => false, 'message' => 'Invalid start_time format'], 422);
             }
+        } elseif (isset($data['day_number'])) {
+            // Day updated without start_time: convert current slot's teacher time to platform
+            $currentTeacherTime = \App\Helpers\CountryTimezone::convertSlotBetweenOffsets(
+                substr((string) $slot->start_time, 0, 5),
+                (int) $slot->day_number,
+                $platformOffset,
+                $teacherOffset
+            );
+            $converted = \App\Helpers\CountryTimezone::convertSlotBetweenOffsets(
+                $currentTeacherTime['start_time'],
+                (int) $data['day_number'],
+                $teacherOffset,
+                $platformOffset
+            );
+            $data['day_number'] = $converted['day'];
+            $data['start_time'] = $converted['start_time'];
+            $data['end_time'] = $converted['end_time'];
         }
 
         // Check for duplicate only if changing day_number or start_time
@@ -481,10 +632,16 @@ class AvailabilityController extends Controller
         }
         TeacherProfileHelper::checkAndUpdateProfileCompleted($teacherId);
 
+        $slotData = $slot->toArray();
+        if ($displayDay !== null) $slotData['day_number'] = (int) $displayDay;
+        if ($displayStartTime !== null) $slotData['start_time'] = $displayStartTime;
+
         return response()->json([
             'success' => true,
+            'timezone' => $teacherTimezone,
+            'timezone_offset' => $teacherOffset,
             'message' => 'Slot updated successfully',
-            'data' => $slot
+            'data' => $slotData
         ]);
     }
 

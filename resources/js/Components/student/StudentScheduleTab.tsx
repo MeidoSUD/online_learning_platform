@@ -121,7 +121,7 @@ export const StudentScheduleTab: React.FC<{ onViewList?: () => void }> = ({ onVi
                 key={s.id} onClick={() => handleSessionClick(s.id)}
                 className={`w-full text-left text-[10px] px-1.5 py-1 rounded truncate font-medium ${s.status === 'live' ? 'bg-[var(--accent-pale)] text-[var(--accent)] animate-pulse' : s.status === 'scheduled' ? 'bg-primary-pale text-primary' : 'bg-[var(--light-bg)] text-navy'}`}
               >
-                {s.start_time.slice(0,5)} - {s.subject ? (direction === 'rtl' ? s.subject.name_ar : s.subject.name_en) : 'Session'}
+                {(s.user_local_time?.start_time || s.start_time).slice(0,5)} - {s.subject ? (direction === 'rtl' ? s.subject.name_ar : s.subject.name_en) : 'Session'}
               </button>
             ))}
           </div>
@@ -192,11 +192,11 @@ export const StudentScheduleTab: React.FC<{ onViewList?: () => void }> = ({ onVi
                 <div className="grid grid-cols-2 gap-4">
                     <div className="p-3 rounded-lg border border-[var(--border)]">
                         <p className="text-xs text-[var(--text-muted)] mb-1">{t.date}</p>
-                        <div className="flex items-center gap-2 font-medium"><CalendarIcon size={16} className="text-primary" />{new Date(sessionDetails.session_date).toLocaleDateString()}</div>
+                        <div className="flex items-center gap-2 font-medium"><CalendarIcon size={16} className="text-primary" />{new Date(sessionDetails.user_local_time?.session_date || sessionDetails.session_date).toLocaleDateString()}</div>
                     </div>
                     <div className="p-3 rounded-lg border border-[var(--border)]">
                         <p className="text-xs text-[var(--text-muted)] mb-1">{t.time}</p>
-                        <div className="flex items-center gap-2 font-medium"><Clock size={16} className="text-primary" />{sessionDetails.start_time} - {sessionDetails.end_time}</div>
+                        <div className="flex items-center gap-2 font-medium"><Clock size={16} className="text-primary" />{(sessionDetails.user_local_time?.start_time || sessionDetails.start_time).substring(0, 5)} - {(sessionDetails.user_local_time?.end_time || sessionDetails.end_time).substring(0, 5)}</div>
                     </div>
                 </div>
                 

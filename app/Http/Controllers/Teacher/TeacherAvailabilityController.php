@@ -16,13 +16,37 @@ class TeacherAvailabilityController extends Controller
     public function index()
     {
         $teacher = Auth::user();
-        
-        // Get all availability slots for this teacher grouped by day_number
-        $availabilitySlots = AvailabilitySlot::forTeacher($teacher->id)
+        $teacherTimezone = $teacher->timezone_name;
+        $teacherOffset = $teacher->timezone_offset;
+
+        $platformTimezone = config('app.timezone', 'Asia/Riyadh');
+        $platformOffset = \App\Helpers\CountryTimezone::getOffset($platformTimezone);
+
+        // Get all availability slots for this teacher and convert to teacher local time
+        $slots = AvailabilitySlot::forTeacher($teacher->id)
             ->orderBy('day_number')
             ->orderBy('start_time')
-            ->get()
-            ->groupBy('day_number');
+            ->get();
+
+        $convertedSlots = $slots->map(function ($slot) use ($platformOffset, $teacherOffset) {
+            $rawTime = $slot->start_time instanceof Carbon
+                ? $slot->start_time->format('H:i')
+                : substr((string) $slot->start_time, 0, 5);
+
+            $converted = \App\Helpers\CountryTimezone::convertSlotBetweenOffsets(
+                $rawTime,
+                (int) $slot->day_number,
+                $platformOffset,
+                $teacherOffset
+            );
+
+            $slot->converted_day = $converted['day'];
+            $slot->display_start_time = $converted['start_time'];
+            $slot->display_end_time = $converted['end_time'];
+            return $slot;
+        });
+
+        $availabilitySlots = $convertedSlots->groupBy('converted_day');
 
         // Define days of week
         $daysOfWeek = [
@@ -37,10 +61,10 @@ class TeacherAvailabilityController extends Controller
 
         // Generate time slots 
         for ($hour = 0; $hour <= 23; $hour++) {
-                $timeSlots[] = sprintf('%02d:00', $hour);
-            }
+            $timeSlots[] = sprintf('%02d:00', $hour);
+        }
 
-        return view('teacher.availability.index', compact('availabilitySlots', 'daysOfWeek', 'timeSlots'));
+        return view('teacher.availability.index', compact('availabilitySlots', 'daysOfWeek', 'timeSlots', 'teacherTimezone', 'teacherOffset'));
     }
 
     /**
@@ -51,20 +75,45 @@ class TeacherAvailabilityController extends Controller
         $request->validate([
             'day_number' => 'required|integer|between:1,7',
             'start_time' => 'required|date_format:H:i',
+            'timezone' => 'nullable|string',
+            'timezone_name' => 'nullable|string',
+            'timezone_offset' => 'nullable|string',
+            'teacher_timezone_offset' => 'nullable|string',
         ]);
 
         $teacher = Auth::user();
-        
-        // Parse start time and add 1 hour for end time
-        $startTime = $request->start_time;
-        $endTime = Carbon::createFromFormat('H:i', $startTime)
-            ->addHour()
-            ->format('H:i');
 
-        // Check for overlapping slots
+        $inTimezone = $request->input('timezone') ?? $request->input('timezone_name') ?? $request->header('X-Timezone');
+        $inOffset = $request->input('timezone_offset') ?? $request->input('teacher_timezone_offset');
+
+        $teacherTimezone = \App\Helpers\CountryTimezone::fromInput($inTimezone, $inOffset, $teacher->timezone_name);
+        $teacherOffset = $inOffset ?: \App\Helpers\CountryTimezone::getOffset($teacherTimezone);
+
+        if ($teacherTimezone && $teacher->timezone !== $teacherTimezone) {
+            $teacher->update(['timezone' => $teacherTimezone]);
+        }
+
+        $platformTimezone = config('app.timezone', 'Asia/Riyadh');
+        $platformOffset = \App\Helpers\CountryTimezone::getOffset($platformTimezone);
+
+        $startTime = $request->start_time;
+
+        // Convert from teacher local time to platform base storage time
+        $converted = \App\Helpers\CountryTimezone::convertSlotBetweenOffsets(
+            $startTime,
+            (int) $request->day_number,
+            $teacherOffset,
+            $platformOffset
+        );
+
+        $storageDay = $converted['day'];
+        $storageStartTime = $converted['start_time'];
+        $storageEndTime = $converted['end_time'];
+
+        // Check for overlapping slots in storage
         $exists = AvailabilitySlot::where('teacher_id', $teacher->id)
-            ->where('day_number', $request->day_number)
-            ->where('start_time', $startTime)
+            ->where('day_number', $storageDay)
+            ->where('start_time', $storageStartTime)
             ->exists();
 
         if ($exists) {
@@ -77,9 +126,9 @@ class TeacherAvailabilityController extends Controller
 
         AvailabilitySlot::create([
             'teacher_id' => $teacher->id,
-            'day_number' => $request->day_number,
-            'start_time' => $startTime,
-            'end_time' => $endTime,
+            'day_number' => $storageDay,
+            'start_time' => $storageStartTime,
+            'end_time' => $storageEndTime,
             'is_available' => true,
             'is_booked' => false,
             'repeat_type' => 'weekly',
@@ -143,9 +192,27 @@ class TeacherAvailabilityController extends Controller
         $request->validate([
             'day_number' => 'required|integer|between:1,7',
             'start_time' => 'required|date_format:H:i',
+            'timezone' => 'nullable|string',
+            'timezone_name' => 'nullable|string',
+            'timezone_offset' => 'nullable|string',
+            'teacher_timezone_offset' => 'nullable|string',
         ]);
 
         $teacher = Auth::user();
+
+        $inTimezone = $request->input('timezone') ?? $request->input('timezone_name') ?? $request->header('X-Timezone');
+        $inOffset = $request->input('timezone_offset') ?? $request->input('teacher_timezone_offset');
+
+        $teacherTimezone = \App\Helpers\CountryTimezone::fromInput($inTimezone, $inOffset, $teacher->timezone_name);
+        $teacherOffset = $inOffset ?: \App\Helpers\CountryTimezone::getOffset($teacherTimezone);
+
+        if ($teacherTimezone && $teacher->timezone !== $teacherTimezone) {
+            $teacher->update(['timezone' => $teacherTimezone]);
+        }
+
+        $platformTimezone = config('app.timezone', 'Asia/Riyadh');
+        $platformOffset = \App\Helpers\CountryTimezone::getOffset($platformTimezone);
+
         $slot = AvailabilitySlot::where('id', $id)
             ->where('teacher_id', $teacher->id)
             ->firstOrFail();
@@ -159,16 +226,24 @@ class TeacherAvailabilityController extends Controller
             );
         }
 
-        // Parse start time and calculate end time
         $startTime = $request->start_time;
-        $endTime = Carbon::createFromFormat('H:i', $startTime)
-            ->addHour()
-            ->format('H:i');
+
+        // Convert from teacher local time to platform base storage time
+        $converted = \App\Helpers\CountryTimezone::convertSlotBetweenOffsets(
+            $startTime,
+            (int) $request->day_number,
+            $teacherOffset,
+            $platformOffset
+        );
+
+        $storageDay = $converted['day'];
+        $storageStartTime = $converted['start_time'];
+        $storageEndTime = $converted['end_time'];
 
         // Check for overlapping slots (exclude current slot)
         $exists = AvailabilitySlot::where('teacher_id', $teacher->id)
-            ->where('day_number', $request->day_number)
-            ->where('start_time', $startTime)
+            ->where('day_number', $storageDay)
+            ->where('start_time', $storageStartTime)
             ->where('id', '!=', $id)
             ->exists();
 
@@ -181,9 +256,9 @@ class TeacherAvailabilityController extends Controller
         }
 
         $slot->update([
-            'day_number' => $request->day_number,
-            'start_time' => $startTime,
-            'end_time' => $endTime,
+            'day_number' => $storageDay,
+            'start_time' => $storageStartTime,
+            'end_time' => $storageEndTime,
         ]);
 
         return back()->with('success',

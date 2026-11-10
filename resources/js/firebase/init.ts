@@ -2,6 +2,7 @@
 // @ts-nocheck
 import { initializeApp } from 'firebase/app';
 import { getMessaging, isSupported } from 'firebase/messaging';
+import { getAuth, GoogleAuthProvider, OAuthProvider, signInWithPopup } from 'firebase/auth';
 
 // Firebase configuration from environment variables
 const firebaseConfig = {
@@ -47,6 +48,69 @@ export const getMessagingSafe = async () => {
     console.warn("[Firebase] Failed to check messaging support:", err);
     return null;
   }
+};
+
+// Safely get Firebase Auth instance
+export const getAuthSafe = () => {
+  if (!app) return null;
+  try {
+    return getAuth(app);
+  } catch (err) {
+    console.warn("[Firebase] Auth initialization error:", err);
+    return null;
+  }
+};
+
+/**
+ * Embedded Sign-in with Google Popup
+ */
+export const signInWithGooglePopup = async () => {
+  const auth = getAuthSafe();
+  if (!auth) {
+    throw new Error("Firebase Auth is not configured. Please check your Firebase settings.");
+  }
+
+  const provider = new GoogleAuthProvider();
+  provider.addScope('email');
+  provider.addScope('profile');
+  provider.setCustomParameters({ prompt: 'select_account' });
+
+  const result = await signInWithPopup(auth, provider);
+  const idToken = await result.user.getIdToken();
+
+  return {
+    provider: 'google',
+    id_token: idToken,
+    email: result.user.email,
+    displayName: result.user.displayName,
+    photoURL: result.user.photoURL,
+    uid: result.user.uid,
+  };
+};
+
+/**
+ * Embedded Sign-in with Apple Popup
+ */
+export const signInWithApplePopup = async () => {
+  const auth = getAuthSafe();
+  if (!auth) {
+    throw new Error("Firebase Auth is not configured. Please check your Firebase settings.");
+  }
+
+  const provider = new OAuthProvider('apple.com');
+  provider.addScope('email');
+  provider.addScope('name');
+
+  const result = await signInWithPopup(auth, provider);
+  const idToken = await result.user.getIdToken();
+
+  return {
+    provider: 'apple',
+    id_token: idToken,
+    email: result.user.email,
+    displayName: result.user.displayName,
+    uid: result.user.uid,
+  };
 };
 
 // Export VAPID key for easy access in hooks

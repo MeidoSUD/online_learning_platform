@@ -10,6 +10,7 @@ import { User, Mail, Globe, GraduationCap, Briefcase, ShieldCheck } from 'lucide
 import { authService } from '../Services/api';
 import { VerificationScreen } from './auth/VerificationScreen';
 import { useToast } from '../Contexts/ToastContext';
+import { SocialAuthButtons } from './auth/SocialAuthButtons';
 
 interface RegisterScreenProps {
   onSwitch: () => void;
@@ -247,6 +248,8 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onSwitch, onVeri
               {t.continue || (isAr ? "متابعة" : "Continue")}
             </Button>
           </div>
+
+          <SocialAuthButtons roleId={roleId} onSuccess={() => onVerifySuccess?.()} mode="register" />
         </div>
       ) : (
         <>
@@ -336,6 +339,8 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onSwitch, onVeri
                 {isAr ? "إنشاء الحساب واستلام الرمز" : "Create Account & Get Code"}
               </Button>
             </div>
+
+            <SocialAuthButtons roleId={roleId} onSuccess={() => onVerifySuccess?.()} mode="register" />
           </form>
         </>
       )}

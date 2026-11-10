@@ -8,6 +8,7 @@ import { Globe, AlertCircle, ShieldCheck, Smartphone, CheckCircle } from 'lucide
 import { authService, tokenService } from '../Services/api';
 import { useFcm } from '../Hooks/useFcm';
 import { useToast } from '../Contexts/ToastContext';
+import { SocialAuthButtons } from './auth/SocialAuthButtons';
 
 export const LoginScreen = ({ onSwitch, onLoginSuccess }) => {
   const { t, language, setLanguage } = useLanguage();
@@ -192,6 +193,8 @@ export const LoginScreen = ({ onSwitch, onLoginSuccess }) => {
           <Button type="submit" className="w-full shadow-[var(--shadow-md)] py-3 text-base font-bold" isLoading={isLoading}>
             {isAr ? "إرسال رمز التحقق" : "Send Verification Code"}
           </Button>
+
+          <SocialAuthButtons onSuccess={(res) => onLoginSuccess(res)} mode="login" />
         </form>
       ) : (
         /* OTP Verify Step */

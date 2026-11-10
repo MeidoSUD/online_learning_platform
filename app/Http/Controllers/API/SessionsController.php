@@ -115,18 +115,47 @@ class SessionsController extends Controller
 
         $allSessions = $query->orderBy('session_date')->orderBy('start_time')->get();
 
+        $serverTz = config('app.timezone', 'Asia/Riyadh');
+        $userTzInput = request()->header('X-Timezone') ?? request()->query('timezone') ?? request()->query('timezone_name') ?? ($user ? $user->timezone_name : null);
+        $userOffsetInput = request()->header('X-Timezone-Offset') ?? request()->query('timezone_offset') ?? ($user ? $user->timezone_offset : null);
+        $userTz = \App\Helpers\CountryTimezone::fromInput($userTzInput, $userOffsetInput, $serverTz);
+        $userOffset = $userOffsetInput ?: \App\Helpers\CountryTimezone::getOffset($userTz);
+
         // Group by session_date and start_time
         $grouped = $allSessions->groupBy(function ($session) {
             return $session->session_date . '|' . $session->start_time;
-        })->map(function ($sessionGroup) use ($user) {
+        })->map(function ($sessionGroup) use ($user, $serverTz, $userTz, $userOffset) {
             $firstSession = $sessionGroup->first();
+            $startAtIso = null;
+            $endAtIso = null;
+            $startDt = null;
+            $endDt = null;
+            try {
+                $startDt = \Carbon\Carbon::parse($firstSession->session_date . ' ' . $firstSession->start_time, $serverTz);
+                $endDt = \Carbon\Carbon::parse($firstSession->session_date . ' ' . $firstSession->end_time, $serverTz);
+                $startAtIso = $startDt->toIso8601String();
+                $endAtIso = $endDt->toIso8601String();
+            } catch (\Throwable $e) {
+            }
+
+            $userStartDt = $startDt ? $startDt->copy()->setTimezone($userTz) : null;
+            $userEndDt = $endDt ? $endDt->copy()->setTimezone($userTz) : null;
 
             return [
                 'session_datetime' => [
-                    'date' => $firstSession->session_date,
-                    'start_time' => $firstSession->start_time,
-                    'end_time' => $firstSession->end_time,
+                    'date' => $userStartDt ? $userStartDt->format('Y-m-d') : $firstSession->session_date,
+                    'start_time' => $userStartDt ? $userStartDt->format('H:i:s') : $firstSession->start_time,
+                    'end_time' => $userEndDt ? $userEndDt->format('H:i:s') : $firstSession->end_time,
                     'duration' => $firstSession->duration,
+                    'timezone' => $userTz,
+                    'timezone_offset' => $userOffset,
+                    'start_at_iso' => $userStartDt ? $userStartDt->toIso8601String() : $startAtIso,
+                    'end_at_iso' => $userEndDt ? $userEndDt->toIso8601String() : $endAtIso,
+                    'platform_date' => $firstSession->session_date,
+                    'platform_start_time' => $firstSession->start_time,
+                    'platform_end_time' => $firstSession->end_time,
+                    'platform_timezone' => $serverTz,
+                    'platform_timezone_offset' => \App\Helpers\CountryTimezone::getOffset($serverTz),
                 ],
                 'group_info' => [
                     'total_students' => $sessionGroup->count(),
@@ -135,9 +164,11 @@ class SessionsController extends Controller
                     'meeting_id' => $firstSession->meeting_id,
                     'join_url' => $firstSession->join_url,
                     'host_url' => $firstSession->host_url,
+                    'can_start' => $firstSession->can_start,
+                    'can_join' => $firstSession->can_join,
                 ],
-                'students' => $sessionGroup->map(function ($session) {
-                    return $this->transformSession($session, null);
+                'students' => $sessionGroup->map(function ($session) use ($user) {
+                    return $this->transformSession($session, $user);
                 })->values(),
             ];
         })->values();
@@ -206,21 +237,80 @@ class SessionsController extends Controller
             }
         }
 
+        $serverTz = config('app.timezone', 'Asia/Riyadh');
+        $serverOffset = \App\Helpers\CountryTimezone::getOffset($serverTz);
+
+        $startTimeRaw = $session->start_time instanceof \Carbon\Carbon
+            ? $session->start_time->format('H:i:s')
+            : (string) $session->start_time;
+        $endTimeRaw = $session->end_time instanceof \Carbon\Carbon
+            ? $session->end_time->format('H:i:s')
+            : (string) $session->end_time;
+
+        $startAtIso = null;
+        $endAtIso = null;
+        $startDt = null;
+        $endDt = null;
+        try {
+            $startDt = \Carbon\Carbon::parse($sessionDateFormatted . ' ' . $startTimeRaw, $serverTz);
+            $endDt = \Carbon\Carbon::parse($sessionDateFormatted . ' ' . $endTimeRaw, $serverTz);
+            $startAtIso = $startDt->toIso8601String();
+            $endAtIso = $endDt->toIso8601String();
+        } catch (\Throwable $e) {
+        }
+
+        // Determine client/user timezone: authenticated user record, or X-Timezone header / query param
+        $userTzInput = request()->header('X-Timezone') ?? request()->query('timezone') ?? request()->query('timezone_name') ?? ($user ? $user->timezone_name : null);
+        $userOffsetInput = request()->header('X-Timezone-Offset') ?? request()->query('timezone_offset') ?? ($user ? $user->timezone_offset : null);
+        $userTz = \App\Helpers\CountryTimezone::fromInput($userTzInput, $userOffsetInput, $serverTz);
+        $userOffset = $userOffsetInput ?: \App\Helpers\CountryTimezone::getOffset($userTz);
+
+        $userLocalTime = null;
+        if ($startDt && $endDt) {
+            $userStartDt = $startDt->copy()->setTimezone($userTz);
+            $userEndDt = $endDt->copy()->setTimezone($userTz);
+            $userLocalTime = [
+                'timezone' => $userTz,
+                'timezone_offset' => $userOffset,
+                'session_date' => $userStartDt->format('Y-m-d'),
+                'day_name' => $userStartDt->format('l'),
+                'day_number' => $userStartDt->dayOfWeek,
+                'start_time' => $userStartDt->format('H:i:s'),
+                'end_time' => $userEndDt->format('H:i:s'),
+                'start_at_iso' => $userStartDt->toIso8601String(),
+                'end_at_iso' => $userEndDt->toIso8601String(),
+            ];
+        }
+
         return [
             'id' => $session->id,
             'booking_id' => $session->booking_id,
             'chat_room_id' => $session->chat_room_id,
             'session_number' => $session->session_number,
             'session_title' => $session->session_title,
-            'session_date' => $sessionDateFormatted,
-            'day_name' => $dayName,
-            'day_number' => $dayNumber,
-            'start_time' => $session->start_time instanceof \Carbon\Carbon
-                ? $session->start_time->format('H:i:s')
-                : $session->start_time,
-            'end_time' => $session->end_time instanceof \Carbon\Carbon
-                ? $session->end_time->format('H:i:s')
-                : $session->end_time,
+            // User local time (ensures mobile app & web reading start_time immediately see their local time)
+            'session_date' => $userLocalTime ? $userLocalTime['session_date'] : $sessionDateFormatted,
+            'day_name' => $userLocalTime ? $userLocalTime['day_name'] : $dayName,
+            'day_number' => $userLocalTime ? $userLocalTime['day_number'] : $dayNumber,
+            'start_time' => $userLocalTime ? $userLocalTime['start_time'] : $startTimeRaw,
+            'end_time' => $userLocalTime ? $userLocalTime['end_time'] : $endTimeRaw,
+            'timezone' => $userTz,
+            'timezone_offset' => $userOffset,
+            'start_at_iso' => $userLocalTime ? $userLocalTime['start_at_iso'] : $startAtIso,
+            'end_at_iso' => $userLocalTime ? $userLocalTime['end_at_iso'] : $endAtIso,
+            'user_local_time' => $userLocalTime,
+            // Platform storage values (Saudi reference time)
+            'platform_session_date' => $sessionDateFormatted,
+            'platform_start_time' => $startTimeRaw,
+            'platform_end_time' => $endTimeRaw,
+            'platform_timezone' => $serverTz,
+            'platform_timezone_offset' => $serverOffset,
+            'platform_start_at_iso' => $startAtIso,
+            'platform_end_at_iso' => $endAtIso,
+            'server_timezone' => $serverTz,
+            'server_timezone_offset' => $serverOffset,
+            'can_start' => (bool) $session->can_start,
+            'can_join' => (bool) $session->can_join,
             'duration' => $session->duration,
             'status' => $session->status,
             'teacher' => [
