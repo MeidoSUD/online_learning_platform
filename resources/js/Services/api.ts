@@ -260,12 +260,22 @@ export const fetchWithProgress = (endpoint: string, options: { method?: string, 
       try {
         const data = JSON.parse(xhr.responseText);
         if (xhr.status >= 200 && xhr.status < 300) {
-          resolve(data);
+          if (data && data.success === false) {
+            reject(new Error(data.message_ar || data.message || "Upload failed"));
+          } else {
+            resolve(data);
+          }
         } else {
-          reject(new Error(data.message || "Upload failed"));
+          reject(new Error(data.message_ar || data.message || data.error || "Upload failed"));
         }
       } catch (e) {
-        reject(new Error("Invalid server response"));
+        if (xhr.status === 413) {
+          reject(new Error("حجم الفيديو يتجاوز الحد المسموح به على الخادم"));
+        } else if (xhr.status >= 500) {
+          reject(new Error("خطأ في الخادم أثناء رفع الفيديو، يرجى المحاولة لاحقاً"));
+        } else {
+          reject(new Error("Invalid server response"));
+        }
       }
     };
 
@@ -290,11 +300,19 @@ export const authService = {
 
 export const profileService = {
   updateProfile: (data: FormData) => {
-    data.append('_method', 'PUT');
+    if (!data.has('_method')) data.append('_method', 'PUT');
     return fetchWithAuth('/profile/profile/update', { method: 'POST', body: data });
   },
+  updateProfileWithProgress: (data: FormData, onProgress?: (pct: number) => void) => {
+    if (!data.has('_method')) data.append('_method', 'PUT');
+    return fetchWithProgress('/profile/profile/update', {
+      method: 'POST',
+      body: data,
+      onProgress: onProgress || (() => {}),
+    });
+  },
   updateProfileFull: (data: FormData) => {
-    data.append('_method', 'PUT');
+    if (!data.has('_method')) data.append('_method', 'PUT');
     return fetchWithAuth('/profile/profile/update', { method: 'POST', body: data });
   },
 };
@@ -986,11 +1004,11 @@ export const getStorageUrl = (path: string | null | undefined) => {
   if (!path || typeof path !== 'string') return '';
   const trimmed = path.trim();
   if (!trimmed) return '';
+  const baseUrl = API_BASE_URL.replace(/\/api\/?$/, '') || window.location.origin;
   if (trimmed.includes('/storage/')) {
     const afterStorage = trimmed.split('/storage/')[1];
-    return `${window.location.origin}/storage/${afterStorage}`;
+    return `${baseUrl}/storage/${afterStorage}`;
   }
   if (trimmed.startsWith('http')) return trimmed;
-  const baseUrl = API_BASE_URL.replace(/\/api\/?$/, '');
   return `${baseUrl}/storage/${trimmed.replace(/^\//, '')}`;
 };

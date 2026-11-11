@@ -18,7 +18,10 @@ import {
   Globe,
   GraduationCap,
   BookOpen,
-  Award
+  Award,
+  Play,
+  RefreshCw,
+  X
 } from 'lucide-react';
 import {
   authService,
@@ -93,6 +96,11 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [videoSourceModal, setVideoSourceModal] = useState(false);
+  const [videoPlayerModal, setVideoPlayerModal] = useState(false);
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -310,12 +318,18 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
   }, [userServicesList, mainKey, isAr]);
 
   const introVideoUrl: string = useMemo(() => {
-    const raw = String(profile?.intro_video || '').trim();
+    const raw = String(
+      profile?.intro_video ||
+      (user as any)?.intro_video ||
+      profile?.intro_video_url ||
+      (user as any)?.intro_video_url ||
+      ''
+    ).trim();
     if (!raw) return '';
     if (/^https?:\/\//i.test(raw)) return raw;
     const clean = raw.replace(/^\//, '').replace(/^storage\//, '');
     return getStorageUrl(clean);
-  }, [profile]);
+  }, [profile, user]);
 
   const hasCertificate = Boolean(
     (profile?.certificate && String(profile.certificate).length > 0) ||
@@ -335,14 +349,12 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
     fields: Record<string, string>,
     photoFile?: File,
     key = 'save',
-    videoFile?: File,
   ) => {
     setSavingKey(key);
     try {
       const fd = new FormData();
       Object.entries(fields).forEach(([k, v]) => fd.append(k, v));
       if (photoFile) fd.append('profile_photo', photoFile);
-      if (videoFile) fd.append('intro_video', videoFile);
       await profileService.updateProfile(fd);
       await fetchProfile();
       showToast(okMsg('تم الحفظ بنجاح', 'Saved successfully'), 'success');
@@ -362,11 +374,66 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleVideoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleIntroVideoFile = async (file: File) => {
+    if (!file) return;
+    const maxSize = 95 * 1024 * 1024;
+    if (file.size > maxSize) {
+      showToast(okMsg('حجم الفيديو يتجاوز الحد المسموح به (100 ميجابايت)', 'Video size exceeds allowed limit (100 MB)'), 'error');
+      return;
+    }
+
+    const rawExt = file.name.split('.').pop()?.toLowerCase() || 'mp4';
+    const ext = rawExt.length <= 5 && !rawExt.includes('/') ? rawExt : 'mp4';
+    const safeName = `intro_video_${Date.now()}.${ext}`;
+    const safeMime = ext === 'mov' ? 'video/quicktime' : (file.type || 'video/mp4');
+    const safeFile = new File([file], safeName, { type: safeMime });
+
+    setUploadingVideo(true);
+    setUploadProgress(0);
+
+    try {
+      const fd = new FormData();
+      fd.append('intro_video', safeFile, safeName);
+      if (user?.first_name) fd.append('first_name', user.first_name);
+      if (user?.last_name) fd.append('last_name', user.last_name);
+      if (user?.phone_number) fd.append('phone_number', user.phone_number);
+      if (user?.email) fd.append('email', user.email);
+      if (user?.nationality) fd.append('nationality', user.nationality);
+      if (bio) fd.append('bio', bio);
+
+      await profileService.updateProfileWithProgress(fd, (pct) => {
+        setUploadProgress(pct);
+      });
+
+      const freshResponse = await authService.getProfile();
+      const freshUser: UserData = freshResponse.user?.data || freshResponse.data || freshResponse.user || freshResponse;
+      if (freshUser?.id) {
+        setUser(freshUser);
+        syncFromUser(freshUser);
+      }
+
+      const freshProfile = (freshUser?.profile || {}) as any;
+      const serverVideo = (freshProfile?.intro_video || (freshUser as any)?.intro_video || '').trim();
+
+      if (serverVideo) {
+        showToast(okMsg('تم رفع الفيديو التعريفي بنجاح', 'Intro video uploaded successfully'), 'success');
+      } else {
+        showToast(okMsg('فشل رفع الفيديو — تحقق من الاتصال وحاول مجدداً', 'Failed to upload video — check connection and retry'), 'error');
+      }
+    } catch (e: any) {
+      showToast(e?.message || okMsg('فشل رفع الفيديو — تحقق من الاتصال وحاول مجدداً', 'Failed to upload video — check connection and retry'), 'error');
+    } finally {
+      setUploadingVideo(false);
+      setUploadProgress(0);
+      if (videoInputRef.current) videoInputRef.current.value = '';
+      if (cameraInputRef.current) cameraInputRef.current.value = '';
+    }
+  };
+
+  const handleVideoInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    await saveProfileFields({}, undefined, 'video', file);
-    if (videoInputRef.current) videoInputRef.current.value = '';
+    handleIntroVideoFile(file);
   };
 
   const handleSaveName = async () => {
@@ -508,48 +575,137 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
           </SectionCard>
 
           <SectionCard
-            title={okMsg('فيديو تعريفي', 'Intro Video')}
+            title={okMsg('الفيديو التعريفي', 'Intro Video')}
             icon={<Video size={18} />}
-            onIconTap={() => videoInputRef.current?.click()}
+            onIconTap={uploadingVideo ? undefined : () => setVideoSourceModal(true)}
           >
             <div className="space-y-3">
-              {introVideoUrl ? (
-                <div className="w-full rounded-2xl overflow-hidden bg-black/5 border border-slate-200 aspect-video max-h-64">
-                  <video src={introVideoUrl} controls className="w-full h-full object-contain" />
+              <div
+                onClick={uploadingVideo ? undefined : (introVideoUrl ? () => setVideoPlayerModal(true) : () => setVideoSourceModal(true))}
+                className="relative w-full h-44 sm:h-52 rounded-2xl overflow-hidden bg-[#0D4A5F]/10 border border-slate-200 cursor-pointer group shadow-sm flex items-center justify-center select-none"
+              >
+                {introVideoUrl ? (
+                  <>
+                    <video
+                      src={introVideoUrl}
+                      preload="metadata"
+                      muted
+                      playsInline
+                      className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+                    />
+                    <div className="absolute inset-0 bg-black/35 group-hover:bg-black/45 transition-colors" />
+                  </>
+                ) : imageUrl ? (
+                  <>
+                    <img
+                      src={imageUrl}
+                      alt=""
+                      className="absolute inset-0 w-full h-full object-cover filter blur-[1px] brightness-75 pointer-events-none"
+                    />
+                    <div className="absolute inset-0 bg-[#0D4A5F]/40 group-hover:bg-[#0D4A5F]/50 transition-colors" />
+                  </>
+                ) : (
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#0D4A5F]/30 to-[#5B9F48]/25" />
+                )}
+
+                {uploadingVideo ? (
+                  <div className="relative z-10 w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-primary flex items-center justify-center shadow-xl">
+                    <Loader2 className="w-6 h-6 text-white animate-spin" />
+                  </div>
+                ) : (
+                  <div className="relative z-10 w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-primary/95 text-white flex items-center justify-center shadow-lg transition-transform duration-200 group-hover:scale-110 active:scale-95">
+                    <Play size={22} className="fill-white text-white translate-x-0.5" />
+                  </div>
+                )}
+
+                <div className="absolute bottom-3 right-3 z-10 px-3 py-1 bg-black/60 backdrop-blur-sm text-white rounded-full flex items-center gap-1.5 text-xs font-medium">
+                  <Video size={14} className="text-white" />
+                  <span>
+                    {introVideoUrl
+                      ? okMsg('مشاهدة الفيديو التعريفي', 'Watch Intro Video')
+                      : okMsg('أضف فيديو تعريفي', 'Add Intro Video')}
+                  </span>
                 </div>
-              ) : null}
+              </div>
 
               <button
                 type="button"
-                onClick={() => videoInputRef.current?.click()}
-                disabled={savingKey === 'video'}
-                className="w-full py-2.5 px-4 rounded-xl border border-primary text-primary hover:bg-emerald-50 transition-colors flex items-center justify-center gap-2 text-xs font-bold"
+                onClick={() => setVideoSourceModal(true)}
+                disabled={uploadingVideo}
+                className="w-full py-2.5 px-4 rounded-xl border border-primary text-primary hover:bg-emerald-50 active:bg-emerald-100 transition-colors flex items-center justify-center gap-2 text-sm font-semibold disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                {savingKey === 'video' ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-                <span>
-                  {introVideoUrl
-                    ? okMsg('تغيير الفيديو التعريفي', 'Change intro video')
-                    : okMsg('رفع فيديو تعريفي', 'Upload intro video')}
-                </span>
+                {uploadingVideo ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin text-primary" />
+                    <span>{okMsg(`جارٍ رفع الفيديو... ${uploadProgress}%`, `Uploading video... ${uploadProgress}%`)}</span>
+                  </>
+                ) : introVideoUrl ? (
+                  <>
+                    <RefreshCw size={18} className="text-primary" />
+                    <span>{okMsg('تغيير الفيديو التعريفي', 'Change intro video')}</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload size={18} className="text-primary" />
+                    <span>{okMsg('رفع فيديو تعريفي', 'Upload intro video')}</span>
+                  </>
+                )}
               </button>
-              <input type="file" ref={videoInputRef} className="hidden" accept="video/*" onChange={handleVideoChange} />
+
+              {uploadingVideo && (
+                <div className="w-full bg-black/[0.08] rounded-full h-1.5 overflow-hidden">
+                  <div
+                    className="bg-primary h-full transition-all duration-150 rounded-full"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+              )}
+
+              <input
+                type="file"
+                ref={videoInputRef}
+                className="hidden"
+                accept="video/*"
+                onChange={handleVideoInputChange}
+              />
+              <input
+                type="file"
+                ref={cameraInputRef}
+                className="hidden"
+                accept="video/*"
+                capture="user"
+                onChange={handleVideoInputChange}
+              />
 
               <p className="text-xs text-[#0D4A5F]/60 leading-relaxed">
                 {okMsg(
-                  'أضف فيديو قصير (دقيقة إلى دقيقتين) تعرّف فيه عن نفسك وخبراتك وأسلوبك في التدريس لمساعدة الطلاب على اختيارك.',
-                  'Add a short video (1-2 minutes) introducing yourself, your experience, and your teaching style to help students choose you.',
+                  'اختر فيديو قصير (حتى 5 دقائق) يعرف بك وبأسلوبك في التدريس. سيظهر للطلاب في صفحة ملفك.',
+                  'Choose a short video (up to 5 minutes) introducing yourself and your teaching style. It will appear to students on your profile page.',
                 )}
               </p>
             </div>
           </SectionCard>
 
           <SectionCard
-            title={okMsg('الخدمة الحالية', 'Current Service')}
+            title={userServicesList.length > 1 ? okMsg('الخدمات الحالية', 'Current Services') : okMsg('الخدمة الحالية', 'Current Service')}
             icon={<BadgeCheck size={18} />}
           >
-            <p className="text-[15px] font-bold text-[#0D4A5F]">
-              {currentServiceName}
-            </p>
+            {userServicesList.length > 1 ? (
+              <div className="flex flex-wrap gap-2">
+                {userServicesList.map((srv: any, idx: number) => (
+                  <span
+                    key={idx}
+                    className="inline-flex items-center px-3 py-1.5 rounded-xl text-sm font-bold bg-[#0D4A5F]/10 text-[#0D4A5F] border border-[#0D4A5F]/20"
+                  >
+                    {pickName(srv)}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[15px] font-bold text-[#0D4A5F]">
+                {currentServiceName}
+              </p>
+            )}
           </SectionCard>
 
           <SectionCard
@@ -769,6 +925,100 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
         isOpen={previewOpen}
         onClose={() => setPreviewOpen(false)}
       />
+
+      {videoSourceModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm">
+          <div className="fixed inset-0" onClick={() => setVideoSourceModal(false)} />
+          <div className="relative w-full max-w-md bg-white rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl z-10 space-y-4">
+            <div className="w-10 h-1 bg-black/15 rounded-full mx-auto" />
+            <div className="text-right">
+              <h3 className="text-base font-bold text-[#0D4A5F]">
+                {okMsg('الفيديو التعريفي', 'Intro Video')}
+              </h3>
+              <p className="text-xs text-[#0D4A5F]/60 mt-1">
+                {okMsg('سجّل فيديو جديد أو ارفع ملف فيديو جاهز', 'Record a new video or upload a ready video file')}
+              </p>
+            </div>
+            <div className="space-y-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setVideoSourceModal(false);
+                  cameraInputRef.current?.click();
+                }}
+                className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-slate-50 active:bg-slate-100 transition-colors text-right"
+              >
+                <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+                  <Video size={20} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-[#0D4A5F]">
+                    {okMsg('تسجيل فيديو', 'Record Video')}
+                  </p>
+                  <p className="text-xs text-[#0D4A5F]/60 mt-0.5">
+                    {okMsg('سجّل الآن بالكاميرا', 'Record now with camera')}
+                  </p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setVideoSourceModal(false);
+                  videoInputRef.current?.click();
+                }}
+                className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-slate-50 active:bg-slate-100 transition-colors text-right"
+              >
+                <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+                  <Upload size={20} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-[#0D4A5F]">
+                    {okMsg('رفع ملف فيديو', 'Upload Video File')}
+                  </p>
+                  <p className="text-xs text-[#0D4A5F]/60 mt-0.5">
+                    {okMsg('اختر من معرض الجهاز', 'Choose from device gallery')}
+                  </p>
+                </div>
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setVideoSourceModal(false)}
+              className="w-full py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-[#0D4A5F]/70 hover:bg-slate-50 transition-colors"
+            >
+              {t.cancel || okMsg('إلغاء', 'Cancel')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {videoPlayerModal && introVideoUrl && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-black/95 p-4 sm:p-6">
+          <div className="flex items-center justify-between mb-4">
+            <button
+              type="button"
+              onClick={() => setVideoPlayerModal(false)}
+              className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors"
+            >
+              <X size={20} />
+            </button>
+            <h3 className="text-base font-bold text-white">
+              {okMsg('مشاهدة الفيديو التعريفي', 'Watch Intro Video')}
+            </h3>
+            <span className="w-10 h-10" />
+          </div>
+          <div className="flex-1 flex items-center justify-center min-h-0">
+            <video
+              src={introVideoUrl}
+              controls
+              autoPlay
+              className="w-full max-h-[80vh] rounded-2xl object-contain bg-black shadow-2xl"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -784,7 +784,9 @@ export const WalletTab: React.FC<WalletTabProps> = ({ user, onNavigate }) => {
                           const bankName = isAr
                             ? (acc.banks?.name_ar || acc.bank_name || 'حساب بنكي')
                             : (acc.banks?.name_en || acc.bank_name || 'Bank Account');
-                          const subtitle = acc.iban || acc.account_number;
+                          const rawAcc = acc.account_number || acc.iban || '';
+                          const accLast4 = String(rawAcc).replace(/\s+/g, '').slice(-4);
+                          const subtitle = accLast4 ? `**** **** **** ${accLast4}` : (acc.iban || acc.account_number);
 
                           return (
                             <div
@@ -804,7 +806,7 @@ export const WalletTab: React.FC<WalletTabProps> = ({ user, onNavigate }) => {
                                   <div className="text-xs font-bold text-[#171717]">
                                     {bankName}
                                   </div>
-                                  <div className="text-[11px] text-[#738989] font-mono">
+                                  <div className="text-[11px] text-[#738989] font-mono" dir="ltr">
                                     {subtitle}
                                   </div>
                                 </div>
@@ -922,9 +924,19 @@ export const WalletTab: React.FC<WalletTabProps> = ({ user, onNavigate }) => {
                         {cards.map((c) => {
                           const isSelected = selectedCardId === c.id;
                           const isStc = c.type === 'stc_pay' || c.withdrawal_type === 'stc_pay' || c.card_type === 'stc_pay';
+                          const isBank = c.type === 'bank_account' || c.withdrawal_type === 'bank_account' || c.card_type === 'bank_account';
                           const details = c.details || {};
-                          const title = isStc ? 'STC Pay' : (details.card_brand || (isAr ? 'بطاقة سحب' : 'Card'));
-                          const subtitle = isStc ? details.phone_number : (details.iban || (details.card_number ? `**** ${String(details.card_number).slice(-4)}` : ''));
+                          const title = isStc
+                            ? 'STC Pay'
+                            : isBank
+                            ? (isAr ? 'حساب بنكي' : 'Bank Account')
+                            : (details.card_brand || (isAr ? 'بطاقة سحب' : 'Card'));
+
+                          const rawNum = isStc
+                            ? (details.phone_number || c.phone_number || '')
+                            : (details.card_number || c.card_number || details.iban || c.iban || details.account_number || c.account_number || '');
+                          const last4 = String(rawNum).replace(/\s+/g, '').slice(-4);
+                          const subtitle = last4 ? `**** **** **** ${last4}` : '';
 
                           return (
                             <div
@@ -944,7 +956,7 @@ export const WalletTab: React.FC<WalletTabProps> = ({ user, onNavigate }) => {
                                   <div className="text-xs font-bold text-[#171717]">
                                     {title}
                                   </div>
-                                  <div className="text-[11px] text-[#738989] font-mono">
+                                  <div className="text-[11px] text-[#738989] font-mono" dir="ltr">
                                     {subtitle}
                                   </div>
                                 </div>
