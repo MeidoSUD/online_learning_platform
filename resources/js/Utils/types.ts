@@ -767,9 +767,11 @@ export interface MaintenanceMode {
 }
 
 export interface AppConfig {
-  ios_version: AppVersion;
-  android_version: AppVersion;
-  maintenance_mode: MaintenanceMode;
+  ios_version?: AppVersion;
+  android_version?: AppVersion;
+  maintenance_mode?: MaintenanceMode;
+  social_login_enabled?: boolean;
+  enable_social_login?: boolean;
 }
 
 // --- Terms & Conditions ---

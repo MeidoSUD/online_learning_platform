@@ -248,8 +248,6 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onSwitch, onVeri
               {t.continue || (isAr ? "متابعة" : "Continue")}
             </Button>
           </div>
-
-          <SocialAuthButtons roleId={roleId} onSuccess={() => onVerifySuccess?.()} mode="register" />
         </div>
       ) : (
         <>

@@ -413,6 +413,7 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     Route::get('app-config/settings', [AppConfigController::class, 'getAppSettings']);
     Route::put('app-config/version', [AppConfigController::class, 'updateAppVersion']);
     Route::put('app-config/maintenance', [AppConfigController::class, 'toggleMaintenanceMode']);
+    Route::put('app-config/social-login', [AppConfigController::class, 'toggleSocialLogin']);
 
     // ======================
     // ADMIN SERVICES MANAGEMENT - Full CRUD with icon upload

@@ -300,6 +300,23 @@ export const authService = {
     timezone?: string;
     appsflyer_id?: string;
   }) => fetchWithAuth('/auth/social-login', { method: 'POST', body: JSON.stringify(payload) }),
+  getSocialLoginEnabled: async (): Promise<boolean> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/app-config?platform=web`);
+      if (!response.ok) return true;
+      const json = await response.json();
+      const data = json?.data || json;
+      const isEnabled = typeof data?.social_login_enabled === 'boolean'
+        ? data.social_login_enabled
+        : (typeof data?.enable_social_login === 'boolean' ? data.enable_social_login : true);
+      try {
+        localStorage.setItem('social_login_enabled', JSON.stringify(isEnabled));
+      } catch (e) {}
+      return isEnabled;
+    } catch {
+      return true;
+    }
+  },
 };
 
 export const profileService = {
@@ -752,6 +769,14 @@ getMarketingAudienceCount: (target_type: string, target_user_id?: number, target
     fetchWithAuth('/admin/app-config/version', { method: 'PUT', body: JSON.stringify(data) }),
   toggleMaintenanceMode: (data: { enabled: boolean; message?: string; estimated_end_time?: string }) => 
     fetchWithAuth('/admin/app-config/maintenance', { method: 'PUT', body: JSON.stringify(data) }),
+  toggleSocialLogin: (data: { enabled: boolean }) => 
+    fetchWithAuth('/admin/app-config/social-login', { method: 'PUT', body: JSON.stringify(data) }).then(res => {
+      try {
+        localStorage.setItem('social_login_enabled', JSON.stringify(data.enabled));
+        window.dispatchEvent(new CustomEvent('app:social-login-changed', { detail: { enabled: data.enabled } }));
+      } catch (e) {}
+      return res;
+    }),
     
   // Sessions Management
   getSessions: (filters: any = {}) => {

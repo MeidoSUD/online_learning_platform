@@ -58,6 +58,8 @@ class AppVersionController extends Controller
                 ->latest('created_at')
                 ->first();
 
+            $socialLoginEnabled = (bool) \App\Models\Setting::getValue('social_login_enabled', true);
+
             // If no version found for this platform, return default config
             if (!$appVersion) {
                 Log::warning('No app version found for platform', ['platform' => $platform]);
@@ -68,6 +70,8 @@ class AppVersionController extends Controller
                         'platform' => $platform,
                         'version' => '1.0.0',
                         'force_update' => false,
+                        'social_login_enabled' => $socialLoginEnabled,
+                        'enable_social_login' => $socialLoginEnabled,
                         'message' => 'No update required',
                         'download_url' => null,
                     ],
@@ -82,6 +86,8 @@ class AppVersionController extends Controller
                     'platform' => $platform,
                     'version' => $appVersion->version,
                     'force_update' => (bool) $appVersion->force_update,
+                    'social_login_enabled' => $socialLoginEnabled,
+                    'enable_social_login' => $socialLoginEnabled,
                     'force_update_message' => $appVersion->force_update 
                         ? 'This version is required. Please update immediately.' 
                         : 'An optional update is available.',

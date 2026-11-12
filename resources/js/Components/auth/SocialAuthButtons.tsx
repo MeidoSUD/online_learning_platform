@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
 import { useToast } from '../../Contexts/ToastContext';
 import { useFcm } from '../../Hooks/useFcm';
@@ -12,6 +12,7 @@ interface SocialAuthButtonsProps {
   onSuccess: (data: any) => void;
   onError?: (msg: string) => void;
   mode?: 'login' | 'register';
+  customLabel?: string;
 }
 
 export const SocialAuthButtons: React.FC<SocialAuthButtonsProps> = ({
@@ -19,6 +20,7 @@ export const SocialAuthButtons: React.FC<SocialAuthButtonsProps> = ({
   onSuccess,
   onError,
   mode = 'login',
+  customLabel,
 }) => {
   const { language } = useLanguage();
   const { showToast } = useToast();
@@ -26,6 +28,37 @@ export const SocialAuthButtons: React.FC<SocialAuthButtonsProps> = ({
   const isAr = language === 'ar';
 
   const [loadingProvider, setLoadingProvider] = useState<'google' | 'apple' | null>(null);
+  const [isEnabled, setIsEnabled] = useState<boolean | null>(() => {
+    try {
+      const cached = localStorage.getItem('social_login_enabled');
+      return cached !== null ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    let mounted = true;
+    authService.getSocialLoginEnabled().then((status) => {
+      if (mounted) setIsEnabled(status);
+    });
+
+    const handleChanged = (e: any) => {
+      if (mounted && typeof e?.detail?.enabled === 'boolean') {
+        setIsEnabled(e.detail.enabled);
+      }
+    };
+    window.addEventListener('app:social-login-changed', handleChanged);
+
+    return () => {
+      mounted = false;
+      window.removeEventListener('app:social-login-changed', handleChanged);
+    };
+  }, []);
+
+  if (isEnabled === false) {
+    return null;
+  }
 
   const handleSocialAuth = async (provider: 'google' | 'apple') => {
     setLoadingProvider(provider);
@@ -66,7 +99,7 @@ export const SocialAuthButtons: React.FC<SocialAuthButtonsProps> = ({
       }
 
       const successMsg = data?.is_new_user
-        ? (isAr ? 'تم إنشاء الحساب بنجاح' : 'Account created successfully')
+        ? (isAr ? (roleId === 3 ? 'تم إنشاء حساب المعلم بنجاح' : 'تم إنشاء حساب الطالب بنجاح') : 'Account created successfully')
         : (isAr ? 'تم تسجيل الدخول بنجاح' : 'Logged in successfully');
 
       showToast(successMsg, 'success');
@@ -78,9 +111,23 @@ export const SocialAuthButtons: React.FC<SocialAuthButtonsProps> = ({
         setLoadingProvider(null);
         return;
       }
-      const msg = err.message_ar && isAr
+      let msg = err.message_ar && isAr
         ? err.message_ar
         : (err.message || (isAr ? `فشل تسجيل الدخول عبر ${provider === 'google' ? 'جوجل' : 'أبل'}` : `Failed to sign in with ${provider}`));
+
+      if (err?.code === 'auth/unauthorized-domain') {
+        msg = isAr
+          ? 'النطاق الحالي غير مصرح به في Firebase. يرجى إضافة النطاق (ngrok/localhost) في Authorized Domains داخل Firebase Console.'
+          : 'Current domain is not authorized in Firebase. Please add this domain (ngrok/localhost) to Authorized Domains in Firebase Console.';
+      } else if (err?.code === 'auth/popup-blocked') {
+        msg = isAr
+          ? 'تم حظر النافذة المنبثقة من قِبل المتصفح. يرجى السماح بالنوافذ المنبثقة لهذا الموقع.'
+          : 'Popup was blocked by your browser. Please allow popups for this site.';
+      } else if (err?.code === 'auth/operation-not-allowed') {
+        msg = isAr
+          ? 'تسجيل الدخول عبر Google غير مفعّل في Firebase Console. يرجى تفعيله من Authentication > Sign-in method.'
+          : 'Google sign-in is not enabled in Firebase Console. Please enable it under Authentication > Sign-in method.';
+      }
       showToast(msg, 'error');
       if (onError) onError(msg);
     } finally {
@@ -88,12 +135,18 @@ export const SocialAuthButtons: React.FC<SocialAuthButtonsProps> = ({
     }
   };
 
+  const dividerText = customLabel || (
+    mode === 'register'
+      ? (isAr ? `أو التسجيل السريع كـ ${roleId === 3 ? 'معلم' : 'طالب'} عبر` : `Or sign up as ${roleId === 3 ? 'Teacher' : 'Student'} with`)
+      : (isAr ? 'أو المتابعة عبر' : 'Or continue with')
+  );
+
   return (
     <div className="space-y-3 pt-2">
       <div className="relative flex items-center justify-center">
         <div className="border-t border-[var(--border)] w-full" />
-        <span className="bg-surface px-3 text-xs text-[var(--text-muted)] font-medium shrink-0 uppercase tracking-wider">
-          {isAr ? 'أو المتابعة عبر' : 'Or continue with'}
+        <span className="bg-surface px-3 text-xs text-[var(--text-muted)] font-medium shrink-0 uppercase tracking-wider text-center">
+          {dividerText}
         </span>
         <div className="border-t border-[var(--border)] w-full" />
       </div>
@@ -104,12 +157,12 @@ export const SocialAuthButtons: React.FC<SocialAuthButtonsProps> = ({
           type="button"
           onClick={() => handleSocialAuth('google')}
           disabled={loadingProvider !== null}
-          className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-[var(--border)] bg-white hover:bg-slate-50 transition-all text-xs md:text-sm font-semibold text-slate-700 shadow-sm disabled:opacity-60 disabled:cursor-not-allowed hover:shadow"
+          className="flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 active:scale-[0.98] transition-all text-xs md:text-sm font-semibold text-slate-800 shadow-sm disabled:opacity-60 disabled:cursor-not-allowed hover:shadow hover:border-slate-300"
         >
           {loadingProvider === 'google' ? (
             <Loader2 className="animate-spin text-slate-600" size={18} />
           ) : (
-            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
               <path
                 fill="#4285F4"
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -136,13 +189,13 @@ export const SocialAuthButtons: React.FC<SocialAuthButtonsProps> = ({
           type="button"
           onClick={() => handleSocialAuth('apple')}
           disabled={loadingProvider !== null}
-          className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-black bg-black hover:bg-neutral-900 transition-all text-xs md:text-sm font-semibold text-white shadow-sm disabled:opacity-60 disabled:cursor-not-allowed hover:shadow"
+          className="flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl border border-neutral-900 bg-black hover:bg-neutral-900 active:scale-[0.98] transition-all text-xs md:text-sm font-semibold text-white shadow-sm disabled:opacity-60 disabled:cursor-not-allowed hover:shadow"
         >
           {loadingProvider === 'apple' ? (
             <Loader2 className="animate-spin text-white" size={18} />
           ) : (
-            <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 170 170">
-              <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.7-3.04-7.58-7.71-11.65-14.01-6.19-9.59-10.96-20.45-14.3-32.59-3.34-12.14-5.02-23.77-5.02-34.89 0-14.68 3.51-26.98 10.53-36.9 7.02-9.92 16.03-14.97 27.02-15.16 4.35 0 9.28 1.13 14.78 3.39 5.5 2.27 9.25 3.49 11.27 3.66 2.02-.17 6.03-1.48 12.03-3.92 6-2.45 11.13-3.55 15.4-3.3 11.22.61 20.37 4.79 27.46 12.54-9.82 5.92-14.65 14.15-14.5 24.69.17 8.52 3.42 15.82 9.76 21.9 6.34 6.08 13.91 9.48 22.71 10.19-1.95 5.92-4.22 11.66-6.8 17.22zm-35.39-95.27c0-6.19 2.24-12.22 6.72-18.09 4.48-5.87 10.14-9.87 16.99-12 0 .53.05 1.06.14 1.6.09.53.14 1.18.14 1.95 0 6.1-2.22 12.1-6.66 18-4.44 5.9-10.14 9.94-17.11 12.12-.13-.9-.22-2.09-.22-3.58z" />
+            <svg className="w-5 h-5 fill-white shrink-0" viewBox="0 0 24 24">
+              <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.62-.75 1.04-1.8 0.92-2.85-.9.04-1.98.6-2.61 1.34-.56.65-.99 1.7-0.88 2.73 1 .08 2.01-.52 2.57-1.22z" />
             </svg>
           )}
           <span>Apple</span>

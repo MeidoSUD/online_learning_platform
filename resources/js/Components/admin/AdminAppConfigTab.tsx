@@ -3,7 +3,7 @@ import { useLanguage } from '../../Contexts/LanguageContext';
 import { adminService, AppConfig, AppVersion } from '../../Services/api';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { AlertCircle, CheckCircle, Save, Loader2, AlertTriangle } from 'lucide-react';
+import { AlertCircle, CheckCircle, Save, Loader2, AlertTriangle, Share2, Eye, EyeOff } from 'lucide-react';
 
 export const AdminAppConfigTab: React.FC = () => {
   const { t, language } = useLanguage();
@@ -12,6 +12,9 @@ export const AdminAppConfigTab: React.FC = () => {
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Social Login
+  const [socialLoginEnabled, setSocialLoginEnabled] = useState(true);
 
   // iOS Version Form
   const [iosVersion, setIosVersion] = useState('');
@@ -36,10 +39,17 @@ export const AdminAppConfigTab: React.FC = () => {
     setLoading(true);
     setError('');
     try {
-      const config = await adminService.getAppConfig();
+      const configRes = await adminService.getAppConfig();
+      const config = configRes?.data || configRes;
       setAppConfig(config);
 
       // Set initial form values
+      if (config.social_login_enabled !== undefined) {
+        setSocialLoginEnabled(Boolean(config.social_login_enabled));
+      } else if (config.enable_social_login !== undefined) {
+        setSocialLoginEnabled(Boolean(config.enable_social_login));
+      }
+
       if (config.ios_version) {
         setIosVersion(config.ios_version.version);
         setIosForceUpdate(config.ios_version.force_update);
@@ -60,6 +70,30 @@ export const AdminAppConfigTab: React.FC = () => {
       setError(language === 'ar' ? 'فشل تحميل إعدادات التطبيق' : 'Failed to load app config');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleSocialLogin = async () => {
+    setUpdating(true);
+    setError('');
+    setSuccess('');
+    try {
+      const nextState = !socialLoginEnabled;
+      await adminService.toggleSocialLogin({
+        enabled: nextState,
+      });
+      setSocialLoginEnabled(nextState);
+      setSuccess(
+        language === 'ar'
+          ? `تم ${nextState ? 'تفعيل وإظهار' : 'تعطيل وإخفاء'} تسجيل الدخول عبر Google و Apple بنجاح`
+          : `Google & Apple social login ${nextState ? 'enabled and visible' : 'disabled and hidden'} successfully`
+      );
+      await fetchAppConfig();
+    } catch (err: any) {
+      console.error('Failed to toggle social login:', err);
+      setError(language === 'ar' ? 'فشل تعديل حالة تسجيل الدخول عبر وسائل التواصل' : 'Failed to update social login setting');
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -464,6 +498,106 @@ export const AdminAppConfigTab: React.FC = () => {
                 <>
                   <AlertTriangle className="w-4 h-4 mr-2" />
                   {language === 'ar' ? 'تفعيل وضع الصيانة' : 'Enable Maintenance Mode'}
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Social Login Configuration (Google & Apple) */}
+      <div className="bg-white border border-[var(--border)] rounded-lg p-6 space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <Share2 className="w-5 h-5 text-primary" />
+            <h2 className="text-xl font-semibold text-[var(--text-main)]">
+              {language === 'ar' ? 'تسجيل الدخول عبر Google و Apple' : 'Google & Apple Social Login'}
+            </h2>
+          </div>
+          <span
+            className={`px-3 py-1 rounded-full text-xs font-semibold ${
+              socialLoginEnabled
+                ? 'bg-green-100 text-green-700 border border-green-200'
+                : 'bg-red-100 text-red-700 border border-red-200'
+            }`}
+          >
+            {socialLoginEnabled
+              ? language === 'ar'
+                ? 'مفعل وظاهر ✓'
+                : 'Active & Visible ✓'
+              : language === 'ar'
+              ? 'معطل ومخفي ✕'
+              : 'Disabled & Hidden ✕'}
+          </span>
+        </div>
+
+        <p className="text-sm text-[var(--text-muted)] leading-relaxed">
+          {language === 'ar'
+            ? 'التحكم في ظهور أزرار تسجيل الدخول وإنشاء الحساب السريع عبر Google و Apple. عند التعطيل، ستختفي الأزرار تلقائياً من منصة الويب وتطبيق الجوال (iOS و Android) دون المساس بحسابات المستخدمين المسجلة مسبقاً.'
+            : 'Control the visibility of Google and Apple sign-in and quick registration buttons. When disabled, the buttons will be automatically hidden from the Web platform and Mobile apps (iOS & Android) without affecting existing accounts.'}
+        </p>
+
+        <div
+          className={`p-4 rounded-lg border transition-colors ${
+            socialLoginEnabled
+              ? 'bg-green-50/60 border-green-200'
+              : 'bg-slate-50 border-slate-200'
+          }`}
+        >
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                  socialLoginEnabled ? 'bg-green-100 text-green-600' : 'bg-slate-200 text-slate-500'
+                }`}
+              >
+                {socialLoginEnabled ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+              </div>
+              <div>
+                <p className="font-semibold text-sm text-[var(--text-main)]">
+                  {socialLoginEnabled
+                    ? language === 'ar'
+                      ? 'أزرار Google و Apple ظاهرة للمستخدمين'
+                      : 'Google & Apple buttons are visible'
+                    : language === 'ar'
+                    ? 'أزرار Google و Apple مخفية عن المستخدمين'
+                    : 'Google & Apple buttons are hidden'}
+                </p>
+                <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                  {socialLoginEnabled
+                    ? language === 'ar'
+                      ? 'يمكن للطلاب والمعلمين تسجيل الدخول أو إنشاء حساب عبر Google و Apple'
+                      : 'Students and teachers can log in or register via Google and Apple'
+                    : language === 'ar'
+                    ? 'لا تظهر أزرار وسائل التواصل في صفحات تسجيل الدخول وإنشاء الحساب'
+                    : 'Social buttons will not appear on login or register pages'}
+                </p>
+              </div>
+            </div>
+
+            <Button
+              onClick={handleToggleSocialLogin}
+              disabled={updating}
+              className={`shrink-0 w-full sm:w-auto min-w-[190px] ${
+                socialLoginEnabled
+                  ? 'bg-red-600 hover:bg-red-700 text-white'
+                  : 'bg-primary hover:bg-primary-hover text-white'
+              }`}
+            >
+              {updating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  {language === 'ar' ? 'جاري المعالجة...' : 'Processing...'}
+                </>
+              ) : socialLoginEnabled ? (
+                <>
+                  <EyeOff className="w-4 h-4 mr-2" />
+                  {language === 'ar' ? 'إخفاء الأزرار (تعطيل)' : 'Hide Buttons (Disable)'}
+                </>
+              ) : (
+                <>
+                  <Eye className="w-4 h-4 mr-2" />
+                  {language === 'ar' ? 'إظهار الأزرار (تفعيل)' : 'Show Buttons (Enable)'}
                 </>
               )}
             </Button>

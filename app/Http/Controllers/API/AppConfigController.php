@@ -36,11 +36,11 @@ class AppConfigController extends Controller
             $currentVersion = $request->get('version', null); // Current app version on user's device
 
             // Validate platform
-            if (!in_array($platform, ['ios', 'android'])) {
+            if (!in_array($platform, ['ios', 'android', 'web'])) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Invalid platform',
-                    'error' => 'Platform must be "ios" or "android"',
+                    'error' => 'Platform must be "ios", "android", or "web"',
                     'code' => 'INVALID_PLATFORM'
                 ], 400);
             }
@@ -55,12 +55,15 @@ class AppConfigController extends Controller
             // Check if maintenance mode is enabled
             $maintenanceEnabled = Setting::getValue('maintenance_enabled', false);
 
+            // Check if social login is enabled
+            $socialLoginEnabled = (bool) Setting::getValue('social_login_enabled', false);
+
             // Get the required app version for this platform
-            $versionKey = 'app_version_' . $platform;
+            $versionKey = 'app_version_' . ($platform === 'web' ? 'android' : $platform);
             $requiredVersion = Setting::getValue($versionKey, '1.0.0');
 
             // Get force update flag for this platform
-            $forceUpdateKey = 'force_update_' . $platform;
+            $forceUpdateKey = 'force_update_' . ($platform === 'web' ? 'android' : $platform);
             $forceUpdate = Setting::getValue($forceUpdateKey, false);
 
             $isCurrentVersionOutdated = $currentVersion && $this->isVersionLower($currentVersion, $requiredVersion);
@@ -73,6 +76,8 @@ class AppConfigController extends Controller
                 'force_update' => $isCurrentVersionOutdated ? (bool) $forceUpdate : false,
                 'maintenance_mode' => (bool) $maintenanceEnabled,
                 'package_enable' => (bool) Setting::getValue('package_enable', false),
+                'social_login_enabled' => $socialLoginEnabled,
+                'enable_social_login' => $socialLoginEnabled,
             ];
 
             // Add maintenance message if enabled
@@ -150,14 +155,34 @@ class AppConfigController extends Controller
     public function getAppSettings(): JsonResponse
     {
         try {
+            $maintenanceEnabled = (bool) Setting::getValue('maintenance_enabled', false);
+            $appVersionIos = Setting::getValue('app_version_ios', '1.0.0');
+            $appVersionAndroid = Setting::getValue('app_version_android', '1.0.0');
+            $forceUpdateIos = (bool) Setting::getValue('force_update_ios', false);
+            $forceUpdateAndroid = (bool) Setting::getValue('force_update_android', false);
+            $socialLoginEnabled = (bool) Setting::getValue('social_login_enabled', false);
+
             $settings = [
                 'app_name' => Setting::getValue('app_name', 'ewan'),
-                'maintenance_enabled' => Setting::getValue('maintenance_enabled', false),
-                'app_version_ios' => Setting::getValue('app_version_ios', '1.0.0'),
-                'app_version_android' => Setting::getValue('app_version_android', '1.0.0'),
-                'force_update_ios' => Setting::getValue('force_update_ios', false),
-                'force_update_android' => Setting::getValue('force_update_android', false),
-                'package_enable' => Setting::getValue('package_enable', false),
+                'maintenance_enabled' => $maintenanceEnabled,
+                'app_version_ios' => $appVersionIos,
+                'app_version_android' => $appVersionAndroid,
+                'force_update_ios' => $forceUpdateIos,
+                'force_update_android' => $forceUpdateAndroid,
+                'package_enable' => (bool) Setting::getValue('package_enable', false),
+                'social_login_enabled' => $socialLoginEnabled,
+                'enable_social_login' => $socialLoginEnabled,
+                'ios_version' => [
+                    'version' => $appVersionIos,
+                    'force_update' => $forceUpdateIos,
+                ],
+                'android_version' => [
+                    'version' => $appVersionAndroid,
+                    'force_update' => $forceUpdateAndroid,
+                ],
+                'maintenance_mode' => [
+                    'enabled' => $maintenanceEnabled,
+                ],
             ];
 
             return response()->json([
@@ -301,6 +326,58 @@ class AppConfigController extends Controller
                 'message' => 'Failed to toggle maintenance mode',
                 'error' => $e->getMessage(),
                 'code' => 'MAINTENANCE_MODE_ERROR'
+            ], 500);
+        }
+    }
+
+    /**
+     * Toggle Social Login visibility for Web and Mobile Apps (Admin only)
+     * 
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function toggleSocialLogin(Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'enabled' => 'required|boolean',
+            ]);
+
+            Setting::setValue(
+                'social_login_enabled',
+                $validated['enabled'],
+                'bool',
+                'app',
+                'Enable/disable Google and Apple social login buttons for Web and Mobile'
+            );
+
+            Log::info('Social login visibility toggled', [
+                'enabled' => $validated['enabled'],
+                'toggled_by' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Social login ' . ($validated['enabled'] ? 'enabled' : 'disabled') . ' successfully',
+                'data' => [
+                    'social_login_enabled' => (bool) $validated['enabled'],
+                    'enable_social_login' => (bool) $validated['enabled'],
+                ],
+                'code' => 'SOCIAL_LOGIN_CONFIG_UPDATED'
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('Social login toggle error', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'toggled_by' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to toggle social login',
+                'error' => $e->getMessage(),
+                'code' => 'SOCIAL_LOGIN_TOGGLE_ERROR'
             ], 500);
         }
     }
