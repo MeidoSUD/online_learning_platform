@@ -273,6 +273,7 @@ export interface Booking {
 
   status: 'confirmed' | 'pending' | 'completed' | 'cancelled' | 'pending_payment';
   type: 'single' | 'package' | 'online' | 'presence';
+  total_sessions?: number;
   price?: number;
   total_price?: string;
   payment_status?: string;
@@ -341,6 +342,7 @@ export interface Session {
     id: number;
     reference: string;
     type: string;
+    total_sessions?: number;
   };
 }
 
