@@ -21,7 +21,11 @@ import {
   Award,
   Play,
   RefreshCw,
-  X
+  X,
+  Check,
+  Square,
+  RotateCcw,
+  SwitchCamera
 } from 'lucide-react';
 import {
   authService,
@@ -101,6 +105,20 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [videoSourceModal, setVideoSourceModal] = useState(false);
   const [videoPlayerModal, setVideoPlayerModal] = useState(false);
+  const [cameraRecorderOpen, setCameraRecorderOpen] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [recordedVideoBlob, setRecordedVideoBlob] = useState<Blob | null>(null);
+  const [recordedVideoUrl, setRecordedVideoUrl] = useState<string | null>(null);
+  const [cameraFacingMode, setCameraFacingMode] = useState<'user' | 'environment'>('user');
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
+
+  const cameraStreamRef = useRef<MediaStream | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<any>(null);
+  const cameraLiveVideoRef = useRef<HTMLVideoElement | null>(null);
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -435,6 +453,232 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
     if (!file) return;
     handleIntroVideoFile(file);
   };
+
+  const stopCameraStream = () => {
+    if (cameraStreamRef.current) {
+      cameraStreamRef.current.getTracks().forEach((track) => track.stop());
+      cameraStreamRef.current = null;
+    }
+    if (cameraLiveVideoRef.current) {
+      cameraLiveVideoRef.current.srcObject = null;
+    }
+  };
+
+  const closeCameraRecorder = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try {
+        mediaRecorderRef.current.stop();
+      } catch {}
+    }
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    stopCameraStream();
+    if (recordedVideoUrl) {
+      URL.revokeObjectURL(recordedVideoUrl);
+    }
+    setRecordedVideoUrl(null);
+    setRecordedVideoBlob(null);
+    setIsRecording(false);
+    setRecordingSeconds(0);
+    setCameraError(null);
+    setCameraRecorderOpen(false);
+  };
+
+  const initCameraStream = async (mode: 'user' | 'environment') => {
+    stopCameraStream();
+    setCameraError(null);
+
+    if (!navigator?.mediaDevices?.getUserMedia) {
+      setCameraError(
+        okMsg(
+          'المتصفح لا يدعم تسجيل الكاميرا المباشر، يمكنك اختيار ملف فيديو بدلاً من ذلك.',
+          'Browser does not support live camera recording, you can choose a video file instead.'
+        )
+      );
+      return;
+    }
+
+    try {
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: mode,
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          audio: true,
+        });
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: mode,
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          audio: false,
+        });
+      }
+
+      cameraStreamRef.current = stream;
+      if (cameraLiveVideoRef.current) {
+        cameraLiveVideoRef.current.srcObject = stream;
+        try {
+          await cameraLiveVideoRef.current.play();
+        } catch {}
+      }
+
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter((d) => d.kind === 'videoinput');
+        setHasMultipleCameras(videoDevices.length > 1);
+      } catch {}
+    } catch {
+      setCameraError(
+        okMsg(
+          'تعذر الوصول إلى الكاميرا. يرجى التأكد من توصيل الكاميرا والسماح بالوصول إليها من إعدادات المتصفح.',
+          'Could not access camera. Please check camera connection and browser permissions.'
+        )
+      );
+    }
+  };
+
+  const handleToggleFacingMode = () => {
+    if (isRecording) return;
+    const nextMode = cameraFacingMode === 'user' ? 'environment' : 'user';
+    setCameraFacingMode(nextMode);
+    initCameraStream(nextMode);
+  };
+
+  const startRecording = () => {
+    if (!cameraStreamRef.current) return;
+    if (recordedVideoUrl) {
+      URL.revokeObjectURL(recordedVideoUrl);
+      setRecordedVideoUrl(null);
+    }
+    setRecordedVideoBlob(null);
+    recordedChunksRef.current = [];
+
+    const types = [
+      'video/mp4;codecs=avc1',
+      'video/mp4',
+      'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=vp8,opus',
+      'video/webm',
+    ];
+    let selectedMime = '';
+    for (const t of types) {
+      if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(t)) {
+        selectedMime = t;
+        break;
+      }
+    }
+
+    try {
+      const options: MediaRecorderOptions = selectedMime ? { mimeType: selectedMime } : {};
+      const recorder = new MediaRecorder(cameraStreamRef.current, options);
+
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        const finalMime = recorder.mimeType || selectedMime || 'video/webm';
+        const blob = new Blob(recordedChunksRef.current, { type: finalMime });
+        setRecordedVideoBlob(blob);
+        setRecordedVideoUrl(URL.createObjectURL(blob));
+        setIsRecording(false);
+        if (recordingTimerRef.current) {
+          clearInterval(recordingTimerRef.current);
+          recordingTimerRef.current = null;
+        }
+        stopCameraStream();
+      };
+
+      mediaRecorderRef.current = recorder;
+      recorder.start(1000);
+      setIsRecording(true);
+      setRecordingSeconds(0);
+
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingSeconds((prev) => {
+          if (prev >= 299) {
+            stopRecording();
+            return 300;
+          }
+          return prev + 1;
+        });
+      }, 1000);
+    } catch {
+      showToast(
+        okMsg(
+          'حدث خطأ أثناء بدء تسجيل الفيديو، يرجى المحاولة مرة أخرى',
+          'Error starting video recording, please try again'
+        ),
+        'error'
+      );
+    }
+  };
+
+  const stopRecording = () => {
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try {
+        mediaRecorderRef.current.stop();
+      } catch {}
+    }
+    setIsRecording(false);
+  };
+
+  const handleRetake = () => {
+    if (recordedVideoUrl) {
+      URL.revokeObjectURL(recordedVideoUrl);
+    }
+    setRecordedVideoUrl(null);
+    setRecordedVideoBlob(null);
+    setRecordingSeconds(0);
+    initCameraStream(cameraFacingMode);
+  };
+
+  const handleConfirmRecordedVideo = () => {
+    if (!recordedVideoBlob) return;
+    const mime = recordedVideoBlob.type || 'video/webm';
+    const ext = mime.includes('mp4') ? 'mp4' : 'webm';
+    const fileName = `intro_camera_${Date.now()}.${ext}`;
+    const file = new File([recordedVideoBlob], fileName, { type: mime });
+
+    closeCameraRecorder();
+    handleIntroVideoFile(file);
+  };
+
+  const formatTimer = (sec: number) => {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  useEffect(() => {
+    if (cameraRecorderOpen && !recordedVideoBlob) {
+      initCameraStream(cameraFacingMode);
+    }
+    return () => {
+      if (cameraStreamRef.current) {
+        cameraStreamRef.current.getTracks().forEach((track) => track.stop());
+        cameraStreamRef.current = null;
+      }
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+    };
+  }, [cameraRecorderOpen]);
 
   const handleSaveName = async () => {
     if (!firstName.trim()) return;
@@ -944,7 +1188,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
                 type="button"
                 onClick={() => {
                   setVideoSourceModal(false);
-                  cameraInputRef.current?.click();
+                  setCameraRecorderOpen(true);
                 }}
                 className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-slate-50 active:bg-slate-100 transition-colors text-right"
               >
@@ -1016,6 +1260,168 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
               autoPlay
               className="w-full max-h-[80vh] rounded-2xl object-contain bg-black shadow-2xl"
             />
+          </div>
+        </div>
+      )}
+
+      {cameraRecorderOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md">
+          <div className="fixed inset-0" onClick={closeCameraRecorder} />
+          <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden z-10 flex flex-col max-h-[95vh]">
+            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-100">
+              <div className="text-right">
+                <h3 className="text-base font-bold text-[#0D4A5F]">
+                  {okMsg('تسجيل فيديو تعريفي', 'Record Intro Video')}
+                </h3>
+                <p className="text-xs text-[#0D4A5F]/60 mt-0.5">
+                  {okMsg('سجّل فيديو قصير يعرف بك وبأسلوبك في التدريس', 'Record a short video introducing yourself')}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeCameraRecorder}
+                className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-4 sm:p-5 flex-1 flex flex-col min-h-0">
+              <div className="relative w-full aspect-[4/3] sm:aspect-video bg-black rounded-2xl overflow-hidden flex items-center justify-center shadow-inner">
+                {cameraError ? (
+                  <div className="p-6 text-center text-white space-y-4 max-w-xs">
+                    <div className="w-12 h-12 rounded-full bg-red-500/20 text-red-400 mx-auto flex items-center justify-center">
+                      <Video size={24} />
+                    </div>
+                    <p className="text-xs leading-relaxed text-slate-200">{cameraError}</p>
+                    <div className="space-y-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => initCameraStream(cameraFacingMode)}
+                        className="w-full py-2.5 px-4 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-bold transition-colors"
+                      >
+                        {okMsg('إعادة المحاولة', 'Try Again')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          closeCameraRecorder();
+                          cameraInputRef.current?.click();
+                        }}
+                        className="w-full py-2.5 px-4 rounded-xl border border-white/20 text-white hover:bg-white/10 text-xs font-bold transition-colors"
+                      >
+                        {okMsg('استخدام كاميرا الجهاز / اختيار ملف', 'Use device camera / Choose file')}
+                      </button>
+                    </div>
+                  </div>
+                ) : recordedVideoUrl ? (
+                  <video
+                    src={recordedVideoUrl}
+                    controls
+                    autoPlay
+                    playsInline
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <>
+                    <video
+                      ref={(el) => {
+                        cameraLiveVideoRef.current = el;
+                        if (el && cameraStreamRef.current && el.srcObject !== cameraStreamRef.current) {
+                          el.srcObject = cameraStreamRef.current;
+                          el.play().catch(() => {});
+                        }
+                      }}
+                      autoPlay
+                      playsInline
+                      muted
+                      style={{ transform: cameraFacingMode === 'user' ? 'scaleX(-1)' : 'none' }}
+                      className="w-full h-full object-cover"
+                    />
+
+                    <div className="absolute top-3 inset-x-3 flex items-center justify-between pointer-events-none">
+                      {isRecording ? (
+                        <div className="flex items-center gap-2 bg-red-600/90 text-white text-xs font-mono font-bold px-3 py-1.5 rounded-full shadow-lg backdrop-blur-sm pointer-events-auto">
+                          <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse" />
+                          <span>{formatTimer(recordingSeconds)} / 05:00</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 bg-black/60 text-white text-[11px] font-bold px-2.5 py-1 rounded-full backdrop-blur-sm">
+                          <span className="w-2 h-2 rounded-full bg-green-400" />
+                          <span>{okMsg('الكاميرا نشطة', 'Camera active')}</span>
+                        </div>
+                      )}
+
+                      {hasMultipleCameras && !isRecording && (
+                        <button
+                          type="button"
+                          onClick={handleToggleFacingMode}
+                          className="w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition-colors pointer-events-auto backdrop-blur-sm"
+                          title={okMsg('تبديل الكاميرا', 'Switch Camera')}
+                        >
+                          <SwitchCamera size={16} />
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="pt-4 flex items-center justify-center">
+                {recordedVideoUrl ? (
+                  <div className="w-full flex gap-3">
+                    <button
+                      type="button"
+                      onClick={handleRetake}
+                      className="flex-1 py-3 px-4 rounded-xl border border-slate-200 text-[#0D4A5F] hover:bg-slate-50 text-xs font-bold flex items-center justify-center gap-2 transition-colors"
+                    >
+                      <RotateCcw size={16} />
+                      <span>{okMsg('إعادة التسجيل', 'Retake')}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleConfirmRecordedVideo}
+                      className="flex-1 py-3 px-4 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition-colors"
+                    >
+                      <Check size={16} />
+                      <span>{okMsg('استخدام هذا الفيديو', 'Use this video')}</span>
+                    </button>
+                  </div>
+                ) : !cameraError ? (
+                  isRecording ? (
+                    <button
+                      type="button"
+                      onClick={stopRecording}
+                      className="flex flex-col items-center gap-1.5 group"
+                    >
+                      <div className="w-16 h-16 rounded-full border-4 border-red-500/40 p-1 flex items-center justify-center animate-pulse">
+                        <div className="w-12 h-12 rounded-full bg-red-600 flex items-center justify-center text-white shadow-lg group-hover:scale-105 active:scale-95 transition-transform">
+                          <Square size={18} fill="currentColor" />
+                        </div>
+                      </div>
+                      <span className="text-xs font-bold text-red-600">
+                        {okMsg('إيقاف التسجيل', 'Stop Recording')}
+                      </span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={startRecording}
+                      className="flex flex-col items-center gap-1.5 group"
+                    >
+                      <div className="w-16 h-16 rounded-full border-4 border-red-500/30 group-hover:border-red-500/60 p-1 flex items-center justify-center transition-all">
+                        <div className="w-12 h-12 rounded-full bg-red-600 group-hover:scale-105 active:scale-95 transition-transform flex items-center justify-center text-white shadow-lg">
+                          <Video size={20} />
+                        </div>
+                      </div>
+                      <span className="text-xs font-bold text-[#0D4A5F]">
+                        {okMsg('بدء التسجيل', 'Start Recording')}
+                      </span>
+                    </button>
+                  )
+                ) : null}
+              </div>
+            </div>
           </div>
         </div>
       )}

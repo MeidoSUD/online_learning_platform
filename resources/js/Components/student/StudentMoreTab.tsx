@@ -105,14 +105,12 @@ export const StudentMoreTab: React.FC<StudentMoreTabProps> = ({ user, onNavigate
           className="flex items-center justify-between p-4 px-6 hover:bg-gray-50 cursor-pointer transition-colors"
         >
           <div className="flex items-center gap-3.5">
-            <div className="h-10 w-10 rounded-xl bg-gray-100 text-gray-700 flex items-center justify-center">
-              <User size={18} />
-            </div>
-            <span className="text-sm font-bold text-[var(--text-main)]">
-              {language === 'ar' ? 'الملف الشخصي' : 'My Profile'}
+            <User size={22} className="text-[#0D4A5F]" />
+            <span className="text-[15px] font-medium text-[#0D4A5F]">
+              {language === 'ar' ? 'تعديل الملف الشخصي' : 'Edit Profile'}
             </span>
           </div>
-          <ChevronIcon size={18} className="text-gray-400" />
+          <ChevronIcon size={20} className="text-[#0D4A5F]/70" />
         </div>
 
         <div
@@ -120,14 +118,12 @@ export const StudentMoreTab: React.FC<StudentMoreTabProps> = ({ user, onNavigate
           className="flex items-center justify-between p-4 px-6 hover:bg-gray-50 cursor-pointer transition-colors"
         >
           <div className="flex items-center gap-3.5">
-            <div className="h-10 w-10 rounded-xl bg-gray-100 text-gray-700 flex items-center justify-center">
-              <SlidersHorizontal size={18} />
-            </div>
-            <span className="text-sm font-bold text-[var(--text-main)]">
+            <SlidersHorizontal size={22} className="text-[#0D4A5F]" />
+            <span className="text-[15px] font-medium text-[#0D4A5F]">
               {language === 'ar' ? 'تفضيلات الخدمات التعليمية' : 'Service Preferences'}
             </span>
           </div>
-          <ChevronIcon size={18} className="text-gray-400" />
+          <ChevronIcon size={20} className="text-[#0D4A5F]/70" />
         </div>
 
         <div
@@ -135,18 +131,16 @@ export const StudentMoreTab: React.FC<StudentMoreTabProps> = ({ user, onNavigate
           className="flex items-center justify-between p-4 px-6 hover:bg-gray-50 cursor-pointer transition-colors"
         >
           <div className="flex items-center gap-3.5">
-            <div className="h-10 w-10 rounded-xl bg-gray-100 text-gray-700 flex items-center justify-center">
-              <Globe size={18} />
-            </div>
-            <span className="text-sm font-bold text-[var(--text-main)]">
+            <Globe size={22} className="text-[#0D4A5F]" />
+            <span className="text-[15px] font-medium text-[#0D4A5F]">
               {language === 'ar' ? 'لغة التطبيق' : 'Application Language'}
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-primary">
+            <span className="text-sm font-medium text-[#0D4A5F]/50">
               {language === 'ar' ? 'العربية' : 'English'}
             </span>
-            <ChevronIcon size={18} className="text-gray-400" />
+            <ChevronIcon size={20} className="text-[#0D4A5F]/70" />
           </div>
         </div>
 
@@ -155,14 +149,12 @@ export const StudentMoreTab: React.FC<StudentMoreTabProps> = ({ user, onNavigate
           className="flex items-center justify-between p-4 px-6 hover:bg-gray-50 cursor-pointer transition-colors"
         >
           <div className="flex items-center gap-3.5">
-            <div className="h-10 w-10 rounded-xl bg-gray-100 text-gray-700 flex items-center justify-center">
-              <HelpCircle size={18} />
-            </div>
-            <span className="text-sm font-bold text-[var(--text-main)]">
+            <HelpCircle size={22} className="text-[#0D4A5F]" />
+            <span className="text-[15px] font-medium text-[#0D4A5F]">
               {language === 'ar' ? 'الأسئلة الشائعة' : 'FAQs'}
             </span>
           </div>
-          <ChevronIcon size={18} className="text-gray-400" />
+          <ChevronIcon size={20} className="text-[#0D4A5F]/70" />
         </div>
 
         <div
@@ -170,14 +162,12 @@ export const StudentMoreTab: React.FC<StudentMoreTabProps> = ({ user, onNavigate
           className="flex items-center justify-between p-4 px-6 hover:bg-gray-50 cursor-pointer transition-colors"
         >
           <div className="flex items-center gap-3.5">
-            <div className="h-10 w-10 rounded-xl bg-gray-100 text-gray-700 flex items-center justify-center">
-              <Gavel size={18} />
-            </div>
-            <span className="text-sm font-bold text-[var(--text-main)]">
+            <Gavel size={22} className="text-[#0D4A5F]" />
+            <span className="text-[15px] font-medium text-[#0D4A5F]">
               {language === 'ar' ? 'شكاواي ونزاعاتي' : 'My Complaints'}
             </span>
           </div>
-          <ChevronIcon size={18} className="text-gray-400" />
+          <ChevronIcon size={20} className="text-[#0D4A5F]/70" />
         </div>
 
         <div
@@ -185,14 +175,12 @@ export const StudentMoreTab: React.FC<StudentMoreTabProps> = ({ user, onNavigate
           className="flex items-center justify-between p-4 px-6 hover:bg-gray-50 cursor-pointer transition-colors"
         >
           <div className="flex items-center gap-3.5">
-            <div className="h-10 w-10 rounded-xl bg-gray-100 text-gray-700 flex items-center justify-center">
-              <Headphones size={18} />
-            </div>
-            <span className="text-sm font-bold text-[var(--text-main)]">
-              {language === 'ar' ? 'الدعم الفني والمساعدة' : 'Technical Support'}
+            <Headphones size={22} className="text-[#0D4A5F]" />
+            <span className="text-[15px] font-medium text-[#0D4A5F]">
+              {language === 'ar' ? 'الدعم الفني' : 'Technical Support'}
             </span>
           </div>
-          <ChevronIcon size={18} className="text-gray-400" />
+          <ChevronIcon size={20} className="text-[#0D4A5F]/70" />
         </div>
 
         <a
@@ -202,14 +190,12 @@ export const StudentMoreTab: React.FC<StudentMoreTabProps> = ({ user, onNavigate
           className="flex items-center justify-between p-4 px-6 hover:bg-gray-50 cursor-pointer transition-colors"
         >
           <div className="flex items-center gap-3.5">
-            <div className="h-10 w-10 rounded-xl bg-gray-100 text-gray-700 flex items-center justify-center">
-              <Info size={18} />
-            </div>
-            <span className="text-sm font-bold text-[var(--text-main)]">
-              {language === 'ar' ? 'عن المنصة' : 'About Platform'}
+            <Info size={22} className="text-[#0D4A5F]" />
+            <span className="text-[15px] font-medium text-[#0D4A5F]">
+              {language === 'ar' ? 'عن التطبيق' : 'About App'}
             </span>
           </div>
-          <ChevronIcon size={18} className="text-gray-400" />
+          <ChevronIcon size={20} className="text-[#0D4A5F]/70" />
         </a>
 
         <div
@@ -217,14 +203,12 @@ export const StudentMoreTab: React.FC<StudentMoreTabProps> = ({ user, onNavigate
           className="flex items-center justify-between p-4 px-6 hover:bg-red-50 cursor-pointer transition-colors text-red-600"
         >
           <div className="flex items-center gap-3.5">
-            <div className="h-10 w-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center">
-              <LogOut size={18} />
-            </div>
-            <span className="text-sm font-bold">
+            <LogOut size={22} className="text-red-600" />
+            <span className="text-[15px] font-bold text-red-600">
               {language === 'ar' ? 'تسجيل الخروج' : 'Log Out'}
             </span>
           </div>
-          <ChevronIcon size={18} className="text-red-400" />
+          <ChevronIcon size={20} className="text-red-400" />
         </div>
       </div>
     </div>

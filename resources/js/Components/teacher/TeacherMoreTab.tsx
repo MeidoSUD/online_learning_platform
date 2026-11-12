@@ -15,7 +15,9 @@ import {
   Star, 
   BookOpen, 
   ArrowUpRight,
-  ExternalLink
+  ExternalLink,
+  Globe,
+  Info
 } from 'lucide-react';
 import { UserData, teacherService } from '../../Services/api';
 import { TeacherPublicProfileModal } from './TeacherPublicProfileModal';
@@ -27,7 +29,7 @@ interface TeacherMoreTabProps {
 }
 
 export const TeacherMoreTab: React.FC<TeacherMoreTabProps> = ({ user, onNavigate, onLogout }) => {
-  const { t, language } = useLanguage();
+  const { t, language, setLanguage } = useLanguage();
   const isAr = language === 'ar';
 
   const [balance, setBalance] = useState<number>(0);
@@ -128,113 +130,147 @@ export const TeacherMoreTab: React.FC<TeacherMoreTabProps> = ({ user, onNavigate
         <button
           type="button"
           onClick={() => onNavigate && onNavigate('profile')}
-          className="w-full p-4 sm:p-4.5 flex items-center justify-between hover:bg-slate-50 transition text-start"
+          className="w-full p-4 sm:px-6 sm:py-4 flex items-center justify-between hover:bg-slate-50 transition text-start"
         >
           <div className="flex items-center gap-3.5">
-            <div className="w-9 h-9 rounded-xl bg-slate-100 text-[#0D4A5F] flex items-center justify-center">
-              <User size={18} />
-            </div>
-            <span className="text-xs font-bold text-slate-800">
+            <User size={22} className="text-[#0D4A5F]" />
+            <span className="text-[15px] font-medium text-[#0D4A5F]">
               {isAr ? 'تعديل الملف الشخصي' : 'Edit Profile'}
             </span>
           </div>
-          {isAr ? <ChevronLeft size={18} className="text-slate-400" /> : <ChevronRight size={18} className="text-slate-400" />}
+          {isAr ? <ChevronLeft size={20} className="text-[#0D4A5F]/70" /> : <ChevronRight size={20} className="text-[#0D4A5F]/70" />}
         </button>
 
         <button
           type="button"
           onClick={() => onNavigate && onNavigate('withdrawal-options')}
-          className="w-full p-4 sm:p-4.5 flex items-center justify-between hover:bg-slate-50 transition text-start"
+          className="w-full p-4 sm:px-6 sm:py-4 flex items-center justify-between hover:bg-slate-50 transition text-start"
         >
           <div className="flex items-center gap-3.5">
-            <div className="w-9 h-9 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center">
-              <CreditCard size={18} />
-            </div>
-            <span className="text-xs font-bold text-slate-800">
+            <CreditCard size={22} className="text-[#0D4A5F]" />
+            <span className="text-[15px] font-medium text-[#0D4A5F]">
               {isAr ? 'خيارات وطرق السحب' : 'Withdrawal Options'}
             </span>
           </div>
-          {isAr ? <ChevronLeft size={18} className="text-slate-400" /> : <ChevronRight size={18} className="text-slate-400" />}
+          {isAr ? <ChevronLeft size={20} className="text-[#0D4A5F]/70" /> : <ChevronRight size={20} className="text-[#0D4A5F]/70" />}
         </button>
 
         <button
           type="button"
           onClick={() => onNavigate && onNavigate('packages')}
-          className="w-full p-4 sm:p-4.5 flex items-center justify-between hover:bg-slate-50 transition text-start"
+          className="w-full p-4 sm:px-6 sm:py-4 flex items-center justify-between hover:bg-slate-50 transition text-start"
         >
           <div className="flex items-center gap-3.5">
-            <div className="w-9 h-9 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center">
-              <Package size={18} />
-            </div>
-            <span className="text-xs font-bold text-slate-800">
+            <Package size={22} className="text-[#0D4A5F]" />
+            <span className="text-[15px] font-medium text-[#0D4A5F]">
               {isAr ? 'الباقات التعليمية' : 'Educational Packages'}
             </span>
           </div>
-          {isAr ? <ChevronLeft size={18} className="text-slate-400" /> : <ChevronRight size={18} className="text-slate-400" />}
+          {isAr ? <ChevronLeft size={20} className="text-[#0D4A5F]/70" /> : <ChevronRight size={20} className="text-[#0D4A5F]/70" />}
         </button>
 
         <button
           type="button"
           onClick={() => onNavigate && onNavigate('orders')}
-          className="w-full p-4 sm:p-4.5 flex items-center justify-between hover:bg-slate-50 transition text-start"
+          className="w-full p-4 sm:px-6 sm:py-4 flex items-center justify-between hover:bg-slate-50 transition text-start"
         >
           <div className="flex items-center gap-3.5">
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-[#5B9F48] flex items-center justify-center">
-              <Send size={18} />
-            </div>
-            <span className="text-xs font-bold text-slate-800">
+            <Send size={22} className="text-[#0D4A5F]" />
+            <span className="text-[15px] font-medium text-[#0D4A5F]">
               {isAr ? 'طلبات الطلاب الخاصة' : 'Student Private Requests'}
             </span>
           </div>
-          {isAr ? <ChevronLeft size={18} className="text-slate-400" /> : <ChevronRight size={18} className="text-slate-400" />}
+          {isAr ? <ChevronLeft size={20} className="text-[#0D4A5F]/70" /> : <ChevronRight size={20} className="text-[#0D4A5F]/70" />}
         </button>
 
         <button
           type="button"
           onClick={() => onNavigate && onNavigate('schedule')}
-          className="w-full p-4 sm:p-4.5 flex items-center justify-between hover:bg-slate-50 transition text-start"
+          className="w-full p-4 sm:px-6 sm:py-4 flex items-center justify-between hover:bg-slate-50 transition text-start"
         >
           <div className="flex items-center gap-3.5">
-            <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
-              <Calendar size={18} />
-            </div>
-            <span className="text-xs font-bold text-slate-800">
+            <Calendar size={22} className="text-[#0D4A5F]" />
+            <span className="text-[15px] font-medium text-[#0D4A5F]">
               {isAr ? 'جدولي الدراسي' : 'Study Schedule'}
             </span>
           </div>
-          {isAr ? <ChevronLeft size={18} className="text-slate-400" /> : <ChevronRight size={18} className="text-slate-400" />}
+          {isAr ? <ChevronLeft size={20} className="text-[#0D4A5F]/70" /> : <ChevronRight size={20} className="text-[#0D4A5F]/70" />}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setLanguage(isAr ? 'en' : 'ar')}
+          className="w-full p-4 sm:px-6 sm:py-4 flex items-center justify-between hover:bg-slate-50 transition text-start"
+        >
+          <div className="flex items-center gap-3.5">
+            <Globe size={22} className="text-[#0D4A5F]" />
+            <span className="text-[15px] font-medium text-[#0D4A5F]">
+              {isAr ? 'لغة التطبيق' : 'Application Language'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-[#0D4A5F]/50">
+              {isAr ? 'العربية' : 'English'}
+            </span>
+            {isAr ? <ChevronLeft size={20} className="text-[#0D4A5F]/70" /> : <ChevronRight size={20} className="text-[#0D4A5F]/70" />}
+          </div>
         </button>
 
         <button
           type="button"
           onClick={() => onNavigate && onNavigate('support')}
-          className="w-full p-4 sm:p-4.5 flex items-center justify-between hover:bg-slate-50 transition text-start"
+          className="w-full p-4 sm:px-6 sm:py-4 flex items-center justify-between hover:bg-slate-50 transition text-start"
         >
           <div className="flex items-center gap-3.5">
-            <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-              <Headphones size={18} />
-            </div>
-            <span className="text-xs font-bold text-slate-800">
-              {isAr ? 'الدعم الفني والمساعدة' : 'Technical Support'}
+            <HelpCircle size={22} className="text-[#0D4A5F]" />
+            <span className="text-[15px] font-medium text-[#0D4A5F]">
+              {isAr ? 'الأسئلة الشائعة' : 'FAQs'}
             </span>
           </div>
-          {isAr ? <ChevronLeft size={18} className="text-slate-400" /> : <ChevronRight size={18} className="text-slate-400" />}
+          {isAr ? <ChevronLeft size={20} className="text-[#0D4A5F]/70" /> : <ChevronRight size={20} className="text-[#0D4A5F]/70" />}
         </button>
 
         <button
           type="button"
-          onClick={handleLogoutClick}
-          className="w-full p-4 sm:p-4.5 flex items-center justify-between hover:bg-red-50 transition text-start group"
+          onClick={() => onNavigate && onNavigate('support')}
+          className="w-full p-4 sm:px-6 sm:py-4 flex items-center justify-between hover:bg-slate-50 transition text-start"
         >
           <div className="flex items-center gap-3.5">
-            <div className="w-9 h-9 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
-              <LogOut size={18} />
-            </div>
-            <span className="text-xs font-bold text-red-600">
+            <Headphones size={22} className="text-[#0D4A5F]" />
+            <span className="text-[15px] font-medium text-[#0D4A5F]">
+              {isAr ? 'الدعم الفني' : 'Technical Support'}
+            </span>
+          </div>
+          {isAr ? <ChevronLeft size={20} className="text-[#0D4A5F]/70" /> : <ChevronRight size={20} className="text-[#0D4A5F]/70" />}
+        </button>
+
+        <a
+          href="/about"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full p-4 sm:px-6 sm:py-4 flex items-center justify-between hover:bg-slate-50 transition text-start"
+        >
+          <div className="flex items-center gap-3.5">
+            <Info size={22} className="text-[#0D4A5F]" />
+            <span className="text-[15px] font-medium text-[#0D4A5F]">
+              {isAr ? 'عن التطبيق' : 'About App'}
+            </span>
+          </div>
+          {isAr ? <ChevronLeft size={20} className="text-[#0D4A5F]/70" /> : <ChevronRight size={20} className="text-[#0D4A5F]/70" />}
+        </a>
+
+        <button
+          type="button"
+          onClick={handleLogoutClick}
+          className="w-full p-4 sm:px-6 sm:py-4 flex items-center justify-between hover:bg-red-50 transition text-start group"
+        >
+          <div className="flex items-center gap-3.5">
+            <LogOut size={22} className="text-red-600" />
+            <span className="text-[15px] font-bold text-red-600">
               {isAr ? 'تسجيل الخروج' : 'Log Out'}
             </span>
           </div>
-          {isAr ? <ChevronLeft size={18} className="text-red-400 group-hover:text-red-600" /> : <ChevronRight size={18} className="text-red-400 group-hover:text-red-600" />}
+          {isAr ? <ChevronLeft size={20} className="text-red-400 group-hover:text-red-600" /> : <ChevronRight size={20} className="text-red-400 group-hover:text-red-600" />}
         </button>
       </div>
 
