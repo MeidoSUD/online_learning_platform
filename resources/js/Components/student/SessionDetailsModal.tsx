@@ -3,26 +3,90 @@ import { useLanguage } from '../../Contexts/LanguageContext';
 import { studentService, Session } from '../../Services/api';
 import { getSessionState } from '../../Utils/sessionStatus';
 import {
-    X, Calendar, Clock, Star, StarHalf, Video, User, School,
-    Info, Timer, Tag, PieChart, Hash, ChevronRight,
-    Loader2, AlertCircle, CheckCircle, ShieldAlert, Send,
-    MessageSquare, HelpCircle, FileText
+    X, Calendar, Clock, Star, Video, BookOpen,
+    Info, Timer, Percent,
+    Loader2, ShieldAlert, Send
 } from 'lucide-react';
 
 interface SessionDetailsModalProps {
     session: Session | null;
+    displayNumber?: number;
+    displayTotal?: number;
     isOpen: boolean;
     onClose: () => void;
     onJoinSession: (sessionId: number) => void;
     joining?: boolean;
 }
 
-export const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({
-    session, isOpen, onClose, onJoinSession, joining
-}) => {
-    const { t, language, direction } = useLanguage();
+function formatTime(time: string, language: string): string {
+    if (!time) return '';
+    try {
+        const [h, m] = time.split(':');
+        const hour = parseInt(h);
+        const minute = parseInt(m);
+        const isAr = language === 'ar';
+        const ampm = isAr ? (hour >= 12 ? 'م' : 'ص') : (hour >= 12 ? 'PM' : 'AM');
+        const h12 = hour % 12 || 12;
+        return `${h12}:${minute.toString().padStart(2, '0')} ${ampm}`;
+    } catch {
+        return time.substring(0, 5);
+    }
+}
 
-    // Review state
+function formatDate(dateStr: string, language: string): string {
+    if (!dateStr) return '';
+    try {
+        const raw = (dateStr || '').split('T')[0].split(' ')[0];
+        const [y, m, day] = raw.split('-').map(Number);
+        const d = (y && m && day) ? new Date(y, m - 1, day) : new Date(dateStr);
+        const isAr = language === 'ar';
+        const now = new Date();
+        const isToday = d.getFullYear() === now.getFullYear() &&
+                        d.getMonth() === now.getMonth() &&
+                        d.getDate() === now.getDate();
+
+        const formatted = d.toLocaleDateString(isAr ? 'ar-SA-u-nu-latn' : 'en-US', {
+            weekday: 'short',
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric'
+        });
+
+        if (isToday) {
+            return isAr ? `اليوم، ${formatted}` : `Today, ${formatted}`;
+        }
+        return formatted;
+    } catch {
+        return dateStr;
+    }
+}
+
+function getDuration(start: string, end: string, language: string): string {
+    if (!start || !end) return '';
+    const [sh, sm] = start.split(':').map(Number);
+    const [eh, em] = end.split(':').map(Number);
+    const diff = (eh * 60 + em) - (sh * 60 + sm);
+    if (diff <= 0) return '';
+    const h = Math.floor(diff / 60);
+    const m = diff % 60;
+    if (language === 'ar') {
+        if (h === 1 && m === 0) return 'ساعة واحدة';
+        if (h === 2 && m === 0) return 'ساعتان';
+        if (h > 0 && m > 0) return `${h} س ${m} د`;
+        if (h > 0) return `${h} ساعات`;
+        return `${m} دقيقة`;
+    }
+    if (h === 0) return `${m}m`;
+    if (m === 0) return `${h}h`;
+    return `${h}h ${m}m`;
+}
+
+export const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({
+    session, displayNumber, displayTotal, isOpen, onClose, onJoinSession, joining
+}) => {
+    const { language, direction } = useLanguage();
+    const isAr = language === 'ar';
+
     const [review, setReview] = useState<any>(null);
     const [canReview, setCanReview] = useState(false);
     const [reviewLoading, setReviewLoading] = useState(true);
@@ -31,7 +95,6 @@ export const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({
     const [reviewComment, setReviewComment] = useState('');
     const [reviewSubmitting, setReviewSubmitting] = useState(false);
 
-    // Complaint state
     const [complaint, setComplaint] = useState<any>(null);
     const [hasComplaint, setHasComplaint] = useState(false);
     const [complaintLoading, setComplaintLoading] = useState(true);
@@ -40,21 +103,48 @@ export const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({
     const [complaintSubmitting, setComplaintSubmitting] = useState(false);
 
     useEffect(() => {
-        if (isOpen && session && (session.status === 'ended' || session.status === 'completed')) {
-            loadReview();
-            loadComplaint();
+        if (isOpen && session) {
+            const rawStatus = (session.status || '').toLowerCase();
+            const ended = rawStatus === 'ended' || rawStatus === 'completed' || rawStatus === 'finished' || rawStatus === 'cancelled';
+            if (ended) {
+                loadReview();
+                loadComplaint();
+            }
         }
     }, [isOpen, session?.id]);
 
     if (!isOpen || !session) return null;
 
-    const isFinished = session.status === 'ended' || session.status === 'completed';
-    const isLive = session.status === 'live' || session.status === 'wait_for_teacher';
-    const isScheduled = session.status === 'scheduled';
-    const status = session.status?.toLowerCase() || '';
+    const rawStatus = (session.status || '').toLowerCase();
+    const isEnded = rawStatus === 'ended' || rawStatus === 'completed' || rawStatus === 'finished' || rawStatus === 'cancelled';
+    const isLive = rawStatus === 'live' || rawStatus === 'wait_for_teacher' || getSessionState(session, 15) === 'live';
 
-    const canJoinSession = isLive || getSessionState(session, 15) === 'live';
-    const isPastSession = !isFinished && getSessionState(session, 15) === 'finished';
+    const subjectName = session.subject
+        ? (isAr ? session.subject.name_ar || session.subject.name_en : session.subject.name_en || session.subject.name_ar)
+        : (session.booking?.reference || (isAr ? 'جلسة تعليمية' : 'Session'));
+
+    const teacherName = session.teacher?.name || (isAr ? 'غير محدد' : 'Unknown');
+    const displayTeacherName = teacherName.startsWith('أ.') ? teacherName : `أ. ${teacherName}`;
+
+    const reference = session.booking?.reference || `BK${session.id}`;
+    const currentNum = displayNumber || session.session_number || 1;
+    const totalNum = displayTotal || session.booking?.total_sessions || 1;
+    const showOrder = totalNum > 1;
+
+    const dateText = formatDate(session.session_date, language);
+    const startTimeText = formatTime(session.start_time, language);
+    const endTimeText = formatTime(session.end_time, language);
+    const timeRangeText = `${startTimeText} - ${endTimeText}`;
+    const durationText = getDuration(session.start_time, session.end_time, language) || `${session.duration || 60} ${isAr ? 'دقيقة' : 'min'}`;
+
+    const statusText = isEnded ? (isAr ? 'منتهية' : 'Finished') : (isAr ? 'نشطة' : 'Active');
+    const bookingTypeRaw = (session.booking?.type || '').toLowerCase();
+    const bookingTypeText = bookingTypeRaw === 'group'
+        ? (isAr ? 'جماعي' : 'Group')
+        : (isAr ? 'فردي' : 'Single');
+
+    const completed = session.booking?.completed_sessions || (isEnded ? totalNum : 0);
+    const completionRatio = `${completed}/${totalNum}`;
 
     const loadReview = async () => {
         setReviewLoading(true);
@@ -65,11 +155,11 @@ export const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({
                 setCanReview(res.can_review || false);
             } else {
                 setReview(null);
-                setCanReview(false);
+                setCanReview(true);
             }
-        } catch (e) {
+        } catch {
             setReview(null);
-            setCanReview(false);
+            setCanReview(true);
         } finally {
             setReviewLoading(false);
         }
@@ -79,23 +169,23 @@ export const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({
         setComplaintLoading(true);
         try {
             const res = await studentService.getSessionComplaint(session.id);
-            if (res.success) {
+            if (res.success && res.data) {
                 setComplaint(res.data);
                 setHasComplaint(true);
             } else {
-                setHasComplaint(false);
                 setComplaint(null);
+                setHasComplaint(false);
             }
-        } catch (e) {
-            setHasComplaint(false);
+        } catch {
             setComplaint(null);
+            setHasComplaint(false);
         } finally {
             setComplaintLoading(false);
         }
     };
 
     const handleSubmitReview = async () => {
-        if (!session) return;
+        if (!session.teacher?.id) return;
         setReviewSubmitting(true);
         try {
             const res = await studentService.addTeacherReview(session.teacher.id, {
@@ -108,19 +198,19 @@ export const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({
                 setCanReview(false);
                 setShowReviewForm(false);
             } else {
-                alert(res.message || (language === 'ar' ? 'فشل إضافة التقييم' : 'Failed to add review'));
+                alert(res.message || (isAr ? 'فشل إضافة التقييم' : 'Failed to add review'));
             }
         } catch (e: any) {
-            alert(e.message || (language === 'ar' ? 'فشل إضافة التقييم' : 'Failed to add review'));
+            alert(e.message || (isAr ? 'فشل إضافة التقييم' : 'Failed to add review'));
         } finally {
             setReviewSubmitting(false);
         }
     };
 
     const handleSubmitComplaint = async () => {
-        if (!session) return;
+        if (!session.teacher?.id) return;
         if (!complaintReason.trim()) {
-            alert(language === 'ar' ? 'يرجى كتابة سبب الشكوى' : 'Please enter a reason for the complaint');
+            alert(isAr ? 'يرجى كتابة سبب الشكوى' : 'Please enter complaint reason');
             return;
         }
         setComplaintSubmitting(true);
@@ -135,395 +225,345 @@ export const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({
                 setHasComplaint(true);
                 setShowComplaintForm(false);
             } else {
-                alert(res.message || (language === 'ar' ? 'فشل إرسال الشكوى' : 'Failed to submit complaint'));
+                alert(res.message || (isAr ? 'فشل إرسال الشكوى' : 'Failed to submit complaint'));
             }
         } catch (e: any) {
-            alert(e.message || (language === 'ar' ? 'فشل إرسال الشكوى' : 'Failed to submit complaint'));
+            alert(e.message || (isAr ? 'فشل إرسال الشكوى' : 'Failed to submit complaint'));
         } finally {
             setComplaintSubmitting(false);
         }
     };
 
-    const getDuration = (start: string, end: string) => {
-        if (!start || !end) return `${session.duration || 0} min`;
-        const [sh, sm] = start.split(':').map(Number);
-        const [eh, em] = end.split(':').map(Number);
-        const diff = (eh * 60 + em) - (sh * 60 + sm);
-        const h = Math.floor(diff / 60);
-        const m = diff % 60;
-        if (h > 0) return `${h}h ${m > 0 ? `${m}m` : ''}`;
-        return `${m}m`;
-    };
-
-    const formatTime = (time: string) => {
-        if (!time) return '';
-        return time.substring(0, 5);
-    };
-
-    const formatDate = (date: string) => {
-        if (!date) return '';
-        const d = new Date(date.split('T')[0] || date);
-        return d.toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US', {
-            day: 'numeric', month: 'short', year: 'numeric',
-        });
-    };
-
-    const getStatusColor = () => {
-        switch (status) {
-            case 'live': return { text: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', icon: Video };
-            case 'ended':
-            case 'completed': return { text: 'text-[var(--text-muted)]', bg: 'bg-[var(--light-bg)]', border: 'border-[var(--border)]', icon: CheckCircle };
-            case 'cancelled': return { text: 'text-red-500', bg: 'bg-red-50', border: 'border-red-200', icon: X };
-            case 'wait_for_teacher': return { text: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200', icon: Clock };
-            default: return { text: 'text-secondary', bg: 'bg-secondary-pale', border: 'border-secondary/30', icon: Calendar };
-        }
-    };
-
-    const statusColors = getStatusColor();
-    const StatusIcon = statusColors.icon;
-    const statusLabel = status === 'live' ? (language === 'ar' ? 'مباشر' : 'Live')
-        : status === 'ended' || status === 'completed' ? (language === 'ar' ? 'منتهية' : 'Ended')
-        : status === 'cancelled' ? (language === 'ar' ? 'ملغية' : 'Cancelled')
-        : status === 'wait_for_teacher' ? (language === 'ar' ? 'انتظار' : 'Waiting')
-        : status === 'scheduled' ? (language === 'ar' ? 'مجدولة' : 'Scheduled')
-        : status;
-
-    const subjectName = session.subject
-        ? (language === 'ar' ? session.subject.name_ar : session.subject.name_en)
-        : session.session_title || (language === 'ar' ? 'جلسة' : 'Session');
-
-    const infoCards = [
-        { icon: Info, title: language === 'ar' ? 'الحالة' : 'Status', value: statusLabel, color: 'text-secondary' },
-        { icon: Timer, title: language === 'ar' ? 'المدة' : 'Duration', value: getDuration(session.start_time, session.end_time), color: 'text-primary' },
-        { icon: Tag, title: language === 'ar' ? 'نوع الحجز' : 'Booking Type', value: session.booking?.type || (language === 'ar' ? 'غير محدد' : 'Unspecified'), color: 'text-orange-500' },
-        {
-            icon: PieChart, title: language === 'ar' ? 'المكتمل' : 'Completed',
-            value: '',
-            color: 'text-purple-500',
-            customValue: (
-                <span className="text-sm font-bold text-[var(--text-main)]" dir="ltr">
-                    {session.booking?.completed_sessions || 0} / {session.booking?.total_sessions || 0}
-                </span>
-            ),
-        },
-        { icon: Hash, title: language === 'ar' ? 'رقم المرجع' : 'Reference', value: `#${session.booking?.reference || '-'}`, color: 'text-teal-500' },
-    ];
-
-    if (!isOpen) return null;
-
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-            <div className="relative bg-white rounded-[var(--radius-lg)] shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden animate-slide-up">
-                {/* Header */}
-                <div className="bg-white px-6 pt-6 pb-4 border-b border-[var(--border)]">
-                    <div className="flex items-center justify-between mb-4">
-                        <button onClick={onClose} className="p-2 rounded-full hover:bg-[var(--light-bg)] transition-colors">
-                            <X size={20} className="text-[var(--text-muted)]" />
-                        </button>
-                        <h3 className="text-lg font-bold text-[var(--text-main)]">
-                            {language === 'ar' ? 'تفاصيل الجلسة' : 'Session Details'}
-                        </h3>
-                        <div className="w-9" />
-                    </div>
-
-                    {/* Title + Subject + Status */}
-                    <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                            <h2 className="text-xl font-bold text-primary leading-tight truncate">{subjectName}</h2>
-                            <p className="text-sm text-[var(--text-muted)] font-medium mt-1">
-                                {session.session_title || subjectName}
-                            </p>
-                        </div>
-                        <span className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border ${statusColors.bg} ${statusColors.text} ${statusColors.border}`}>
-                            <StatusIcon size={14} />
-                            {statusLabel}
-                        </span>
-                    </div>
-
-                    {/* Date & Time Badges */}
-                    <div className="flex gap-3 mt-4">
-                        <span className="inline-flex items-center gap-2 px-3.5 py-2 bg-[var(--light-bg)] rounded-[var(--radius-md)] border border-[var(--border)] text-xs font-semibold text-navy">
-                            <Calendar size={15} className="text-primary" />
-                            {formatDate(session.session_date)}
-                        </span>
-                        <span className="inline-flex items-center gap-2 px-3.5 py-2 bg-[var(--light-bg)] rounded-[var(--radius-md)] border border-[var(--border)] text-xs font-semibold text-navy">
-                            <Clock size={15} className="text-orange-500" />
-                            {formatTime(session.start_time)} - {formatTime(session.end_time)}
-                        </span>
-                    </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+            <div
+                dir={direction}
+                className="relative bg-[#EFF6F4] rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden animate-slide-up"
+            >
+                <div className="bg-white px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                    <h3 className="text-base font-bold text-[#0D4A5F]">
+                        {isAr ? 'تفاصيل الجلسة' : 'Session Details'}
+                    </h3>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="p-1.5 rounded-full hover:bg-slate-100 transition-colors text-[#738989]"
+                    >
+                        <X size={20} />
+                    </button>
                 </div>
 
-                {/* Scrollable Content */}
-                <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-                    {/* Info Section */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                    <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-2">
+                        <div className="flex items-start justify-between">
+                            <div className="w-10 h-10 rounded-xl bg-[#E8F1F3] text-[#0D4A5F] flex items-center justify-center shrink-0">
+                                <BookOpen size={20} />
+                            </div>
+                            <span className="px-3 py-1 rounded-lg text-xs font-bold bg-[#A6D388] text-[#144D25]">
+                                {isAr ? `رقم المرجع: ${reference}` : `Ref: ${reference}`}
+                            </span>
+                        </div>
+
+                        <h2 className="text-lg font-bold text-[#171717] pt-1 leading-snug">
+                            {subjectName}
+                        </h2>
+
+                        {showOrder && (
+                            <div>
+                                <span className="inline-block px-2.5 py-1 rounded-lg text-xs font-bold bg-[#E8F0FE] text-[#0D4A5F]">
+                                    {isAr ? `الجلسة ${currentNum} من ${totalNum}` : `Session ${currentNum} of ${totalNum}`}
+                                </span>
+                            </div>
+                        )}
+                    </div>
+
                     <div>
-                        <h4 className="text-sm font-bold text-navy mb-3">
-                            {language === 'ar' ? 'معلومات الجلسة' : 'Session Info'}
-                        </h4>
-                        <div className="space-y-3">
-                            {infoCards.map((card, i) => (
-                                <div key={i} className="flex items-center gap-3 p-3.5 bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)]">
-                                    <div className={`p-2.5 rounded-[var(--radius-md)] bg-[var(--light-bg)] border border-[var(--border)] ${card.color}`}>
-                                        <card.icon size={20} />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider">{card.title}</p>
-                                        {card.customValue || (
-                                            <p className="text-sm font-bold text-[var(--text-main)] truncate">{card.value}</p>
-                                        )}
-                                    </div>
+                        <p className="text-xs font-semibold text-[#738989] mb-2 px-1">
+                            {isAr ? 'تفاصيل الجلسة' : 'Session Details'}
+                        </p>
+                        <div className="grid grid-cols-2 gap-2.5">
+                            <div className="bg-white rounded-xl p-3 shadow-sm border border-slate-100 flex flex-col justify-center">
+                                <div className="flex items-center gap-1.5 text-xs text-[#738989] mb-1">
+                                    <Calendar size={14} />
+                                    <span>{isAr ? 'التاريخ' : 'Date'}</span>
                                 </div>
-                            ))}
+                                <span className="text-sm font-bold text-[#171717] truncate">{dateText}</span>
+                            </div>
+
+                            <div className="bg-white rounded-xl p-3 shadow-sm border border-slate-100 flex flex-col justify-center">
+                                <div className="flex items-center gap-1.5 text-xs text-[#738989] mb-1">
+                                    <Clock size={14} />
+                                    <span>{isAr ? 'الوقت' : 'Time'}</span>
+                                </div>
+                                <span className="text-sm font-bold text-[#171717] truncate" dir="ltr">{timeRangeText}</span>
+                            </div>
+
+                            <div className="bg-white rounded-xl p-3 shadow-sm border border-slate-100 flex flex-col justify-center">
+                                <div className="flex items-center gap-1.5 text-xs text-[#738989] mb-1">
+                                    <Timer size={14} />
+                                    <span>{isAr ? 'المدة' : 'Duration'}</span>
+                                </div>
+                                <span className="text-sm font-bold text-[#171717] truncate">{durationText}</span>
+                            </div>
+
+                            <div className="bg-white rounded-xl p-3 shadow-sm border border-slate-100 flex flex-col justify-center">
+                                <div className="flex items-center gap-1.5 text-xs text-[#738989] mb-1">
+                                    <Info size={14} />
+                                    <span>{isAr ? 'الحالة' : 'Status'}</span>
+                                </div>
+                                <div>
+                                    <span className={`inline-block px-2.5 py-0.5 rounded-md text-xs font-bold ${
+                                        isEnded
+                                            ? 'bg-[#F0F4F5] text-[#738989]'
+                                            : 'bg-[#EAF5E9] text-[#3D8B37]'
+                                    }`}>
+                                        {statusText}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-xl p-3 shadow-sm border border-slate-100 flex flex-col justify-center">
+                                <div className="flex items-center gap-1.5 text-xs text-[#738989] mb-1">
+                                    <Percent size={14} />
+                                    <span>{isAr ? 'المكتمل' : 'Completed'}</span>
+                                </div>
+                                <span className="text-sm font-bold text-[#171717] truncate" dir="ltr">{completionRatio}</span>
+                            </div>
+
+                            <div className="bg-white rounded-xl p-3 shadow-sm border border-slate-100 flex flex-col justify-center">
+                                <div className="flex items-center gap-1.5 text-xs text-[#738989] mb-1">
+                                    <BookOpen size={14} />
+                                    <span>{isAr ? 'نوع الحجز' : 'Booking Type'}</span>
+                                </div>
+                                <span className="text-sm font-bold text-[#171717] truncate">{bookingTypeText}</span>
+                            </div>
                         </div>
                     </div>
 
-                    {/* User Section */}
                     <div>
-                        <h4 className="text-sm font-bold text-navy mb-3">
-                            {language === 'ar' ? 'معلومات المعلم' : 'Teacher Info'}
-                        </h4>
-                        <div className="flex items-center gap-3 p-4 bg-[var(--light-bg)] rounded-[var(--radius-md)] border border-[var(--border)]">
-                            <div className="h-11 w-11 rounded-[var(--radius-md)] bg-primary/10 border border-primary/20 flex items-center justify-center">
-                                <User size={22} className="text-primary" />
+                        <p className="text-xs font-semibold text-[#738989] mb-2 px-1">
+                            {isAr ? 'المعلم' : 'Teacher'}
+                        </p>
+                        <div className="bg-white rounded-2xl p-3.5 shadow-sm border border-slate-100 flex items-center gap-3">
+                            <div className="w-11 h-11 rounded-full border border-slate-200 overflow-hidden bg-slate-50 shrink-0 flex items-center justify-center">
+                                <span className="text-sm font-bold text-[#0D4A5F]">
+                                    {(teacherName.charAt(0) || 'أ').toUpperCase()}
+                                </span>
                             </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-[var(--text-main)] truncate">
-                                    {session.teacher?.name || (language === 'ar' ? 'غير معروف' : 'Unknown')}
-                                </p>
-                                {session.teacher?.email && (
-                                    <p className="text-xs text-[var(--text-muted)] truncate">{session.teacher.email}</p>
-                                )}
+                            <div className="min-w-0">
+                                <h4 className="text-sm font-bold text-[#0D4A5F] truncate">
+                                    {displayTeacherName}
+                                </h4>
+                                <div className="flex items-center gap-1.5 text-xs text-[#738989] mt-0.5">
+                                    <BookOpen size={13} className="shrink-0" />
+                                    <span className="truncate">{subjectName}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Review Section - Only for finished sessions */}
-                    {isFinished && (
-                        <div>
+                    {isEnded && (
+                        <div className="space-y-3 pt-1">
                             {reviewLoading ? (
-                                <div className="flex justify-center py-4">
-                                    <Loader2 size={20} className="animate-spin text-primary" />
+                                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex justify-center">
+                                    <Loader2 size={20} className="animate-spin text-[#0D4A5F]" />
                                 </div>
                             ) : review ? (
-                                /* Existing Review */
-                                <div className="rounded-[var(--radius-md)] border border-[var(--border)] p-4 bg-white shadow-[var(--shadow-sm)]">
-                                    <div className="flex items-center justify-between mb-3">
-                                        <span className="text-[11px] text-[var(--text-muted)]">
-                                            {review.created_at ? formatDate(review.created_at) : ''}
-                                        </span>
-                                        <h4 className="text-sm font-bold text-[var(--text-main)]">
-                                            {language === 'ar' ? 'التقييم' : 'Rating'}
+                                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <h4 className="text-sm font-bold text-[#171717]">
+                                            {isAr ? 'تقييم الجلسة' : 'Session Review'}
                                         </h4>
+                                        <span className="text-xs text-[#738989]">
+                                            {review.created_at ? formatDate(review.created_at, language) : ''}
+                                        </span>
                                     </div>
-                                    <div className="flex items-center gap-1 mb-2">
-                                        <span className="text-lg font-bold text-[var(--text-main)]">{review.rating}/5</span>
-                                        <div className="flex gap-0.5">
-                                            {[1, 2, 3, 4, 5].map(i => (
-                                                <Star
-                                                    key={i}
-                                                    size={18}
-                                                    className={i <= review.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-200'}
-                                                />
-                                            ))}
-                                        </div>
+                                    <div className="flex items-center gap-1">
+                                        {[1, 2, 3, 4, 5].map(i => (
+                                            <Star
+                                                key={i}
+                                                size={16}
+                                                className={i <= (review.rating || 5) ? 'text-amber-400 fill-amber-400' : 'text-slate-200'}
+                                            />
+                                        ))}
+                                        <span className="text-xs font-bold text-[#171717] mr-1">
+                                            {review.rating}/5
+                                        </span>
                                     </div>
                                     {review.comment && (
-                                        <div className="mt-2 p-3 bg-[var(--light-bg)] rounded-lg">
-                                            <p className="text-sm text-[var(--text-muted)] leading-relaxed">{review.comment}</p>
-                                        </div>
+                                        <p className="text-xs text-[#738989] bg-slate-50 p-2.5 rounded-xl">
+                                            {review.comment}
+                                        </p>
                                     )}
-                                    <p className="text-[11px] text-[var(--text-muted)] mt-2">
-                                        {language === 'ar' ? 'بواسطة' : 'By'} {review.reviewer?.name || (language === 'ar' ? 'مقيم' : 'Reviewer')}
+                                    <p className="text-xs text-[#738989] pt-1">
+                                        {isAr
+                                            ? `بواسطة: ${review.reviewer?.name || (review.reviewer?.first_name ? `${review.reviewer.first_name} ${review.reviewer.last_name || ''}`.trim() : null) || session.student?.name || 'طالب'}`
+                                            : `By: ${review.reviewer?.name || (review.reviewer?.first_name ? `${review.reviewer.first_name} ${review.reviewer.last_name || ''}`.trim() : null) || session.student?.name || 'Student'}`
+                                        }
                                     </p>
                                 </div>
                             ) : canReview && !showReviewForm ? (
-                                /* Add Review Button */
-                                <div className="rounded-[var(--radius-md)] border border-[var(--border)] p-5 bg-white shadow-[var(--shadow-sm)] text-center">
-                                    <Star size={40} className="mx-auto text-amber-300 mb-3" />
-                                    <h4 className="text-base font-bold text-[var(--text-main)] mb-1">
-                                        {language === 'ar' ? 'قيم تجربتك' : 'Rate your experience'}
+                                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 text-center space-y-2">
+                                    <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center mx-auto">
+                                        <Star size={20} className="fill-amber-400" />
+                                    </div>
+                                    <h4 className="text-sm font-bold text-[#171717]">
+                                        {isAr ? 'تقييم الجلسة والمعلم' : 'Rate Session & Teacher'}
                                     </h4>
-                                    <p className="text-sm text-[var(--text-muted)] mb-4">
-                                        {language === 'ar' ? 'ساعد الآخرين في اختيار المعلم المناسب' : 'Help others choose the right teacher'}
+                                    <p className="text-xs text-[#738989]">
+                                        {isAr ? 'شاركنا رأيك حول أداء المعلم وجودة الشرح' : 'Share your feedback on teacher performance'}
                                     </p>
                                     <button
+                                        type="button"
                                         onClick={() => setShowReviewForm(true)}
-                                        className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-br from-[var(--green-light)] to-[var(--green)] text-white rounded-[50px] font-bold text-sm hover:-translate-y-[2px] transition-all shadow-[0_6px_20px_rgba(61,139,55,.35)]"
+                                        className="w-full py-2.5 bg-[#3D8B37] text-white rounded-xl text-xs font-bold hover:bg-[#32732d] transition-colors"
                                     >
-                                        <Star size={16} />
-                                        {language === 'ar' ? 'إضافة تقييم' : 'Add Review'}
+                                        {isAr ? 'إضافة تقييم' : 'Add Review'}
                                     </button>
                                 </div>
                             ) : showReviewForm ? (
-                                /* Review Form */
-                                <div className="rounded-[var(--radius-md)] border border-[var(--border)] p-5 bg-white shadow-[var(--shadow-sm)]">
-                                    <h4 className="text-base font-bold text-[var(--text-main)] mb-4 text-center">
-                                        {language === 'ar' ? 'تقييم المعلم' : 'Evaluate Teacher'}
+                                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-3">
+                                    <h4 className="text-sm font-bold text-[#171717] text-center">
+                                        {isAr ? 'تقييم المعلم' : 'Rate Teacher'}
                                     </h4>
-                                    <p className="text-sm font-semibold text-[var(--text-muted)] mb-3 text-center">{session.teacher?.name}</p>
-
-                                    <div className="flex justify-center gap-1 mb-4">
+                                    <div className="flex justify-center gap-1.5">
                                         {[1, 2, 3, 4, 5].map(i => (
-                                            <button key={i} onClick={() => setReviewRating(i)} className="transition-transform hover:scale-110">
+                                            <button
+                                                key={i}
+                                                type="button"
+                                                onClick={() => setReviewRating(i)}
+                                                className="transition-transform hover:scale-110"
+                                            >
                                                 <Star
-                                                    size={36}
-                                                    className={i <= reviewRating ? 'text-amber-400 fill-amber-400' : 'text-slate-200 hover:text-amber-300'}
+                                                    size={28}
+                                                    className={i <= reviewRating ? 'text-amber-400 fill-amber-400' : 'text-slate-200'}
                                                 />
                                             </button>
                                         ))}
                                     </div>
-
                                     <textarea
                                         value={reviewComment}
                                         onChange={(e) => setReviewComment(e.target.value)}
-                                        placeholder={language === 'ar' ? 'تعليق (اختياري)...' : 'Comment (optional)...'}
+                                        placeholder={isAr ? 'أضف تعليقك حول الجلسة (اختياري)...' : 'Add your comment (optional)...'}
                                         rows={3}
-                                        className="w-full p-3 rounded-[var(--radius-md)] border border-[var(--border)] text-sm focus:outline-none focus:border-primary resize-none"
-                                        dir={direction}
+                                        className="w-full p-2.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-[#3D8B37] resize-none"
                                     />
-
-                                    <div className="flex gap-3 mt-4">
+                                    <div className="flex gap-2">
                                         <button
-                                            onClick={() => { setShowReviewForm(false); setReviewComment(''); setReviewRating(5); }}
-                                            className="flex-1 py-2.5 rounded-[var(--radius-md)] font-semibold text-sm text-[var(--text-muted)] bg-[var(--light-bg)] hover:bg-[var(--border)] transition-colors"
+                                            type="button"
+                                            onClick={() => setShowReviewForm(false)}
+                                            className="flex-1 py-2 text-xs font-bold text-[#738989] bg-slate-100 rounded-xl"
                                         >
-                                            {language === 'ar' ? 'إلغاء' : 'Cancel'}
+                                            {isAr ? 'إلغاء' : 'Cancel'}
                                         </button>
                                         <button
+                                            type="button"
                                             onClick={handleSubmitReview}
                                             disabled={reviewSubmitting}
-                                            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-gradient-to-br from-[var(--green-light)] to-[var(--green)] text-white rounded-[50px] font-bold text-sm hover:-translate-y-[2px] transition-all disabled:opacity-50 shadow-[0_6px_20px_rgba(61,139,55,.35)]"
+                                            className="flex-1 py-2 text-xs font-bold text-white bg-[#3D8B37] rounded-xl flex items-center justify-center gap-1.5 disabled:opacity-50"
                                         >
-                                            {reviewSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                                            {language === 'ar' ? 'إرسال' : 'Send'}
+                                            {reviewSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                                            <span>{isAr ? 'إرسال' : 'Submit'}</span>
                                         </button>
                                     </div>
                                 </div>
                             ) : null}
 
-                            {/* Complaint Section - Student only for finished sessions */}
                             {complaintLoading ? (
-                                <div className="flex justify-center py-3 mt-2">
-                                    <Loader2 size={16} className="animate-spin text-[var(--text-muted)]" />
+                                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex justify-center">
+                                    <Loader2 size={20} className="animate-spin text-[#738989]" />
                                 </div>
                             ) : hasComplaint && complaint ? (
-                                /* Existing Complaint */
-                                <div className={`rounded-[var(--radius-md)] border p-4 mt-3 bg-white shadow-[var(--shadow-sm)] ${complaint.status === 'resolved' || complaint.status === 'closed' ? 'border-green-200' : 'border-orange-200'}`}>
-                                    <div className="flex items-center justify-between mb-2">
-                                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+                                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-1.5 text-amber-600">
+                                            <ShieldAlert size={16} />
+                                            <h4 className="text-xs font-bold">
+                                                {isAr ? 'شكوى مقدمة' : 'Complaint Submitted'}
+                                            </h4>
+                                        </div>
+                                        <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold ${
                                             complaint.status === 'resolved' || complaint.status === 'closed'
-                                                ? 'bg-primary-pale text-primary border-green-200'
-                                                : 'bg-orange-50 text-orange-600 border-orange-200'
+                                                ? 'bg-green-100 text-green-700'
+                                                : 'bg-amber-100 text-amber-700'
                                         }`}>
                                             {complaint.status === 'resolved' || complaint.status === 'closed'
-                                                ? (language === 'ar' ? 'تم الحل' : 'Resolved')
-                                                : (language === 'ar' ? 'قيد المراجعة' : 'Under Review')}
+                                                ? (isAr ? 'تم الحل' : 'Resolved')
+                                                : (isAr ? 'قيد المراجعة' : 'Under Review')}
                                         </span>
-                                        <div className="flex items-center gap-1.5 text-orange-600">
-                                            <ShieldAlert size={16} />
-                                            <span className="text-xs font-bold">{language === 'ar' ? 'شكوى مقدمة' : 'Complaint'}</span>
-                                        </div>
                                     </div>
-                                    <div className="p-3 bg-[var(--light-bg)] rounded-lg mt-2">
-                                        <p className="text-sm text-[var(--text-muted)]">{complaint.reason}</p>
-                                    </div>
+                                    <p className="text-xs text-[#738989] bg-slate-50 p-2.5 rounded-xl">
+                                        {complaint.reason}
+                                    </p>
                                     {complaint.resolution_note && (
-                                        <div className="mt-2 p-3 bg-primary-pale rounded-lg border border-green-100">
-                                            <p className="text-[10px] font-bold text-primary uppercase mb-1">
-                                                {language === 'ar' ? 'رد الإدارة' : 'Admin Reply'}
+                                        <div className="bg-emerald-50 border border-emerald-100 p-2.5 rounded-xl space-y-1">
+                                            <span className="text-[10px] font-bold text-emerald-800">
+                                                {isAr ? 'رد الإدارة' : 'Admin Reply'}
+                                            </span>
+                                            <p className="text-xs text-emerald-900">
+                                                {complaint.resolution_note}
                                             </p>
-                                            <p className="text-sm text-[var(--text-muted)]">{complaint.resolution_note}</p>
                                         </div>
                                     )}
-                                    <p className="text-[10px] text-[var(--text-muted)] mt-2">
-                                        {complaint.created_at ? formatDate(complaint.created_at) : ''}
-                                    </p>
                                 </div>
                             ) : !showComplaintForm ? (
-                                /* Submit Complaint Button */
                                 <button
+                                    type="button"
                                     onClick={() => setShowComplaintForm(true)}
-                                    className="w-full flex items-center justify-center gap-2 py-3 mt-3 rounded-[var(--radius-md)] border-2 border-orange-300 border-dashed text-orange-600 font-bold text-sm hover:bg-orange-50 transition-colors"
+                                    className="w-full py-2.5 bg-white rounded-2xl border border-dashed border-red-200 text-red-600 text-xs font-bold hover:bg-red-50 transition-colors flex items-center justify-center gap-1.5 shadow-sm"
                                 >
-                                    <ShieldAlert size={16} />
-                                    {language === 'ar' ? 'تقديم شكوى' : 'Submit Complaint'}
+                                    <ShieldAlert size={15} />
+                                    <span>{isAr ? 'تقديم شكوى على الجلسة' : 'Submit Complaint'}</span>
                                 </button>
                             ) : (
-                                /* Complaint Form */
-                                <div className="rounded-[var(--radius-md)] border border-orange-200 p-5 mt-3 bg-white shadow-[var(--shadow-sm)]">
-                                    <h4 className="text-base font-bold text-[var(--text-main)] mb-1">
-                                        {language === 'ar' ? 'تقديم شكوى' : 'Submit Complaint'}
+                                <div className="bg-white rounded-2xl p-4 shadow-sm border border-red-100 space-y-3">
+                                    <h4 className="text-sm font-bold text-[#171717]">
+                                        {isAr ? 'تقديم شكوى' : 'Submit Complaint'}
                                     </h4>
-                                    <p className="text-xs text-[var(--text-muted)] mb-4">
-                                        {language === 'ar'
-                                            ? `شكوى بخصوص الجلسة مع ${session.teacher?.name}`
-                                            : `Complaint regarding session with ${session.teacher?.name}`}
-                                    </p>
                                     <textarea
                                         value={complaintReason}
                                         onChange={(e) => setComplaintReason(e.target.value)}
-                                        placeholder={language === 'ar' ? 'اشرح سبب الشكوى...' : 'Explain the reason for your complaint...'}
-                                        rows={4}
-                                        className="w-full p-3 rounded-[var(--radius-md)] border border-[var(--border)] text-sm focus:outline-none focus:border-orange-400 resize-none"
-                                        dir={direction}
+                                        placeholder={isAr ? 'اكتب تفاصيل وسبب الشكوى...' : 'Enter complaint details...'}
+                                        rows={3}
+                                        className="w-full p-2.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-red-400 resize-none"
                                     />
-                                    <div className="flex gap-3 mt-4">
+                                    <div className="flex gap-2">
                                         <button
-                                            onClick={() => { setShowComplaintForm(false); setComplaintReason(''); }}
-                                            className="flex-1 py-2.5 rounded-[var(--radius-md)] font-semibold text-sm text-[var(--text-muted)] bg-[var(--light-bg)] hover:bg-[var(--border)] transition-colors"
+                                            type="button"
+                                            onClick={() => setShowComplaintForm(false)}
+                                            className="flex-1 py-2 text-xs font-bold text-[#738989] bg-slate-100 rounded-xl"
                                         >
-                                            {language === 'ar' ? 'إلغاء' : 'Cancel'}
+                                            {isAr ? 'إلغاء' : 'Cancel'}
                                         </button>
                                         <button
+                                            type="button"
                                             onClick={handleSubmitComplaint}
                                             disabled={complaintSubmitting || !complaintReason.trim()}
-                                            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-gradient-to-br from-[var(--navy)] to-[var(--navy-dark)] text-white rounded-[50px] font-bold text-sm hover:-translate-y-[2px] transition-all disabled:opacity-50 shadow-[0_6px_20px_rgba(27,58,107,.35)]"
+                                            className="flex-1 py-2 text-xs font-bold text-white bg-red-600 rounded-xl flex items-center justify-center gap-1.5 disabled:opacity-50"
                                         >
-                                            {complaintSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                                            {language === 'ar' ? 'إرسال' : 'Submit'}
+                                            {complaintSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                                            <span>{isAr ? 'إرسال الشكوى' : 'Send'}</span>
                                         </button>
                                     </div>
                                 </div>
                             )}
                         </div>
                     )}
-
-                    <div className="h-4" />
                 </div>
 
-                {/* Bottom Action Bar */}
-                <div className="px-6 py-4 border-t border-[var(--border)] bg-white">
-                    {canJoinSession ? (
+                {isLive && (
+                    <div className="p-4 bg-white border-t border-slate-100">
                         <button
+                            type="button"
                             onClick={() => onJoinSession(session.id)}
                             disabled={joining}
-                            className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-br from-[var(--green-light)] to-[var(--green)] text-white rounded-[50px] font-bold text-sm hover:-translate-y-[2px] transition-all shadow-[0_6px_20px_rgba(61,139,55,.35)] disabled:opacity-50"
+                            className="w-full py-3.5 bg-[#3D8B37] text-white rounded-full text-sm font-bold flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
                         >
-                            {joining ? (
-                                <Loader2 size={18} className="animate-spin" />
-                            ) : (
-                                <Video size={18} />
-                            )}
-                            {language === 'ar' ? 'انضمام للجلسة' : 'Join Session'}
+                            {joining ? <Loader2 size={18} className="animate-spin" /> : <Video size={18} />}
+                            <span>{isAr ? 'انضمام للجلسة' : 'Join Session'}</span>
                         </button>
-                    ) : isScheduled && !isPastSession ? (
-                        <div className="flex items-center justify-center gap-2 py-3 bg-secondary-pale text-secondary rounded-[var(--radius-md)] font-bold text-sm border border-secondary/30">
-                            <Clock size={16} />
-                            {language === 'ar' ? 'جلسة قادمة' : 'Upcoming Session'}
-                        </div>
-                    ) : isFinished || isPastSession ? (
-                        <div className="flex items-center justify-center gap-2 py-3 bg-[var(--light-bg)] text-[var(--text-muted)] rounded-[var(--radius-md)] font-bold text-sm">
-                            <CheckCircle size={16} />
-                            {language === 'ar' ? 'جلسة منتهية' : 'Session Ended'}
-                        </div>
-                    ) : (
-                        <div className="flex items-center justify-center gap-2 py-3 bg-[var(--light-bg)] text-[var(--text-muted)] rounded-[var(--radius-md)] font-bold text-sm">
-                            <AlertCircle size={16} />
-                            {session.status}
-                        </div>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
         </div>
     );

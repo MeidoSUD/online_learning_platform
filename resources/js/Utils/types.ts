@@ -215,6 +215,8 @@ export interface TimeSlot {
   id: number;
   time: string;
   session?: any | null;
+  is_booked?: boolean;
+  is_available?: boolean;
 }
 
 export interface AvailableTime {
@@ -254,6 +256,18 @@ export interface Booking {
   reference?: string;
   teacher_name?: string;
   subject?: string | { id: number; name_en: string; name_ar: string;[key: string]: any } | null;
+  service_id?: number;
+  language_id?: number;
+  language?: { id: number; name_en: string; name_ar: string;[key: string]: any } | null;
+  course?: any;
+  service?: any;
+  general_service?: any;
+  schedule?: {
+    first_session_date?: string;
+    first_session_time?: string;
+    next_session_date?: string;
+  };
+  booking_date?: string;
   date?: string;
   time?: string;
 

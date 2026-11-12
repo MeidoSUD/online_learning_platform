@@ -109,17 +109,39 @@ export const MyTransactions: React.FC = () => {
     };
 
     const getSubjectName = (booking: Booking) => {
+        if (!booking) return '';
         if (booking.teacher_subject) {
-            return language === 'ar' ? booking.teacher_subject.name_ar : booking.teacher_subject.name_en;
+            return language === 'ar' ? (booking.teacher_subject.name_ar || booking.teacher_subject.name_en) : (booking.teacher_subject.name_en || booking.teacher_subject.name_ar);
         }
         if (typeof booking.subject === 'object' && booking.subject !== null) {
             const subj = booking.subject as any;
-            return language === 'ar' ? (subj.name_ar || subj.name) : (subj.name_en || subj.name);
+            return language === 'ar' ? (subj.name_ar || subj.name || subj.title_ar || subj.title || subj.name_en) : (subj.name_en || subj.name || subj.title_en || subj.title || subj.name_ar);
         }
-        if (typeof booking.subject === 'string') {
+        if (typeof booking.subject === 'string' && booking.subject.trim()) {
             return booking.subject;
         }
-        return 'N/A';
+        if (booking.language) {
+            return language === 'ar' ? (booking.language.name_ar || booking.language.name_en) : (booking.language.name_en || booking.language.name_ar);
+        }
+        if (booking.course) {
+            return language === 'ar' ? (booking.course.title_ar || booking.course.name_ar || booking.course.title || booking.course.name) : (booking.course.title_en || booking.course.name_en || booking.course.title || booking.course.name);
+        }
+        if (booking.service) {
+            return language === 'ar' ? (booking.service.name_ar || booking.service.name_en) : (booking.service.name_en || booking.service.name_ar);
+        }
+        if (booking.general_service) {
+            return language === 'ar' ? (booking.general_service.title_ar || booking.general_service.name_ar) : (booking.general_service.title_en || booking.general_service.name_en);
+        }
+        if (booking.service_id === 2) {
+            return language === 'ar' ? 'تعلم اللغات' : 'Language Learning';
+        }
+        if (booking.service_id === 3) {
+            return language === 'ar' ? 'الدروس الخصوصية' : 'Private Lessons';
+        }
+        if (booking.service_id === 6) {
+            return language === 'ar' ? 'القدرات والتحصيلي' : 'Abilities and Achievement';
+        }
+        return language === 'ar' ? 'جلسة تعليمية' : 'Educational Session';
     };
 
     if (loading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin text-primary" /></div>;
@@ -167,7 +189,15 @@ export const MyTransactions: React.FC = () => {
                                                 {getSubjectName(booking)}
                                             </td>
                                             <td className="px-6 py-4 text-[var(--text-muted)]">
-                                                {booking.created_at ? new Date(booking.created_at).toLocaleDateString() : 'N/A'}
+                                                {(() => {
+                                                    const d = booking.created_at || booking.booking_date || booking.schedule?.first_session_date;
+                                                    if (!d) return 'N/A';
+                                                    try {
+                                                        return new Date(d).toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US');
+                                                    } catch {
+                                                        return String(d).split('T')[0];
+                                                    }
+                                                })()}
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide ${

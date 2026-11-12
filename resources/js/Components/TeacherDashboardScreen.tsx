@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { authService, AuthResponse, UserData } from '../Services/api';
 import { Navbar } from './Navbar';
@@ -17,6 +16,12 @@ import { ConsultationTab } from './teacher/ConsultationTab';
 import { DisputesTab } from './student/DisputesTab';
 import { SupportTab } from './dashboard/SupportTab';
 import { AiAssistantTab } from './dashboard/AiAssistantTab';
+import { TeacherOrdersTab } from './teacher/TeacherOrdersTab';
+import { TeacherPackagesTab } from './teacher/TeacherPackagesTab';
+import { TeacherWithdrawalOptionsTab } from './teacher/TeacherWithdrawalOptionsTab';
+import { TeacherWithdrawalCardsTab } from './teacher/TeacherWithdrawalCardsTab';
+import { TeacherMoreTab } from './teacher/TeacherMoreTab';
+import { TeacherPublicProfileScreen } from './teacher/TeacherPublicProfileScreen';
 import { ArrowRight, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { useLanguage } from '../Contexts/LanguageContext';
 import { AdsBanner } from './dashboard/AdsBanner';
@@ -28,14 +33,36 @@ interface TeacherDashboardScreenProps {
 }
 
 export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ data, onLogout }) => {
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab');
+      if (tabParam === 'sessions' || tabParam === 'my-lessons') return 'my-lessons';
+      if (tabParam) return tabParam;
+    }
+    return 'overview';
+  });
   const [freshUser, setFreshUser] = useState<UserData | null>(null);
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
 
   const user = data.user.data as UserData;
 
-  // Refresh profile data whenever the teacher switches tabs so the
-  // completion alert always reflects the latest saved state.
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab');
+      if (tabParam === 'sessions' || tabParam === 'my-lessons') {
+        setActiveTab('my-lessons');
+      } else if (tabParam) {
+        setActiveTab(tabParam);
+      } else {
+        setActiveTab('overview');
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     authService.getUserDetails()
@@ -46,14 +73,7 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
       })
       .catch(() => {});
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
-
-  // =========================================================
-  // !! CRITICAL VERIFICATION RULE !!
-  // ONLY check 'user.verified' (root level). 
-  // Do NOT check profile.verified, profile.is_active, or services.
-  // =========================================================
+  }, [activeTab, user.id]);
 
   const currentUser: UserData = freshUser || user;
   const completeness = getTeacherProfileCompleteness(currentUser);
@@ -63,13 +83,27 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
     switch (activeTab) {
       case 'overview':
         return <OverviewTab user={currentUser} onNavigate={setActiveTab} />;
+      case 'orders':
+        return <TeacherOrdersTab user={currentUser} />;
+      case 'packages':
+        return <TeacherPackagesTab user={currentUser} onNavigate={setActiveTab} />;
+      case 'withdrawal-options':
+        return <TeacherWithdrawalOptionsTab onNavigate={setActiveTab} />;
+      case 'withdrawal-cards':
+        return <TeacherWithdrawalCardsTab onNavigate={setActiveTab} />;
+      case 'more':
+        return <TeacherMoreTab user={currentUser} onNavigate={setActiveTab} onLogout={onLogout} />;
+      case 'public-profile':
+        return <TeacherPublicProfileScreen user={currentUser} onBack={() => setActiveTab('more')} />;
       case 'schedule':
         return <ScheduleTab user={currentUser} />;
       case 'private-lessons':
-        return <SubjectsTab user={currentUser} />;
+      case 'subjects':
+        return <SubjectsTab user={currentUser} onNavigate={setActiveTab} />;
       case 'courses':
         return <TeacherCoursesTab user={currentUser} />;
       case 'my-lessons':
+      case 'sessions':
         return <TeacherLessonsTab user={currentUser} />;
       case 'consultations':
         return <ConsultationTab />;
@@ -94,7 +128,7 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
       case 'settings':
         return <ProfileTab onNavigate={setActiveTab} />;
       default:
-        return <OverviewTab user={user} onNavigate={setActiveTab} />;
+        return <OverviewTab user={currentUser} onNavigate={setActiveTab} />;
     }
   };
 
@@ -108,8 +142,8 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <AdsBanner />
-        {completeness.missing.length > 0 && (
+        {activeTab !== 'overview' && <AdsBanner />}
+        {activeTab !== 'overview' && completeness.missing.length > 0 && (
           <div className="mb-6 bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-lg shadow-[var(--shadow-sm)] animate-fade-in">
             <div className="flex items-start">
               <div className="flex-shrink-0">

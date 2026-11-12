@@ -174,9 +174,9 @@ export const BankAccountsPage: React.FC<BankAccountsPageProps> = ({ user, onNavi
                                                             <span className="text-secondary"><CheckCircle size={16} /></span>
                                                         )}
                                                     </div>
-                                                    <p className="text-sm font-mono text-[var(--text-muted)] mt-0.5">**** {acc.account_number?.slice(-4) || '****'}</p>
+                                                    <p className="text-sm font-mono text-[var(--text-muted)] mt-0.5" dir="ltr">**** **** **** {acc.account_number ? String(acc.account_number).slice(-4) : (acc.iban ? String(acc.iban).slice(-4) : '****')}</p>
                                                     <p className="text-xs text-[var(--text-muted)]">{acc.account_holder_name}</p>
-                                                    {acc.iban && <p className="text-[10px] text-[var(--text-muted)] font-mono mt-0.5">IBAN: {acc.iban}</p>}
+                                                    {acc.iban && <p className="text-[10px] text-[var(--text-muted)] font-mono mt-0.5" dir="ltr">IBAN: {acc.iban.length > 8 ? `${acc.iban.slice(0, 4)}****${acc.iban.slice(-4)}` : acc.iban}</p>}
                                                 </div>
                                             </div>
                                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

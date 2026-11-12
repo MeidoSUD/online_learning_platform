@@ -1,7 +1,6 @@
-
-
-import React, { useState } from 'react';
-import { AuthResponse, TeacherProfile } from '../Services/api';
+import React, { useState, useEffect, useCallback } from 'react';
+import { AuthResponse, TeacherProfile, studentService } from '../Services/api';
+import { Loader2 } from 'lucide-react';
 import { Navbar } from './Navbar';
 import { OverviewTab } from './student/OverviewTab';
 import { PrivateLessonsTab } from './student/PrivateLessonsTab';
@@ -20,6 +19,10 @@ import { SupportTab } from './dashboard/SupportTab';
 import { ConsultationTab } from './student/ConsultationTab';
 import { AiAssistantTab } from './dashboard/AiAssistantTab';
 import { FavoritesTab } from './student/FavoritesTab';
+import { StudentOrdersTab } from './student/StudentOrdersTab';
+import { StudentSubscriptionsTab } from './student/StudentSubscriptionsTab';
+import { StudentMoreTab } from './student/StudentMoreTab';
+import { ServicePreferencesTab } from './student/ServicePreferencesTab';
 import { useLanguage } from '../Contexts/LanguageContext';
 import { AdsBanner } from './dashboard/AdsBanner';
 
@@ -30,48 +33,211 @@ interface StudentDashboardScreenProps {
 
 export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ data, onLogout }) => {
   const [activeTab, setActiveTab] = useState('overview');
-  const [selectedTeacher, setSelectedTeacher] = useState<TeacherProfile | null>(null);
-  const [selectedServiceId, setSelectedServiceId] = useState<number>(3); // Default to Private Lessons
+  const [selectedTeacher, setSelectedTeacher] = useState<any | null>(null);
+  const [selectedServiceId, setSelectedServiceId] = useState<number | undefined>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const serviceIdParam = params.get('service_id');
+      if (serviceIdParam) {
+        const sId = parseInt(serviceIdParam, 10);
+        if (!isNaN(sId) && sId > 0) return sId;
+      }
+    }
+    return undefined;
+  });
+  const [loadingTeacher, setLoadingTeacher] = useState(false);
 
   const { t } = useLanguage();
 
-  const handleTeacherSelect = (teacher: TeacherProfile, serviceId: number) => {
+  const updateUrl = useCallback((tab: string, teacherId?: number, serviceId?: number) => {
+    const url = new URL(window.location.href);
+    if (tab === 'overview') {
+      url.searchParams.delete('tab');
+      url.searchParams.delete('teacher_id');
+      url.searchParams.delete('service_id');
+    } else {
+      url.searchParams.set('tab', tab);
+      if (teacherId) {
+        url.searchParams.set('teacher_id', String(teacherId));
+      } else {
+        url.searchParams.delete('teacher_id');
+      }
+      if (serviceId) {
+        url.searchParams.set('service_id', String(serviceId));
+      } else {
+        url.searchParams.delete('service_id');
+      }
+    }
+    window.history.pushState({}, '', `${url.pathname}${url.search}`);
+  }, []);
+
+  const loadTeacherDetails = useCallback(async (teacherId: number) => {
+    setLoadingTeacher(true);
+    try {
+      const res = await studentService.getTeacherById(teacherId);
+      if (res) {
+        setSelectedTeacher(res);
+        const primarySvc = res?.profile?.services?.[0] || res?.services?.[0];
+        const sId = primarySvc?.service_id || (res?.main_service_key === 'language_learning' ? 2 : null);
+        if (sId) {
+          setSelectedServiceId(sId);
+        }
+      }
+    } catch {
+      setSelectedTeacher(null);
+    } finally {
+      setLoadingTeacher(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab');
+    const teacherIdParam = params.get('teacher_id');
+    const serviceIdParam = params.get('service_id');
+
+    if (serviceIdParam) {
+      const sId = parseInt(serviceIdParam, 10);
+      if (!isNaN(sId) && sId > 0) {
+        setSelectedServiceId(sId);
+      } else {
+        setSelectedServiceId(undefined);
+      }
+    } else {
+      setSelectedServiceId(undefined);
+    }
+
+    if (tabParam === 'teacher-details' && teacherIdParam) {
+      const tId = parseInt(teacherIdParam, 10);
+      if (!isNaN(tId) && tId > 0) {
+        setActiveTab('teacher-details');
+        loadTeacherDetails(tId);
+      }
+    } else if (tabParam) {
+      setActiveTab(tabParam);
+    }
+
+    const handlePopState = () => {
+      const currentParams = new URLSearchParams(window.location.search);
+      const currentTab = currentParams.get('tab') || 'overview';
+      const currentTeacherId = currentParams.get('teacher_id');
+      const currentServiceId = currentParams.get('service_id');
+
+      if (currentServiceId) {
+        const sId = parseInt(currentServiceId, 10);
+        if (!isNaN(sId) && sId > 0) {
+          setSelectedServiceId(sId);
+        } else {
+          setSelectedServiceId(undefined);
+        }
+      } else {
+        setSelectedServiceId(undefined);
+      }
+
+      setActiveTab(currentTab);
+
+      if (currentTab === 'teacher-details' && currentTeacherId) {
+        const tId = parseInt(currentTeacherId, 10);
+        if (!isNaN(tId) && tId > 0) {
+          loadTeacherDetails(tId);
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [loadTeacherDetails]);
+
+  const handleTeacherSelect = (teacher: any, serviceId: number) => {
+    const primarySvc = teacher?.profile?.services?.[0] || teacher?.services?.[0];
+    const actualServiceId = primarySvc?.service_id || (teacher?.main_service_key === 'language_learning' ? 2 : serviceId) || 3;
     setSelectedTeacher(teacher);
-    setSelectedServiceId(serviceId);
+    setSelectedServiceId(actualServiceId);
     setActiveTab('teacher-details');
+    updateUrl('teacher-details', teacher.id, actualServiceId);
+  };
+
+  const handleNavigate = (tab: string, serviceId?: number) => {
+    if (serviceId) {
+      setSelectedServiceId(serviceId);
+    }
+    setActiveTab(tab);
+    updateUrl(tab, undefined, serviceId);
+  };
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    updateUrl(tab);
   };
 
   const renderContent = () => {
     switch (activeTab) {
       case 'overview':
-        return <OverviewTab user={data.user.data} onNavigate={setActiveTab} />;
+        return <OverviewTab user={data.user.data} onNavigate={handleNavigate} onTeacherSelect={(t, serviceId) => handleTeacherSelect(t, serviceId || 3)} />;
       case 'private-lessons':
-        return <PrivateLessonsTab onTeacherSelect={(t) => handleTeacherSelect(t, 3)} />;
+        return (
+          <PrivateLessonsTab
+            initialServiceId={selectedServiceId}
+            onTeacherSelect={(t) => handleTeacherSelect(t, selectedServiceId || 3)}
+            onBack={() => handleNavigate('overview')}
+            onServiceChange={(sId) => {
+              setSelectedServiceId(sId);
+              updateUrl('private-lessons', undefined, sId);
+            }}
+          />
+        );
       case 'courses':
         return <SubjectsTab />;
       case 'language-learning':
-        // Assuming service ID 2 for Language Learning based on context
         return <LanguageLearningTab />;
       case 'teacher-details':
-        if (!selectedTeacher) return <PrivateLessonsTab onTeacherSelect={(t) => handleTeacherSelect(t, 3)} />;
+        if (loadingTeacher) {
+          return (
+            <div className="flex flex-col items-center justify-center py-24">
+              <Loader2 className="animate-spin text-primary h-10 w-10 mb-4" />
+              <p className="text-[var(--text-muted)] text-sm font-medium">جاري تحميل بيانات الأستاذ...</p>
+            </div>
+          );
+        }
+        if (!selectedTeacher) {
+          return (
+            <PrivateLessonsTab
+              initialServiceId={selectedServiceId}
+              onTeacherSelect={(t) => handleTeacherSelect(t, 3)}
+              onBack={() => handleNavigate('overview')}
+              onServiceChange={(sId) => {
+                setSelectedServiceId(sId);
+                updateUrl('private-lessons', undefined, sId);
+              }}
+            />
+          );
+        }
         return (
           <TeacherDetailsPage
             teacher={selectedTeacher}
-            serviceId={selectedServiceId}
-            onBack={() => setActiveTab('private-lessons')}
-            onBookingComplete={() => setActiveTab('bookings')}
+            serviceId={selectedServiceId || 3}
+            onBack={() => handleNavigate('private-lessons', selectedServiceId)}
+            onBookingComplete={() => handleNavigate('bookings')}
           />
         );
       case 'schedule':
-        return <StudentScheduleTab onViewList={() => setActiveTab('bookings')} />;
+        return <StudentScheduleTab onViewList={() => handleNavigate('bookings')} />;
       case 'sessions':
         return <MySessionsTab />;
       case 'favorites':
         return <FavoritesTab />;
       case 'ai':
         return <AiAssistantTab />;
+      case 'orders':
+        return <StudentOrdersTab />;
+      case 'subscriptions':
+        return <StudentSubscriptionsTab onNavigateToBooking={() => handleNavigate('private-lessons')} onBack={() => handleNavigate('overview')} />;
+      case 'preferences':
+        return <ServicePreferencesTab onBack={() => handleNavigate('more')} />;
+      case 'more':
+        return <StudentMoreTab user={data.user.data} onNavigate={handleTabChange} onLogout={onLogout} />;
       case 'bookings':
-        return <BookingsTab onViewCalendar={() => setActiveTab('schedule')} />;
+        return <BookingsTab onViewCalendar={() => handleNavigate('schedule')} />;
       case 'consultations':
         return <ConsultationTab />;
       case 'disputes':
@@ -83,28 +249,30 @@ export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ 
       case 'certificates':
         return <MyCertificates />;
       case 'profile':
-        return <ProfileTab onNavigate={setActiveTab} />;
+        return <ProfileTab onNavigate={handleTabChange} />;
       case 'support':
         return <SupportTab />;
       case 'settings':
-        return <ProfileTab onNavigate={setActiveTab} />;
+        return <ProfileTab onNavigate={handleTabChange} />;
       default:
-        return <OverviewTab user={data.user.data} onNavigate={setActiveTab} />;
+        return <OverviewTab user={data.user.data} onNavigate={handleNavigate} />;
     }
   };
 
   return (
-    <div className="relative min-h-screen bg-[var(--light-bg)] font-sans pb-10">
+    <div className={`relative min-h-screen bg-[var(--light-bg)] font-sans ${activeTab === 'teacher-details' ? '' : 'pb-10'}`}>
       <div className="relative">
-        <Navbar
-          userData={data}
-          onLogout={onLogout}
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-        />
+        {activeTab !== 'teacher-details' && (
+          <Navbar
+            userData={data}
+            onLogout={onLogout}
+            activeTab={activeTab}
+            setActiveTab={handleTabChange}
+          />
+        )}
 
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <AdsBanner />
+        <main className={activeTab === 'teacher-details' ? '' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'}>
+          {activeTab === 'overview' && <AdsBanner />}
           {renderContent()}
         </main>
       </div>

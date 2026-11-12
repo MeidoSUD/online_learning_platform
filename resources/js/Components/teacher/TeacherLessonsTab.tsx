@@ -1,84 +1,174 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
-import { Clock, Users, DollarSign, Calendar, PersonStanding, Loader2, CheckCircle2, Play, X, FilterX } from 'lucide-react';
+import { Calendar, Clock, Timer, BookOpen, ChevronLeft, ChevronRight, X, Filter, ListOrdered, Users, CheckCircle2 } from 'lucide-react';
 import { teacherService, Session } from '../../Services/api';
 import { SessionDetailsModal } from '../dashboard/SessionDetailsModal';
 import { SessionRoomModal } from '../dashboard/SessionRoomModal';
-import { getSessionState } from '../../Utils/sessionStatus';
 
 interface TeacherLessonsTabProps {
     user?: any;
 }
 
-function formatTime(time: string): string {
+interface OrderCache {
+    [key: number]: number;
+}
+
+function formatTime(time: string, language: string): string {
     if (!time) return '';
     try {
         const [h, m] = time.split(':');
         const hour = parseInt(h);
         const minute = parseInt(m);
-        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const isAr = language === 'ar';
+        const ampm = isAr ? (hour >= 12 ? 'م' : 'ص') : (hour >= 12 ? 'PM' : 'AM');
         const h12 = hour % 12 || 12;
         return `${h12}:${minute.toString().padStart(2, '0')} ${ampm}`;
     } catch {
-        return time;
+        return time.substring(0, 5);
     }
 }
 
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: string, language: string): string {
     if (!dateStr) return '';
     try {
-        const d = new Date(dateStr);
-        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const raw = (dateStr || '').split('T')[0].split(' ')[0];
+        const [y, m, day] = raw.split('-').map(Number);
+        const d = (y && m && day) ? new Date(y, m - 1, day) : new Date(dateStr);
+        const isAr = language === 'ar';
+        const now = new Date();
+        const isToday = d.getFullYear() === now.getFullYear() &&
+                        d.getMonth() === now.getMonth() &&
+                        d.getDate() === now.getDate();
+
+        const formatted = d.toLocaleDateString(isAr ? 'ar-SA-u-nu-latn' : 'en-US', {
+            weekday: 'short',
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric'
+        });
+
+        if (isToday) {
+            return isAr ? `اليوم، ${formatted}` : `Today, ${formatted}`;
+        }
+        return formatted;
     } catch {
         return dateStr;
     }
 }
 
-function getDuration(start: string, end: string): string {
+function getDuration(start: string, end: string, language: string): string {
     if (!start || !end) return '';
     const [sh, sm] = start.split(':').map(Number);
     const [eh, em] = end.split(':').map(Number);
     const diff = (eh * 60 + em) - (sh * 60 + sm);
+    if (diff <= 0) return '';
     const h = Math.floor(diff / 60);
     const m = diff % 60;
+    if (language === 'ar') {
+        if (h === 1 && m === 0) return 'ساعة واحدة';
+        if (h === 2 && m === 0) return 'ساعتان';
+        if (h > 0 && m > 0) return `${h} س ${m} د`;
+        if (h > 0) return `${h} ساعات`;
+        return `${m} دقيقة`;
+    }
     if (h === 0) return `${m}m`;
+    if (m === 0) return `${h}h`;
     return `${h}h ${m}m`;
 }
 
-function getStatusBadge(status: string | undefined, language: string): { label: string; color: string; bg: string } {
-    switch (status) {
-        case 'live':
-        case 'wait_for_teacher':
-            return { label: language === 'ar' ? 'نشط' : 'Active', color: 'text-primary', bg: 'bg-primary-pale' };
-        case 'scheduled':
-            return { label: language === 'ar' ? 'مجدول' : 'Upcoming', color: 'text-orange-700', bg: 'bg-orange-100' };
-        case 'ended':
-        case 'completed':
-            return { label: language === 'ar' ? 'مكتمل' : 'Completed', color: 'text-primary', bg: 'bg-primary-pale' };
-        case 'cancelled':
-            return { label: language === 'ar' ? 'ملغي' : 'Cancelled', color: 'text-red-600', bg: 'bg-red-100' };
-        default:
-            return { label: status || (language === 'ar' ? 'غير معروف' : 'Unknown'), color: 'text-[var(--text-muted)]', bg: 'bg-[var(--light-bg)]' };
+function getBookingsCountLabel(count: number, language: string): string {
+    if (language !== 'ar') {
+        return `${count} booking${count !== 1 ? 's' : ''}`;
+    }
+    if (count === 1) return '1 حجز';
+    if (count === 2) return 'حجزان';
+    if (count >= 3 && count <= 10) return `${count} حجوزات`;
+    return `${count} حجز`;
+}
+
+function parseSessionDateTime(sessionDate?: string | null, startTime?: string | null): number {
+    if (!sessionDate) return 0;
+    try {
+        const rawDate = sessionDate.split('T')[0].split(' ')[0];
+        const [y, m, d] = rawDate.split('-').map(Number);
+        if (!y || !m || !d) return 0;
+        let h = 0;
+        let min = 0;
+        if (startTime && startTime.includes(':')) {
+            const parts = startTime.split(':');
+            h = parseInt(parts[0], 10) || 0;
+            min = parseInt(parts[1], 10) || 0;
+        }
+        return new Date(y, m - 1, d, h, min).getTime();
+    } catch {
+        return 0;
     }
 }
 
-export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = ({ user }) => {
-    const { language, direction } = useLanguage();
+function sortSessions(list: Session[], isAscending = true): Session[] {
+    return list.slice().sort((a, b) => {
+        const timeA = parseSessionDateTime(a.session_date, a.start_time);
+        const timeB = parseSessionDateTime(b.session_date, b.start_time);
+        if (timeA !== timeB) {
+            return isAscending ? timeA - timeB : timeB - timeA;
+        }
+        return isAscending ? (a.id || 0) - (b.id || 0) : (b.id || 0) - (a.id || 0);
+    });
+}
+
+function computeChronologicalOrder(allSessions: Session[]): { orderCache: OrderCache; totalCache: { [key: number]: number } } {
+    const groups: { [key: number]: Session[] } = {};
+    for (const s of allSessions) {
+        const bid = s.booking_id || s.booking?.id || -(s.id || 0);
+        if (!groups[bid]) groups[bid] = [];
+        groups[bid].push(s);
+    }
+
+    const orderCache: OrderCache = {};
+    const totalCache: { [key: number]: number } = {};
+
+    for (const keyStr of Object.keys(groups)) {
+        const key = Number(keyStr);
+        const list = groups[key].slice().sort((a, b) => {
+            const da = a.session_date || '';
+            const db = b.session_date || '';
+            if (da !== db) return da.localeCompare(db);
+            const ta = a.start_time || '';
+            const tb = b.start_time || '';
+            if (ta !== tb) return ta.localeCompare(tb);
+            return (a.id || 0) - (b.id || 0);
+        });
+
+        for (let i = 0; i < list.length; i++) {
+            orderCache[list[i].id] = i + 1;
+            const backendTotal = list[i].booking?.total_sessions || 0;
+            totalCache[list[i].id] = Math.max(backendTotal, list.length, 1);
+        }
+    }
+
+    return { orderCache, totalCache };
+}
+
+export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = () => {
+    const { direction, language } = useLanguage();
+    const isAr = language === 'ar';
+    const [activeTab, setActiveTab] = useState<'active' | 'ended' | 'students'>('active');
     const [sessions, setSessions] = useState<Session[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'active' | 'finished' | 'students'>('active');
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
-    const [selectedSession, setSelectedSession] = useState<Session | null>(null);
-    const [detailsModalOpen, setDetailsModalOpen] = useState(false);
     const [agoraData, setAgoraData] = useState<any>(null);
+    const [selectedSession, setSelectedSession] = useState<Session | null>(null);
+    const [selectedSessionOrder, setSelectedSessionOrder] = useState<{ number: number; total: number } | null>(null);
+    const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+    const dateInputRef = useRef<HTMLInputElement>(null);
 
     const loadSessions = async () => {
         setLoading(true);
         try {
             const data = await teacherService.getTeacherSessions();
             setSessions(Array.isArray(data) ? data : []);
-        } catch (e) {
-            console.error(e);
+        } catch {
+            setSessions([]);
         } finally {
             setLoading(false);
         }
@@ -88,30 +178,32 @@ export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = ({ user }) =>
         loadSessions();
     }, []);
 
-    const dateFiltered = selectedDate
-        ? sessions.filter(s => s.session_date === selectedDate)
+    const { orderCache, totalCache } = computeChronologicalOrder(sessions);
+
+    const dateFilteredSessions = selectedDate
+        ? sessions.filter(s => {
+            const d = (s.session_date || '').split('T')[0]?.split(' ')[0];
+            return d === selectedDate;
+        })
         : sessions;
 
-    const activeSessions = dateFiltered.filter(s => {
-        const status = (s.status || '').toLowerCase();
-        return ['scheduled', 'live', 'wait_for_teacher', ''].includes(status);
+    const baseSortedSessions = sortSessions(dateFilteredSessions, true);
+
+    const activeSessions = baseSortedSessions.filter(session => {
+        const statusStr = (session.status || '').toLowerCase();
+        return statusStr === 'scheduled' ||
+            statusStr === 'live' ||
+            statusStr === 'wait_for_teacher' ||
+            statusStr === '';
     });
 
-    const finishedSessions = dateFiltered.filter(s => {
-        const status = (s.status || '').toLowerCase();
-        return ['ended', 'completed', 'cancelled', 'finished'].includes(status);
+    const endedSessions = baseSortedSessions.filter(session => {
+        const statusStr = (session.status || '').toLowerCase();
+        return statusStr === 'ended' ||
+            statusStr === 'completed' ||
+            statusStr === 'finished' ||
+            statusStr === 'cancelled';
     });
-
-    const todaySessions = sessions.filter(s => {
-        if (!s.session_date) return false;
-        const today = new Date();
-        const sessionDate = new Date(s.session_date);
-        return sessionDate.toDateString() === today.toDateString();
-    });
-
-    const todayStudents = new Set(
-        todaySessions.filter(s => s.student?.id).map(s => s.student!.id)
-    );
 
     const uniqueStudents: { user: NonNullable<Session['student']>; bookingsCount: number }[] = (() => {
         const map = new Map<number, { user: NonNullable<Session['student']>; bookingsCount: number }>();
@@ -128,11 +220,6 @@ export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = ({ user }) =>
         return Array.from(map.values());
     })();
 
-    const openDetailsModal = (session: Session) => {
-        setSelectedSession(session);
-        setDetailsModalOpen(true);
-    };
-
     const handleStartSession = async (sessionId: number) => {
         try {
             const response = await teacherService.startSession(sessionId);
@@ -144,10 +231,10 @@ export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = ({ user }) =>
                 });
                 setDetailsModalOpen(false);
             } else {
-                alert(response.message || (language === 'ar' ? 'فشل بدء الجلسة' : 'Failed to start session'));
+                alert(response.message || (isAr ? 'فشل بدء الجلسة' : 'Failed to start session'));
             }
         } catch (e: any) {
-            alert(e.message || (language === 'ar' ? 'فشل بدء الجلسة' : 'Failed to start session'));
+            alert(e.message || (isAr ? 'فشل بدء الجلسة' : 'Failed to start session'));
         }
     };
 
@@ -158,359 +245,291 @@ export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = ({ user }) =>
                 setDetailsModalOpen(false);
                 loadSessions();
             } else {
-                alert(response.message || (language === 'ar' ? 'فشل إنهاء الجلسة' : 'Failed to end session'));
+                alert(response.message || (isAr ? 'فشل إنهاء الجلسة' : 'Failed to end session'));
             }
         } catch (e: any) {
-            alert(e.message || (language === 'ar' ? 'فشل إنهاء الجلسة' : 'Failed to end session'));
+            alert(e.message || (isAr ? 'فشل إنهاء الجلسة' : 'Failed to end session'));
         }
     };
 
-    const handleDateFilter = () => {
-        const input = document.createElement('input');
-        input.type = 'date';
-        input.onchange = (e: any) => {
-            setSelectedDate(e.target.value || null);
-        };
-        input.click();
+    const handleSelectSession = (session: Session) => {
+        setSelectedSession(session);
+        setSelectedSessionOrder({
+            number: orderCache[session.id] || session.session_number || 1,
+            total: totalCache[session.id] || session.booking?.total_sessions || 1,
+        });
+        setDetailsModalOpen(true);
     };
 
-    const clearDateFilter = () => {
-        setSelectedDate(null);
-    };
+    const tabs = [
+        { id: 'active' as const, label: isAr ? 'نشطة' : 'Active', count: activeSessions.length },
+        { id: 'ended' as const, label: isAr ? 'منتهية' : 'Finished', count: endedSessions.length },
+        { id: 'students' as const, label: isAr ? 'طلابي' : 'My Students', count: uniqueStudents.length },
+    ];
 
-    const handleDateClick = () => {
-        if (selectedDate) {
-            clearDateFilter();
-        } else {
-            handleDateFilter();
-        }
-    };
+    const ChevronIcon = direction === 'rtl' ? ChevronLeft : ChevronRight;
 
     return (
-        <div className="space-y-6 animate-fade-in" dir={direction}>
-            {/* Page Header */}
-            <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-[var(--text-main)]">
-                    {language === 'ar' ? 'دروسي' : 'My Lessons'}
-                </h2>
-            </div>
-
-            {/* Today's Stats */}
-            <div className="bg-white rounded-[var(--radius-md)] shadow-[var(--shadow-sm)] border border-[var(--border)] p-6">
-                <div className="flex items-center justify-between mb-1">
-                    <p className="text-sm text-[var(--text-muted)] font-medium">
-                        {language === 'ar' ? 'إحصائيات اليوم' : "Today's Statistics"}
-                    </p>
-                    <span className="text-xs text-[var(--text-muted)]">
-                        {new Date().toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US', {
-                            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-                        })}
-                    </span>
-                </div>
-                <div className="grid grid-cols-3 gap-4 mt-4">
-                    <div className="text-center">
-                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-[var(--radius-md)] bg-primary/10 text-primary mb-2">
-                            <Clock size={22} />
-                        </div>
-                        <p className="text-2xl font-bold text-[var(--text-main)]">{todaySessions.length}</p>
-                        <p className="text-xs text-[var(--text-muted)]">{language === 'ar' ? 'دروس اليوم' : "Today's Lessons"}</p>
-                    </div>
-                    <div className="text-center">
-                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-[var(--radius-md)] bg-orange-100 text-orange-600 mb-2">
-                            <Users size={22} />
-                        </div>
-                        <p className="text-2xl font-bold text-[var(--text-main)]">{todayStudents.size}</p>
-                        <p className="text-xs text-[var(--text-muted)]">{language === 'ar' ? 'الطلاب' : 'Students'}</p>
-                    </div>
-                    <div className="text-center">
-                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-[var(--radius-md)] bg-primary-pale text-primary mb-2">
-                            <DollarSign size={22} />
-                        </div>
-                        <p className="text-2xl font-bold text-[var(--text-main)]">0</p>
-                        <p className="text-xs text-[var(--text-muted)]">{language === 'ar' ? 'الدخل المتوقع' : 'Expected Income'}</p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Date Filter Header (matching Android SessionFilterHeader) */}
-            <div className="bg-white rounded-[var(--radius-md)] shadow-[var(--shadow-sm)] border border-[var(--border)] px-4 py-3">
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={handleDateClick}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-[var(--radius-md)] border transition-colors text-sm ${
-                            selectedDate
-                                ? 'bg-primary/5 border-primary/20 text-primary font-semibold'
-                                : 'bg-[var(--light-bg)] border-[var(--border)] text-[var(--text-muted)]'
-                        }`}
-                    >
-                        <Calendar size={18} className={selectedDate ? 'text-primary' : 'text-[var(--text-muted)]'} />
-                        <span>
-                            {selectedDate
-                                ? formatDate(selectedDate)
-                                : (language === 'ar' ? 'اختر تاريخ' : 'Select Date')
-                            }
-                        </span>
-                        {selectedDate && (
-                            <X
-                                size={16}
-                                className="text-red-500 hover:text-red-700 cursor-pointer"
-                                onClick={(e) => { e.stopPropagation(); clearDateFilter(); }}
-                            />
-                        )}
-                    </button>
-
-                    {selectedDate && (
+        <div className="space-y-4 animate-fade-in pb-20" dir={direction}>
+            <div className="bg-white rounded-2xl p-1.5 shadow-sm border border-slate-100 flex items-center gap-1">
+                {tabs.map(tab => {
+                    const isActive = activeTab === tab.id;
+                    return (
                         <button
-                            onClick={clearDateFilter}
-                            className="flex items-center gap-1 px-3 py-2 rounded-[var(--radius-md)] border border-red-200 bg-red-50 text-red-600 text-sm hover:bg-red-100 transition-colors"
+                            key={tab.id}
+                            type="button"
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`flex-1 py-2.5 px-3 rounded-xl text-sm font-bold transition-all text-center flex items-center justify-center gap-2 ${
+                                isActive
+                                    ? 'bg-[#E8F1F3] text-[#0D4A5F] shadow-sm'
+                                    : 'text-[#738989] hover:text-[#0D4A5F]'
+                            }`}
                         >
-                            <FilterX size={16} />
-                            <span className="hidden sm:inline">{language === 'ar' ? 'مسح' : 'Clear'}</span>
+                            <span>{tab.label}</span>
+                            {tab.count > 0 && (
+                                <span className={`text-[11px] px-2 py-0.5 rounded-full ${
+                                    isActive ? 'bg-white/80 text-[#0D4A5F]' : 'bg-slate-100 text-[#738989]'
+                                }`}>
+                                    {tab.count}
+                                </span>
+                            )}
                         </button>
-                    )}
-                </div>
+                    );
+                })}
             </div>
 
-            {/* Tabs: Active | Finished | Students */}
-            <div className="border-b border-[var(--border)]">
-                <div className="flex gap-6">
-                    <button
-                        onClick={() => setActiveTab('active')}
-                        className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
-                            activeTab === 'active'
-                                ? 'border-primary text-primary'
-                                : 'border-transparent text-[var(--text-muted)] hover:text-navy'
-                        }`}
-                    >
-                        {language === 'ar' ? 'الدروس النشطة' : 'Active Lessons'}
-                        {activeSessions.length > 0 && (
-                            <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                                {activeSessions.length}
-                            </span>
-                        )}
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('finished')}
-                        className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
-                            activeTab === 'finished'
-                                ? 'border-primary text-primary'
-                                : 'border-transparent text-[var(--text-muted)] hover:text-navy'
-                        }`}
-                    >
-                        {language === 'ar' ? 'المنتهية' : 'Finished'}
-                        {finishedSessions.length > 0 && (
-                            <span className="ml-2 text-xs bg-[var(--light-bg)] text-[var(--text-muted)] px-2 py-0.5 rounded-full">
-                                {finishedSessions.length}
-                            </span>
-                        )}
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('students')}
-                        className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
-                            activeTab === 'students'
-                                ? 'border-primary text-primary'
-                                : 'border-transparent text-[var(--text-muted)] hover:text-navy'
-                        }`}
-                    >
-                        {language === 'ar' ? 'الطلاب' : 'Students'}
-                        {uniqueStudents.length > 0 && (
-                            <span className="ml-2 text-xs bg-[var(--light-bg)] text-[var(--text-muted)] px-2 py-0.5 rounded-full">
-                                {uniqueStudents.length}
-                            </span>
-                        )}
-                    </button>
-                </div>
-            </div>
+            <input
+                ref={dateInputRef}
+                type="date"
+                value={selectedDate || ''}
+                onChange={(e) => setSelectedDate(e.target.value || null)}
+                className="hidden"
+            />
 
-            {/* Tab Content */}
             {loading ? (
-                <div className="flex justify-center p-10">
-                    <Loader2 className="animate-spin text-primary" size={32} />
+                <div className="space-y-3">
+                    {[1, 2, 3].map(i => (
+                        <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 animate-pulse space-y-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-28 h-5 bg-slate-200 rounded-md" />
+                                    <div className="w-8 h-8 bg-slate-200 rounded-lg" />
+                                </div>
+                                <div className="w-16 h-6 bg-slate-200 rounded-lg" />
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <div className="w-20 h-4 bg-slate-100 rounded" />
+                                <div className="w-24 h-4 bg-slate-100 rounded" />
+                                <div className="w-28 h-4 bg-slate-100 rounded" />
+                            </div>
+                            <div className="border-t border-slate-100 pt-3 flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-7 h-7 rounded-full bg-slate-200" />
+                                    <div className="w-28 h-4 bg-slate-200 rounded" />
+                                </div>
+                                <div className="w-5 h-5 bg-slate-100 rounded" />
+                            </div>
+                        </div>
+                    ))}
                 </div>
             ) : activeTab === 'students' ? (
-                /* ===== STUDENTS TAB (matching Android _TeacherStudentsTabContent) ===== */
                 uniqueStudents.length === 0 ? (
-                    <div className="text-center py-16 bg-[var(--light-bg)] rounded-[var(--radius-md)] border border-dashed border-[var(--border)]">
-                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[var(--light-bg)] mb-4">
-                            <Users className="text-[var(--text-muted)]" size={28} />
+                    <div className="py-20 text-center flex flex-col items-center justify-center">
+                        <div className="w-24 h-24 rounded-full bg-[#E8F1F3] text-[#0D4A5F] flex items-center justify-center mb-4">
+                            <Users size={40} />
                         </div>
-                        <p className="text-[var(--text-muted)] font-medium">
-                            {language === 'ar' ? 'لا يوجد طلاب' : 'No students'}
-                        </p>
-                        <p className="text-[var(--text-muted)] text-sm mt-1">
-                            {language === 'ar' ? 'لا يوجد طلاب لديهم حجوزات' : 'No students with bookings'}
+                        <h3 className="text-base font-bold text-[#0D4A5F] mb-1">
+                            {isAr ? 'لا يوجد طلاب بعد' : 'No students yet'}
+                        </h3>
+                        <p className="text-xs text-[#738989]">
+                            {isAr ? 'لا يوجد طلاب لديهم حجوزات حتى الآن' : 'No students with bookings yet'}
                         </p>
                     </div>
                 ) : (
                     <div className="space-y-3">
-                        {uniqueStudents.map(({ user: student, bookingsCount }) => (
-                            <div
-                                key={student.id}
-                                className="bg-white rounded-[var(--radius-md)] shadow-[var(--shadow-sm)] border border-[var(--border)] p-4 flex items-center justify-between hover:shadow-[var(--shadow-md)] transition-shadow"
-                            >
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
-                                        {(student.name || '?').charAt(0).toUpperCase()}
-                                    </div>
-                                    <div>
-                                        <p className="font-semibold text-[var(--text-main)]">{student.name || (language === 'ar' ? 'غير معروف' : 'Unknown')}</p>
-                                        {student.email && (
-                                            <p className="text-xs text-[var(--text-muted)]">{student.email}</p>
-                                        )}
-                                    </div>
-                                </div>
-                                <div className="bg-primary/5 text-primary text-xs font-bold px-3 py-1.5 rounded-full">
-                                    {language === 'ar'
-                                        ? `${bookingsCount} حجز`
-                                        : `${bookingsCount} booking${bookingsCount !== 1 ? 's' : ''}`
-                                    }
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )
-            ) : (
-                /* ===== ACTIVE / FINISHED TAB ===== */
-                (activeTab === 'active' ? activeSessions : finishedSessions).length === 0 ? (
-                    <div className="text-center py-16 bg-[var(--light-bg)] rounded-[var(--radius-md)] border border-dashed border-[var(--border)]">
-                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[var(--light-bg)] mb-4">
-                            <Clock className="text-[var(--text-muted)]" size={28} />
-                        </div>
-                        <p className="text-[var(--text-muted)] font-medium">
-                            {activeTab === 'active'
-                                ? (language === 'ar' ? 'لا توجد دروس نشطة' : 'No active lessons')
-                                : (language === 'ar' ? 'لا توجد دروس منتهية' : 'No finished lessons')
-                            }
-                        </p>
-                        <p className="text-[var(--text-muted)] text-sm mt-1">
-                            {language === 'ar' ? 'استمتع بيومك!' : 'Enjoy your day!'}
-                        </p>
-                    </div>
-                ) : (
-                    <div className="space-y-4">
-                        {(activeTab === 'active' ? activeSessions : finishedSessions).map((session) => {
-                            const badge = getStatusBadge(session.status, language);
-                            const subjectName = language === 'ar'
-                                ? (session.subject?.name_ar || session.subject?.name_en || '')
-                                : (session.subject?.name_en || session.subject?.name_ar || '');
-                            const actionState = getSessionState(session);
+                        {uniqueStudents.map(({ user: student, bookingsCount }) => {
+                            const studentName = student.name || (isAr ? 'طالب' : 'Student');
+                            const studentInitial = (studentName.charAt(0) || 'ط').toUpperCase();
+                            const bookingsLabel = getBookingsCountLabel(bookingsCount, language);
 
                             return (
                                 <div
-                                    key={session.id}
-                                    onClick={() => openDetailsModal(session)}
-                                    className="bg-white rounded-[var(--radius-md)] shadow-[var(--shadow-sm)] border border-[var(--border)] overflow-hidden hover:shadow-[var(--shadow-md)] transition-shadow cursor-pointer"
+                                    key={student.id}
+                                    className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center justify-between hover:shadow-md transition-shadow"
                                 >
-                                    {/* Gradient Time Header - مطابق Android TeacherSessionCard */}
-                                    <div className="bg-gradient-to-r from-primary to-primary/85 px-5 py-3">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 rounded-lg bg-white/25">
-                                                    <Clock className="text-white" size={18} />
-                                                </div>
-                                                <p className="text-white font-bold text-sm">
-                                                    {formatTime(session.start_time)} - {formatTime(session.end_time)}
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="w-11 h-11 rounded-full border border-slate-200 overflow-hidden bg-[#E8F1F3] text-[#0D4A5F] shrink-0 flex items-center justify-center font-bold text-base">
+                                            {student.profile_image ? (
+                                                <img src={student.profile_image} alt={studentName} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <span>{studentInitial}</span>
+                                            )}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <h4 className="text-sm font-bold text-[#0D4A5F] truncate leading-snug">
+                                                {studentName}
+                                            </h4>
+                                            {student.email && (
+                                                <p className="text-xs text-[#738989] mt-0.5 truncate">
+                                                    {student.email}
                                                 </p>
-                                            </div>
-                                            <div className="flex items-center gap-1.5 bg-white/20 rounded-[var(--radius-md)] px-3 py-1.5 border border-white/30">
-                                                <Calendar size={13} className="text-white" />
-                                                <span className="text-white text-xs font-semibold">
-                                                    {formatDate(session.session_date)}
-                                                </span>
-                                            </div>
+                                            )}
                                         </div>
                                     </div>
 
-                                    {/* Content - مطابق Android TeacherSessionCard */}
-                                    <div className="p-4">
-                                        {/* Subject Name + Duration Badge + Status Badge (مطابق Android line 183-262) */}
-                                        <div className="flex items-center gap-2 mb-3">
-                                            <h3 className="flex-1 text-lg font-bold text-primary truncate">
-                                                {subjectName || (language === 'ar' ? 'جلسة' : 'Session')}
-                                            </h3>
-                                            <div className="flex items-center gap-1.5 bg-secondary-pale border border-secondary/30 rounded-lg px-2.5 py-1">
-                                                <Clock size={13} className="text-primary" />
-                                                <span className="text-secondary text-xs font-bold">
-                                                    {getDuration(session.start_time, session.end_time)}
-                                                </span>
-                                            </div>
-                                            <span className={`${badge.bg} ${badge.color} text-xs font-bold px-2.5 py-1 rounded-lg`}>
-                                                {badge.label}
-                                            </span>
-                                        </div>
-
-                                        {/* Student Info & Actions (مطابق Android line 266-437) */}
-                                        <div className="bg-[var(--light-bg)] rounded-[var(--radius-md)] p-3 border border-[var(--border)]">
-                                            <div className="flex items-center justify-between gap-2">
-                                                <div className="flex items-center gap-3 min-w-0">
-                                                    <div className="w-8 h-8 rounded-full bg-secondary-pale flex items-center justify-center shrink-0">
-                                                        <PersonStanding className="text-secondary" size={16} />
-                                                    </div>
-                                                    <div className="min-w-0">
-                                                        <p className="text-xs text-[var(--text-muted)]">
-                                                            {language === 'ar' ? 'الطالب' : 'Student'}
-                                                        </p>
-                                                        <p className="font-semibold text-[var(--text-main)] text-sm truncate">
-                                                            {session.student?.name || (language === 'ar' ? 'غير محدد' : 'Unknown')}
-                                                        </p>
-                                                    </div>
-                                                </div>
-
-                                                {/* Status/Action - مطابق Android TeacherSessionCard (time-based + status fins) */}
-                                                {(session.status === 'ended' || session.status === 'completed' || session.status === 'finished') && (
-                                                    <div className="flex items-center gap-1 bg-[var(--border)] rounded-lg px-2.5 py-1 shrink-0">
-                                                        <CheckCircle2 size={13} className="text-[var(--text-muted)]" />
-                                                        <span className="text-[var(--text-muted)] text-xs font-bold">
-                                                            {language === 'ar' ? 'منتهية' : 'Finished'}
-                                                        </span>
-                                                    </div>
-                                                )}
-                                                {session.status === 'cancelled' && (
-                                                    <div className="flex items-center gap-1 bg-red-50 border border-red-200 rounded-lg px-2.5 py-1 shrink-0">
-                                                        <X size={13} className="text-red-500" />
-                                                        <span className="text-red-600 text-xs font-bold">
-                                                            {language === 'ar' ? 'ملغية' : 'Cancelled'}
-                                                        </span>
-                                                    </div>
-                                                )}
-                                                {actionState === 'live' && (
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); handleStartSession(session.id); }}
-                                                        className="flex items-center gap-1 bg-primary hover:bg-primary text-white text-xs font-bold px-4 py-1.5 rounded-lg shadow-[var(--shadow-sm)] transition-colors shrink-0"
-                                                    >
-                                                        <Play size={13} />
-                                                        {language === 'ar' ? 'بدء' : 'Start'}
-                                                    </button>
-                                                )}
-                                                {actionState === 'upcoming' && (
-                                                    <div className="flex items-center gap-1 bg-orange-50 border border-orange-300 rounded-lg px-2.5 py-1 shrink-0">
-                                                        <Clock size={13} className="text-orange-600" />
-                                                        <span className="text-orange-700 text-xs font-bold">
-                                                            {language === 'ar' ? 'قادمة' : 'Upcoming'}
-                                                        </span>
-                                                    </div>
-                                                )}
-                                                {actionState === 'finished' && (
-                                                    <div className="flex items-center gap-1 bg-[var(--border)] rounded-lg px-2.5 py-1 shrink-0">
-                                                        <CheckCircle2 size={13} className="text-[var(--text-muted)]" />
-                                                        <span className="text-[var(--text-muted)] text-xs font-bold">
-                                                            {language === 'ar' ? 'منتهية' : 'Finished'}
-                                                        </span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
+                                    <div className="shrink-0">
+                                        <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-[#A6D388]/20 text-[#144D25]">
+                                            {bookingsLabel}
+                                        </span>
                                     </div>
                                 </div>
                             );
                         })}
                     </div>
                 )
+            ) : (activeTab === 'active' ? activeSessions : endedSessions).length === 0 ? (
+                <div className="py-20 text-center flex flex-col items-center justify-center">
+                    <div className="w-24 h-24 rounded-full bg-[#E8F1F3] text-[#0D4A5F] flex items-center justify-center mb-4">
+                        {activeTab === 'active' ? <BookOpen size={40} /> : <CheckCircle2 size={40} />}
+                    </div>
+                    <h3 className="text-base font-bold text-[#0D4A5F] mb-1">
+                        {activeTab === 'active'
+                            ? (isAr ? 'لا توجد حصص نشطة حاليًا' : 'No active sessions')
+                            : (isAr ? 'لا توجد حصص منتهية بعد' : 'No finished sessions yet')}
+                    </h3>
+                    <p className="text-xs text-[#738989]">
+                        {activeTab === 'active'
+                            ? (isAr ? 'ستظهر هنا الحصص القادمة والجارية بعد أن يقوم الطالب بحجز موعد معك' : 'Upcoming and live sessions will appear here after a student books with you')
+                            : (isAr ? 'بعد إكمال أول حصة، ستظهر هنا جميع حصصك السابقة' : 'After completing your first session, all your past sessions will appear here')}
+                    </p>
+                </div>
+            ) : (
+                <div className="space-y-3">
+                    {(activeTab === 'active' ? activeSessions : endedSessions).map(session => {
+                        const subjectName = session.subject
+                            ? (isAr ? session.subject.name_ar || session.subject.name_en : session.subject.name_en || session.subject.name_ar)
+                            : (session.booking?.reference || (isAr ? 'جلسة تعليمية' : 'Session'));
+
+                        const studentName = session.student?.name || (isAr ? 'طالب' : 'Student');
+                        const currentOrder = orderCache[session.id] || session.session_number || 1;
+                        const totalOrder = totalCache[session.id] || session.booking?.total_sessions || 1;
+                        const showOrder = totalOrder > 1;
+                        const durationText = getDuration(session.start_time, session.end_time, language) || `${session.duration || 60} ${isAr ? 'دقيقة' : 'min'}`;
+                        const dateText = formatDate(session.session_date, language);
+                        const startTime = formatTime(session.start_time, language);
+                        const endTime = formatTime(session.end_time, language);
+                        const isEnded = activeTab === 'ended';
+
+                        return (
+                            <div
+                                key={session.id}
+                                onClick={() => handleSelectSession(session)}
+                                className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 hover:shadow-md transition-shadow cursor-pointer space-y-3"
+                            >
+                                <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <h3 className="text-base font-bold text-[#0D4A5F] truncate">
+                                            {subjectName}
+                                        </h3>
+                                        <div className="w-8 h-8 rounded-lg bg-[#E8F1F3] text-[#0D4A5F] flex items-center justify-center shrink-0">
+                                            <BookOpen size={16} />
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                        {showOrder && (
+                                            <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-[#E8F0FE] text-[#0D4A5F] flex items-center gap-1">
+                                                <span>{isAr ? `الجلسة ${currentOrder} من ${totalOrder}` : `Session ${currentOrder} of ${totalOrder}`}</span>
+                                                <ListOrdered size={13} />
+                                            </span>
+                                        )}
+                                        <span className={`px-2.5 py-1 rounded-lg text-[11px] font-bold ${
+                                            isEnded
+                                                ? 'bg-[#F0F4F5] text-[#738989]'
+                                                : 'bg-[#EAF5E9] text-[#3D8B37]'
+                                        }`}>
+                                            {isEnded ? (isAr ? 'منتهية' : 'Finished') : (isAr ? 'نشطة' : 'Active')}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-[#738989]">
+                                    {durationText && (
+                                        <div className="flex items-center gap-1">
+                                            <Timer size={14} className="shrink-0" />
+                                            <span>{durationText}</span>
+                                        </div>
+                                    )}
+                                    <div className="flex items-center gap-1">
+                                        <Calendar size={14} className="shrink-0" />
+                                        <span>{dateText}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <Clock size={14} className="shrink-0" />
+                                        <span dir="ltr">{startTime} - {endTime}</span>
+                                    </div>
+                                </div>
+
+                                <div className="border-t border-[#F3F4F5] pt-3 flex items-center justify-between">
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                        <div className="w-7 h-7 rounded-full border border-slate-200 overflow-hidden bg-slate-50 shrink-0 flex items-center justify-center">
+                                            {session.student?.profile_image ? (
+                                                <img src={session.student.profile_image} alt={studentName} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <span className="text-[11px] font-bold text-[#0D4A5F]">
+                                                    {(studentName.charAt(0) || 'ط').toUpperCase()}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <span className="text-sm font-semibold text-[#0D4A5F] truncate">
+                                            {studentName}
+                                        </span>
+                                    </div>
+
+                                    <ChevronIcon size={20} className="text-[#0D4A5F] shrink-0" />
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
             )}
 
-            {/* Session Details Modal (مطابق Android LessonDetailsScreen) */}
+            {activeTab !== 'students' && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30">
+                    <div
+                        onClick={() => dateInputRef.current?.showPicker ? dateInputRef.current.showPicker() : dateInputRef.current?.click()}
+                        className={`flex items-center gap-2 px-4 py-2 bg-white rounded-xl shadow-lg border cursor-pointer hover:shadow-xl transition-all ${
+                            selectedDate
+                                ? 'border-[#3D8B37] text-[#3D8B37]'
+                                : 'border-slate-200 text-[#0D4A5F]'
+                        }`}
+                    >
+                        <span className="text-sm font-bold">
+                            {selectedDate
+                                ? formatDate(selectedDate, language)
+                                : (isAr ? 'تصفية' : 'Filter')
+                            }
+                        </span>
+                        <Filter size={16} />
+                        {selectedDate && (
+                            <span
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedDate(null);
+                                }}
+                                className="p-0.5 hover:bg-slate-100 rounded-full text-red-500 transition-colors"
+                            >
+                                <X size={14} />
+                            </span>
+                        )}
+                    </div>
+                </div>
+            )}
+
             <SessionDetailsModal
                 session={selectedSession}
+                displayNumber={selectedSessionOrder?.number}
+                displayTotal={selectedSessionOrder?.total}
                 isOpen={detailsModalOpen}
                 onClose={() => setDetailsModalOpen(false)}
                 onStartSession={(id) => {
@@ -520,6 +539,7 @@ export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = ({ user }) =>
                 onEndSession={(id) => {
                     handleEndSession(id);
                 }}
+                isTeacher={true}
             />
 
             <SessionRoomModal

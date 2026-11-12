@@ -262,12 +262,22 @@ export const fetchWithProgress = (endpoint: string, options: { method?: string, 
       try {
         const data = JSON.parse(xhr.responseText);
         if (xhr.status >= 200 && xhr.status < 300) {
-          resolve(data);
+          if (data && data.success === false) {
+            reject(new Error(data.message_ar || data.message || "Upload failed"));
+          } else {
+            resolve(data);
+          }
         } else {
-          reject(new Error(data.message || "Upload failed"));
+          reject(new Error(data.message_ar || data.message || data.error || "Upload failed"));
         }
       } catch (e) {
-        reject(new Error("Invalid server response"));
+        if (xhr.status === 413) {
+          reject(new Error("حجم الفيديو يتجاوز الحد المسموح به على الخادم"));
+        } else if (xhr.status >= 500) {
+          reject(new Error("خطأ في الخادم أثناء رفع الفيديو، يرجى المحاولة لاحقاً"));
+        } else {
+          reject(new Error("Invalid server response"));
+        }
       }
     };
 
@@ -321,11 +331,19 @@ export const authService = {
 
 export const profileService = {
   updateProfile: (data: FormData) => {
-    data.append('_method', 'PUT');
+    if (!data.has('_method')) data.append('_method', 'PUT');
     return fetchWithAuth('/profile/profile/update', { method: 'POST', body: data });
   },
+  updateProfileWithProgress: (data: FormData, onProgress?: (pct: number) => void) => {
+    if (!data.has('_method')) data.append('_method', 'PUT');
+    return fetchWithProgress('/profile/profile/update', {
+      method: 'POST',
+      body: data,
+      onProgress: onProgress || (() => {}),
+    });
+  },
   updateProfileFull: (data: FormData) => {
-    data.append('_method', 'PUT');
+    if (!data.has('_method')) data.append('_method', 'PUT');
     return fetchWithAuth('/profile/profile/update', { method: 'POST', body: data });
   },
 };
@@ -338,7 +356,7 @@ export const teacherService = {
   getServicesList: () => fetchWithAuth('/teacher/services').then(extractArray),
   getTeacherServices: () => fetchWithAuth('/teacher/get-services').then(res => res.data || res),
   addTeacherService: (payload: { service_id: number }) => fetchWithAuth('/teacher/teacher-service', { method: 'POST', body: JSON.stringify(payload) }),
-  // تعيين خدمة المعلم (واحدة فقط — تستبدل الحالية)
+  deleteTeacherService: (serviceId: number) => fetchWithAuth(`/teacher/teacher-service/${serviceId}`, { method: 'DELETE' }),
   setTeacherService: (payload: { service_id: number }) => fetchWithAuth('/teacher/teacher-service', { method: 'PUT', body: JSON.stringify(payload) }),
   uploadTeacherCertificate: (formData: FormData) => fetchWithAuth('/teacher/teacher-upload-certificate', { method: 'POST', body: formData }),
   updateInfo: (data: any) => fetchWithAuth('/profile/teacher/info', { method: 'POST', body: JSON.stringify(data) }),
@@ -364,6 +382,30 @@ export const teacherService = {
   deletePaymentMethod: (id: number) => fetchWithAuth(`/teacher/payment-methods/${id}`, { method: 'DELETE' }),
   setDefaultPaymentMethod: (id: number) => fetchWithAuth(`/teacher/payment-methods/set-default/${id}`, { method: 'PUT' }),
   togglePackageOnOff: (value: boolean) => fetchWithAuth('/teacher/packages/on-off', { method: 'PUT', body: JSON.stringify({ package_on_off: value ? '1' : '0' }) }),
+  getActiveStatus: () => fetchWithAuth('/teacher/active-status').then(res => res?.data ?? res),
+  updateActiveStatus: (isActive: boolean) => fetchWithAuth('/teacher/active-status', { method: 'PUT', body: JSON.stringify({ is_active: isActive }) }),
+  getTeacherOrders: (params?: { status?: string; created_at?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.status && params.status !== 'all') q.set('status', params.status);
+    if (params?.created_at) q.set('created_at', params.created_at);
+    const queryString = q.toString() ? `?${q.toString()}` : '';
+    return fetchWithAuth(`/teacher/orders/browse${queryString}`).then(res => res?.data ?? res);
+  },
+  applyForOrder: (orderId: number, message?: string) =>
+    fetchWithAuth(`/teacher/orders/${orderId}/apply`, {
+      method: 'POST',
+      body: JSON.stringify(message ? { message } : {}),
+    }),
+  getMyApplications: () => fetchWithAuth('/teacher/my-applications').then(res => res?.data ?? res),
+  cancelApplication: (id: number) => fetchWithAuth(`/teacher/applications/${id}`, { method: 'DELETE' }),
+  getPackages: () => fetchWithAuth('/packages').then(res => res?.data ?? res),
+  getWithdrawalCards: () => fetchWithAuth('/user/cards').then(res => res?.data ?? res),
+  addWithdrawalCard: (data: any) => fetchWithAuth('/user/cards', { method: 'POST', body: JSON.stringify(data) }).then(res => res?.data ?? res),
+  updateWithdrawalCard: (id: number, data: any) => fetchWithAuth(`/user/cards/${id}`, { method: 'PUT', body: JSON.stringify(data) }).then(res => res?.data ?? res),
+  deleteWithdrawalCard: (id: number) => fetchWithAuth(`/user/cards/${id}`, { method: 'DELETE' }),
+  setDefaultWithdrawalCard: (id: number) => fetchWithAuth(`/user/cards/${id}/default`, { method: 'POST', body: JSON.stringify({}) }),
+  getWithdrawalMethods: () => fetchWithAuth('/teacher/withdrawal-methods').then(res => res?.data ?? res).catch(() => ({ isBankAccountActive: true, isCardActive: true })),
+  getTeacherDetails: (teacherId: number) => fetchWithAuth(`/teachers/${teacherId}`).then(res => res?.data ?? res),
   // Consultations assigned to me
   getConsultations: () => fetchWithAuth('/teacher/consultations').then(res => res.data || []),
   getConsultationDetails: (id: number) => fetchWithAuth(`/teacher/consultations/${id}`).then(res => res.data || res),
@@ -391,10 +433,47 @@ export const abilityService = {
     fetchWithAuth(`/teacher/abilities/${abilityId}`, { method: 'DELETE' }),
 };
 
+export const languageService = {
+  getAll: () => fetchWithAuth('/language-study').then(res => {
+    const raw = res?.data ?? res;
+    if (Array.isArray(raw)) {
+      return raw.map((item: any) => (item?.language ? item.language : item)).filter(Boolean);
+    }
+    return [];
+  }),
+  getTeacherLanguages: (teacherId: number) =>
+    fetchWithAuth(`/teacher/language-study/${teacherId}`).then(res => {
+      const list = res?.data?.languages ?? res?.languages ?? res?.data ?? [];
+      return Array.isArray(list) ? list : [];
+    }).catch(err => {
+      if (err?.status === 404) return [];
+      return [];
+    }),
+  addTeacherLanguages: (languageIds: number[]) =>
+    fetchWithAuth('/teacher/language-study/languages', {
+      method: 'POST',
+      body: JSON.stringify({ language_ids: languageIds }),
+    }).then(res => {
+      const list = res?.data?.languages ?? res?.languages ?? res?.data ?? [];
+      return Array.isArray(list) ? list : [];
+    }),
+  updateTeacherLanguages: (languageIds: number[]) =>
+    fetchWithAuth('/teacher/language-study/languages', {
+      method: 'PUT',
+      body: JSON.stringify({ language_ids: languageIds }),
+    }).then(res => {
+      const list = res?.data?.languages ?? res?.languages ?? res?.data ?? [];
+      return Array.isArray(list) ? list : [];
+    }),
+  deleteTeacherLanguage: (languageId: number) =>
+    fetchWithAuth(`/teacher/language-study/${languageId}`, { method: 'DELETE' }),
+};
+
 export const studentService = {
   saveFcmToken: (token: string) => fetchWithAuth('/student/save-fcm-token', { method: 'POST', body: JSON.stringify({ fcm_token: token }) }),
   getServices: () => fetchWithAuth('/services').then(extractArray),
-  getSubjects: () => fetchWithAuth('/student/subjects').then(extractArray),
+  getSubjects: () => fetchWithAuth('/common-subjects').then(extractArray),
+  getSubjectsByClass: (classId: number) => fetchWithAuth(`/subjectsClasses/${classId}`).then(extractArray),
   getEducationLevels: () => fetchWithAuth('/education-levels').then(extractArray),
   getClasses: (levelId: number) => fetchWithAuth(`/classes/${levelId}`).then(extractArray),
   getReferenceSubjects: (classId: number) => fetchWithAuth(`/subjectsClasses/${classId}`).then(extractArray),
@@ -415,6 +494,10 @@ export const studentService = {
       pagination: res.pagination || { current_page: 1, last_page: 1, per_page: 10, total: 0 },
     }));
   },
+  getTeacherById: (id: number) =>
+    fetchWithAuth(`/teachers/${id}`)
+      .catch(() => fetchWithAuth(`/student/teachers/${id}`))
+      .then(res => res.data || res),
   getCourseCategories: () => fetchWithAuth('/categories').then(res => res.data || []),
   getCourses: (filters: any = {}) => {
     const query = new URLSearchParams(filters).toString();
@@ -439,10 +522,19 @@ export const studentService = {
     if (status && status !== 'all') query.set('status', status);
     query.set('page', String(page));
     query.set('per_page', String(perPage));
-    return fetchWithAuth(`/student/booking?${query.toString()}`).then(res => ({
-      bookings: Array.isArray(res.data) ? res.data : [],
-      pagination: res.pagination || { current_page: 1, last_page: 1, per_page: 10, total: 0 },
-    }));
+    return fetchWithAuth(`/student/booking?${query.toString()}`).then(res => {
+      const raw = res?.data;
+      const bookings = Array.isArray(raw)
+        ? raw
+        : (Array.isArray(raw?.data) ? raw.data : (Array.isArray(res?.bookings) ? res.bookings : []));
+      const pagination = res?.pagination || (raw && raw.current_page ? {
+        current_page: raw.current_page,
+        last_page: raw.last_page,
+        per_page: raw.per_page,
+        total: raw.total,
+      } : { current_page: 1, last_page: 1, per_page: 10, total: 0 });
+      return { bookings, pagination };
+    });
   },
   getBookingDetails: (bookingId: number) => fetchWithAuth(`/student/booking/${bookingId}`).then(res => res.data || res),
   cancelBooking: (bookingId: number) =>
@@ -462,6 +554,12 @@ export const studentService = {
   getSubscriptionDetails: (id: number) => fetchWithAuth(`/student/subscriptions/${id}`),
   bookWithSubscription: (subscriptionId: number, data: { availability_slot_id: number; teacher_id: number; sessions_count: number }) =>
     fetchWithAuth(`/student/subscriptions/${subscriptionId}/book`, { method: 'POST', body: JSON.stringify(data) }),
+  getPublicPackages: () => fetchWithAuth('/packages').then(res => res.data || []),
+  purchasePackage: (data: { package_id: number; payment_method: string }) =>
+    fetchWithAuth('/student/packages/purchase', { method: 'POST', body: JSON.stringify(data) }),
+  getServicePreferences: () => fetchWithAuth('/student/service-preferences').then(res => res.data || []),
+  updateServicePreferences: (hidden_service_ids: number[]) =>
+    fetchWithAuth('/student/service-preferences', { method: 'POST', body: JSON.stringify({ hidden_service_ids }) }),
   // --- Orders (Student requests for teachers) ---
   getOrders: () => fetchWithAuth('/student/orders').then(res => res.data || []),
   createOrder: (data: any) => fetchWithAuth('/student/orders', { method: 'POST', body: JSON.stringify(data) }),
@@ -500,6 +598,7 @@ export const studentService = {
   addTeacherReview: (teacherId: number, data: { rating: number; comment?: string; session_id: number }) =>
     fetchWithAuth(`/teachers/${teacherId}/reviews`, { method: 'POST', body: JSON.stringify(data) }),
   getSessionComplaint: (sessionId: number) => fetchWithAuth(`/student/complaints/by-session/${sessionId}`),
+  getComplaints: () => fetchWithAuth('/student/complaints/my').then(res => res.data || []),
   submitComplaint: (data: { session_id: number; teacher_id: number; reason: string }) =>
     fetchWithAuth('/student/complaints', { method: 'POST', body: JSON.stringify(data) }),
   getCertificates: () => fetchWithAuth('/student/certificates').then(extractArray),
@@ -942,7 +1041,13 @@ export const marketingAnnouncementService = {
 
 export const getStorageUrl = (path: string | null | undefined) => {
   if (!path || typeof path !== 'string') return '';
-  if (path.startsWith('http')) return path;
-  const baseUrl = API_BASE_URL.replace(/\/api\/?$/, '');
-  return `${baseUrl}/storage/${path.replace(/^\//, '')}`;
+  const trimmed = path.trim();
+  if (!trimmed) return '';
+  const baseUrl = API_BASE_URL.replace(/\/api\/?$/, '') || window.location.origin;
+  if (trimmed.includes('/storage/')) {
+    const afterStorage = trimmed.split('/storage/')[1];
+    return `${baseUrl}/storage/${afterStorage}`;
+  }
+  if (trimmed.startsWith('http')) return trimmed;
+  return `${baseUrl}/storage/${trimmed.replace(/^\//, '')}`;
 };

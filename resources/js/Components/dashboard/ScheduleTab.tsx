@@ -1,13 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
-import { Plus, Clock, User, Trash2, Calendar, Loader2, Save, Video, Lock, CheckCircle, AlertCircle, X, Check } from 'lucide-react';
+import { Plus, Clock, Trash2, Calendar, Loader2, Save, Lock, AlertCircle, X, Check } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
-import { teacherService, UserData, AvailableTime, Session } from '../../Services/api';
-import { SessionRoomModal } from './SessionRoomModal';
+import { teacherService, UserData, AvailableTime } from '../../Services/api';
 
 interface ScheduleTabProps {
     user?: UserData;
@@ -30,29 +29,18 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({ user }) => {
       );
   }
 
-  const [activeView, setActiveView] = useState<'sessions' | 'availability'>('sessions');
   const [loading, setLoading] = useState(false);
-  const [sessionActionLoading, setSessionActionLoading] = useState<number | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   
-  // Availability State
   const [availability, setAvailability] = useState<AvailableTime[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState(1);
   const [selectedTime, setSelectedTime] = useState('');
   const [saving, setSaving] = useState(false);
 
-  // Sessions State
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [agoraData, setAgoraData] = useState<any>(null);
-
   useEffect(() => {
-    if (activeView === 'availability') {
-        fetchAvailability();
-    } else {
-        fetchSessions();
-    }
-  }, [activeView]);
+    fetchAvailability();
+  }, []);
 
   const fetchAvailability = async () => {
     setLoading(true);
@@ -64,38 +52,6 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({ user }) => {
     } finally {
         setLoading(false);
     }
-  };
-
-  const fetchSessions = async () => {
-      setLoading(true);
-      try {
-          const data = await teacherService.getTeacherSessions();
-          setSessions(Array.isArray(data) ? data : []);
-      } catch (e) {
-          console.error(e);
-      } finally {
-          setLoading(false);
-      }
-  };
-
-  const handleStartClass = async (sessionId: number) => {
-      setSessionActionLoading(sessionId);
-      try {
-          const response = await teacherService.startSession(sessionId);
-          if (response.success && response.data?.agora) {
-              setAgoraData({
-                  ...response.data.agora,
-                  session_id: sessionId,
-                  role: 'host'
-              });
-          } else {
-              alert(response.message || "Failed to start session");
-          }
-      } catch (e: any) {
-          alert(e.message || "Failed to start session");
-      } finally {
-          setSessionActionLoading(null);
-      }
   };
 
   const getClientTimezone = () => {
@@ -118,6 +74,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({ user }) => {
           return '+03:00';
       }
   };
+
 
   const handleAddSlot = async () => {
       if (!selectedTime || !user) return;
@@ -156,28 +113,20 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({ user }) => {
       }
   };
 
-  const isSessionStartedOrLeft = (session: Session) => {
-      if (session.status === 'completed' || session.status === 'finished') return 'completed';
-      if (session.status === 'live') return 'ready';
-      if (session.can_start) return 'ready';
-
-      const now = new Date();
-      // Parsing standard ISO-8601 when available
-      const sessionDate = session.start_at_iso
-          ? new Date(session.start_at_iso)
-          : new Date(`${session.session_date}T${session.start_time}`);
-
-      const justDateNow = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const justDateSession = new Date(sessionDate.getFullYear(), sessionDate.getMonth(), sessionDate.getDate());
-
-      if (justDateSession < justDateNow) return 'left';
-
-      // 15 minutes rule: current time must be >= session start time - 15 mins
-      const startAllowedTime = new Date(sessionDate.getTime() - (15 * 60 * 1000));
-
-      if (now < startAllowedTime) return 'upcoming';
-
-      return 'ready';
+  const formatTime = (time: string) => {
+      if (!time) return '';
+      const trimmed = String(time).trim();
+      if (trimmed.includes('ص') || trimmed.includes('م') || /am|pm/i.test(trimmed)) {
+          return trimmed;
+      }
+      const match = trimmed.match(/^(\d{1,2}):(\d{2})/);
+      if (!match) return trimmed;
+      const hour = parseInt(match[1], 10);
+      const minute = match[2];
+      const isPM = hour >= 12;
+      const hour12 = hour % 12 || 12;
+      const period = language === 'ar' ? (isPM ? 'م' : 'ص') : (isPM ? 'PM' : 'AM');
+      return `${hour12}:${minute} ${period}`;
   };
 
   const days = [
@@ -200,34 +149,26 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({ user }) => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-        <div className="flex bg-[var(--light-bg)] p-1 rounded-[var(--radius-md)] shadow-inner border border-[var(--border)]">
-            <button 
-                onClick={() => setActiveView('sessions')}
-                className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeView === 'sessions' ? 'bg-white text-primary shadow-[var(--shadow-sm)]' : 'text-[var(--text-muted)] hover:text-navy'}`}
-            >
-                {language === 'ar' ? 'جلساتي' : 'My Sessions'}
-            </button>
-            <button 
-                onClick={() => setActiveView('availability')}
-                className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeView === 'availability' ? 'bg-white text-primary shadow-[var(--shadow-sm)]' : 'text-[var(--text-muted)] hover:text-navy'}`}
-            >
-                {language === 'ar' ? 'إعدادات التوفر' : 'Availability Settings'}
-            </button>
+        <div>
+          <h2 className="text-xl font-bold text-[var(--text-main)]">
+            {language === 'ar' ? 'الجدول الدراسي' : 'Study Schedule'}
+          </h2>
+          <p className="text-sm text-[var(--text-muted)] mt-1">
+            {language === 'ar' ? 'إدارة المواعيد المتاحة والأوقات المحجوزة' : 'Manage your available and booked time slots'}
+          </p>
         </div>
-        
-        {activeView === 'availability' && (
-            <Button onClick={() => setIsModalOpen(true)} className="shadow-[var(--shadow-lg)]">
-                <Plus size={18} className="mr-2" /> {language === 'ar' ? 'إضافة موعد' : 'Add Time Slot'}
-            </Button>
-        )}
+
+        <Button onClick={() => setIsModalOpen(true)} className="shadow-[var(--shadow-lg)]">
+          <Plus size={18} className="mr-2" /> {language === 'ar' ? 'إضافة موعد' : 'Add Time Slot'}
+        </Button>
       </div>
 
-      {loading && sessions.length === 0 && availability.length === 0 ? (
+      {loading && availability.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-20 text-[var(--text-muted)]">
             <Loader2 className="animate-spin text-primary h-10 w-10 mb-4" />
-            <p className="font-medium">Syncing Schedule...</p>
+            <p className="font-medium">{language === 'ar' ? 'جاري تحميل الجدول...' : 'Loading Schedule...'}</p>
           </div>
-      ) : activeView === 'availability' ? (
+      ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {days.map(day => {
                   const slots = getTimesForDay(day.id);
@@ -245,7 +186,8 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({ user }) => {
                                   </div>
                               ) : (
                                   slots.map((slot: any) => {
-                                      const isAvailable = slot.is_available ?? !slot.session;
+                                      const isBooked = Boolean(slot.is_booked === true || slot.is_booked === 1 || slot.session || slot.is_available === false || slot.is_available === 0);
+                                      const isAvailable = !isBooked;
                                       const isConfirming = confirmDeleteId === slot.id;
 
                                       return (
@@ -261,7 +203,14 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({ user }) => {
                                               <div className={`h-8 w-8 rounded-full flex items-center justify-center ${isAvailable ? 'bg-primary-pale text-primary' : 'bg-red-100 text-red-600'}`}>
                                                   <Clock size={16} />
                                               </div>
-                                              <span className={`font-bold text-sm ${isAvailable ? 'text-green-800' : 'text-red-800'}`}>{slot.time}</span>
+                                              <div className="flex items-center gap-2">
+                                                  <span className={`font-bold text-sm ${isAvailable ? 'text-green-800' : 'text-red-800'}`}>{formatTime(slot.time)}</span>
+                                                  {!isAvailable && (
+                                                      <span className="text-xs font-semibold text-red-600 bg-red-100/70 px-2 py-0.5 rounded-md">
+                                                          {language === 'ar' ? 'محجوز' : 'Booked'}
+                                                      </span>
+                                                  )}
+                                              </div>
                                           </div>
                                           
                                           {isAvailable ? (
@@ -294,103 +243,20 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({ user }) => {
                   );
               })}
           </div>
-      ) : (
-          <div className="space-y-4">
-              {sessions.length === 0 ? (
-                  <div className="text-center py-20 bg-white rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] text-[var(--text-muted)]">
-                      <Calendar className="mx-auto h-16 w-16 text-[var(--text-muted)] mb-4" />
-                      <p className="text-lg font-medium">No scheduled sessions found.</p>
-                      <p className="text-sm opacity-70">New bookings will appear here automatically.</p>
-                  </div>
-              ) : (
-                  sessions.map(session => {
-                      const sessionState = isSessionStartedOrLeft(session);
-                      const isPast = sessionState === 'left';
-                      const isUpcoming = sessionState === 'upcoming';
-                      const isReady = sessionState === 'ready';
 
-                      return (
-                      <div key={session.id} className={`bg-white p-6 rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] flex flex-col md:flex-row justify-between items-center gap-6 transition-opacity ${isPast ? 'opacity-50 grayscale' : ''}`}>
-                          <div className="flex items-center gap-4 w-full md:w-auto">
-                              <div className={`h-16 w-16 rounded-[var(--radius-md)] flex flex-col items-center justify-center font-bold border ${isPast ? 'bg-[var(--light-bg)] border-[var(--border)] text-[var(--text-muted)]' : 'bg-secondary-pale border-secondary/30 text-primary'}`}>
-                                  <span className="text-xl">{new Date(session.user_local_time?.session_date || session.session_date).getDate()}</span>
-                                  <span className="text-[10px] uppercase">{new Date(session.user_local_time?.session_date || session.session_date).toLocaleString('default', { month: 'short' })}</span>
-                              </div>
-                              <div>
-                                  <div className="flex items-center gap-2 mb-1">
-                                      <h4 className="text-lg font-bold text-[var(--text-main)] leading-none">
-                                          {session.subject ? (language === 'ar' ? session.subject.name_ar : session.subject.name_en) : 'Private Session'}
-                                      </h4>
-                                      {isPast && <span className="bg-[var(--border)] text-[var(--text-muted)] px-2 py-0.5 rounded text-[10px] font-bold uppercase">Past</span>}
-                                  </div>
-                                  <div className="flex flex-wrap items-center gap-4 text-sm text-[var(--text-muted)]">
-                                      <span className="flex items-center gap-1.5"><Clock size={14} className="text-[var(--text-muted)]" /> {(session.user_local_time?.start_time || session.start_time).substring(0, 5)} - {(session.user_local_time?.end_time || session.end_time).substring(0, 5)}</span>
-                                      <span className="flex items-center gap-1.5"><User size={14} className="text-[var(--text-muted)]" /> {session.student?.name || 'Student'}</span>
-                                  </div>
-                              </div>
-                          </div>
-                          
-                          <div className="flex flex-col md:items-end gap-2 w-full md:w-auto">
-                              {isUpcoming ? (
-                                  <div className="flex flex-col items-end">
-                                      <Button disabled className="bg-[var(--border)] text-[var(--text-muted)] cursor-not-allowed border-0">
-                                          Start Class
-                                      </Button>
-                                      <span className="text-[10px] text-amber-600 font-bold mt-1 flex items-center gap-1">
-                                          <AlertCircle size={10} /> Allowed 15m before start
-                                      </span>
-                                  </div>
-                              ) : isReady ? (
-                                  <Button 
-                                    className="bg-primary hover:bg-primary shadow-[var(--shadow-lg)] shadow-green-200" 
-                                    isLoading={sessionActionLoading === session.id}
-                                    onClick={() => handleStartClass(session.id)}
-                                  >
-                                      <Video size={18} className="mr-2" /> Start Class
-                                  </Button>
-                              ) : null}
-
-                              <div
-                                title={
-                                    session.status === 'wait_for_teacher'
-                                        ? (language === 'ar' ? 'بانتظار جدولة الجلسة - لا يمكن بدؤها حالياً' : 'Awaiting scheduling - cannot be started yet')
-                                        : undefined
-                                }
-                                className={`px-4 py-2 rounded-[var(--radius-md)] font-bold text-xs flex items-center gap-2 ${
-                                    session.status === 'live' ? 'bg-red-100 text-red-700 animate-pulse' : 
-                                    session.status === 'completed' || session.status === 'finished' ? 'bg-[var(--light-bg)] text-[var(--text-muted)]' : 'bg-primary-pale text-primary'
-                                }`}>
-                                  {session.status === 'live' ? <AlertCircle size={14} /> : <CheckCircle size={14} />}
-                                  <span className="capitalize">
-                                      {session.status === 'wait_for_teacher'
-                                          ? (language === 'ar' ? 'بانتظار الجدولة' : 'Awaiting Scheduling')
-                                          : session.status.replace(/_/g, ' ')}
-                                  </span>
-                              </div>
-                          </div>
-                      </div>
-                  )})
-              )}
-          </div>
       )}
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Add Time Slot">
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={language === 'ar' ? 'إضافة موعد' : 'Add Time Slot'}>
           <div className="space-y-4">
-              <Select label="Day of Week" options={days.map(d => ({ value: String(d.id), label: d.name }))} value={selectedDay} onChange={(e) => setSelectedDay(Number(e.target.value))} />
-              <Input label="Start Time" type="time" value={selectedTime} onChange={(e) => setSelectedTime(e.target.value)} />
+              <Select label={language === 'ar' ? 'اليوم' : 'Day of Week'} options={days.map(d => ({ value: String(d.id), label: d.name }))} value={selectedDay} onChange={(e) => setSelectedDay(Number(e.target.value))} />
+              <Input label={language === 'ar' ? 'وقت البدء' : 'Start Time'} type="time" value={selectedTime} onChange={(e) => setSelectedTime(e.target.value)} />
               <div className="p-3 bg-secondary-pale rounded-lg border border-secondary/30 text-xs text-secondary flex gap-2">
                   <AlertCircle size={16} className="shrink-0" />
-                  <p>Slots are created for 1 hour duration. Ensure this doesn't overlap with existing slots.</p>
+                  <p>{language === 'ar' ? 'يتم إنشاء المواعيد بمدة ساعة واحدة. يرجى التأكد من عدم تداخلها مع مواعيد سابقة.' : 'Slots are created for 1 hour duration. Ensure this does not overlap with existing slots.'}</p>
               </div>
-              <Button className="w-full h-12 shadow-[var(--shadow-lg)]" onClick={handleAddSlot} isLoading={saving}><Save size={18} className="mr-2" /> Save Slot</Button>
+              <Button className="w-full h-12 shadow-[var(--shadow-lg)]" onClick={handleAddSlot} isLoading={saving}><Save size={18} className="mr-2" /> {language === 'ar' ? 'حفظ الموعد' : 'Save Slot'}</Button>
           </div>
       </Modal>
-
-      <SessionRoomModal 
-        isOpen={!!agoraData} 
-        onClose={() => { setAgoraData(null); fetchSessions(); }} 
-        agora={agoraData} 
-      />
     </div>
   );
 };

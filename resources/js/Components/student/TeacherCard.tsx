@@ -1,89 +1,51 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
-import { Star, Clock, Heart, ShieldCheck, Loader2 } from 'lucide-react';
+import { Star, Heart, BookOpen, User, Loader2 } from 'lucide-react';
 import { getStorageUrl, studentService } from '../../Services/api';
-import { COUNTRIES } from '../../Utils/constants';
 
 interface TeacherCardProps {
   teacher: any;
   onViewDetails?: (teacher: any) => void;
+  onBookNow?: (teacher: any) => void;
   onFavoriteToggle?: (teacherId: number, newState: boolean) => void;
+  browseOnly?: boolean;
   compact?: boolean;
-}
-
-function getNationalityFlag(nationality?: string | null): string {
-  if (!nationality) return '🏳️';
-  const country = COUNTRIES.find(
-    c => c.label.toLowerCase() === nationality.toLowerCase()
-  );
-  return country?.flag || '🏳️';
-}
-
-function getServiceName(service: any, lang: string): string {
-  if (!service) return '';
-  const serviceMap: Record<string, { en: string; ar: string }> = {
-    '1': { en: 'Private Lessons', ar: 'دروس خصوصية' },
-    '2': { en: 'Language Learning', ar: 'تعلم لغات' },
-    '3': { en: 'Private Lessons', ar: 'دروس خصوصية' },
-    '4': { en: 'Training Courses', ar: 'دورات تدريبية' },
-    '5': { en: 'Private Tutoring', ar: 'تدريس خصوصي' },
-    '6': { en: 'Qiyas & Achievement', ar: 'قياس وتحصيلي' },
-  };
-  const id = typeof service === 'number' ? String(service) : String(service);
-  const mapped = serviceMap[id];
-  if (!mapped) return '';
-  return lang === 'ar' ? mapped.ar : mapped.en;
-}
-
-function getServiceCount(teacher: any, lang: string): string {
-  const svc = teacher?.profile?.service ?? teacher?.service ?? 0;
-  const serviceId = Number(svc);
-  if (!serviceId) return '';
-
-  const subjectsCount = teacher?.profile?.teacher_subjects?.length ?? teacher?.teacher_subjects?.length ?? 0;
-  const languagesCount = teacher?.profile?.languages?.length ?? teacher?.languages?.length ?? 0;
-  const coursesCount = teacher?.profile?.courses?.length ?? teacher?.courses?.length ?? 0;
-
-  if (serviceId === 6 || serviceId === 3 || serviceId === 5) {
-    return subjectsCount > 0
-      ? (lang === 'ar' ? `${subjectsCount} مواد` : `${subjectsCount} Subject${subjectsCount !== 1 ? 's' : ''}`)
-      : '';
-  }
-  if (serviceId === 4) {
-    return languagesCount > 0
-      ? (lang === 'ar' ? `${languagesCount} لغات` : `${languagesCount} Language${languagesCount !== 1 ? 's' : ''}`)
-      : '';
-  }
-  return '';
 }
 
 export const TeacherCard: React.FC<TeacherCardProps> = ({
   teacher,
   onViewDetails,
+  onBookNow,
   onFavoriteToggle,
-  compact = false,
+  browseOnly = false,
 }) => {
-  const { t, language } = useLanguage();
-  const [favorited, setFavorited] = React.useState(teacher?.has_favorited ?? false);
-  const [favLoading, setFavLoading] = React.useState(false);
+  const { language } = useLanguage();
+  const [favorited, setFavorited] = useState<boolean>(
+    Boolean(teacher?.has_favorited || teacher?.is_favorite || teacher?.hasFavorited)
+  );
+  const [favLoading, setFavLoading] = useState(false);
 
   const profile = teacher?.profile || {};
-  const profileImage = profile.profile_photo || teacher?.profile_image || null;
-  const firstName = teacher?.first_name || '';
-  const lastName = teacher?.last_name || '';
-  const fullName = `${firstName} ${lastName}`.trim();
-  const nationality = teacher?.nationality || '';
-  const verified = teacher?.verified ?? profile?.verified ?? false;
-  const rating = profile?.rating ?? teacher?.rating ?? 0;
-  const reviewsCount = profile?.reviews?.length ?? 0;
-  const serviceId = profile?.service ?? teacher?.service ?? 0;
-  const availableTimes = profile?.available_times ?? teacher?.available_times ?? [];
-  const availableDaysCount = Array.isArray(availableTimes) ? availableTimes.length : 0;
-  const bio = profile?.bio || teacher?.bio || '';
+  const rawImage = profile.profile_photo || teacher?.profile_image || teacher?.avatar;
+  const profileImageUrl = rawImage ? getStorageUrl(rawImage) : null;
+  const fullName = (teacher?.full_name || `${teacher?.first_name || ''} ${teacher?.last_name || ''}`).trim() || (language === 'ar' ? 'معلم' : 'Teacher');
+  const rating = Number(profile.rating ?? teacher?.rating ?? 0);
+  const ratingStr = rating > 0 ? rating.toFixed(1) : '0.0';
 
-  const serviceName = getServiceName(serviceId, language);
-  const serviceCountStr = getServiceCount(teacher, language);
-  const flag = getNationalityFlag(nationality);
+  const priceNum = Number(
+    profile.individual_hour_price ??
+    teacher?.individual_hour_price ??
+    teacher?.price_hour ??
+    teacher?.price ??
+    0
+  );
+  const priceStr = Math.round(priceNum).toString();
+
+  const servicesList = profile.services || teacher?.services || [];
+  const primaryService = servicesList[0];
+  const serviceName = primaryService
+    ? (language === 'ar' ? primaryService.name_ar || primaryService.name : primaryService.name_en || primaryService.name)
+    : (teacher?.subject_name || teacher?.specialization || (language === 'ar' ? 'دروس خصوصية' : 'Private Lessons'));
 
   const handleFavoriteClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -92,8 +54,8 @@ export const TeacherCard: React.FC<TeacherCardProps> = ({
     setFavorited(!prev);
     setFavLoading(true);
     try {
-      await studentService.toggleFavorite(teacher?.id);
-      onFavoriteToggle?.(teacher?.id, !prev);
+      await studentService.toggleFavorite(teacher.id);
+      onFavoriteToggle?.(teacher.id, !prev);
     } catch {
       setFavorited(prev);
     } finally {
@@ -101,105 +63,87 @@ export const TeacherCard: React.FC<TeacherCardProps> = ({
     }
   };
 
+  const handleAction = () => {
+    if (onBookNow) {
+      onBookNow(teacher);
+    } else if (onViewDetails) {
+      onViewDetails(teacher);
+    }
+  };
+
   return (
-    <div className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] transition-all overflow-hidden flex flex-col">
-      <div className="p-5 flex-1">
-        {/* Row 1: Profile Image + Name/Verified/Fav */}
-        <div className="flex gap-4">
-          <div className="w-[70px] h-[70px] rounded-[var(--radius-md)] border-2 border-primary/20 overflow-hidden shrink-0">
-            {profileImage ? (
-              <img
-                src={getStorageUrl(profileImage)}
-                alt={fullName}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                  (e.target as HTMLImageElement).parentElement!.classList.add('flex', 'items-center', 'justify-center', 'bg-[var(--light-bg)]');
-                }}
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-[var(--light-bg)] text-[var(--text-muted)]">
-                <span className="text-2xl font-bold">{firstName?.charAt(0) || '?'}</span>
-              </div>
-            )}
-          </div>
-
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1 flex-wrap">
-              <h3 className="text-[17px] font-bold text-[var(--text-main)] truncate max-w-[160px]">
-                {fullName}
-              </h3>
-              {verified && (
-                <ShieldCheck size={18} className="text-secondary shrink-0" fill="white" />
-              )}
-              <button
-                onClick={handleFavoriteClick}
-                disabled={favLoading}
-                className="ml-auto shrink-0 p-1 hover:scale-110 transition-transform disabled:opacity-50"
-              >
-                {favLoading ? (
-                  <Loader2 size={18} className="animate-spin text-[var(--text-muted)]" />
-                ) : (
-                  <Heart
-                    size={18}
-                    className={favorited ? 'fill-red-400 text-red-400' : 'text-[var(--text-muted)]'}
-                  />
-                )}
-              </button>
-            </div>
-
-            {/* Row 2: Nationality + Service */}
-            <div className="flex items-center gap-1.5 mt-1.5 text-sm text-[var(--text-muted)]">
-              <span className="text-base leading-none">{flag}</span>
-              <span className="truncate max-w-[90px]">{nationality || t.notSpecified || 'N/A'}</span>
-              <span className="w-1 h-1 rounded-full bg-[var(--border)] shrink-0" />
-              <span className="truncate">{serviceName}</span>
-              {serviceCountStr && (
-                <>
-                  <span className="text-[var(--text-muted)]">(</span>
-                  <span className="font-semibold text-[var(--text-muted)]">{serviceCountStr}</span>
-                  <span className="text-[var(--text-muted)]">)</span>
-                </>
-              )}
-            </div>
-
-            {/* Row 3: Rating + Available Days */}
-            <div className="flex items-center gap-3 mt-2">
-              <div className="flex items-center gap-1">
-                <Star size={14} className="text-amber-500 fill-amber-500" />
-                <span className="text-sm font-semibold text-[var(--text-muted)]">
-                  {rating > 0 ? rating.toFixed(1) : '0.0'}
-                </span>
-                <span className="text-xs text-[var(--text-muted)]">
-                  ({reviewsCount})
-                </span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Clock size={14} className="text-primary" />
-                <span className="text-sm text-[var(--text-muted)]">
-                  {language === 'ar'
-                    ? `${availableDaysCount} أيام متاحة`
-                    : `${availableDaysCount} day${availableDaysCount !== 1 ? 's' : ''} available`}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Bio snippet (only for non-compact) */}
-        {!compact && bio && (
-          <p className="text-sm text-[var(--text-muted)] mt-3 line-clamp-2">{bio}</p>
+    <div
+      onClick={handleAction}
+      className="bg-white rounded-2xl p-3 sm:p-4 border border-[#E6E6E6] shadow-sm hover:shadow-md transition-all cursor-pointer flex items-start gap-3 w-full"
+    >
+      <div className="w-16 h-16 rounded-full bg-[#EFF6F4] border border-[#E6E6E6] shrink-0 overflow-hidden flex items-center justify-center">
+        {profileImageUrl ? (
+          <img
+            src={profileImageUrl}
+            alt={fullName}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
+          />
+        ) : (
+          <User className="w-8 h-8 text-[#738989]" />
         )}
       </div>
 
-      {/* Bottom button */}
-      <div className="p-4 pt-0">
-        <button
-          onClick={() => onViewDetails?.(teacher)}
-          className="w-full py-3 px-4 bg-gradient-to-br from-[var(--green-light)] to-[var(--green)] text-white text-sm font-bold rounded-[50px] shadow-[0_6px_20px_rgba(61,139,55,.35)] hover:-translate-y-[3px] hover:shadow-[0_10px_28px_rgba(61,139,55,.45)] transition-all"
-        >
-          {(t.viewDetails || 'View Details') + ' & ' + (t.bookNow || 'Book')}
-        </button>
+      <div className="flex-1 min-w-0">
+        <h3 className="text-base font-bold text-[#171717] truncate">
+          {fullName}
+        </h3>
+        <div className="flex items-center gap-1.5 mt-1 text-xs text-[#738989]">
+          <BookOpen size={14} className="shrink-0 text-[#738989]" />
+          <span className="truncate">{serviceName}</span>
+        </div>
+        <div className="flex items-center gap-1 mt-2">
+          <Star size={16} className="text-amber-400 fill-amber-400 shrink-0" />
+          <span className="text-xs font-bold text-[#171717]">{ratingStr}</span>
+        </div>
+      </div>
+
+      <div className="flex flex-col items-end justify-between self-stretch shrink-0">
+        {!browseOnly && (
+          <button
+            type="button"
+            onClick={handleFavoriteClick}
+            disabled={favLoading}
+            className="p-1 text-[#738989] hover:scale-110 transition-transform disabled:opacity-50"
+          >
+            {favLoading ? (
+              <Loader2 size={20} className="animate-spin text-[#738989]" />
+            ) : (
+              <Heart
+                size={22}
+                className={favorited ? 'text-red-500 fill-red-500' : 'text-[#738989]'}
+              />
+            )}
+          </button>
+        )}
+
+        {!browseOnly && (
+          <div className="flex flex-col items-end gap-2 mt-auto pt-2">
+            <div className="flex items-baseline gap-1">
+              <span className="text-lg font-bold text-[#171717] leading-none">{priceStr}</span>
+              <span className="text-xs font-medium text-[#0D4A5F]">
+                {language === 'ar' ? 'ر.س / ساعة' : 'SAR / hr'}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAction();
+              }}
+              className="h-9 px-4 rounded-lg bg-[#5B9F48] hover:bg-[#4d863d] text-white text-xs font-medium transition-colors"
+            >
+              {language === 'ar' ? 'احجز الآن' : 'Book Now'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

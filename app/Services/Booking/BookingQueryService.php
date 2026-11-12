@@ -32,7 +32,10 @@ class BookingQueryService
             'subject',
             'course',
             'course.service',
-            'teacher.profile'
+            'teacher.profile',
+            'service',
+            'language',
+            'generalService'
         ])->where('student_id', $studentId);
 
         switch ($status) {
@@ -60,12 +63,36 @@ class BookingQueryService
             $subjectData = null;
 
             if ($booking->course) {
-                $courseData = Course::find($booking->course_id);
+                $courseData = $booking->course;
                 if ($booking->course->subject) {
                     $subjectData = $booking->course->subject;
+                } else {
+                    $subjectData = [
+                        'id' => $booking->course->id,
+                        'name_en' => $booking->course->title_en ?? $booking->course->title ?? $booking->course->name ?? '',
+                        'name_ar' => $booking->course->title_ar ?? $booking->course->title ?? $booking->course->name ?? '',
+                    ];
                 }
-            } elseif ($booking->subject_id) {
-                $subjectData = Subject::find($booking->subject_id);
+            } elseif ($booking->subject_id && $booking->subject) {
+                $subjectData = $booking->subject;
+            } elseif ($booking->language_id && $booking->language) {
+                $subjectData = [
+                    'id' => $booking->language->id,
+                    'name_en' => $booking->language->name_en,
+                    'name_ar' => $booking->language->name_ar,
+                ];
+            } elseif ($booking->general_service_id && $booking->generalService) {
+                $subjectData = [
+                    'id' => $booking->generalService->id,
+                    'name_en' => $booking->generalService->title_en ?? $booking->generalService->name_en ?? $booking->generalService->name ?? '',
+                    'name_ar' => $booking->generalService->title_ar ?? $booking->generalService->name_ar ?? $booking->generalService->name ?? '',
+                ];
+            } elseif ($booking->service_id && $booking->service) {
+                $subjectData = [
+                    'id' => $booking->service->id,
+                    'name_en' => $booking->service->name_en,
+                    'name_ar' => $booking->service->name_ar,
+                ];
             }
 
             $dateStr = $booking->first_session_date ? Carbon::parse($booking->first_session_date)->format('Y-m-d') : '';
@@ -75,9 +102,22 @@ class BookingQueryService
                 'id' => $booking->id,
                 'reference' => (string) $booking->booking_reference,
                 'booking_reference' => (string) $booking->booking_reference,
+                'service_id' => $booking->service_id,
+                'language_id' => $booking->language_id,
+                'general_service_id' => $booking->general_service_id,
+                'subject_id' => $booking->subject_id,
+                'course_id' => $booking->course_id,
                 'teacher' => $teacherData,
                 'course' => $courseData,
                 'subject' => $subjectData,
+                'service' => $booking->service,
+                'language' => $booking->language ? [
+                    'id' => $booking->language->id,
+                    'name_en' => $booking->language->name_en,
+                    'name_ar' => $booking->language->name_ar,
+                ] : null,
+                'general_service' => $booking->generalService,
+                'created_at' => $booking->created_at ? $booking->created_at->toISOString() : '',
                 'session_info' => [
                     'type' => (string) ($booking->session_type ?? 'single'),
                     'total_sessions' => (int) ($booking->sessions_count ?? 1),
@@ -129,6 +169,10 @@ class BookingQueryService
             'course.classLevel',
             'teacher.profile',
             'payment',
+            'subject',
+            'language',
+            'service',
+            'generalService',
             'sessions' => function ($query) {
                 $query->orderBy('session_date')->orderBy('start_time');
             }
@@ -154,6 +198,37 @@ class BookingQueryService
             ];
         }
 
+        $subjectData = null;
+        if ($booking->course && $booking->course->subject) {
+            $subjectData = $booking->course->subject;
+        } elseif ($booking->subject) {
+            $subjectData = $booking->subject;
+        } elseif ($booking->language) {
+            $subjectData = [
+                'id' => $booking->language->id,
+                'name_en' => $booking->language->name_en,
+                'name_ar' => $booking->language->name_ar,
+            ];
+        } elseif ($booking->generalService) {
+            $subjectData = [
+                'id' => $booking->generalService->id,
+                'name_en' => $booking->generalService->title_en ?? $booking->generalService->name_en ?? $booking->generalService->name ?? '',
+                'name_ar' => $booking->generalService->title_ar ?? $booking->generalService->name_ar ?? $booking->generalService->name ?? '',
+            ];
+        } elseif ($booking->service) {
+            $subjectData = [
+                'id' => $booking->service->id,
+                'name_en' => $booking->service->name_en,
+                'name_ar' => $booking->service->name_ar,
+            ];
+        } elseif ($booking->course) {
+            $subjectData = [
+                'id' => $booking->course->id,
+                'name_en' => $booking->course->title_en ?? $booking->course->title ?? $booking->course->name ?? '',
+                'name_ar' => $booking->course->title_ar ?? $booking->course->title ?? $booking->course->name ?? '',
+            ];
+        }
+
         $teacherProfilePhoto = $booking->teacher ? ($booking->teacher->attachments()->where('attached_to_type', 'profile_picture')->latest()->value('file_path') ?? '') : '';
         $teacherFullName = $booking->teacher ? trim(($booking->teacher->first_name ?? '') . ' ' . ($booking->teacher->last_name ?? '')) : '';
 
@@ -167,6 +242,17 @@ class BookingQueryService
             'booking_reference' => (string) $booking->booking_reference,
             'status' => (string) $booking->status,
             'booking_date' => $booking->booking_date ? $booking->booking_date->format('Y-m-d H:i') : '',
+            'created_at' => $booking->created_at ? $booking->created_at->toISOString() : '',
+            'service_id' => $booking->service_id,
+            'language_id' => $booking->language_id,
+            'subject' => $subjectData,
+            'service' => $booking->service,
+            'language' => $booking->language ? [
+                'id' => $booking->language->id,
+                'name_en' => $booking->language->name_en,
+                'name_ar' => $booking->language->name_ar,
+            ] : null,
+            'general_service' => $booking->generalService,
 
             'teacher' => [
                 'id' => $booking->teacher ? $booking->teacher->id : null,
@@ -267,6 +353,15 @@ class BookingQueryService
                 } elseif (isset($session->booking->subject_id)) {
                     $subject = Subject::find($session->booking->subject_id);
                     if ($subject) $subjectData = ['id' => $subject->id, 'name_en' => $subject->name_en, 'name_ar' => $subject->name_ar];
+                } elseif (isset($session->booking->language_id)) {
+                    $lang = Languages::find($session->booking->language_id);
+                    if ($lang) $subjectData = ['id' => $lang->id, 'name_en' => $lang->name_en, 'name_ar' => $lang->name_ar];
+                } elseif (isset($session->booking->general_service_id)) {
+                    $gs = GeneralService::find($session->booking->general_service_id);
+                    if ($gs) $subjectData = ['id' => $gs->id, 'name_en' => $gs->title_en ?? $gs->name_en ?? '', 'name_ar' => $gs->title_ar ?? $gs->name_ar ?? ''];
+                } elseif (isset($session->booking->service_id)) {
+                    $svc = Services::find($session->booking->service_id);
+                    if ($svc) $subjectData = ['id' => $svc->id, 'name_en' => $svc->name_en, 'name_ar' => $svc->name_ar];
                 }
             }
             $rd = $session->session_date;

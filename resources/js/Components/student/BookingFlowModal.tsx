@@ -20,15 +20,14 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Step 1: Subject / Language
+  const [selectedService, setSelectedService] = useState<any>(null);
   const [selectedSubject, setSelectedSubject] = useState<any>(null);
   const [selectedLanguage, setSelectedLanguage] = useState<any>(null);
-  const [isLanguageService, setIsLanguageService] = useState(false);
 
-  // Step 2: Time Slots (multi-select)
   const [selectedTimeSlots, setSelectedTimeSlots] = useState<number[]>([]);
+  const [slotDates, setSlotDates] = useState<Record<number, string>>({});
+  const [loadingSlotId, setLoadingSlotId] = useState<number | null>(null);
 
-  // Step 3: Preview
   const [sessionCount, setSessionCount] = useState(1);
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [savedCards, setSavedCards] = useState<any[]>([]);
@@ -38,7 +37,6 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
   });
   const [selectedSavedCard, setSelectedSavedCard] = useState<any>(null);
 
-  // Step 4: Payment result
   const [paymentResult, setPaymentResult] = useState<any>(null);
   const [pollingStatus, setPollingStatus] = useState<'idle' | 'polling' | 'paid' | 'failed' | 'timeout'>('idle');
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -46,16 +44,47 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
   const bookingIdRef = useRef<number | null>(null);
 
   const teacherProfile = teacher?.profile || {};
-  const subjects = teacherProfile?.teacher_subjects || teacher?.teacher_subjects || [];
-  const languages = teacherProfile?.languages || teacher?.languages || [];
+  const teacherServices: any[] = teacherProfile?.services || teacher?.services || [];
+  const subjects: any[] = teacherProfile?.teacher_subjects || teacher?.teacher_subjects || [];
+  const languages: any[] = teacherProfile?.languages || teacher?.languages || [];
+  const abilities: any[] = teacherProfile?.abilities || teacher?.abilities || [];
   const availableTimes = teacherProfile?.available_times || teacher?.available_times || [];
   const individualPrice = Number(teacherProfile?.individual_hour_price ?? teacher?.individual_hour_price ?? 0);
   const groupPrice = Number(teacherProfile?.group_hour_price ?? teacher?.group_hour_price ?? 0);
   const basePrice = individualPrice;
 
+  const isLanguageService = (() => {
+    if (selectedService) {
+      const key = (selectedService.key_name || '').toLowerCase();
+      const id = selectedService.service_id || selectedService.id;
+      if (key.includes('lang') || id === 2) return true;
+      if (key.includes('private') || id === 3) return false;
+      if (key.includes('abilit') || id === 6) return false;
+    }
+    if (serviceId === 2) return true;
+    const mainKey = (teacherProfile?.main_service_key || teacher?.main_service_key || '').toLowerCase();
+    if (mainKey.includes('lang')) return true;
+    if (subjects.length === 0 && languages.length > 0) return true;
+    return false;
+  })();
+
+  const isAbilityService = (() => {
+    if (selectedService) {
+      const key = (selectedService.key_name || '').toLowerCase();
+      const id = selectedService.service_id || selectedService.id;
+      if (key.includes('abilit') || id === 6) return true;
+    }
+    if (serviceId === 6) return true;
+    const mainKey = (teacherProfile?.main_service_key || teacher?.main_service_key || '').toLowerCase();
+    if (mainKey.includes('abilit')) return true;
+    if (subjects.length === 0 && languages.length === 0 && abilities.length > 0) return true;
+    return false;
+  })();
+
   useEffect(() => {
     if (isOpen) {
-      setIsLanguageService(serviceId === 2);
+      const initialSvc = teacherServices.find((s: any) => (s.service_id || s.id) === serviceId) || teacherServices[0] || null;
+      setSelectedService(initialSvc);
       loadSubscriptions();
       loadSavedCards();
     }
@@ -67,7 +96,10 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
       setStep(0);
       setSelectedSubject(null);
       setSelectedLanguage(null);
+      setSelectedService(null);
       setSelectedTimeSlots([]);
+      setSlotDates({});
+      setLoadingSlotId(null);
       setSessionCount(1);
       setSelectedSavedCard(null);
       setShowCardForm(false);
@@ -78,7 +110,7 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
       bookingIdRef.current = null;
       setNewCard({ card_number: '', card_holder: '', expiry_month: '', expiry_year: '', cvv: '', payment_brand: 'VISA' });
     };
-  }, [isOpen, serviceId]);
+  }, [isOpen, serviceId, teacher]);
 
   const loadSubscriptions = async () => {
     try {
@@ -101,10 +133,42 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
   const totalSessions = totalSelectedTimes * sessionCount;
   const totalPrice = basePrice * totalSessions;
 
-  const toggleTimeSlot = (slotId: number) => {
-    setSelectedTimeSlots(prev =>
-      prev.includes(slotId) ? prev.filter(id => id !== slotId) : [...prev, slotId]
-    );
+  const toggleTimeSlot = async (slotId: number) => {
+    if (selectedTimeSlots.includes(slotId)) {
+      setSelectedTimeSlots(prev => prev.filter(id => id !== slotId));
+      return;
+    }
+
+    if (slotDates[slotId]) {
+      setSelectedTimeSlots(prev => [...prev, slotId]);
+      return;
+    }
+
+    setLoadingSlotId(slotId);
+    setError(null);
+    try {
+      const response: any = await studentService.getTimeslotSessionDate(slotId, sessionCount);
+      const info = response?.data ?? response;
+      if (response?.success === false || info?.can_book === false) {
+        const reason = language === 'ar' ? (info?.reason_ar || info?.reason) : (info?.reason || info?.reason_ar);
+        setError(reason || (language === 'ar' ? 'الموعد المحدد غير متاح' : 'Selected slot is not available'));
+        return;
+      }
+      const resolvedDate =
+        info?.formatted_date ||
+        info?.session_date ||
+        info?.upcoming_sessions?.[0]?.formatted_date ||
+        info?.upcoming_sessions?.[0]?.session_date ||
+        '';
+      if (resolvedDate) {
+        setSlotDates(prev => ({ ...prev, [slotId]: resolvedDate }));
+      }
+      setSelectedTimeSlots(prev => [...prev, slotId]);
+    } catch {
+      setSelectedTimeSlots(prev => [...prev, slotId]);
+    } finally {
+      setLoadingSlotId(null);
+    }
   };
 
   const handleCreateBooking = async (subscription?: any) => {
@@ -112,9 +176,15 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
     setError(null);
     try {
       await validateSelectedTimeslots(sessionCount);
+      const effectiveServiceId = isLanguageService
+        ? 2
+        : isAbilityService
+        ? 6
+        : (selectedService?.service_id || selectedService?.id || serviceId || 3);
+
       const payload: any = {
         teacher_id: teacher.id,
-        service_id: serviceId,
+        service_id: effectiveServiceId,
         type: 'single',
       };
 
@@ -152,6 +222,15 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
           ? `الموعد غير متاح${conflictDate ? ` بتاريخ ${conflictDate}` : ''}${reason ? `: ${reason}` : '. يرجى اختيار موعد آخر.'}`
           : `This time slot is unavailable${conflictDate ? ` on ${conflictDate}` : ''}${reason ? `: ${reason}` : '. Please choose another time.'}`;
         throw new Error(message);
+      }
+      const resolvedDate =
+        info?.formatted_date ||
+        info?.session_date ||
+        info?.upcoming_sessions?.[0]?.formatted_date ||
+        info?.upcoming_sessions?.[0]?.session_date ||
+        '';
+      if (resolvedDate) {
+        setSlotDates(prev => ({ ...prev, [slotId]: resolvedDate }));
       }
     }
   };
@@ -262,45 +341,120 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
   );
 
   const renderSubjectStep = () => (
-    <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
+    <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+      {teacherServices.length > 1 && (
+        <div className="flex gap-2 p-1 bg-black/5 rounded-xl mb-3">
+          {teacherServices.map((svc: any) => {
+            const isSelected = (selectedService?.service_id || selectedService?.id) === (svc.service_id || svc.id);
+            const name = language === 'ar' ? (svc.name_ar || svc.name_en) : (svc.name_en || svc.name_ar);
+            return (
+              <button
+                key={svc.id || svc.service_id}
+                onClick={() => {
+                  setSelectedService(svc);
+                  setSelectedSubject(null);
+                  setSelectedLanguage(null);
+                }}
+                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+                  isSelected ? 'bg-white text-primary shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                }`}
+              >
+                {name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <h3 className="font-semibold text-[var(--text-main)] flex items-center gap-2">
-        <BookOpen size={18} />
-        {language === 'ar' ? 'اختر المادة' : 'Select Subject'}
+        <BookOpen size={18} className="text-primary" />
+        {isLanguageService
+          ? (language === 'ar' ? 'اختر اللغة' : 'Select Language')
+          : isAbilityService
+          ? (language === 'ar' ? 'اختر الاختبار / القدرة' : 'Select Ability Test')
+          : (language === 'ar' ? 'اختر المادة' : 'Select Subject')}
       </h3>
+
       {isLanguageService ? (
         languages.length === 0 ? (
-          <p className="text-[var(--text-muted)] text-sm">{language === 'ar' ? 'لا توجد لغات متاحة' : 'No languages available'}</p>
+          <p className="text-[var(--text-muted)] text-sm py-4 text-center">
+            {language === 'ar' ? 'لا توجد لغات متاحة' : 'No languages available'}
+          </p>
         ) : (
-          languages.map((lang: any) => (
-            <button key={lang.id} onClick={() => setSelectedLanguage(lang)}
-              className={`w-full text-left p-3 rounded-lg border transition-all ${
-                selectedLanguage?.id === lang.id ? 'bg-primary/10 border-primary' : 'hover:bg-[var(--light-bg)] border-[var(--border)]'
-              }`}
-            >
-              <p className="font-semibold">{language === 'ar' ? lang.name_ar : lang.name_en}</p>
-            </button>
-          ))
+          languages.map((lang: any) => {
+            const isSelected = (selectedLanguage?.language_id || selectedLanguage?.id) === (lang.language_id || lang.id);
+            const name = language === 'ar' ? (lang.name_ar || lang.name_en) : (lang.name_en || lang.name_ar);
+            return (
+              <button
+                key={lang.id}
+                onClick={() => setSelectedLanguage(lang)}
+                className={`w-full text-start p-3.5 rounded-xl border transition-all flex items-center justify-between ${
+                  isSelected
+                    ? 'bg-primary/10 border-primary shadow-sm'
+                    : 'hover:bg-[var(--light-bg)] border-[var(--border)]'
+                }`}
+              >
+                <span className="font-semibold text-sm text-[var(--text-main)]">{name}</span>
+                {isSelected && <CheckCircle size={18} className="text-primary" />}
+              </button>
+            );
+          })
+        )
+      ) : isAbilityService ? (
+        abilities.length === 0 ? (
+          <p className="text-[var(--text-muted)] text-sm py-4 text-center">
+            {language === 'ar' ? 'لا توجد قدرات متاحة' : 'No abilities available'}
+          </p>
+        ) : (
+          abilities.map((ability: any) => {
+            const isSelected = selectedSubject?.id === ability.id;
+            const name = language === 'ar' ? (ability.name_ar || ability.name_en) : (ability.name_en || ability.name_ar);
+            return (
+              <button
+                key={ability.id}
+                onClick={() => setSelectedSubject(ability)}
+                className={`w-full text-start p-3.5 rounded-xl border transition-all flex items-center justify-between ${
+                  isSelected
+                    ? 'bg-primary/10 border-primary shadow-sm'
+                    : 'hover:bg-[var(--light-bg)] border-[var(--border)]'
+                }`}
+              >
+                <span className="font-semibold text-sm text-[var(--text-main)]">{name}</span>
+                {isSelected && <CheckCircle size={18} className="text-primary" />}
+              </button>
+            );
+          })
         )
       ) : (
         subjects.length === 0 ? (
-          <p className="text-[var(--text-muted)] text-sm">{language === 'ar' ? 'لا توجد مواد متاحة' : 'No subjects available'}</p>
+          <p className="text-[var(--text-muted)] text-sm py-4 text-center">
+            {language === 'ar' ? 'لا توجد مواد متاحة' : 'No subjects available'}
+          </p>
         ) : (
           subjects.map((sub: any) => {
-            const title = (language === 'ar' ? (sub.title_ar || sub.name_ar) : (sub.title_en || sub.name_en)) || sub.title || 'Unnamed Subject';
+            const isSelected = (selectedSubject?.subject_id || selectedSubject?.id) === (sub.subject_id || sub.id);
+            const title = (language === 'ar' ? (sub.title_ar || sub.name_ar) : (sub.title_en || sub.name_en)) || sub.title || 'مادة دراسية';
             const levelTitle = language === 'ar'
               ? (sub.class_level_title_ar || sub.class_level_title)
               : (sub.class_level_title_en || sub.class_level_title);
             const classTitle = language === 'ar' ? (sub.class_title_ar || sub.class_title) : (sub.class_title_en || sub.class_title);
             return (
-              <button key={sub.id} onClick={() => setSelectedSubject(sub)}
-                className={`w-full text-left p-3 rounded-lg border transition-all ${
-                  selectedSubject?.id === sub.id ? 'bg-primary/10 border-primary' : 'hover:bg-[var(--light-bg)] border-[var(--border)]'
+              <button
+                key={sub.id}
+                onClick={() => setSelectedSubject(sub)}
+                className={`w-full text-start p-3.5 rounded-xl border transition-all flex items-center justify-between ${
+                  isSelected
+                    ? 'bg-primary/10 border-primary shadow-sm'
+                    : 'hover:bg-[var(--light-bg)] border-[var(--border)]'
                 }`}
               >
-                <p className="font-semibold">{title}</p>
-                {levelTitle && classTitle && (
-                  <p className="text-xs text-[var(--text-muted)] mt-1">{levelTitle} - {classTitle}</p>
-                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-[var(--text-main)]">{title}</p>
+                  {levelTitle && classTitle && (
+                    <p className="text-xs text-[var(--text-muted)] mt-1">{levelTitle} - {classTitle}</p>
+                  )}
+                </div>
+                {isSelected && <CheckCircle size={18} className="text-primary shrink-0 mr-2" />}
               </button>
             );
           })
@@ -310,50 +464,97 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
   );
 
   const renderTimeStep = () => {
-    const timeItems = availableTimes.flatMap((day: any) => {
-      let slots = [];
-      if (day.time_slots && Array.isArray(day.time_slots)) {
-        slots = day.time_slots;
-      } else if (day.times && Array.isArray(day.times)) {
-        slots = day.times.map((t: any) => typeof t === 'string' ? { id: 0, time: t } : t);
-      }
-      return slots
-        .filter((s: any) => s.id > 0 && !s.session && s.is_available !== false)
-        .map((s: any) => ({ ...s, day: day.day }));
+    const validDays = (availableTimes || []).filter((dayData: any) => {
+      const times = Array.isArray(dayData.times)
+        ? dayData.times
+        : (Array.isArray(dayData.time_slots) ? dayData.time_slots : []);
+      return times.some((s: any) => s.id > 0 && !s.is_booked && s.is_available !== false);
     });
 
     return (
-      <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
-        <h3 className="font-semibold text-[var(--text-main)] flex items-center gap-2">
-          <Calendar size={18} />
-          {language === 'ar' ? 'اختر المواعيد' : 'Select Times'}
-        </h3>
-        <p className="text-xs text-[var(--text-muted)] mb-2">
-          {language === 'ar'
-            ? 'يمكنك اختيار موعد واحد أو أكثر. كل موعد يمثل جلسة منفصلة.'
-            : 'You can select one or more slots. Each slot is a separate session.'}
-        </p>
-        {timeItems.length === 0 ? (
-          <p className="text-[var(--text-muted)] text-sm">{language === 'ar' ? 'لا توجد مواعيد متاحة' : 'No times available'}</p>
-        ) : (
-          <div className="grid grid-cols-3 gap-2">
-            {timeItems.map((slot: any) => (
-              <button key={slot.id} onClick={() => toggleTimeSlot(slot.id)}
-                className={`py-2 px-1 rounded-lg text-sm font-medium border transition-all ${
-                  selectedTimeSlots.includes(slot.id)
-                    ? 'bg-primary text-white border-primary'
-                    : 'bg-white hover:border-primary border-[var(--border)]'
-                }`}
-              >
-                {slot.time}
-              </button>
-            ))}
+      <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+        <div>
+          <h3 className="font-semibold text-[#1B3A6B] flex items-center gap-2">
+            <Calendar size={18} />
+            {language === 'ar' ? 'اختر المواعيد' : 'Select Times'}
+          </h3>
+          <p className="text-xs text-[#1B3A6B]/70 mt-1">
+            {language === 'ar'
+              ? 'يمكنك اختيار موعد واحد أو أكثر. كل موعد يمثل جلسة منفصلة.'
+              : 'You can select one or more slots. Each slot is a separate session.'}
+          </p>
+        </div>
+
+        {selectedTimeSlots.length > 0 && (
+          <div className="p-3 rounded-xl bg-[#A6D388] text-[#144D25] flex items-center justify-between font-bold text-sm shadow-xs">
+            <span>{language === 'ar' ? 'عدد الأوقات المحددة' : 'Selected Times'}</span>
+            <span className="text-base">{selectedTimeSlots.length}</span>
           </div>
         )}
-        {selectedTimeSlots.length > 0 && (
-          <p className="text-sm text-primary font-medium mt-2">
-            {language === 'ar' ? `تم اختيار ${selectedTimeSlots.length} مواعيد` : `${selectedTimeSlots.length} slot(s) selected`}
-          </p>
+
+        {validDays.length === 0 ? (
+          <div className="text-center py-10">
+            <p className="text-gray-400 text-sm font-medium">
+              {language === 'ar' ? 'لا توجد مواعيد متاحة' : 'No times available'}
+            </p>
+          </div>
+        ) : (
+          validDays.map((dayData: any, idx: number) => {
+            const dayAr = dayData.day_ar || dayData.day_name_ar || dayData.day || '';
+            const dayEn = dayData.day_en || dayData.day_name_en || '';
+            const dayTitle = language === 'ar' ? (dayAr || dayEn) : (dayEn || dayAr);
+            const times = (Array.isArray(dayData.times) ? dayData.times : (Array.isArray(dayData.time_slots) ? dayData.time_slots : []))
+              .filter((s: any) => s.id > 0 && !s.is_booked && s.is_available !== false);
+
+            return (
+              <div
+                key={dayData.id || idx}
+                className="bg-white rounded-2xl p-4 border border-black/5 shadow-sm space-y-3"
+              >
+                <div className="text-start">
+                  <span className="inline-block px-3 py-1 rounded-lg bg-[#A6D388] text-[#144D25] text-xs font-bold">
+                    {dayTitle}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  {times.map((slot: any) => {
+                    const isSelected = selectedTimeSlots.includes(slot.id);
+                    const isLoading = loadingSlotId === slot.id;
+                    const sessionDate = slotDates[slot.id];
+
+                    return (
+                      <button
+                        key={slot.id}
+                        type="button"
+                        disabled={isLoading}
+                        onClick={() => toggleTimeSlot(slot.id)}
+                        className={`py-2 px-2.5 rounded-xl text-center transition-all flex flex-col items-center justify-center min-h-[52px] ${
+                          isSelected
+                            ? 'bg-[#1B3A6B] text-white shadow-md border-2 border-[#1B3A6B]'
+                            : 'bg-white text-[#1B3A6B] hover:border-[#1B3A6B] border border-gray-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          {isLoading && <Loader2 size={12} className="animate-spin text-current" />}
+                          <span className="text-xs font-bold tracking-wide">
+                            {slot.time}
+                          </span>
+                        </div>
+
+                        {isSelected && sessionDate && (
+                          <div className="mt-1 px-1.5 py-0.5 rounded bg-[#3D8B37]/30 text-[#A6D388] text-[10px] font-bold flex items-center justify-center gap-1 whitespace-nowrap">
+                            <Calendar size={10} className="shrink-0 text-[#A6D388]" />
+                            <span>{sessionDate}</span>
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })
         )}
       </div>
     );
@@ -368,24 +569,68 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
           {language === 'ar' ? 'تأكيد الحجز' : 'Confirm Booking'}
         </h3>
 
-        {/* Summary */}
         <div className="bg-[var(--light-bg)] rounded-lg p-4 space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-[var(--text-muted)]">{language === 'ar' ? 'المعلم' : 'Teacher'}</span>
             <span className="font-medium">{teacher.first_name} {teacher.last_name}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-[var(--text-muted)]">{isLanguageService ? (language === 'ar' ? 'اللغة' : 'Language') : (language === 'ar' ? 'المادة' : 'Subject')}</span>
+            <span className="text-[var(--text-muted)]">
+              {isLanguageService
+                ? (language === 'ar' ? 'اللغة' : 'Language')
+                : isAbilityService
+                ? (language === 'ar' ? 'الاختبار' : 'Test')
+                : (language === 'ar' ? 'المادة' : 'Subject')}
+            </span>
             <span className="font-medium">
               {isLanguageService
                 ? (language === 'ar' ? selectedLanguage?.name_ar : selectedLanguage?.name_en)
-                : (selectedSubject?.title || (language === 'ar' ? selectedSubject?.name_ar : selectedSubject?.name_en))}
+                : (selectedSubject?.title || (language === 'ar' ? (selectedSubject?.name_ar || selectedSubject?.title_ar) : (selectedSubject?.name_en || selectedSubject?.title_en)))}
             </span>
           </div>
           <div className="flex justify-between">
             <span className="text-[var(--text-muted)]">{language === 'ar' ? 'عدد المواعيد' : 'Time Slots'}</span>
             <span className="font-medium">{totalSelectedTimes}</span>
           </div>
+          {selectedTimeSlots.length > 0 && (
+            <div className="flex flex-col gap-1.5 border-t pt-2">
+              <span className="text-[var(--text-muted)] text-xs">
+                {language === 'ar' ? 'المواعيد والتواريخ المحددة' : 'Selected Slots & Dates'}
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {selectedTimeSlots.map((slotId) => {
+                  let timeLabel = '';
+                  let dayLabel = '';
+                  (availableTimes || []).forEach((dayData: any) => {
+                    const times = Array.isArray(dayData.times)
+                      ? dayData.times
+                      : (Array.isArray(dayData.time_slots) ? dayData.time_slots : []);
+                    const found = times.find((t: any) => t.id === slotId);
+                    if (found) {
+                      timeLabel = found.time;
+                      dayLabel = dayData.day_ar || dayData.day_name_ar || dayData.day || '';
+                    }
+                  });
+                  const dateStr = slotDates[slotId];
+                  return (
+                    <span
+                      key={slotId}
+                      className="px-2.5 py-1 rounded-lg bg-white border border-gray-200 text-[#1B3A6B] text-xs font-medium flex items-center gap-1.5"
+                    >
+                      {dayLabel && <span className="font-bold">{dayLabel}:</span>}
+                      <span>{timeLabel}</span>
+                      {dateStr && (
+                        <span className="font-mono text-[#3D8B37] font-bold flex items-center gap-0.5">
+                          <Calendar size={10} />
+                          {dateStr}
+                        </span>
+                      )}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <div className="flex justify-between items-center">
             <span className="text-[var(--text-muted)]">{language === 'ar' ? 'عدد الجلسات لكل موعد' : 'Sessions per slot'}</span>
             <div className="flex items-center gap-2">
@@ -406,7 +651,6 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
           </div>
         </div>
 
-        {/* Pay from Package - Direct action button (matching Android) */}
         {subscriptions.filter((s: any) => s.is_active && s.sessions_remaining > 0).map((sub: any) => (
           <button key={sub.id} onClick={() => handlePayWithPackage(sub)}
             disabled={loading}
