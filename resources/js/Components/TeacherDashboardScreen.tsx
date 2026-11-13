@@ -21,6 +21,7 @@ import { TeacherPackagesTab } from './teacher/TeacherPackagesTab';
 import { TeacherWithdrawalOptionsTab } from './teacher/TeacherWithdrawalOptionsTab';
 import { TeacherWithdrawalCardsTab } from './teacher/TeacherWithdrawalCardsTab';
 import { TeacherMoreTab } from './teacher/TeacherMoreTab';
+import { TeacherMarketingTab } from './teacher/TeacherMarketingTab';
 import { TeacherPublicProfileScreen } from './teacher/TeacherPublicProfileScreen';
 import { ArrowRight, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { useLanguage } from '../Contexts/LanguageContext';
@@ -87,6 +88,8 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
         return <TeacherOrdersTab user={currentUser} />;
       case 'packages':
         return <TeacherPackagesTab user={currentUser} onNavigate={setActiveTab} />;
+      case 'marketing':
+        return <TeacherMarketingTab user={currentUser} onNavigate={setActiveTab} />;
       case 'withdrawal-options':
         return <TeacherWithdrawalOptionsTab onNavigate={setActiveTab} />;
       case 'withdrawal-cards':

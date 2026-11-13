@@ -646,9 +646,14 @@ class TeacherProfileService
             $fullName = (string) ($teacher->name ?? '');
         }
 
+        $isBoosted = $teacher->is_boosted;
+
         $d = [
             'id' => $teacher->id,
             'name' => $fullName,
+            'is_boosted' => $isBoosted,
+            'is_featured' => $isBoosted,
+            'featured_badge' => $isBoosted ? 'معلم مميز' : null,
             'main_service_key' => (string) ($main_service_key ?? ''),
             'first_name' => (string) ($teacher->first_name ?? ''),
             'last_name' => (string) ($teacher->last_name ?? ''),
@@ -682,6 +687,9 @@ class TeacherProfileService
                 'first_name' => (string) ($teacher->first_name ?? ''),
                 'last_name' => (string) ($teacher->last_name ?? ''),
                 'main_service_key' => (string) ($main_service_key ?? ''),
+                'is_boosted' => $isBoosted,
+                'is_featured' => $isBoosted,
+                'featured_badge' => $isBoosted ? 'معلم مميز' : null,
                 'is_active' => (int) $teacher->is_active,
                 'image' => (string) ($profilePhoto ?? ''),
                 'avatar' => (string) ($profilePhoto ?? ''),

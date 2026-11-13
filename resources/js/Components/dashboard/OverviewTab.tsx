@@ -372,6 +372,46 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
         </div>
       </div>
 
+      {/* Teacher Profile Boost Banner */}
+      <div className={`p-4 sm:p-5 rounded-2xl shadow-sm border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all ${
+        (user.is_boosted || user.profile?.is_boosted)
+          ? 'bg-gradient-to-r from-amber-50 to-amber-100/60 border-amber-300'
+          : 'bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-white border-amber-200'
+      }`}>
+        <div className="flex items-center gap-3.5">
+          <div className="p-3 bg-amber-500 text-white rounded-xl shadow-md shadow-amber-500/20">
+            <Sparkles size={20} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-sm text-slate-800">
+                {(user.is_boosted || user.profile?.is_boosted)
+                  ? (isAr ? 'حسابك مروّج كمعلم مميز 🌟' : 'Featured Boost Active 🌟')
+                  : (isAr ? 'روّج لحسابك كمعلم مميز' : 'Boost Your Profile as Featured Teacher')}
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500 text-white">
+                {isAr ? 'مميز' : 'Boost'}
+              </span>
+            </div>
+            <p className="text-xs text-slate-600 mt-0.5">
+              {(user.is_boosted || user.profile?.is_boosted)
+                ? (isAr ? 'بنرك الشخصي معروض في بنرات الصفحة الرئيسية وتطبيق الجوال.' : 'Your profile banner is actively featured on home screen banners.')
+                : (isAr ? 'اظهر في صدارة الصفحة الرئيسية وتطبيق الجوال لزيادة الحجوزات والطلاب.' : 'Appear on top of the home screen to maximize your student bookings.')}
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onNavigate && onNavigate('marketing')}
+          className="whitespace-nowrap px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-sm transition"
+        >
+          {(user.is_boosted || user.profile?.is_boosted)
+            ? (isAr ? 'إدارة الترويج' : 'Manage Boost')
+            : (isAr ? 'ترقية الحساب الآن' : 'Boost Profile Now')}
+        </button>
+      </div>
+
       {!isProfileComplete && (
         <div className="bg-[#FFF7ED] border border-[#FDBA74] rounded-2xl p-4 sm:p-5 shadow-sm">
           <div className="flex items-start gap-3">

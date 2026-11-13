@@ -411,6 +411,27 @@ export const teacherService = {
   getConsultationDetails: (id: number) => fetchWithAuth(`/teacher/consultations/${id}`).then(res => res.data || res),
   scheduleConsultation: (id: number, data: { scheduled_date: string; scheduled_start_time: string; scheduled_end_time: string; admin_notes?: string }) =>
     fetchWithAuth(`/teacher/consultations/${id}/schedule`, { method: 'POST', body: JSON.stringify(data) }),
+
+  // Teacher Marketing & Profile Boost
+  getMarketingPlans: () => fetchWithAuth('/teacher/marketing/plans').then(res => res?.data ?? res),
+  getMarketingStatus: () => fetchWithAuth('/teacher/marketing/status').then(res => res?.data ?? res),
+  subscribeMarketing: (formDataOrJson: FormData | any) => {
+    const isFormData = formDataOrJson instanceof FormData;
+    return fetchWithAuth('/teacher/marketing/subscribe', {
+      method: 'POST',
+      body: isFormData ? formDataOrJson : JSON.stringify(formDataOrJson),
+    });
+  },
+  confirmMarketingPayment: (subscriptionId: number) =>
+    fetchWithAuth('/teacher/marketing/confirm-payment', {
+      method: 'POST',
+      body: JSON.stringify({ subscription_id: subscriptionId }),
+    }),
+  updateMarketingBanner: (formData: FormData) =>
+    fetchWithAuth('/teacher/marketing/update-banner', {
+      method: 'POST',
+      body: formData,
+    }),
 };
 
 export const abilityService = {
@@ -915,6 +936,18 @@ getMarketingAudienceCount: (target_type: string, target_user_id?: number, target
   deletePackage: (id: number) => fetchWithAuth(`/admin/packages/${id}`, { method: 'DELETE' }),
   togglePackageActive: (id: number) => fetchWithAuth(`/admin/packages/${id}/toggle`, { method: 'PUT' }),
 
+  // Teacher Marketing & Boost Plans (Admin)
+  getTeacherMarketingPlans: () => fetchWithAuth('/admin/teacher-marketing-plans').then(res => res?.data ?? []),
+  createTeacherMarketingPlan: (data: any) => fetchWithAuth('/admin/teacher-marketing-plans', { method: 'POST', body: JSON.stringify(data) }),
+  updateTeacherMarketingPlan: (id: number, data: any) => fetchWithAuth(`/admin/teacher-marketing-plans/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteTeacherMarketingPlan: (id: number) => fetchWithAuth(`/admin/teacher-marketing-plans/${id}`, { method: 'DELETE' }),
+  toggleTeacherMarketingPlan: (id: number) => fetchWithAuth(`/admin/teacher-marketing-plans/${id}/toggle`, { method: 'PUT' }),
+  getTeacherMarketingSubscriptions: (params: any = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return fetchWithAuth(`/admin/teacher-marketing-subscriptions${q ? `?${q}` : ''}`).then(res => res?.data ?? {});
+  },
+  getTeacherMarketingStats: () => fetchWithAuth('/admin/teacher-marketing/stats').then(res => res?.data ?? {}),
+
   // User Profile
   getUserFullProfile: (id: number) => fetchWithAuth(`/admin/users/${id}/profile`).then(res => res.data),
 
@@ -1037,6 +1070,16 @@ export const marketingAnnouncementService = {
   },
   trackClick: (id: number) => fetchWithAuth(`/marketing-announcements/${id}/click`, { method: 'POST' }),
   trackView: (id: number) => fetchWithAuth(`/marketing-announcements/${id}/view`, { method: 'POST' }),
+};
+
+export const featuredTeacherService = {
+  getBanners: (limit = 10): Promise<{ count: number; banners: any[] }> =>
+    fetch(`${API_BASE_URL}/featured-teachers/banners?limit=${limit}`)
+      .then(res => res.json())
+      .then(res => res.data || { count: 0, banners: [] })
+      .catch(() => ({ count: 0, banners: [] })),
+  recordClick: (subscriptionId: number) =>
+    fetch(`${API_BASE_URL}/featured-teachers/${subscriptionId}/click`, { method: 'POST' }).catch(() => {}),
 };
 
 export const getStorageUrl = (path: string | null | undefined) => {

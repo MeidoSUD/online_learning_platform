@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useLanguage } from '../Contexts/LanguageContext';
-import { Bell, LogOut, User, Globe, Menu, AlertCircle, CreditCard, FileText, Award, Layers, Video, X, Check, School, CreditCard as PaymentIcon, BellRing, Clock, Loader2, Trash2, Headphones, Package, SlidersHorizontal } from 'lucide-react';
+import { Bell, LogOut, User, Globe, Menu, AlertCircle, CreditCard, FileText, Award, Layers, Video, X, Check, School, CreditCard as PaymentIcon, BellRing, Clock, Loader2, Trash2, Headphones, Package, SlidersHorizontal, Rocket } from 'lucide-react';
 import { AuthResponse, notificationService, AppNotification } from '../Services/api';
 import { Logo } from './Logo';
 
@@ -366,6 +366,9 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
 
                   {userRole === 'teacher' && (
                     <>
+                      <button onClick={() => { setActiveTab('marketing'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm font-semibold text-amber-600 hover:bg-amber-50">
+                        <Rocket size={16} /> {language === 'ar' ? 'ترويج الحساب (معلم مميز)' : 'Boost Profile'}
+                      </button>
                       <button onClick={() => { setActiveTab('packages'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">
                         <Package size={16} /> {language === 'ar' ? 'الباقات التعليمية' : 'Packages'}
                       </button>

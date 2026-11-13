@@ -251,6 +251,27 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->subscriptions()->where('status', Subscription::STATUS_ACTIVE);
     }
 
+    public function marketingSubscriptions(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(TeacherMarketingSubscription::class, 'teacher_id');
+    }
+
+    public function activeMarketingSubscription(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(TeacherMarketingSubscription::class, 'teacher_id')
+            ->where('status', TeacherMarketingSubscription::STATUS_ACTIVE)
+            ->where(function ($q) {
+                $q->whereNull('end_date')
+                    ->orWhere('end_date', '>=', now());
+            })
+            ->latest('id');
+    }
+
+    public function getIsBoostedAttribute(): bool
+    {
+        return $this->activeMarketingSubscription()->exists();
+    }
+
     /**
      * Get user resolved timezone name (e.g. 'Asia/Riyadh', 'Africa/Cairo', 'Asia/Dubai')
      */

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
 import { Footer } from './Footer';
+import { FeaturedTeachersBanner } from './FeaturedTeachersBanner';
 import { Users, ChevronRight, PlayCircle, Star, Smartphone, Monitor, Sparkles } from 'lucide-react';
 
 interface HomePageProps {
@@ -84,6 +85,9 @@ export const HomePage: React.FC<HomePageProps> = ({ onLoginClick, onRegisterClic
                     </div>
                 </div>
             </section>
+
+            {/* Featured Teachers Banner (Sponsored / Boosted Teachers) */}
+            <FeaturedTeachersBanner />
 
             {/* Products Section - Two Main Products */}
             <section className="section-pad bg-light-custom">

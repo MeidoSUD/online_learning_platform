@@ -24,6 +24,7 @@ use App\Http\Controllers\FCMTokenController;
 use App\Http\Controllers\API\TeacherPackageController;
 use App\Http\Controllers\API\ConsultationController;
 use App\Http\Controllers\API\GeneralServiceController;
+use App\Http\Controllers\Api\TeacherMarketingController;
 
 Route::prefix('teacher')->middleware(['auth:sanctum', 'role:teacher'])->group(function () {
     Route::get('/education-levels', [EducationLevelController::class, 'levelsWithClassesAndSubjects']);
@@ -136,4 +137,11 @@ Route::prefix('teacher')->middleware(['auth:sanctum', 'role:teacher'])->group(fu
     Route::delete('/general-services/{id}', [GeneralServiceController::class, 'teacherDestroy']);
     Route::get('/general-service-orders', [GeneralServiceController::class, 'teacherOrders']);
     Route::put('/general-service-orders/{id}/status', [GeneralServiceController::class, 'updateOrderStatus']);
+
+    // Teacher Marketing & Profile Boost (Sponsored Account)
+    Route::get('/marketing/plans', [TeacherMarketingController::class, 'plans']);
+    Route::get('/marketing/status', [TeacherMarketingController::class, 'status']);
+    Route::post('/marketing/subscribe', [TeacherMarketingController::class, 'subscribe']);
+    Route::post('/marketing/confirm-payment', [TeacherMarketingController::class, 'confirmPayment']);
+    Route::post('/marketing/update-banner', [TeacherMarketingController::class, 'updateBanner']);
 });

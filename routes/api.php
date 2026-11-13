@@ -61,6 +61,8 @@ use App\Http\Controllers\API\Admin\SessionsAdminController;
 use App\Http\Controllers\API\StudentPackageController;
 use App\Http\Controllers\API\Admin\PackageAdminController;
 use App\Http\Controllers\API\Admin\AdminCertificateController;
+use App\Http\Controllers\Api\FeaturedTeacherBannerController;
+use App\Http\Controllers\Api\Admin\TeacherMarketingPlanAdminController;
 /*  
 |--------------------------------------------------------------------------
 | API Routes
@@ -188,6 +190,12 @@ Route::get('ads/{id}', [AdsController::class, 'getAdById']); // Get single ad
 Route::get('marketing-announcements/active', [MarketingAnnouncementController::class, 'getActive']);
 Route::post('marketing-announcements/{id}/click', [MarketingAnnouncementController::class, 'trackClick']);
 Route::post('marketing-announcements/{id}/view', [MarketingAnnouncementController::class, 'trackView']);
+
+// ======================
+// Featured Teacher Marketing Banners (Public - for Student & Guest Homepages)
+// ======================
+Route::get('featured-teachers/banners', [FeaturedTeacherBannerController::class, 'getBanners']);
+Route::post('featured-teachers/{subscriptionId}/click', [FeaturedTeacherBannerController::class, 'recordClick']);
 // ======================
 // Authentication & User Management
 // ======================
@@ -404,6 +412,16 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     Route::delete('/packages/{id}', [PackageAdminController::class, 'destroy']);
     Route::put('/packages/{id}/toggle', [PackageAdminController::class, 'toggleActive']);
     Route::get('/packages/stats', [PackageAdminController::class, 'stats']);
+
+    // Teacher Marketing Plans & Boost Subscriptions (Admin)
+    Route::get('/teacher-marketing-plans', [TeacherMarketingPlanAdminController::class, 'index']);
+    Route::post('/teacher-marketing-plans', [TeacherMarketingPlanAdminController::class, 'store']);
+    Route::get('/teacher-marketing-plans/{id}', [TeacherMarketingPlanAdminController::class, 'show']);
+    Route::put('/teacher-marketing-plans/{id}', [TeacherMarketingPlanAdminController::class, 'update']);
+    Route::delete('/teacher-marketing-plans/{id}', [TeacherMarketingPlanAdminController::class, 'destroy']);
+    Route::put('/teacher-marketing-plans/{id}/toggle', [TeacherMarketingPlanAdminController::class, 'toggle']);
+    Route::get('/teacher-marketing-subscriptions', [TeacherMarketingPlanAdminController::class, 'subscriptions']);
+    Route::get('/teacher-marketing/stats', [TeacherMarketingPlanAdminController::class, 'stats']);
 
     // Withdrawal Methods Management
     Route::get('/withdrawal-methods', [\App\Http\Controllers\API\Admin\WithdrawalMethodController::class, 'index']);
