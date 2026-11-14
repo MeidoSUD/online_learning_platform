@@ -27,10 +27,10 @@ export const TeacherCard: React.FC<TeacherCardProps> = ({
 
   const profile = teacher?.profile || {};
   const isBoosted = Boolean(
+    teacher?.has_active_subscription ||
     teacher?.is_boosted ||
-    teacher?.is_featured ||
-    profile?.is_boosted ||
-    profile?.is_featured
+    profile?.has_active_subscription ||
+    profile?.is_boosted
   );
   const rawImage = profile.profile_photo || teacher?.profile_image || teacher?.avatar;
   const profileImageUrl = rawImage ? getStorageUrl(rawImage) : null;

@@ -803,10 +803,10 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate, onTe
               const ratingVal = Number(profile?.rating ?? teacher?.rating) || 4.8;
               const ratingDisplay = ratingVal.toFixed(1);
               const isBoosted = Boolean(
+                teacher?.has_active_subscription ||
                 teacher?.is_boosted ||
-                teacher?.is_featured ||
-                profile?.is_boosted ||
-                profile?.is_featured
+                profile?.has_active_subscription ||
+                profile?.is_boosted
               );
 
               return (

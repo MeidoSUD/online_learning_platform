@@ -59,7 +59,7 @@ class User extends Authenticatable implements MustVerifyEmail
      *
      * @var array
      */
-    protected $appends = ['name'];
+    protected $appends = ['name', 'has_active_subscription'];
 
     public function getNameAttribute()
     {
@@ -267,9 +267,17 @@ class User extends Authenticatable implements MustVerifyEmail
             ->latest('id');
     }
 
+    public function getHasActiveSubscriptionAttribute(): bool
+    {
+        if ($this->relationLoaded('activeMarketingSubscription')) {
+            return !is_null($this->activeMarketingSubscription);
+        }
+        return $this->activeMarketingSubscription()->exists();
+    }
+
     public function getIsBoostedAttribute(): bool
     {
-        return $this->activeMarketingSubscription()->exists();
+        return $this->has_active_subscription;
     }
 
     /**

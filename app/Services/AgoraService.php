@@ -180,7 +180,8 @@ class AgoraService
 
     private function appToken(): ?string
     {
-        $token = config('services.agora.chat_app_token') ?: $this->generateAppToken();
+        // Always generate a fresh, valid App Token dynamically using App ID & App Certificate
+        $token = $this->generateAppToken() ?: config('services.agora.chat_app_token');
 
         if (! $token) {
             Log::warning('AgoraService — could not obtain an app token for REST call');

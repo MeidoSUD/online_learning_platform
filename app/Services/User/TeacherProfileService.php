@@ -36,7 +36,7 @@ class TeacherProfileService
         $query = User::where('role_id', 3)
             ->where('is_active', 1)
             ->where('profile_completed', 1)
-            ->with(['teacherInfo', 'teacherServices', 'subjects', 'teacherLanguages']);
+            ->with(['teacherInfo', 'teacherServices', 'subjects', 'teacherLanguages', 'activeMarketingSubscription']);
 
         /* Service Filter */
         if ($request->filled('service_id') || $request->filled('service')) {
@@ -140,8 +140,22 @@ class TeacherProfileService
 
         $getAll = $request->boolean('all') || $request->get('all') === '1';
 
+        $now = now()->toDateTimeString();
+        $query->leftJoin('teacher_marketing_subscriptions as tms', function ($join) use ($now) {
+            $join->on('users.id', '=', 'tms.teacher_id')
+                ->where('tms.status', '=', 'active')
+                ->where(function ($q) use ($now) {
+                    $q->whereNull('tms.end_date')
+                        ->orWhere('tms.end_date', '>=', $now);
+                });
+        })
+        ->select('users.*')
+        ->distinct()
+        ->orderByRaw('CASE WHEN tms.id IS NOT NULL THEN 1 ELSE 0 END DESC')
+        ->orderByDesc('users.id');
+
         if ($getAll) {
-            $teachers = $query->orderByDesc('id')->get();
+            $teachers = $query->get();
             $transformedTeachers = $teachers->map(function ($teacher) use ($addHasFavorited) {
                 $data = $this->getFullTeacherData($teacher);
                 return $addHasFavorited($data, $teacher->id);
@@ -159,7 +173,7 @@ class TeacherProfileService
         }
 
         $perPage = $request->get('per_page', 10);
-        $teachers = $query->orderByDesc('id')->paginate($perPage);
+        $teachers = $query->paginate($perPage);
 
         $teachers->getCollection()->transform(function ($teacher) use ($addHasFavorited) {
             $data = $this->getFullTeacherData($teacher);
@@ -646,14 +660,12 @@ class TeacherProfileService
             $fullName = (string) ($teacher->name ?? '');
         }
 
-        $isBoosted = $teacher->is_boosted;
+        $hasActiveSubscription = (bool) $teacher->has_active_subscription;
 
         $d = [
             'id' => $teacher->id,
             'name' => $fullName,
-            'is_boosted' => $isBoosted,
-            'is_featured' => $isBoosted,
-            'featured_badge' => $isBoosted ? 'معلم مميز' : null,
+            'has_active_subscription' => $hasActiveSubscription,
             'main_service_key' => (string) ($main_service_key ?? ''),
             'first_name' => (string) ($teacher->first_name ?? ''),
             'last_name' => (string) ($teacher->last_name ?? ''),
@@ -687,9 +699,7 @@ class TeacherProfileService
                 'first_name' => (string) ($teacher->first_name ?? ''),
                 'last_name' => (string) ($teacher->last_name ?? ''),
                 'main_service_key' => (string) ($main_service_key ?? ''),
-                'is_boosted' => $isBoosted,
-                'is_featured' => $isBoosted,
-                'featured_badge' => $isBoosted ? 'معلم مميز' : null,
+                'has_active_subscription' => $hasActiveSubscription,
                 'is_active' => (int) $teacher->is_active,
                 'image' => (string) ($profilePhoto ?? ''),
                 'avatar' => (string) ($profilePhoto ?? ''),
