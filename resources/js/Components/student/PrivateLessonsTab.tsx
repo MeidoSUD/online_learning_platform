@@ -20,6 +20,7 @@ interface PrivateLessonsTabProps {
   initialServiceId?: number | string;
   onBack?: () => void;
   onServiceChange?: (serviceId?: number) => void;
+  browseOnly?: boolean;
 }
 
 const NON_TEACHER_SERVICE_KEYS = [
@@ -37,6 +38,7 @@ export const PrivateLessonsTab: React.FC<PrivateLessonsTabProps> = ({
   initialServiceId,
   onBack,
   onServiceChange,
+  browseOnly = false,
 }) => {
   const { direction, language } = useLanguage();
 
@@ -581,8 +583,9 @@ export const PrivateLessonsTab: React.FC<PrivateLessonsTabProps> = ({
                 <TeacherCard
                   key={teacher.id}
                   teacher={teacher}
+                  browseOnly={browseOnly}
                   onViewDetails={onTeacherSelect}
-                  onBookNow={onTeacherSelect}
+                  onBookNow={browseOnly ? undefined : onTeacherSelect}
                 />
               ))}
             </div>

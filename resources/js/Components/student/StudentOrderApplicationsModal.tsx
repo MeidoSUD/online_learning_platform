@@ -177,7 +177,7 @@ export const StudentOrderApplicationsModal: React.FC<StudentOrderApplicationsMod
                 const isAccepted = status === 'accepted';
                 const isPending = status === 'pending';
                 const proposedPrice = app.proposed_price || app.price || app.offer_price || 0;
-                const rating = profile.rating || teacher.rating || 5.0;
+                const rating = Number(profile.rating || teacher.rating || 0);
 
                 return (
                   <div

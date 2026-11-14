@@ -483,7 +483,7 @@ export const TeacherPublicProfileScreen: React.FC<TeacherPublicProfileScreenProp
           <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full bg-white shadow-md flex items-center gap-1 border border-black/5 whitespace-nowrap">
             <Star size={14} className="text-[#F5A623] fill-[#F5A623]" />
             <span className="text-xs font-bold text-[#0D4A5F]">
-              {ratingVal > 0 ? ratingVal.toFixed(1) : '5.0'}
+              {ratingVal.toFixed(1)}
             </span>
           </div>
         </div>
@@ -797,11 +797,11 @@ export const TeacherPublicProfileScreen: React.FC<TeacherPublicProfileScreenProp
 
                 <div className="col-span-2 flex flex-col items-center justify-center border-r border-black/5 pr-4">
                   <span className="text-3xl font-extrabold text-[#0D4A5F]">
-                    {ratingVal > 0 ? ratingVal.toFixed(1) : (totalReviews > 0 ? '5.0' : '0.0')}
+                    {ratingVal.toFixed(1)}
                   </span>
                   <div className="flex items-center gap-0.5 mt-1">
                     {[1, 2, 3, 4, 5].map((s) => {
-                      const effRating = ratingVal > 0 ? ratingVal : (totalReviews > 0 ? 5 : 0);
+                      const effRating = ratingVal;
                       return (
                         <Star
                           key={s}

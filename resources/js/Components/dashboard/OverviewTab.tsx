@@ -118,7 +118,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
           teacherService.getPackages().catch(() => null),
           notificationService.getAll().catch(() => []),
           studentService.getServices().catch(() => []),
-          studentService.getTeachers().catch(() => [])
+          teacherService.getTeachers().catch(() => studentService.getTeachers().catch(() => []))
         ]);
 
         if (cancelled) return;
@@ -187,8 +187,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
         }
 
         if (Array.isArray(teachersRes)) {
-          const filtered = teachersRes.filter((t: any) => t.id !== user.id);
-          setFeaturedTeachers(filtered);
+          setFeaturedTeachers(teachersRes);
         }
 
         if (hasLangTool && user.id) {
@@ -454,23 +453,41 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
         </div>
       </div>
 
-      {featuredTeachers.length > 0 && (
-        <div>
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-base font-bold text-[#0D4A5F]">
-              {isAr ? 'المعلمون المميزون' : 'Featured Teachers'}
-            </h3>
-            {onNavigate && (
-              <button
-                type="button"
-                onClick={() => onNavigate('private-lessons')}
-                className="text-xs font-bold text-[#5B9F48] hover:underline"
-              >
-                {isAr ? 'عرض الكل' : 'View All'}
-              </button>
-            )}
-          </div>
+      <div>
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="text-base font-bold text-[#0D4A5F]">
+            {isAr ? 'المعلمون' : 'Teachers'}
+          </h3>
+          <button
+            type="button"
+            onClick={() => onNavigate && onNavigate('teachers')}
+            className="text-xs font-bold text-[#5B9F48] hover:underline cursor-pointer"
+          >
+            {isAr ? 'عرض الكل' : 'View All'}
+          </button>
+        </div>
 
+        {loading ? (
+          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
+            {[1, 2, 3, 4].map((n) => (
+              <div
+                key={n}
+                className="w-[160px] flex-shrink-0 bg-white rounded-xl border border-slate-200 p-3 shadow-sm h-[145px] animate-pulse flex flex-col justify-between"
+              >
+                <div>
+                  <div className="w-9 h-9 rounded-full bg-slate-200 mb-2" />
+                  <div className="w-24 h-3 bg-slate-200 rounded mb-2" />
+                  <div className="w-16 h-2.5 bg-slate-200 rounded" />
+                </div>
+                <div className="w-20 h-3 bg-slate-200 rounded" />
+              </div>
+            ))}
+          </div>
+        ) : featuredTeachers.length === 0 ? (
+          <div className="text-center py-6 bg-white rounded-xl border border-slate-100 text-xs text-slate-400">
+            {isAr ? 'لا يوجد معلمون متاحون حالياً' : 'No teachers currently available'}
+          </div>
+        ) : (
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
             {featuredTeachers.map((teacher) => {
               const tProfile = teacher?.profile || {};
@@ -500,13 +517,13 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
               const numPrice = Number(rawPrice) || 0;
               const rateDisplay = numPrice > 0 ? (numPrice % 1 === 0 ? numPrice.toString() : numPrice.toFixed(1)) : '99';
 
-              const ratingVal = Number(tProfile?.rating ?? teacher?.rating) || 4.8;
+              const ratingVal = Number(tProfile?.rating ?? teacher?.rating ?? 0);
               const ratingDisplay = ratingVal.toFixed(1);
 
               return (
                 <div
                   key={teacher.id}
-                  onClick={() => setSelectedTeacherId(teacher.id)}
+                  onClick={() => onNavigate ? onNavigate('teacher-profile-from-overview-' + teacher.id) : setSelectedTeacherId(teacher.id)}
                   className="w-[160px] flex-shrink-0 bg-white rounded-xl border border-slate-200 p-3 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between h-[145px]"
                 >
                   <div className="relative w-9 h-9">
@@ -549,8 +566,8 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
               );
             })}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <div>
         <h3 className="text-base font-bold text-[#0D4A5F] mb-3">

@@ -544,7 +544,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate, onTe
               const numPrice = Number(rawPrice) || 0;
               const rateDisplay = numPrice > 0 ? (numPrice % 1 === 0 ? numPrice.toString() : numPrice.toFixed(1)) : '99';
 
-              const ratingVal = Number(profile?.rating ?? teacher?.rating) || 4.8;
+              const ratingVal = Number(profile?.rating ?? teacher?.rating ?? 0);
               const ratingDisplay = ratingVal.toFixed(1);
 
               return (

@@ -725,13 +725,13 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({
                   <div className="flex items-center gap-1 text-[#C5A059]">
                     <Sparkles size={16} />
                     <span className="text-2xl font-bold text-[#1B3A6B]">
-                      {ratingVal > 0 ? ratingVal.toFixed(1) : (reviewsCount > 0 ? '4.8' : '0.0')}
+                      {ratingVal.toFixed(1)}
                     </span>
                     <Sparkles size={16} className="-scale-x-100" />
                   </div>
                   <div className="flex items-center gap-0.5 mt-1">
                     {[1, 2, 3, 4, 5].map((s) => {
-                      const effRating = ratingVal > 0 ? ratingVal : 4.8;
+                      const effRating = ratingVal;
                       return (
                         <Star
                           key={s}

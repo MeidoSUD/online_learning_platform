@@ -124,14 +124,14 @@ export const TeacherCard: React.FC<TeacherCardProps> = ({
           </button>
         )}
 
-        {!browseOnly && (
-          <div className="flex flex-col items-end gap-2 mt-auto pt-2">
-            <div className="flex items-baseline gap-1">
-              <span className="text-lg font-bold text-[#171717] leading-none">{priceStr}</span>
-              <span className="text-xs font-medium text-[#0D4A5F]">
-                {language === 'ar' ? 'ر.س / ساعة' : 'SAR / hr'}
-              </span>
-            </div>
+        <div className="flex flex-col items-end gap-2 mt-auto pt-2">
+          <div className="flex items-baseline gap-1">
+            <span className="text-lg font-bold text-[#171717] leading-none">{priceStr}</span>
+            <span className="text-xs font-medium text-[#0D4A5F]">
+              {language === 'ar' ? 'ر.س / ساعة' : 'SAR / hr'}
+            </span>
+          </div>
+          {!browseOnly && (
             <button
               type="button"
               onClick={(e) => {
@@ -142,8 +142,8 @@ export const TeacherCard: React.FC<TeacherCardProps> = ({
             >
               {language === 'ar' ? 'احجز الآن' : 'Book Now'}
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

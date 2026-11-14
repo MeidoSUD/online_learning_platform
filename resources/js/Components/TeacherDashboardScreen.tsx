@@ -22,6 +22,7 @@ import { TeacherWithdrawalOptionsTab } from './teacher/TeacherWithdrawalOptionsT
 import { TeacherWithdrawalCardsTab } from './teacher/TeacherWithdrawalCardsTab';
 import { TeacherMoreTab } from './teacher/TeacherMoreTab';
 import { TeacherPublicProfileScreen } from './teacher/TeacherPublicProfileScreen';
+import { PrivateLessonsTab } from './student/PrivateLessonsTab';
 import { ArrowRight, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { useLanguage } from '../Contexts/LanguageContext';
 import { AdsBanner } from './dashboard/AdsBanner';
@@ -37,6 +38,13 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const tabParam = params.get('tab');
+      const teacherIdParam = params.get('teacher_id');
+      const fromParam = params.get('from');
+      if (tabParam === 'teacher-profile' && teacherIdParam) {
+        return fromParam === 'overview'
+          ? `teacher-profile-from-overview-${teacherIdParam}`
+          : `teacher-profile-${teacherIdParam}`;
+      }
       if (tabParam === 'sessions' || tabParam === 'my-lessons') return 'my-lessons';
       if (tabParam) return tabParam;
     }
@@ -47,11 +55,44 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
 
   const user = data.user.data as UserData;
 
+  const navigateToTab = (tab: string) => {
+    setActiveTab(tab);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (tab === 'overview') {
+        url.searchParams.delete('tab');
+        url.searchParams.delete('teacher_id');
+        url.searchParams.delete('from');
+      } else if (tab.startsWith('teacher-profile-from-overview-')) {
+        const tId = tab.replace('teacher-profile-from-overview-', '');
+        url.searchParams.set('tab', 'teacher-profile');
+        url.searchParams.set('teacher_id', tId);
+        url.searchParams.set('from', 'overview');
+      } else if (tab.startsWith('teacher-profile-')) {
+        const tId = tab.replace('teacher-profile-', '');
+        url.searchParams.set('tab', 'teacher-profile');
+        url.searchParams.set('teacher_id', tId);
+        url.searchParams.delete('from');
+      } else {
+        url.searchParams.set('tab', tab);
+        url.searchParams.delete('teacher_id');
+        url.searchParams.delete('from');
+      }
+      window.history.pushState({}, '', `${url.pathname}${url.search}`);
+    }
+  };
+
   useEffect(() => {
     const handlePopState = () => {
       const params = new URLSearchParams(window.location.search);
       const tabParam = params.get('tab');
-      if (tabParam === 'sessions' || tabParam === 'my-lessons') {
+      const teacherIdParam = params.get('teacher_id');
+      const fromParam = params.get('from');
+      if (tabParam === 'teacher-profile' && teacherIdParam) {
+        setActiveTab(fromParam === 'overview'
+          ? `teacher-profile-from-overview-${teacherIdParam}`
+          : `teacher-profile-${teacherIdParam}`);
+      } else if (tabParam === 'sessions' || tabParam === 'my-lessons') {
         setActiveTab('my-lessons');
       } else if (tabParam) {
         setActiveTab(tabParam);
@@ -80,26 +121,44 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
   const isVerified = completeness.verified;
 
   const renderContent = () => {
+    if (activeTab.startsWith('teacher-profile-from-overview-')) {
+      const tId = Number(activeTab.replace('teacher-profile-from-overview-', ''));
+      return <TeacherPublicProfileScreen teacherId={tId} onBack={() => navigateToTab('overview')} />;
+    }
+    if (activeTab.startsWith('teacher-profile-')) {
+      const tId = Number(activeTab.replace('teacher-profile-', ''));
+      return <TeacherPublicProfileScreen teacherId={tId} onBack={() => navigateToTab('teachers')} />;
+    }
+
     switch (activeTab) {
       case 'overview':
-        return <OverviewTab user={currentUser} onNavigate={setActiveTab} />;
+        return <OverviewTab user={currentUser} onNavigate={navigateToTab} />;
+      case 'teachers':
+      case 'browse-teachers':
+        return (
+          <PrivateLessonsTab
+            browseOnly={true}
+            onBack={() => navigateToTab('overview')}
+            onTeacherSelect={(t) => navigateToTab(`teacher-profile-${t?.id || t}`)}
+          />
+        );
       case 'orders':
         return <TeacherOrdersTab user={currentUser} />;
       case 'packages':
-        return <TeacherPackagesTab user={currentUser} onNavigate={setActiveTab} />;
+        return <TeacherPackagesTab user={currentUser} onNavigate={navigateToTab} />;
       case 'withdrawal-options':
-        return <TeacherWithdrawalOptionsTab onNavigate={setActiveTab} />;
+        return <TeacherWithdrawalOptionsTab onNavigate={navigateToTab} />;
       case 'withdrawal-cards':
-        return <TeacherWithdrawalCardsTab onNavigate={setActiveTab} />;
+        return <TeacherWithdrawalCardsTab onNavigate={navigateToTab} />;
       case 'more':
-        return <TeacherMoreTab user={currentUser} onNavigate={setActiveTab} onLogout={onLogout} />;
+        return <TeacherMoreTab user={currentUser} onNavigate={navigateToTab} onLogout={onLogout} />;
       case 'public-profile':
-        return <TeacherPublicProfileScreen user={currentUser} onBack={() => setActiveTab('more')} />;
+        return <TeacherPublicProfileScreen user={currentUser} onBack={() => navigateToTab('more')} />;
       case 'schedule':
         return <ScheduleTab user={currentUser} />;
       case 'private-lessons':
       case 'subjects':
-        return <SubjectsTab user={currentUser} onNavigate={setActiveTab} />;
+        return <SubjectsTab user={currentUser} onNavigate={navigateToTab} />;
       case 'courses':
         return <TeacherCoursesTab user={currentUser} />;
       case 'my-lessons':
@@ -112,13 +171,13 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
       case 'abilities':
         return <TeacherAbilitiesTab user={currentUser} />;
       case 'wallet':
-        return <WalletTab user={currentUser} onNavigate={setActiveTab} />;
+        return <WalletTab user={currentUser} onNavigate={navigateToTab} />;
       case 'bank-accounts':
-        return <BankAccountsPage user={currentUser} onNavigate={setActiveTab} />;
+        return <BankAccountsPage user={currentUser} onNavigate={navigateToTab} />;
       case 'profile':
-        return <ProfileTab onNavigate={setActiveTab} />;
+        return <ProfileTab onNavigate={navigateToTab} />;
       case 'services':
-        return <TeacherServicesTab onNavigate={setActiveTab} />;
+        return <TeacherServicesTab onNavigate={navigateToTab} />;
       case 'support':
         return <SupportTab />;
       case 'disputes':
@@ -126,9 +185,9 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
       case 'ai':
         return <AiAssistantTab />;
       case 'settings':
-        return <ProfileTab onNavigate={setActiveTab} />;
+        return <ProfileTab onNavigate={navigateToTab} />;
       default:
-        return <OverviewTab user={currentUser} onNavigate={setActiveTab} />;
+        return <OverviewTab user={currentUser} onNavigate={navigateToTab} />;
     }
   };
 
@@ -138,7 +197,7 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
         userData={data}
         onLogout={onLogout}
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={navigateToTab}
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -174,7 +233,7 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
                       ) : (
                         <button
                           type="button"
-                          onClick={() => setActiveTab(m.tab)}
+                          onClick={() => navigateToTab(m.tab)}
                           className="text-[10px] font-bold text-amber-700 bg-amber-100 hover:bg-amber-200 rounded-md px-2 py-1 inline-flex items-center gap-1"
                         >
                           {language === 'ar' ? 'اذهب' : 'Go'}
@@ -196,7 +255,7 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
                 <div className="mt-4 flex gap-3">
                   <button
                     type="button"
-                    onClick={() => setActiveTab('services')}
+                    onClick={() => navigateToTab('services')}
                     className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-amber-700 bg-amber-100 hover:bg-amber-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
                   >
                     {language === 'ar' ? 'الذهاب للخدمات' : 'Go to Services'}

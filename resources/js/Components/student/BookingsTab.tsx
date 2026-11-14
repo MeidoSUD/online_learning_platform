@@ -494,7 +494,7 @@ export const BookingsTab: React.FC<{ onViewCalendar?: () => void }> = ({ onViewC
                     </h4>
                     <div className="flex items-center gap-2 mt-1 text-xs text-[#64748B]">
                       <span className="flex items-center gap-1 font-bold text-[#171717]">
-                        <Star size={14} className="text-[#F59E0B] fill-[#F59E0B]" /> 4.8
+                        <Star size={14} className="text-[#F59E0B] fill-[#F59E0B]" /> {Number(b.teacher?.profile?.rating ?? b.teacher?.rating ?? 0).toFixed(1)}
                       </span>
                       <span className="flex items-center gap-1 text-[#64748B] truncate">
                         <BookOpen size={14} className="text-[#0D4A5F] shrink-0" />
