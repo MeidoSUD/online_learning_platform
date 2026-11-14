@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
-import { Star, Heart, BookOpen, User, Loader2 } from 'lucide-react';
+import { Star, Heart, BookOpen, User, Loader2, Sparkles } from 'lucide-react';
 import { getStorageUrl, studentService } from '../../Services/api';
 
 interface TeacherCardProps {
@@ -26,6 +26,12 @@ export const TeacherCard: React.FC<TeacherCardProps> = ({
   const [favLoading, setFavLoading] = useState(false);
 
   const profile = teacher?.profile || {};
+  const isBoosted = Boolean(
+    teacher?.is_boosted ||
+    teacher?.is_featured ||
+    profile?.is_boosted ||
+    profile?.is_featured
+  );
   const rawImage = profile.profile_photo || teacher?.profile_image || teacher?.avatar;
   const profileImageUrl = rawImage ? getStorageUrl(rawImage) : null;
   const fullName = (teacher?.full_name || `${teacher?.first_name || ''} ${teacher?.last_name || ''}`).trim() || (language === 'ar' ? 'معلم' : 'Teacher');
@@ -74,9 +80,13 @@ export const TeacherCard: React.FC<TeacherCardProps> = ({
   return (
     <div
       onClick={handleAction}
-      className="bg-white rounded-2xl p-3 sm:p-4 border border-[#E6E6E6] shadow-sm hover:shadow-md transition-all cursor-pointer flex items-start gap-3 w-full"
+      className={`rounded-2xl p-3 sm:p-4 border transition-all cursor-pointer flex items-start gap-3 w-full shadow-sm hover:shadow-md ${
+        isBoosted
+          ? 'bg-gradient-to-r from-amber-50/20 via-white to-white border-amber-300 ring-1 ring-amber-400/30'
+          : 'bg-white border-[#E6E6E6]'
+      }`}
     >
-      <div className="w-16 h-16 rounded-full bg-[#EFF6F4] border border-[#E6E6E6] shrink-0 overflow-hidden flex items-center justify-center">
+      <div className={`w-16 h-16 rounded-full ${isBoosted ? 'bg-amber-50 border-2 border-amber-400' : 'bg-[#EFF6F4] border border-[#E6E6E6]'} shrink-0 overflow-hidden flex items-center justify-center`}>
         {profileImageUrl ? (
           <img
             src={profileImageUrl}
@@ -87,14 +97,22 @@ export const TeacherCard: React.FC<TeacherCardProps> = ({
             }}
           />
         ) : (
-          <User className="w-8 h-8 text-[#738989]" />
+          <User className={`w-8 h-8 ${isBoosted ? 'text-amber-600' : 'text-[#738989]'}`} />
         )}
       </div>
 
       <div className="flex-1 min-w-0">
-        <h3 className="text-base font-bold text-[#171717] truncate">
-          {fullName}
-        </h3>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <h3 className="text-base font-bold text-[#171717] truncate">
+            {fullName}
+          </h3>
+          {isBoosted && (
+            <span className="shrink-0 inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300">
+              <Sparkles size={10} className="text-amber-600" />
+              {language === 'ar' ? 'معلم مميز' : 'Featured'}
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-1.5 mt-1 text-xs text-[#738989]">
           <BookOpen size={14} className="shrink-0 text-[#738989]" />
           <span className="truncate">{serviceName}</span>

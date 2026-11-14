@@ -20,7 +20,7 @@ import {
   Check
 } from 'lucide-react';
 import { Button } from '../ui/Button';
-import { UserData, studentService, Booking, Course, getStorageUrl } from '../../Services/api';
+import { UserData, studentService, featuredTeacherService, Booking, Course, getStorageUrl } from '../../Services/api';
 import { COUNTRIES } from '../../Utils/constants';
 
 interface OverviewTabProps {
@@ -69,6 +69,9 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate, onTe
   const [courses, setCourses] = useState<Course[]>([]);
   const [packages, setPackages] = useState<any[]>([]);
   const [services, setServices] = useState<ServiceItem[]>([]);
+  const [featuredBanners, setFeaturedBanners] = useState<any[]>([]);
+  const [bannerIndex, setBannerIndex] = useState(0);
+  const [coursesEnabled, setCoursesEnabled] = useState(false);
 
   const handleTeacherClick = (teacher: any) => {
     if (onTeacherSelect) {
@@ -80,16 +83,61 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate, onTe
     }
   };
 
+  const handleFeaturedBannerClick = async (banner: any) => {
+    if (banner.subscription_id) {
+      featuredTeacherService.recordClick(banner.subscription_id);
+    }
+    const found = topTeachers.find(t => t.id === banner.teacher_id);
+    if (found && onTeacherSelect) {
+      handleTeacherClick(found);
+      return;
+    }
+    try {
+      const res = await studentService.getTeacherById(banner.teacher_id);
+      if (res && onTeacherSelect) {
+        handleTeacherClick(res);
+        return;
+      }
+    } catch {}
+
+    if (onTeacherSelect) {
+      onTeacherSelect({
+        id: banner.teacher_id,
+        first_name: banner.name,
+        last_name: '',
+        profile_image: banner.avatar,
+        profile: {
+          bio: banner.marketing_bio,
+          rating: banner.rating,
+          individual_hour_price: banner.individual_hour_price,
+          specialization: banner.marketing_title,
+          is_boosted: true,
+        }
+      }, 3);
+    } else {
+      onNavigate('private-lessons');
+    }
+  };
+
+  useEffect(() => {
+    if (featuredBanners.length <= 1) return;
+    const timer = setInterval(() => {
+      setBannerIndex((prev) => (prev + 1) % featuredBanners.length);
+    }, 6000);
+    return () => clearInterval(timer);
+  }, [featuredBanners.length]);
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [bookings, teachers, allCourses, pkgs, rawServices] = await Promise.all([
+        const [bookings, teachers, allCourses, pkgs, rawServices, bannersRes] = await Promise.all([
           studentService.getBookings().catch(() => []),
           studentService.getTeachers().catch(() => []),
           studentService.getCourses().catch(() => []),
           studentService.getPublicPackages().catch(() => []),
           studentService.getServices().catch(() => []),
+          featuredTeacherService.getBanners(10).catch(() => ({ count: 0, banners: [] })),
         ]);
 
         if (Array.isArray(bookings) && bookings.length > 0) {
@@ -100,7 +148,33 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate, onTe
         setCourses(Array.isArray(allCourses) ? allCourses.slice(0, 3) : []);
         setPackages(Array.isArray(pkgs) ? pkgs.slice(0, 3) : []);
 
+        if (bannersRes?.banners && Array.isArray(bannersRes.banners)) {
+          setFeaturedBanners(bannersRes.banners);
+        }
+
         const list = Array.isArray(rawServices) ? rawServices : [];
+
+        // Dynamic check: Is the specialized courses service active in the database services table?
+        const isCoursesActive = list.some((s: any) => {
+          const k = (s.key_name || '').toLowerCase();
+          const id = Number(s.id);
+          const nameAr = (s.name_ar || s.name || '').toLowerCase();
+          const isMatch = id === 4 || k === 'courses' || k.includes('course') || nameAr.includes('دورات');
+          const isDisabled =
+            s.status === 0 ||
+            s.status === '0' ||
+            s.status === false ||
+            s.is_active === 0 ||
+            s.is_active === '0' ||
+            s.is_active === false ||
+            s.is_disabled === 1 ||
+            s.is_disabled === '1' ||
+            s.is_disabled === true;
+          return isMatch && !isDisabled;
+        });
+        setCoursesEnabled(isCoursesActive);
+
+        // Filter out AI assistant service and any service that is disabled from database
         const filtered = list.filter((s: any) => {
           const k = (s.key_name || '').toLowerCase();
           const nameAr = (s.name_ar || s.name || '').toString().toLowerCase();
@@ -115,7 +189,19 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate, onTe
             nameAr.includes('ذكاء') ||
             nameEn.includes('ai') ||
             s.id === 7;
-          return !isAi;
+
+          const isDisabled =
+            s.status === 0 ||
+            s.status === '0' ||
+            s.status === false ||
+            s.is_active === 0 ||
+            s.is_active === '0' ||
+            s.is_active === false ||
+            s.is_disabled === 1 ||
+            s.is_disabled === '1' ||
+            s.is_disabled === true;
+
+          return !isAi && !isDisabled;
         });
 
         if (filtered.length > 0) {
@@ -125,7 +211,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate, onTe
             { id: 3, key_name: 'private_lesson', name_ar: 'الدروس الخصوصية', name_en: 'Private Lessons', status: 1 },
             { id: 6, key_name: 'abilities', name_ar: 'القدرات والتحصيلي', name_en: 'Abilities and achievement', status: 1 },
             { id: 2, key_name: 'language_learning', name_ar: 'تعلم اللغات', name_en: 'Language Learning', status: 1 },
-            { id: 4, key_name: 'courses', name_ar: 'الدورات المخصصة', name_en: 'Specialized Courses', status: 1 },
+            ...(isCoursesActive ? [{ id: 4, key_name: 'courses', name_ar: 'الدورات المخصصة', name_en: 'Specialized Courses', status: 1 }] : []),
             { id: 5, key_name: 'books', name_ar: 'الكتب الدراسية', name_en: 'Study Books', status: 1 },
           ]);
         }
@@ -281,6 +367,176 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate, onTe
           </div>
         </div>
       </div>
+
+      {/* Featured Teachers Poster Banner */}
+      {featuredBanners.length > 0 && (() => {
+        const current = featuredBanners[bannerIndex];
+        if (!current) return null;
+        const isAr = language === 'ar';
+        const badgeText = isAr ? (current.badge_text_ar || 'معلم مميز') : (current.badge_text_en || 'Featured Teacher');
+        const subjectsList = Array.isArray(current.subjects) ? current.subjects : [];
+
+        return (
+          <div className="relative overflow-hidden rounded-[var(--radius-lg)] bg-gradient-to-br from-amber-500/10 via-amber-400/5 to-white border-2 border-amber-300/80 shadow-[0_10px_30px_rgba(245,158,11,0.12)] p-6 sm:p-7 transition-all">
+            {/* Shimmer / Glow background effects */}
+            <div className="absolute top-0 end-0 -mt-10 -me-10 w-60 h-60 bg-amber-400/20 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute bottom-0 start-0 -mb-10 -ms-10 w-48 h-48 bg-primary/10 rounded-full blur-2xl pointer-events-none" />
+
+            {/* Header row with Title & Carousel navigation */}
+            <div className="relative z-10 flex items-center justify-between gap-4 mb-5">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-sm">
+                  <Sparkles size={13} className="text-amber-100" />
+                  {isAr ? 'نخبة المعلمين المميزين' : 'Featured Instructors'}
+                </span>
+                <span className="hidden sm:inline-block text-xs font-medium text-amber-900/70">
+                  {isAr ? 'معلمون موصى بهم لتحقيق أفضل النتائج الدراسية' : 'Top recommended teachers for high achievements'}
+                </span>
+              </div>
+
+              {featuredBanners.length > 1 && (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setBannerIndex((prev) => (prev === 0 ? featuredBanners.length - 1 : prev - 1))}
+                    className="p-1.5 rounded-lg bg-white/90 hover:bg-white text-slate-700 shadow-sm border border-amber-200 transition"
+                    aria-label="Previous"
+                  >
+                    {direction === 'rtl' ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+                  </button>
+                  <span className="text-xs font-bold text-slate-600 px-1">
+                    {bannerIndex + 1} / {featuredBanners.length}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setBannerIndex((prev) => (prev + 1) % featuredBanners.length)}
+                    className="p-1.5 rounded-lg bg-white/90 hover:bg-white text-slate-700 shadow-sm border border-amber-200 transition"
+                    aria-label="Next"
+                  >
+                    {direction === 'rtl' ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Main Poster Content */}
+            <div
+              onClick={() => handleFeaturedBannerClick(current)}
+              className="relative z-10 cursor-pointer flex flex-col md:flex-row items-center justify-between gap-6 bg-white/80 backdrop-blur-sm p-5 sm:p-6 rounded-2xl border border-amber-200/60 hover:shadow-md hover:border-amber-300 transition-all group"
+            >
+              {/* Teacher Info (Photo + Details) */}
+              <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-start gap-4 sm:gap-5 w-full md:w-auto">
+                {/* Avatar with Golden Frame & Badge */}
+                <div className="relative shrink-0">
+                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden border-2 border-amber-400 shadow-md bg-amber-50 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    {current.avatar ? (
+                      <img
+                        src={current.avatar}
+                        alt={current.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <GraduationCap size={36} className="text-amber-500" />
+                    )}
+                  </div>
+                  <div className="absolute -bottom-2 inset-x-0 mx-auto w-fit px-2 py-0.5 rounded-full text-[10px] font-black bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-sm flex items-center gap-0.5 whitespace-nowrap">
+                    <Star size={9} className="fill-white" />
+                    <span>{badgeText}</span>
+                  </div>
+                </div>
+
+                {/* Bio & Details */}
+                <div className="space-y-1.5 min-w-0 max-w-xl">
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                    <h3 className="text-lg font-bold text-slate-900 group-hover:text-amber-700 transition-colors">
+                      {current.name}
+                    </h3>
+                    <div className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-900">
+                      <Star size={12} className="text-amber-500 fill-amber-500" />
+                      <span>{Number(current.rating || 5).toFixed(1)}</span>
+                      {current.reviews_count ? (
+                        <span className="text-[10px] text-amber-700 font-normal">({current.reviews_count})</span>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {current.marketing_title && (
+                    <p className="text-xs sm:text-sm font-semibold text-amber-800 line-clamp-1">
+                      {current.marketing_title}
+                    </p>
+                  )}
+
+                  {current.marketing_bio && (
+                    <p className="text-xs text-slate-600 line-clamp-2">
+                      {current.marketing_bio}
+                    </p>
+                  )}
+
+                  {/* Subject Badges */}
+                  {subjectsList.length > 0 && (
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 pt-1">
+                      {subjectsList.slice(0, 4).map((subj: any) => (
+                        <span
+                          key={subj.id || subj.name_ar}
+                          className="text-[11px] font-medium px-2 py-0.5 rounded bg-amber-50 border border-amber-200 text-amber-900"
+                        >
+                          {isAr ? (subj.name_ar || subj.name_en) : (subj.name_en || subj.name_ar)}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Price & Action Button */}
+              <div className="flex flex-row md:flex-col items-center md:items-end justify-between w-full md:w-auto gap-4 shrink-0 pt-3 md:pt-0 border-t md:border-t-0 border-amber-100">
+                {current.individual_hour_price != null && (
+                  <div className="text-center md:text-end">
+                    <span className="text-xl sm:text-2xl font-black text-slate-900">
+                      {current.individual_hour_price}
+                    </span>
+                    <span className="text-xs font-bold text-amber-700 ms-1">
+                      {isAr ? 'ر.س/ساعة' : 'SAR/hr'}
+                    </span>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleFeaturedBannerClick(current);
+                  }}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-amber-500/20 flex items-center gap-2 group-hover:scale-105 transition-all"
+                >
+                  <span>{isAr ? 'عرض الملف والحجز' : 'View Profile & Book'}</span>
+                  {direction === 'rtl' ? <ArrowLeft size={16} /> : <ArrowRight size={16} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Dots indicator */}
+            {featuredBanners.length > 1 && (
+              <div className="flex justify-center items-center gap-1.5 mt-3">
+                {featuredBanners.map((_, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setBannerIndex(idx)}
+                    className={`h-1.5 rounded-full transition-all ${
+                      idx === bannerIndex ? 'w-6 bg-amber-500' : 'w-1.5 bg-amber-200 hover:bg-amber-300'
+                    }`}
+                    aria-label={`Slide ${idx + 1}`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       <div className="space-y-4">
         <div className="flex justify-between items-center">
@@ -546,16 +802,24 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate, onTe
 
               const ratingVal = Number(profile?.rating ?? teacher?.rating) || 4.8;
               const ratingDisplay = ratingVal.toFixed(1);
+              const isBoosted = Boolean(
+                teacher?.is_boosted ||
+                teacher?.is_featured ||
+                profile?.is_boosted ||
+                profile?.is_featured
+              );
 
               return (
                 <div
                   key={teacher.id}
                   onClick={() => handleTeacherClick(teacher)}
-                  className="bg-white p-3.5 rounded-2xl border border-[var(--border)] shadow-sm hover:shadow-md hover:-translate-y-1 transition-all flex flex-col justify-between gap-3 cursor-pointer group"
+                  className={`bg-white p-3.5 rounded-2xl border transition-all flex flex-col justify-between gap-3 cursor-pointer group shadow-sm hover:shadow-md hover:-translate-y-1 ${
+                    isBoosted ? 'border-amber-300 ring-1 ring-amber-400/40 bg-gradient-to-b from-amber-50/20 to-white' : 'border-[var(--border)]'
+                  }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="relative">
-                      <div className="h-10 w-10 rounded-full border-2 border-primary/30 bg-[var(--light-bg)] overflow-hidden flex items-center justify-center text-primary font-bold text-sm shrink-0">
+                      <div className={`h-10 w-10 rounded-full border-2 ${isBoosted ? 'border-amber-400' : 'border-primary/30'} bg-[var(--light-bg)] overflow-hidden flex items-center justify-center text-primary font-bold text-sm shrink-0`}>
                         {profileImage ? (
                           <img src={getStorageUrl(profileImage)} alt={fullName} className="h-full w-full object-cover" />
                         ) : (
@@ -582,9 +846,17 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate, onTe
                   </div>
 
                   <div>
-                    <h3 className="font-bold text-sm text-[var(--text-main)] truncate">
-                      {fullName}
-                    </h3>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <h3 className="font-bold text-sm text-[var(--text-main)] truncate">
+                        {fullName}
+                      </h3>
+                      {isBoosted && (
+                        <span className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300">
+                          <Sparkles size={9} className="text-amber-600" />
+                          {language === 'ar' ? 'مميز' : 'Featured'}
+                        </span>
+                      )}
+                    </div>
 
                     <div className="flex items-center justify-between gap-2 mt-1.5">
                       <div className="flex items-center gap-1 min-w-0 text-[11px] text-[var(--text-muted)]">
@@ -614,17 +886,16 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate, onTe
         )}
       </div>
 
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-xl font-bold text-[var(--text-main)]">{t.recommendedCourses}</h2>
-          <button className="text-sm text-primary font-medium hover:underline" onClick={() => onNavigate('courses')}>
-            {t.viewAll}
-          </button>
-        </div>
+      {/* Recommended Courses section - Only shown when Courses service is active in database */}
+      {coursesEnabled && courses.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-bold text-[var(--text-main)]">{t.recommendedCourses}</h2>
+            <button className="text-sm text-primary font-medium hover:underline" onClick={() => onNavigate('courses')}>
+              {t.viewAll}
+            </button>
+          </div>
 
-        {courses.length === 0 ? (
-          <div className="text-center py-10 bg-[var(--light-bg)] rounded-[var(--radius-md)] text-[var(--text-muted)]">No courses available.</div>
-        ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {courses.map((course) => (
               <div key={course.id} className="relative overflow-hidden bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-[3px] transition-all">
@@ -651,8 +922,8 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate, onTe
               </div>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };
