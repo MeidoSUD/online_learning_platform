@@ -20,9 +20,11 @@ import {
     Radio,
     LogOut,
     X,
-    MessageSquare,
-    Send,
-    MessageCircle,
+    Hand,
+    Maximize2,
+    Minimize2,
+    User,
+    ArrowLeftRight,
 } from 'lucide-react';
 import { useLanguage } from '../../Contexts/LanguageContext';
 import { teacherService } from '../../Services/api';
@@ -37,9 +39,6 @@ interface SessionRoomModalProps {
         uid?: string | number;
         role?: string;
         session_id?: number;
-        chat_room_id?: string;
-        chat_token?: string;
-        chat_agora_uid?: string;
     } | null;
 }
 
@@ -47,27 +46,37 @@ const AGORA_CONFIG = {
     APP_ID: "3a77d1a600964e9bb4aae8b0dd59f157"
 };
 
-try {
-    AgoraRTC.disableLogUpload();
-} catch {}
-
 type RemoteUserView = {
     uid: string | number;
     videoOn: boolean;
     videoTrack: IRemoteVideoTrack | null;
+    audioTrack: any | null;
 };
 
-interface ChatMessage {
-    id: string;
-    senderUid: string | number;
-    senderName: string;
-    text: string;
-    time: string;
-    isSelf: boolean;
+interface VideoPlayerProps {
+    track: ICameraVideoTrack | IRemoteVideoTrack | ILocalVideoTrack | null | undefined;
+    className?: string;
+    mirror?: boolean;
 }
+
+const VideoPlayer: React.FC<VideoPlayerProps> = ({ track, className = '', mirror = false }) => {
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const el = containerRef.current;
+        if (!el || !track) return;
+        track.play(el, { mirror });
+        return () => {
+            track.stop();
+        };
+    }, [track, mirror]);
+
+    return <div ref={containerRef} className={`w-full h-full overflow-hidden ${className}`} />;
+};
 
 export const SessionRoomModal: React.FC<SessionRoomModalProps> = ({ isOpen, onClose, agora }) => {
     const { language, direction } = useLanguage();
+    const isAr = language === 'ar';
 
     const clientRef = useRef<IAgoraRTCClient | null>(null);
     const micTrackRef = useRef<IMicrophoneAudioTrack | null>(null);
@@ -82,87 +91,54 @@ export const SessionRoomModal: React.FC<SessionRoomModalProps> = ({ isOpen, onCl
     const [isMuted, setIsMuted] = useState(false);
     const [isVideoOff, setIsVideoOff] = useState(false);
     const [isScreenSharing, setIsScreenSharing] = useState(false);
+    const [isHandRaised, setIsHandRaised] = useState(false);
     const [isEnding, setIsEnding] = useState(false);
-
-    // In-session Chat state
-    const [isChatOpen, setIsChatOpen] = useState(false);
-    const [messages, setMessages] = useState<ChatMessage[]>([]);
-    const [messageInput, setMessageInput] = useState('');
-    const [unreadCount, setUnreadCount] = useState(0);
-    const isChatOpenRef = useRef(false);
-    const messagesEndRef = useRef<HTMLDivElement | null>(null);
-
-    useEffect(() => {
-        isChatOpenRef.current = isChatOpen;
-        if (isChatOpen) {
-            setUnreadCount(0);
-            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-        }
-    }, [isChatOpen]);
-
-    useEffect(() => {
-        if (isChatOpen) {
-            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-        }
-    }, [messages.length, isChatOpen]);
+    const [showEndConfirm, setShowEndConfirm] = useState(false);
+    const [focusTarget, setFocusTarget] = useState<'remote' | 'local'>('remote');
 
     const isHost = (agora?.role || '').toLowerCase() === 'host';
     const appId = agora?.app_id || AGORA_CONFIG.APP_ID;
     const channel = agora?.channel || '';
     const token = agora?.token || null;
-    const uid = (agora?.uid ?? 0) as string | number;
+    const uid = agora?.uid ? String(agora.uid) : null;
     const sessionId = agora?.session_id;
-    const chatRoomId = agora?.chat_room_id;
 
     const cleanup = useCallback(async () => {
         shouldCleanRef.current = false;
         const client = clientRef.current;
         if (client) {
             client.removeAllListeners();
-            try { await client.leave(); } catch (_) { /* noop */ }
+            try {
+                await client.leave();
+            } catch (_) {}
             clientRef.current = null;
         }
-        micTrackRef.current?.close();
-        cameraTrackRef.current?.close();
         if (screenTrackRef.current) {
-            screenTrackRef.current.removeAllListeners();
-            screenTrackRef.current.close();
+            try {
+                screenTrackRef.current.close();
+            } catch (_) {}
+            screenTrackRef.current = null;
         }
-        micTrackRef.current = null;
-        cameraTrackRef.current = null;
-        screenTrackRef.current = null;
+        if (cameraTrackRef.current) {
+            try {
+                cameraTrackRef.current.close();
+            } catch (_) {}
+            cameraTrackRef.current = null;
+        }
+        if (micTrackRef.current) {
+            try {
+                micTrackRef.current.close();
+            } catch (_) {}
+            micTrackRef.current = null;
+        }
         setJoined(false);
         setRemoteUsers({});
         setIsMuted(false);
         setIsVideoOff(false);
         setIsScreenSharing(false);
+        setIsHandRaised(false);
+        setShowEndConfirm(false);
         setError(null);
-    }, []);
-
-    const stopScreenSharing = useCallback(async () => {
-        const client = clientRef.current;
-        if (screenTrackRef.current) {
-            screenTrackRef.current.removeAllListeners();
-            if (client) {
-                try { await client.unpublish(screenTrackRef.current); } catch {}
-            }
-            screenTrackRef.current.close();
-            screenTrackRef.current = null;
-        }
-        setIsScreenSharing(false);
-
-        if (client && cameraTrackRef.current) {
-            try {
-                await client.publish(cameraTrackRef.current);
-                setIsVideoOff(false);
-                requestAnimationFrame(() => {
-                    const localPlayer = document.getElementById('local-player');
-                    if (localPlayer && cameraTrackRef.current) cameraTrackRef.current.play(localPlayer);
-                });
-            } catch (err) {
-                console.error('Failed to restore camera after screen share:', err);
-            }
-        }
     }, []);
 
     const initRoom = useCallback(async () => {
@@ -171,145 +147,112 @@ export const SessionRoomModal: React.FC<SessionRoomModalProps> = ({ isOpen, onCl
         setError(null);
         shouldCleanRef.current = true;
 
-        const client: IAgoraRTCClient = AgoraRTC.createClient({
-            mode: 'rtc',
-            codec: 'vp8',
-        });
-        clientRef.current = client;
-
-        client.on('user-published', async (user, mediaType) => {
-            await client.subscribe(user, mediaType);
-            if (mediaType === 'video') {
-                const videoTrack = user.videoTrack as IRemoteVideoTrack | undefined;
-                setRemoteUsers((prev) => ({ ...prev, [String(user.uid)]: { uid: user.uid, videoOn: true, videoTrack: videoTrack || null } }));
-                requestAnimationFrame(() => {
-                    const player = document.getElementById(`remote-player-${user.uid}`);
-                    if (player && videoTrack) videoTrack.play(player, { fit: 'contain' });
-                });
-            } else if (mediaType === 'audio') {
-                user.audioTrack?.play();
-            }
-        });
-
-        client.on('user-unpublished', (user, mediaType) => {
-            if (mediaType === 'video') {
-                (user.videoTrack as IRemoteVideoTrack | undefined)?.stop();
-                setRemoteUsers((prev) => {
-                    if (!prev[String(user.uid)]) return prev;
-                    return {
-                        ...prev,
-                        [String(user.uid)]: {
-                            uid: user.uid,
-                            videoOn: false,
-                            videoTrack: (user.videoTrack as IRemoteVideoTrack | undefined) || null,
-                        },
-                    };
-                });
-            }
-        });
-
-        client.on('user-left', (user) => {
-            setRemoteUsers((prev) => {
-                const next = { ...prev };
-                delete next[String(user.uid)];
-                return next;
-            });
-        });
-
-        client.on('connection-state-change', (curState, prevState) => {
-            if (curState === 'DISCONNECTED' && prevState !== 'DISCONNECTED' && shouldCleanRef.current) {
-                setError(language === 'ar' ? 'انقطع الاتصال بالجلسة' : 'Connection to the session was lost');
-            }
-        });
-
-        // Listen for in-session real-time chat messages via Data Stream
-        client.on('stream-message', (remoteUid, payload) => {
-            try {
-                const text = new TextDecoder().decode(payload);
-                const data = JSON.parse(text);
-                if (data && data.text) {
-                    const newMsg: ChatMessage = {
-                        id: data.id || String(Date.now()),
-                        senderUid: remoteUid,
-                        senderName: data.senderName || String(remoteUid),
-                        text: data.text,
-                        time: data.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                        isSelf: false,
-                    };
-                    setMessages((prev) => [...prev, newMsg]);
-                    if (!isChatOpenRef.current) {
-                        setUnreadCount((c) => c + 1);
-                    }
-                }
-            } catch (err) {
-                console.warn('stream-message decode error:', err);
-            }
-        });
-
         try {
+            const client: IAgoraRTCClient = AgoraRTC.createClient({
+                mode: 'live',
+                codec: 'vp8',
+            });
+            clientRef.current = client;
+
+            client.on('user-published', async (user, mediaType) => {
+                try {
+                    await client.subscribe(user, mediaType);
+                    if (mediaType === 'video') {
+                        setRemoteUsers((prev) => ({
+                            ...prev,
+                            [String(user.uid)]: {
+                                uid: user.uid,
+                                videoTrack: user.videoTrack || null,
+                                audioTrack: prev[String(user.uid)]?.audioTrack || null,
+                                videoOn: true,
+                            },
+                        }));
+                    } else if (mediaType === 'audio') {
+                        user.audioTrack?.play();
+                        setRemoteUsers((prev) => ({
+                            ...prev,
+                            [String(user.uid)]: {
+                                uid: user.uid,
+                                videoTrack: prev[String(user.uid)]?.videoTrack || null,
+                                audioTrack: user.audioTrack || null,
+                                videoOn: prev[String(user.uid)]?.videoOn ?? false,
+                            },
+                        }));
+                    }
+                } catch (subErr: any) {
+                    console.error('Subscription error', subErr);
+                }
+            });
+
+            client.on('user-unpublished', (user, mediaType) => {
+                if (mediaType === 'video') {
+                    setRemoteUsers((prev) => {
+                        if (!prev[String(user.uid)]) return prev;
+                        return {
+                            ...prev,
+                            [String(user.uid)]: {
+                                ...prev[String(user.uid)],
+                                videoOn: false,
+                                videoTrack: null,
+                            },
+                        };
+                    });
+                }
+            });
+
+            client.on('user-left', (user) => {
+                setRemoteUsers((prev) => {
+                    const next = { ...prev };
+                    delete next[String(user.uid)];
+                    return next;
+                });
+            });
+
+            client.on('connection-state-change', (curState, prevState) => {
+                if (curState === 'DISCONNECTED' && prevState !== 'DISCONNECTED' && shouldCleanRef.current) {
+                    setError(isAr ? 'انقطع الاتصال بالجلسة' : 'Connection to the session was lost');
+                }
+            });
+
+            await client.setClientRole('host');
+
             let micTrack: IMicrophoneAudioTrack | null = null;
             let cameraTrack: ICameraVideoTrack | null = null;
-            const tracksToPublish = [];
-            const permissionWarnings: string[] = [];
 
             try {
                 micTrack = await AgoraRTC.createMicrophoneAudioTrack();
                 micTrackRef.current = micTrack;
-                tracksToPublish.push(micTrack);
-            } catch (micErr: any) {
-                console.warn('Microphone access failed:', micErr);
-                setIsMuted(true);
-                permissionWarnings.push(language === 'ar' ? 'الميكروفون' : 'Microphone');
-            }
+            } catch (_) {}
 
             try {
                 cameraTrack = await AgoraRTC.createCameraVideoTrack();
                 cameraTrackRef.current = cameraTrack;
-                tracksToPublish.push(cameraTrack);
-            } catch (camErr: any) {
-                console.warn('Camera access failed:', camErr);
+            } catch (_) {
                 setIsVideoOff(true);
-                permissionWarnings.push(language === 'ar' ? 'الكاميرا' : 'Camera');
             }
 
             await client.join(appId, channel, token, uid);
 
+            const tracksToPublish = [];
+            if (micTrack) tracksToPublish.push(micTrack);
+            if (cameraTrack) tracksToPublish.push(cameraTrack);
+
             if (tracksToPublish.length > 0) {
                 await client.publish(tracksToPublish);
             }
+
             setJoined(true);
-
-            if (cameraTrack) {
-                requestAnimationFrame(() => {
-                    const localPlayer = document.getElementById('local-player');
-                    if (localPlayer) cameraTrack.play(localPlayer);
-                });
-            }
-
-            if (permissionWarnings.length > 0) {
-                const missing = permissionWarnings.join(language === 'ar' ? ' و ' : ' & ');
-                setError(
-                    language === 'ar'
-                        ? `تم الانضمام للجلسة. تعذر تشغيل (${missing}) لعدم منح الإذن في المتصفح. يمكنك الضغط على أيقونة الإعدادات ⚙️ بجانب الرابط في شريط المتصفح وتفعيل الوصول.`
-                        : `Joined session. Could not access (${missing}) because permission was dismissed. Please allow in browser address bar settings.`
-                );
-            }
         } catch (e: any) {
-            console.error('Session join error:', e);
-            const isPerm = e?.message?.includes('Permission') || e?.name === 'NotAllowedError';
-            if (isPerm) {
-                setError(
-                    language === 'ar'
-                        ? 'تم رفض أو تجاهل إذن الميكروفون/الكاميرا في المتصفح. يرجى الضغط على أيقونة الإعدادات بجانب رابط الموقع في شريط المتصفح وتفعيل الميكروفون والكاميرا ثم المحاولة مجدداً.'
-                        : 'Microphone/Camera permission was dismissed or blocked. Please allow permissions via the browser address bar icon.'
-                );
-            } else {
-                setError(e?.message || (language === 'ar' ? 'فشل الدخول إلى الجلسة، تأكد من صلاحيات الكاميرا والميكروفون' : 'Failed to enter the session. Please check camera & microphone permissions'));
-            }
+            setError(
+                e?.message ||
+                (isAr
+                    ? 'فشل الدخول إلى الجلسة، يرجى المحاولة مرة أخرى'
+                    : 'Failed to enter the session. Please try again')
+            );
         } finally {
             setConnecting(false);
         }
-    }, [isOpen, agora, appId, token, uid, language]);
+    }, [isOpen, agora, appId, channel, token, uid, isAr]);
 
     useEffect(() => {
         if (isOpen) {
@@ -317,53 +260,67 @@ export const SessionRoomModal: React.FC<SessionRoomModalProps> = ({ isOpen, onCl
         } else {
             cleanup();
         }
-        return () => { cleanup(); };
+        return () => {
+            cleanup();
+        };
     }, [isOpen, initRoom, cleanup]);
 
     const toggleMute = async () => {
-        if (!micTrackRef.current) {
+        const client = clientRef.current;
+        if (isMuted) {
             try {
-                const mic = await AgoraRTC.createMicrophoneAudioTrack();
-                micTrackRef.current = mic;
-                if (clientRef.current && joined) {
-                    await clientRef.current.publish([mic]);
+                if (!micTrackRef.current) {
+                    const newMic = await AgoraRTC.createMicrophoneAudioTrack();
+                    micTrackRef.current = newMic;
+                    if (client && joined) {
+                        await client.publish(newMic);
+                    }
+                } else {
+                    micTrackRef.current.setMuted(false);
                 }
                 setIsMuted(false);
-                setError(null);
-                return;
-            } catch (err: any) {
-                setError(language === 'ar' ? 'يرجى السماح بصلاحية الميكروفون من إعدادات المتصفح' : 'Please allow microphone permission in browser settings');
-                return;
+            } catch (_) {
+                setError(isAr ? 'تعذر تشغيل الميكروفون' : 'Could not enable microphone');
             }
+        } else {
+            if (micTrackRef.current) {
+                micTrackRef.current.setMuted(true);
+            }
+            setIsMuted(true);
         }
-        const next = !isMuted;
-        micTrackRef.current?.setMuted(next);
-        setIsMuted(next);
     };
 
     const toggleVideo = async () => {
-        if (!cameraTrackRef.current) {
+        const client = clientRef.current;
+        if (isVideoOff) {
             try {
-                const cam = await AgoraRTC.createCameraVideoTrack();
-                cameraTrackRef.current = cam;
-                if (clientRef.current && joined) {
-                    await clientRef.current.publish([cam]);
+                if (!cameraTrackRef.current) {
+                    const newCam = await AgoraRTC.createCameraVideoTrack();
+                    cameraTrackRef.current = newCam;
+                    if (client && joined) {
+                        await client.publish(newCam);
+                    }
+                } else {
+                    await cameraTrackRef.current.setEnabled(true);
                 }
                 setIsVideoOff(false);
-                setError(null);
-                requestAnimationFrame(() => {
-                    const localPlayer = document.getElementById('local-player');
-                    if (localPlayer) cam.play(localPlayer);
-                });
-                return;
-            } catch (err: any) {
-                setError(language === 'ar' ? 'يرجى السماح بصلاحية الكاميرا من إعدادات المتصفح' : 'Please allow camera permission in browser settings');
-                return;
+            } catch (_) {
+                setError(
+                    isAr
+                        ? 'الكاميرا قيد الاستخدام في نافذة أو تطبيق آخر، يرجى إغلاقها هناك ثم المحاولة'
+                        : 'Camera is in use by another tab or app'
+                );
             }
+        } else {
+            if (cameraTrackRef.current) {
+                await cameraTrackRef.current.setEnabled(false);
+            }
+            setIsVideoOff(true);
         }
-        const next = !isVideoOff;
-        if (cameraTrackRef.current) cameraTrackRef.current.setEnabled(!next);
-        setIsVideoOff(next);
+    };
+
+    const toggleHandRaise = () => {
+        setIsHandRaised((prev) => !prev);
     };
 
     const toggleScreenShare = async () => {
@@ -372,92 +329,42 @@ export const SessionRoomModal: React.FC<SessionRoomModalProps> = ({ isOpen, onCl
 
         try {
             if (!isScreenSharing) {
-                // In Agora Web SDK 4.x, passing encoder config and "disable" for audio
-                const screenTrackResult = await AgoraRTC.createScreenVideoTrack(
-                    { encoderConfig: "1080p_1" },
-                    "disable"
-                );
-                const screenTrack: ILocalVideoTrack = Array.isArray(screenTrackResult)
-                    ? screenTrackResult[0]
-                    : screenTrackResult;
-
+                const screenTrack = await AgoraRTC.createScreenVideoTrack({ screenAV: false }, 'disable');
                 screenTrackRef.current = screenTrack;
 
-                // Handle user clicking native browser "Stop sharing" bar
-                screenTrack.on('track-ended', () => {
-                    stopScreenSharing();
+                screenTrack.on('track-ended', async () => {
+                    await stopScreenShare();
                 });
 
                 if (cameraTrackRef.current) {
-                    try { await client.unpublish(cameraTrackRef.current); } catch {}
+                    await client.unpublish(cameraTrackRef.current);
                 }
-
                 await client.publish(screenTrack);
                 setIsScreenSharing(true);
-                setIsVideoOff(true);
-                setError(null);
-
-                requestAnimationFrame(() => {
-                    const localPlayer = document.getElementById('local-player');
-                    if (localPlayer) screenTrack.play(localPlayer, { fit: 'contain' });
-                });
+                setIsVideoOff(false);
             } else {
-                await stopScreenSharing();
+                await stopScreenShare();
             }
         } catch (e: any) {
-            console.error('Screen share error:', e);
-            const msg = e?.message || '';
-            if (msg.includes('Permission') || e?.name === 'NotAllowedError') {
-                setError(
-                    language === 'ar'
-                        ? 'تعذرت مشاركة الشاشة. تأكد من السماح بمشاركة الشاشة في المتصفح، ومنح Google Chrome إذن (تسجيل الشاشة / Screen Recording) من إعدادات نظام Mac (System Settings > Privacy & Security).'
-                        : 'Screen sharing permission denied. Please allow screen sharing in browser and check macOS Privacy & Security > Screen Recording for Google Chrome.'
-                );
-            } else {
-                setError(msg || (language === 'ar' ? 'فشلت مشاركة الشاشة' : 'Screen sharing failed'));
-            }
+            setError(e?.message || (isAr ? 'فشلت مشاركة الشاشة' : 'Screen sharing failed'));
         }
     };
 
-    const handleSendMessage = async (e?: React.FormEvent) => {
-        if (e) e.preventDefault();
-        const trimmed = messageInput.trim();
-        if (!trimmed || !clientRef.current || !joined) return;
-
-        const now = new Date();
-        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const senderLabel = isHost
-            ? (language === 'ar' ? 'المعلم' : 'Teacher')
-            : (language === 'ar' ? 'الطالب' : 'Student');
-
-        const msgPayload = {
-            type: 'chat',
-            id: String(Date.now()),
-            senderUid: uid,
-            senderName: senderLabel,
-            text: trimmed,
-            time: timeStr,
-        };
+    const stopScreenShare = async () => {
+        const client = clientRef.current;
+        if (!client) return;
 
         try {
-            const encoded = new TextEncoder().encode(JSON.stringify(msgPayload));
-            await clientRef.current.sendStreamMessage(encoded);
-        } catch (err) {
-            console.warn('sendStreamMessage warning:', err);
-        }
-
-        setMessages((prev) => [
-            ...prev,
-            {
-                id: msgPayload.id,
-                senderUid: uid,
-                senderName: language === 'ar' ? 'أنت' : 'You',
-                text: trimmed,
-                time: timeStr,
-                isSelf: true,
+            if (screenTrackRef.current) {
+                await client.unpublish(screenTrackRef.current);
+                screenTrackRef.current.close();
+                screenTrackRef.current = null;
             }
-        ]);
-        setMessageInput('');
+            if (cameraTrackRef.current) {
+                await client.publish(cameraTrackRef.current);
+            }
+        } catch (_) {}
+        setIsScreenSharing(false);
     };
 
     const handleLeave = useCallback(async () => {
@@ -478,321 +385,409 @@ export const SessionRoomModal: React.FC<SessionRoomModalProps> = ({ isOpen, onCl
         }
     };
 
+    const swapFocus = () => {
+        setFocusTarget((prev) => (prev === 'remote' ? 'local' : 'remote'));
+    };
+
     if (!isOpen || !agora) return null;
 
     const remoteList = Object.values(remoteUsers);
+    const primaryRemoteUser = remoteList.length > 0 ? remoteList[0] : null;
+    const isSingleRemote = remoteList.length === 1;
+    const isFocusRemote = focusTarget === 'remote' && primaryRemoteUser != null;
 
     return (
-        <div className="fixed inset-0 z-[80] bg-[#111111] flex flex-col" dir={direction}>
-            {/* Connecting overlay */}
+        <div className="fixed inset-0 z-[100] bg-[#111111] flex flex-col select-none overflow-hidden" dir={direction}>
             {connecting && (
-                <div className="absolute inset-0 z-20 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center gap-4">
+                <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center gap-4">
                     <div className="relative">
-                        <Loader2 size={52} className="animate-spin text-primary" />
-                        <Radio size={18} className="absolute inset-0 m-auto text-primary" />
+                        <Loader2 size={56} className="animate-spin text-primary" />
+                        <Radio size={20} className="absolute inset-0 m-auto text-primary animate-pulse" />
                     </div>
-                    <p className="text-white font-bold text-sm">
-                        {language === 'ar' ? 'جارٍ الدخول إلى الغرفة...' : 'Joining the room...'}
+                    <p className="text-white font-bold text-base">
+                        {isAr ? 'جارٍ الاتصال بالغرفة وتجهيز البث...' : 'Connecting to the room...'}
                     </p>
+                    <span className="text-white/50 text-xs">
+                        {isAr ? 'مطابق لبيئة تطبيق الأندرويد' : 'Synchronizing with Android platform'}
+                    </span>
                 </div>
             )}
 
-            {/* Error banner */}
             {error && !connecting && (
-                <div className="absolute top-16 inset-x-4 z-20 mx-auto max-w-lg bg-red-50 border border-red-200 text-red-700 text-sm font-semibold rounded-[var(--radius-md)] px-4 py-3 flex items-start gap-2 shadow-xl animate-fade-in">
-                    <AlertTriangle size={18} className="shrink-0 mt-0.5" />
+                <div className="absolute top-16 inset-x-4 z-50 mx-auto max-w-lg bg-red-600/90 backdrop-blur-md border border-red-400 text-white text-sm font-semibold rounded-2xl px-4 py-3 flex items-start gap-3 shadow-2xl animate-fade-in">
+                    <AlertTriangle size={20} className="shrink-0 mt-0.5 text-amber-300" />
                     <span className="flex-1">{error}</span>
-                    <button onClick={() => setError(null)} className="shrink-0 hover:text-red-900 transition-colors">
-                        <X size={16} />
+                    <button onClick={() => setError(null)} className="shrink-0 text-white/80 hover:text-white transition-colors">
+                        <X size={18} />
                     </button>
                 </div>
             )}
 
-            {/* Top bar */}
-            <div className="relative z-10 flex items-center justify-between px-4 py-3 bg-black/30 border-b border-white/5">
-                <div className={`flex items-center gap-3 ${direction === 'rtl' ? 'flex-row-reverse' : ''}`}>
+            <div className="relative z-30 flex items-center justify-between px-4 sm:px-6 py-3 bg-gradient-to-b from-black/80 via-black/40 to-transparent">
+                <div className="flex items-center gap-3">
                     <button
                         onClick={handleLeave}
-                        className="w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center transition-colors shrink-0"
-                        title={language === 'ar' ? 'خروج' : 'Exit'}
+                        className="w-10 h-10 rounded-full bg-black/50 hover:bg-black/80 text-white border border-white/10 flex items-center justify-center transition-all shadow-lg active:scale-95"
+                        title={isAr ? 'رجوع' : 'Back'}
                     >
                         <X size={20} />
                     </button>
-                    <div className="flex items-center gap-2 bg-black/40 rounded-xl px-3.5 py-2 border border-white/10">
-                        {joined ? (
-                            <span className="relative flex h-2.5 w-2.5">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-60" />
-                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-400" />
-                            </span>
-                        ) : (
-                            <Radio size={16} className="text-green-400" />
-                        )}
-                        <span className="text-white font-bold text-sm max-w-[200px] truncate" dir="ltr">
-                            {channel || (language === 'ar' ? 'غرفة الجلسة' : 'Session Room')}
+
+                    <div className="flex items-center gap-2.5 bg-black/60 backdrop-blur-md rounded-2xl px-3.5 py-2 border border-white/10 shadow-lg">
+                        <span className="relative flex h-3 w-3">
+                            {joined ? (
+                                <>
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+                                </>
+                            ) : (
+                                <span className="inline-flex rounded-full h-3 w-3 bg-amber-400 animate-pulse" />
+                            )}
                         </span>
-                        {chatRoomId && (
-                            <span className="hidden md:inline-block text-[11px] font-semibold text-white/50 px-2 py-0.5 rounded bg-white/5 border border-white/10" dir="ltr">
-                                Chat: {chatRoomId}
+                        <div className="flex flex-col">
+                            <span className="text-white font-bold text-xs sm:text-sm tracking-wide" dir="ltr">
+                                {channel || 'Meeting Room'}
                             </span>
-                        )}
+                            <span className="text-[10px] text-white/60">
+                                {joined ? (isAr ? 'متصل الآن' : 'Live') : (isAr ? 'جارٍ الاتصال' : 'Connecting')}
+                            </span>
+                        </div>
                     </div>
                 </div>
+
                 <div className="flex items-center gap-2">
-                    <span className="hidden sm:flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full text-[10px] border border-white/10 text-green-400">
-                        <ShieldCheck size={12} />
-                        {language === 'ar' ? 'اتصال آمن' : 'Secure'}
-                    </span>
-                    <span className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                        isHost ? 'bg-primary/20 text-green-400 border border-primary/30' : 'bg-white/10 text-white/80 border border-white/20'
+                    <div className="hidden sm:flex items-center gap-1.5 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full text-[11px] border border-white/10 text-emerald-400">
+                        <ShieldCheck size={13} />
+                        <span>{isAr ? 'مشفّر ومؤمن' : 'Secured'}</span>
+                    </div>
+
+                    <span className={`px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wide border shadow-md ${
+                        isHost
+                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                            : 'bg-primary/20 text-primary border-primary/40'
                     }`}>
-                        {isHost ? (language === 'ar' ? 'مضيف' : 'Host') : (language === 'ar' ? 'طالب' : 'Student')}
+                        {isHost ? (isAr ? 'معلم / مضيف' : 'Teacher / Host') : (isAr ? 'طالب' : 'Student')}
                     </span>
                 </div>
             </div>
 
-            {/* Main Stage (Video Grid + Slide-in Chat) */}
-            <div className="flex-1 flex overflow-hidden">
-                {/* Video Grid */}
-                <div className="flex-1 overflow-y-auto p-4 flex flex-col justify-center">
-                    <div className={`grid gap-3 h-full max-h-[75vh] ${remoteList.length > 0 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
-                        {/* Local video */}
-                        <div className="relative bg-black rounded-2xl overflow-hidden border border-white/10 min-h-[240px] flex items-center justify-center">
-                            <div id="local-player" className="absolute inset-0" />
-                            {(!joined || isVideoOff) && (
-                                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white/60">
-                                    {isScreenSharing ? <Monitor size={28} /> : <VideoOff size={28} />}
-                                    <span className="text-xs font-bold">
-                                        {isScreenSharing
-                                            ? (language === 'ar' ? 'مشاركة الشاشة' : 'Sharing screen')
-                                            : (language === 'ar' ? 'الكاميرا متوقفة' : 'Camera off')}
+            <div className="relative flex-1 w-full h-full overflow-hidden bg-[#0d0d0d]">
+                {remoteList.length <= 1 ? (
+                    <div className="relative w-full h-full">
+                        <div className="absolute inset-0 bg-slate-950 flex items-center justify-center overflow-hidden">
+                            {isFocusRemote ? (
+                                primaryRemoteUser?.videoOn && primaryRemoteUser.videoTrack ? (
+                                    <VideoPlayer track={primaryRemoteUser.videoTrack} />
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center gap-3 text-white/60">
+                                        <div className="w-24 h-24 rounded-full bg-white/10 flex items-center justify-center text-white/80 border border-white/10 shadow-inner">
+                                            <User size={48} />
+                                        </div>
+                                        <span className="text-sm font-semibold">
+                                            {isAr ? 'الكاميرا متوقفة - الصوت يعمل' : 'Camera off - Audio active'}
+                                        </span>
+                                        <span className="text-xs text-white/40" dir="ltr">
+                                            {String(primaryRemoteUser?.uid)}
+                                        </span>
+                                    </div>
+                                )
+                            ) : (
+                                (!isVideoOff || isScreenSharing) && (cameraTrackRef.current || screenTrackRef.current) ? (
+                                    <VideoPlayer
+                                        track={isScreenSharing ? screenTrackRef.current : cameraTrackRef.current}
+                                        mirror={!isScreenSharing}
+                                    />
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center gap-3 text-white/60">
+                                        <div className="w-24 h-24 rounded-full bg-white/10 flex items-center justify-center text-white/80 border border-white/10 shadow-inner">
+                                            <VideoOff size={44} />
+                                        </div>
+                                        <span className="text-sm font-semibold">
+                                            {isAr ? 'كاميرتك متوقفة' : 'Your camera is off'}
+                                        </span>
+                                    </div>
+                                )
+                            )}
+
+                            <div className="absolute bottom-28 left-4 z-20 flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 text-white text-xs font-semibold shadow-lg">
+                                <span>
+                                    {isFocusRemote
+                                        ? (isHost ? (isAr ? 'الطالب' : 'Student') : (isAr ? 'المعلم' : 'Teacher'))
+                                        : (isAr ? 'أنت' : 'You')}
+                                </span>
+                                {!isFocusRemote && isMuted && (
+                                    <MicOff size={13} className="text-red-400" />
+                                )}
+                            </div>
+                        </div>
+
+                        {remoteList.length === 0 && joined && (
+                            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-black/40 backdrop-blur-[2px] pointer-events-none">
+                                <div className="bg-black/70 backdrop-blur-md border border-white/10 rounded-2xl px-6 py-4 flex flex-col items-center gap-3 shadow-2xl">
+                                    <Loader2 size={32} className="animate-spin text-emerald-400" />
+                                    <span className="text-white font-bold text-sm">
+                                        {isAr ? 'بانتظار انضمام الطرف الآخر...' : 'Waiting for the other participant to join...'}
+                                    </span>
+                                    <span className="text-white/50 text-xs">
+                                        {isAr ? 'سيظهر البث تلقائياً فور دخوله' : 'Stream will appear automatically once joined'}
                                     </span>
                                 </div>
+                            </div>
+                        )}
+
+                        {isSingleRemote && (
+                            <div
+                                onClick={swapFocus}
+                                className="absolute top-4 right-4 z-20 w-32 h-44 sm:w-44 sm:h-60 rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl bg-black cursor-pointer group hover:scale-[1.02] transition-transform"
+                                title={isAr ? 'انقر للتبديل' : 'Click to swap'}
+                            >
+                                {isFocusRemote ? (
+                                    (!isVideoOff || isScreenSharing) && (cameraTrackRef.current || screenTrackRef.current) ? (
+                                        <VideoPlayer
+                                            track={isScreenSharing ? screenTrackRef.current : cameraTrackRef.current}
+                                            mirror={!isScreenSharing}
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-white/50 bg-slate-900">
+                                            <VideoOff size={24} />
+                                            <span className="text-[10px] font-bold">
+                                                {isAr ? 'متوقفة' : 'Off'}
+                                            </span>
+                                        </div>
+                                    )
+                                ) : (
+                                    primaryRemoteUser?.videoOn && primaryRemoteUser.videoTrack ? (
+                                        <VideoPlayer track={primaryRemoteUser.videoTrack} />
+                                    ) : (
+                                        <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-white/50 bg-slate-900">
+                                            <User size={24} />
+                                            <span className="text-[10px] font-bold">
+                                                {isAr ? 'صوت فقط' : 'Audio only'}
+                                            </span>
+                                        </div>
+                                    )
+                                )}
+
+                                <div className="absolute top-2 right-2 bg-black/60 rounded-full p-1 text-white/80 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <ArrowLeftRight size={13} />
+                                </div>
+
+                                <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded-md text-[10px] font-bold text-white/90">
+                                    {isFocusRemote ? (isAr ? 'أنت' : 'You') : (isAr ? 'الطرف الآخر' : 'Remote')}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <div className="w-full h-full p-4 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="relative bg-black rounded-2xl overflow-hidden border border-white/10 min-h-[220px] shadow-lg">
+                            {(!isVideoOff || isScreenSharing) && (cameraTrackRef.current || screenTrackRef.current) ? (
+                                <VideoPlayer
+                                    track={isScreenSharing ? screenTrackRef.current : cameraTrackRef.current}
+                                    mirror={!isScreenSharing}
+                                />
+                            ) : (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white/50">
+                                    <VideoOff size={32} />
+                                    <span className="text-xs font-bold">{isAr ? 'كاميرتك متوقفة' : 'Camera off'}</span>
+                                </div>
                             )}
-                            <span className="absolute bottom-2 left-3 text-white/70 text-[10px] font-bold bg-black/50 px-2.5 py-1 rounded-full border border-white/10">
-                                {language === 'ar' ? 'أنت' : 'You'}
+                            <span className="absolute bottom-2 left-2 text-white text-[11px] font-bold bg-black/60 px-2 py-0.5 rounded-lg border border-white/10">
+                                {isAr ? 'أنت' : 'You'}
                             </span>
                         </div>
 
-                        {/* Remote videos */}
                         {remoteList.map((user) => (
-                            <div key={String(user.uid)} className="relative bg-slate-900 rounded-2xl overflow-hidden border border-white/10 min-h-[240px] flex items-center justify-center">
-                                <div id={`remote-player-${user.uid}`} className="absolute inset-0" />
-                                {!user.videoOn && (
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white/60">
-                                        <VideoOff size={28} />
-                                        <span className="text-xs font-bold">
-                                            {language === 'ar' ? 'الصوت فقط' : 'Audio only'}
-                                        </span>
+                            <div key={String(user.uid)} className="relative bg-slate-900 rounded-2xl overflow-hidden border border-white/10 min-h-[220px] shadow-lg">
+                                {user.videoOn && user.videoTrack ? (
+                                    <VideoPlayer track={user.videoTrack} />
+                                ) : (
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white/50">
+                                        <User size={32} />
+                                        <span className="text-xs font-bold">{isAr ? 'الصوت فقط' : 'Audio only'}</span>
                                     </div>
                                 )}
-                                <span className="absolute bottom-2 left-2 text-white/70 text-[10px] font-bold bg-black/50 px-2.5 py-1 rounded-full border border-white/10" dir="ltr">
+                                <span className="absolute bottom-2 left-2 text-white text-[11px] font-bold bg-black/60 px-2 py-0.5 rounded-lg border border-white/10" dir="ltr">
                                     {String(user.uid)}
                                 </span>
                             </div>
                         ))}
-
-                        {remoteList.length === 0 && joined && (
-                            <div className="col-span-full flex flex-col items-center justify-center py-10 gap-2 text-white/40 pointer-events-none">
-                                <Loader2 size={28} className="animate-spin text-primary" />
-                                <span className="text-xs font-semibold">
-                                    {language === 'ar' ? 'بانتظار انضمام الطرف الآخر...' : 'Waiting for the other participant to join...'}
-                                </span>
-                            </div>
-                        )}
                     </div>
-                </div>
+                )}
 
-                {/* In-Session Chat Drawer */}
-                {isChatOpen && (
-                    <div className="w-80 sm:w-96 bg-[#181818] border-s border-white/10 flex flex-col shadow-2xl z-20 animate-fade-in">
-                        {/* Chat Header */}
-                        <div className="p-3.5 border-b border-white/10 flex items-center justify-between bg-black/20">
-                            <div className="flex items-center gap-2 text-white">
-                                <MessageCircle size={18} className="text-primary" />
-                                <h3 className="font-bold text-sm">
-                                    {language === 'ar' ? 'محادثة الجلسة' : 'Session Chat'}
-                                </h3>
-                            </div>
-                            <button
-                                onClick={() => setIsChatOpen(false)}
-                                className="p-1 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition"
-                            >
-                                <X size={16} />
-                            </button>
-                        </div>
-
-                        {chatRoomId && (
-                            <div className="px-3.5 py-1.5 bg-black/30 border-b border-white/5 flex items-center justify-between text-[11px] text-white/50">
-                                <span>{language === 'ar' ? 'معرف الغرفة:' : 'Room ID:'}</span>
-                                <span className="font-mono text-primary font-semibold" dir="ltr">#{chatRoomId}</span>
-                            </div>
-                        )}
-
-                        {/* Messages Area */}
-                        <div className="flex-1 overflow-y-auto p-3.5 space-y-3">
-                            {messages.length === 0 ? (
-                                <div className="h-full flex flex-col items-center justify-center text-center p-6 text-white/40 gap-2">
-                                    <MessageSquare size={32} className="opacity-30" />
-                                    <p className="text-xs">
-                                        {language === 'ar' ? 'لا توجد رسائل بعد. ابدأ المحادثة!' : 'No messages yet. Start chatting!'}
-                                    </p>
-                                </div>
-                            ) : (
-                                messages.map((m) => (
-                                    <div
-                                        key={m.id}
-                                        className={`flex flex-col ${m.isSelf ? 'items-end' : 'items-start'}`}
-                                    >
-                                        <div className="flex items-center gap-1.5 text-[10px] text-white/50 mb-1 px-1">
-                                            <span className="font-bold text-white/70">{m.senderName}</span>
-                                            <span>•</span>
-                                            <span>{m.time}</span>
-                                        </div>
-                                        <div
-                                            className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-xs leading-relaxed break-words shadow-sm ${
-                                                m.isSelf
-                                                    ? 'bg-primary text-white rounded-tr-none'
-                                                    : 'bg-white/10 text-white rounded-tl-none border border-white/10'
-                                            }`}
-                                        >
-                                            {m.text}
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                            <div ref={messagesEndRef} />
-                        </div>
-
-                        {/* Input Area */}
-                        <form onSubmit={handleSendMessage} className="p-3 border-t border-white/10 bg-black/20 flex items-center gap-2">
-                            <input
-                                type="text"
-                                value={messageInput}
-                                onChange={(e) => setMessageInput(e.target.value)}
-                                placeholder={language === 'ar' ? 'اكتب رسالتك...' : 'Type a message...'}
-                                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-white/40 focus:outline-none focus:border-primary transition"
-                            />
-                            <button
-                                type="submit"
-                                disabled={!messageInput.trim() || !joined}
-                                className="p-2.5 rounded-xl bg-primary hover:bg-primary-dark text-white disabled:opacity-40 transition shadow-sm"
-                                title={language === 'ar' ? 'إرسال' : 'Send'}
-                            >
-                                <Send size={15} className={direction === 'rtl' ? 'rotate-180' : ''} />
-                            </button>
-                        </form>
+                {isHandRaised && (
+                    <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-amber-500 text-black font-extrabold text-xs px-3 py-1.5 rounded-full shadow-2xl animate-bounce">
+                        <Hand size={14} className="fill-black" />
+                        <span>{isAr ? 'يدك مرفوعة' : 'Hand raised'}</span>
                     </div>
                 )}
             </div>
 
-            {/* Bottom controls */}
-            <div className="px-4 pb-6 pt-3">
-                <div className={`mx-auto flex items-center justify-center gap-2 sm:gap-3 bg-black/50 backdrop-blur-md rounded-[32px] border border-white/10 shadow-2xl px-3 sm:px-5 py-3 max-w-fit ${direction === 'rtl' ? 'flex-row-reverse' : ''}`}>
-                    <ControlButton
+            <div className="relative z-30 pb-6 pt-3 px-4 flex justify-center bg-gradient-to-t from-black/90 via-black/50 to-transparent">
+                <div className="flex items-center gap-2 sm:gap-4 bg-black/70 backdrop-blur-xl rounded-[36px] border border-white/15 px-4 sm:px-6 py-3 shadow-[0_10px_35px_rgba(0,0,0,0.8)]">
+                    <button
                         onClick={toggleMute}
-                        label={language === 'ar' ? 'كتم الصوت' : 'Mute'}
-                        active={isMuted}
-                        activeIcon={<MicOff size={22} />}
-                        inactiveIcon={<Mic size={22} />}
-                        danger={isMuted}
-                    />
-                    <ControlButton
+                        className={`flex flex-col items-center gap-1 min-w-[56px] p-2 rounded-2xl transition-all active:scale-95 ${
+                            isMuted ? 'text-red-400' : 'text-white hover:text-white/80'
+                        }`}
+                        title={isAr ? (isMuted ? 'إلغاء كتم الصوت' : 'كتم الصوت') : (isMuted ? 'Unmute' : 'Mute')}
+                    >
+                        <span className={`h-11 w-11 rounded-full flex items-center justify-center transition-all ${
+                            isMuted
+                                ? 'bg-red-500/20 text-red-400 border border-red-500/40 shadow-[0_0_12px_rgba(239,68,68,0.3)]'
+                                : 'bg-white/10 hover:bg-white/20 text-white'
+                        }`}>
+                            {isMuted ? <MicOff size={20} /> : <Mic size={20} />}
+                        </span>
+                        <span className="text-[10px] font-bold">
+                            {isMuted ? (isAr ? 'إلغاء الكتم' : 'Unmute') : (isAr ? 'كتم الصوت' : 'Mute')}
+                        </span>
+                    </button>
+
+                    <button
                         onClick={toggleVideo}
-                        label={language === 'ar' ? 'الكاميرا' : 'Video'}
-                        active={isVideoOff}
-                        activeIcon={<VideoOff size={22} />}
-                        inactiveIcon={<Video size={22} />}
-                        danger={isVideoOff}
-                    />
+                        className={`flex flex-col items-center gap-1 min-w-[56px] p-2 rounded-2xl transition-all active:scale-95 ${
+                            isVideoOff ? 'text-red-400' : 'text-white hover:text-white/80'
+                        }`}
+                        title={isAr ? (isVideoOff ? 'تشغيل الكاميرا' : 'إيقاف الكاميرا') : (isVideoOff ? 'Start Camera' : 'Stop Camera')}
+                    >
+                        <span className={`h-11 w-11 rounded-full flex items-center justify-center transition-all ${
+                            isVideoOff
+                                ? 'bg-red-500/20 text-red-400 border border-red-500/40 shadow-[0_0_12px_rgba(239,68,68,0.3)]'
+                                : 'bg-white/10 hover:bg-white/20 text-white'
+                        }`}>
+                            {isVideoOff ? <VideoOff size={20} /> : <Video size={20} />}
+                        </span>
+                        <span className="text-[10px] font-bold">
+                            {isVideoOff ? (isAr ? 'تشغيل' : 'Start') : (isAr ? 'الكاميرا' : 'Camera')}
+                        </span>
+                    </button>
 
-                    {/* Screen Sharing (Available for all participants) */}
-                    <ControlButton
-                        onClick={toggleScreenShare}
-                        label={language === 'ar' ? 'الشاشة' : 'Screen'}
-                        active={isScreenSharing}
-                        activeIcon={<Monitor size={22} />}
-                        inactiveIcon={<MonitorOff size={22} />}
-                        danger={isScreenSharing}
-                    />
+                    {!isHost && (
+                        <button
+                            onClick={toggleHandRaise}
+                            className={`flex flex-col items-center gap-1 min-w-[56px] p-2 rounded-2xl transition-all active:scale-95 ${
+                                isHandRaised ? 'text-amber-400' : 'text-white hover:text-white/80'
+                            }`}
+                            title={isAr ? 'رفع اليد' : 'Raise Hand'}
+                        >
+                            <span className={`h-11 w-11 rounded-full flex items-center justify-center transition-all ${
+                                isHandRaised
+                                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50 shadow-[0_0_12px_rgba(245,158,11,0.3)]'
+                                    : 'bg-white/10 hover:bg-white/20 text-white'
+                            }`}>
+                                <Hand size={20} className={isHandRaised ? 'fill-amber-400' : ''} />
+                            </span>
+                            <span className="text-[10px] font-bold">
+                                {isAr ? 'رفع اليد' : 'Hand'}
+                            </span>
+                        </button>
+                    )}
 
-                    {/* Chat Drawer Toggle */}
-                    <ControlButton
-                        onClick={() => setIsChatOpen(!isChatOpen)}
-                        label={language === 'ar' ? 'المحادثة' : 'Chat'}
-                        active={isChatOpen}
-                        activeIcon={<MessageSquare size={22} />}
-                        inactiveIcon={<MessageSquare size={22} />}
-                        danger={false}
-                        badge={unreadCount > 0 ? unreadCount : undefined}
-                    />
+                    {isHost && (
+                        <button
+                            onClick={toggleScreenShare}
+                            className={`flex flex-col items-center gap-1 min-w-[56px] p-2 rounded-2xl transition-all active:scale-95 ${
+                                isScreenSharing ? 'text-emerald-400' : 'text-white hover:text-white/80'
+                            }`}
+                            title={isAr ? (isScreenSharing ? 'إيقاف المشاركة' : 'مشاركة الشاشة') : (isScreenSharing ? 'Stop Share' : 'Share Screen')}
+                        >
+                            <span className={`h-11 w-11 rounded-full flex items-center justify-center transition-all ${
+                                isScreenSharing
+                                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 shadow-[0_0_12px_rgba(16,185,129,0.3)]'
+                                    : 'bg-white/10 hover:bg-white/20 text-white'
+                            }`}>
+                                {isScreenSharing ? <Monitor size={20} /> : <MonitorOff size={20} />}
+                            </span>
+                            <span className="text-[10px] font-bold">
+                                {isScreenSharing ? (isAr ? 'مشاركة' : 'Sharing') : (isAr ? 'الشاشة' : 'Screen')}
+                            </span>
+                        </button>
+                    )}
 
-                    {/* Leave */}
+                    {isSingleRemote && (
+                        <button
+                            onClick={swapFocus}
+                            className="flex flex-col items-center gap-1 min-w-[56px] p-2 rounded-2xl text-white hover:text-white/80 transition-all active:scale-95"
+                            title={isAr ? 'تبديل العرض' : 'Swap View'}
+                        >
+                            <span className="h-11 w-11 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white">
+                                <ArrowLeftRight size={20} />
+                            </span>
+                            <span className="text-[10px] font-bold">
+                                {isAr ? 'تبديل' : 'Swap'}
+                            </span>
+                        </button>
+                    )}
+
+                    <div className="w-[1px] h-8 bg-white/15 mx-1" />
+
                     <button
                         onClick={handleLeave}
-                        className="flex flex-col items-center gap-1 min-w-[64px] px-2 py-2 rounded-2xl hover:bg-red-500/20 transition-colors"
-                        title={language === 'ar' ? 'مغادرة' : 'Leave'}
+                        className="flex flex-col items-center gap-1 min-w-[56px] p-2 rounded-2xl text-white hover:text-red-200 transition-all active:scale-95"
+                        title={isAr ? 'مغادرة الغرفة' : 'Leave Room'}
                     >
-                        <span className="h-12 w-12 rounded-full bg-red-500 flex items-center justify-center text-white shadow-[0_4px_16px_rgba(239,68,68,.45)] hover:bg-red-600 transition-colors">
-                            <LogOut size={24} className="rotate-90" />
+                        <span className="h-11 w-11 rounded-full bg-red-600 hover:bg-red-700 flex items-center justify-center text-white shadow-[0_4px_16px_rgba(239,68,68,0.5)]">
+                            <LogOut size={20} className="rotate-180" />
                         </span>
-                        <span className="text-white/80 text-[9px] font-bold">
-                            {language === 'ar' ? 'مغادرة' : 'Leave'}
+                        <span className="text-[10px] font-bold text-red-200">
+                            {isAr ? 'مغادرة' : 'Leave'}
                         </span>
                     </button>
 
                     {isHost && sessionId != null && (
                         <button
-                            onClick={handleEndSession}
+                            onClick={() => setShowEndConfirm(true)}
                             disabled={isEnding}
-                            className="flex flex-col items-center gap-1 min-w-[64px] px-2 rounded-2xl hover:bg-red-500/20 transition-colors disabled:opacity-60"
-                            title={language === 'ar' ? 'إنهاء الجلسة' : 'End session'}
+                            className="flex flex-col items-center gap-1 min-w-[56px] p-2 rounded-2xl text-red-300 hover:text-red-100 transition-all active:scale-95 disabled:opacity-50"
+                            title={isAr ? 'إنهاء الجلسة للجميع' : 'End session for all'}
                         >
-                            <span className="h-12 w-12 rounded-full bg-red-600 border-2 border-red-400 flex items-center justify-center text-white hover:bg-red-700 transition-colors">
-                                {isEnding ? <Loader2 size={22} className="animate-spin" /> : <PhoneOff size={22} />}
+                            <span className="h-11 w-11 rounded-full bg-red-950/80 border border-red-500/60 flex items-center justify-center text-red-400 hover:bg-red-900 shadow-md">
+                                {isEnding ? <Loader2 size={18} className="animate-spin" /> : <PhoneOff size={18} />}
                             </span>
-                            <span className="text-red-300 text-[9px] font-bold">
-                                {language === 'ar' ? 'إنهاء الجلسة' : 'End Session'}
+                            <span className="text-[10px] font-bold text-red-400">
+                                {isAr ? 'إنهاء' : 'End'}
                             </span>
                         </button>
                     )}
                 </div>
             </div>
+
+            {showEndConfirm && (
+                <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-[#1a1a1a] border border-white/15 rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl flex flex-col gap-4 animate-scale-up">
+                        <div className="w-14 h-14 rounded-full bg-red-500/20 text-red-400 border border-red-500/40 flex items-center justify-center mx-auto">
+                            <PhoneOff size={28} />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                            <h3 className="text-white font-bold text-lg">
+                                {isAr ? 'إنهاء الجلسة التعليمية' : 'End Educational Session'}
+                            </h3>
+                            <p className="text-white/60 text-xs">
+                                {isAr
+                                    ? 'هل أنت متأكد من إنهاء الجلسة للجميع؟ سيتم إغلاق البث واعتماد إنهاء الدرس.'
+                                    : 'Are you sure you want to end the session for everyone? The room will close.'}
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-3 mt-2">
+                            <button
+                                onClick={() => setShowEndConfirm(false)}
+                                className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs transition-colors"
+                            >
+                                {isAr ? 'إلغاء' : 'Cancel'}
+                            </button>
+                            <button
+                                onClick={handleEndSession}
+                                disabled={isEnding}
+                                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition-colors shadow-lg flex items-center justify-center gap-2"
+                            >
+                                {isEnding ? <Loader2 size={16} className="animate-spin" /> : null}
+                                <span>{isAr ? 'نعم، أنهِ الجلسة' : 'Yes, End Session'}</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
-
-interface ControlButtonProps {
-    label: string;
-    active: boolean;
-    activeIcon: React.ReactNode;
-    inactiveIcon: React.ReactNode;
-    danger?: boolean;
-    badge?: number;
-    onClick: () => void;
-}
-
-const ControlButton: React.FC<ControlButtonProps> = ({ label, active, activeIcon, inactiveIcon, danger, badge, onClick }) => (
-    <button
-        onClick={onClick}
-        className="relative flex flex-col items-center gap-1 min-w-[64px] px-2 rounded-2xl hover:bg-white/5 transition-colors"
-        title={label}
-    >
-        <span className={`relative h-12 w-12 rounded-full flex items-center justify-center transition-colors ${
-            danger
-                ? 'bg-red-500 text-white shadow-[0_0_16px_rgba(239,68,68,.35)]'
-                : active
-                    ? 'bg-primary text-white shadow-[0_0_16px_rgba(16,185,129,.35)]'
-                    : 'bg-white/10 text-white hover:bg-white/20'
-        }`}>
-            {active ? activeIcon : inactiveIcon}
-            {badge != null && badge > 0 && (
-                <span className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center border-2 border-black">
-                    {badge}
-                </span>
-            )}
-        </span>
-        <span className={`text-[9px] font-bold ${danger ? 'text-red-300' : 'text-white/80'}`}>
-            {label}
-        </span>
-    </button>
-);

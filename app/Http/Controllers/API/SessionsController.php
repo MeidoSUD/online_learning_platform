@@ -637,10 +637,9 @@ class SessionsController extends Controller
         $isTeacher = $user->id == $session->teacher_id;
 
         $account = $isTeacher ? 'teacher_' . $user->id : 'student_' . $user->id;
-        $roleConst = $isTeacher ? \App\Agora\RtcTokenBuilder::RolePublisher : \App\Agora\RtcTokenBuilder::RoleSubscriber;
+        $roleConst = \App\Agora\RtcTokenBuilder::RolePublisher;
         $roleName = $isTeacher ? 'host' : 'participant';
 
-        // 1. Generate RTC token for this participant
         $tokenInfo = $agora->generateTokenForAccount($channel, $account, $roleConst);
 
         if (!$tokenInfo || empty($tokenInfo['token'])) {
