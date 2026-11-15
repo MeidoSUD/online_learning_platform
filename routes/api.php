@@ -62,7 +62,7 @@ use App\Http\Controllers\API\StudentPackageController;
 use App\Http\Controllers\API\Admin\PackageAdminController;
 use App\Http\Controllers\API\Admin\AdminCertificateController;
 use App\Http\Controllers\API\FeaturedTeacherBannerController;
-use App\Http\Controllers\Api\Admin\TeacherMarketingPlanAdminController;
+use App\Http\Controllers\API\Admin\TeacherMarketingPlanAdminController;
 /*  
 |--------------------------------------------------------------------------
 | API Routes
