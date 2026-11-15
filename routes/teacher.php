@@ -24,7 +24,7 @@ use App\Http\Controllers\FCMTokenController;
 use App\Http\Controllers\API\TeacherPackageController;
 use App\Http\Controllers\API\ConsultationController;
 use App\Http\Controllers\API\GeneralServiceController;
-use App\Http\Controllers\Api\TeacherMarketingController;
+use App\Http\Controllers\API\TeacherMarketingController;
 
 Route::prefix('teacher')->middleware(['auth:sanctum', 'role:teacher'])->group(function () {
     Route::get('/education-levels', [EducationLevelController::class, 'levelsWithClassesAndSubjects']);
