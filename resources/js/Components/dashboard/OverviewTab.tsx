@@ -118,7 +118,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
           teacherService.getPackages().catch(() => null),
           notificationService.getAll().catch(() => []),
           studentService.getServices().catch(() => []),
-          studentService.getTeachers().catch(() => [])
+          teacherService.getTeachers().catch(() => [])
         ]);
 
         if (cancelled) return;
@@ -187,8 +187,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
         }
 
         if (Array.isArray(teachersRes)) {
-          const filtered = teachersRes.filter((t: any) => t.id !== user.id);
-          setFeaturedTeachers(filtered);
+          setFeaturedTeachers(teachersRes);
         }
 
         if (hasLangTool && user.id) {
@@ -503,7 +502,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
             {onNavigate && (
               <button
                 type="button"
-                onClick={() => onNavigate('private-lessons')}
+                onClick={() => onNavigate('all-teachers')}
                 className="text-xs font-bold text-[#5B9F48] hover:underline"
               >
                 {isAr ? 'عرض الكل' : 'View All'}
@@ -540,28 +539,46 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
               const numPrice = Number(rawPrice) || 0;
               const rateDisplay = numPrice > 0 ? (numPrice % 1 === 0 ? numPrice.toString() : numPrice.toFixed(1)) : '99';
 
-              const ratingVal = Number(tProfile?.rating ?? teacher?.rating) || 4.8;
-              const ratingDisplay = ratingVal.toFixed(1);
+              const ratingVal = Number(tProfile?.rating ?? teacher?.rating ?? 0);
+              const ratingDisplay = ratingVal > 0 ? ratingVal.toFixed(1) : '0.0';
+
+              const hasSub = Boolean(teacher?.has_active_subscription ?? teacher?.hasActiveSubscription ?? tProfile?.has_active_subscription);
 
               return (
                 <div
                   key={teacher.id}
                   onClick={() => setSelectedTeacherId(teacher.id)}
-                  className="w-[160px] flex-shrink-0 bg-white rounded-xl border border-slate-200 p-3 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between h-[145px]"
+                  className={`w-[160px] flex-shrink-0 bg-white rounded-xl p-3 transition-all cursor-pointer flex flex-col justify-between h-[145px] ${
+                    hasSub
+                      ? 'border-[1.5px] border-[#FFB800] shadow-[0_2px_10px_rgba(255,184,0,0.18)]'
+                      : 'border border-slate-200 shadow-sm hover:shadow-md'
+                  }`}
                 >
-                  <div className="relative w-9 h-9">
-                    <div className="w-9 h-9 rounded-full border-2 border-[#5B9F48]/30 overflow-hidden bg-slate-50 flex items-center justify-center">
-                      {photo ? (
-                        <img src={getStorageUrl(photo)} alt={fullName} className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-xs font-bold text-[#5B9F48]">{fName.charAt(0) || 'T'}</span>
+                  <div className="flex items-center justify-between">
+                    <div className="relative w-9 h-9">
+                      <div className={`w-9 h-9 rounded-full ${hasSub ? 'border-2 border-[#FFB800]' : 'border-2 border-[#5B9F48]/30'} overflow-hidden bg-slate-50 flex items-center justify-center`}>
+                        {photo ? (
+                          <img src={getStorageUrl(photo)} alt={fullName} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-xs font-bold text-[#5B9F48]">{fName.charAt(0) || 'T'}</span>
+                        )}
+                      </div>
+                      {verified && (
+                        <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[#F49E00] flex items-center justify-center border border-white text-white">
+                          <Check size={8} strokeWidth={3} />
+                        </div>
                       )}
                     </div>
-                    {verified && (
-                      <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[#F49E00] flex items-center justify-center border border-white text-white">
-                        <Check size={8} strokeWidth={3} />
-                      </div>
-                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedTeacherId(teacher.id);
+                      }}
+                      className="px-2 py-1 text-[10px] font-bold text-white bg-primary rounded-lg hover:opacity-90 transition-opacity truncate max-w-[70px]"
+                    >
+                      {isAr ? 'عرض الملف' : 'View Profile'}
+                    </button>
                   </div>
 
                   <div className="mt-1">

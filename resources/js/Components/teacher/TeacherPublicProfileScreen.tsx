@@ -356,11 +356,11 @@ export const TeacherPublicProfileScreen: React.FC<TeacherPublicProfileScreenProp
   const reviewsList: any[] = Array.isArray(rawReviews) ? rawReviews : [];
   const totalReviews = reviewsList.length;
 
-  const count5 = reviewsList.filter((r) => Number(r.rating || 5) >= 4.5).length;
-  const count4 = reviewsList.filter((r) => Number(r.rating || 5) >= 3.5 && Number(r.rating || 5) < 4.5).length;
-  const count3 = reviewsList.filter((r) => Number(r.rating || 5) >= 2.5 && Number(r.rating || 5) < 3.5).length;
-  const count2 = reviewsList.filter((r) => Number(r.rating || 5) >= 1.5 && Number(r.rating || 5) < 2.5).length;
-  const count1 = reviewsList.filter((r) => Number(r.rating || 5) < 1.5).length;
+  const count5 = reviewsList.filter((r) => Number(r.rating || 0) >= 4.5).length;
+  const count4 = reviewsList.filter((r) => Number(r.rating || 0) >= 3.5 && Number(r.rating || 0) < 4.5).length;
+  const count3 = reviewsList.filter((r) => Number(r.rating || 0) >= 2.5 && Number(r.rating || 0) < 3.5).length;
+  const count2 = reviewsList.filter((r) => Number(r.rating || 0) >= 1.5 && Number(r.rating || 0) < 2.5).length;
+  const count1 = reviewsList.filter((r) => Number(r.rating || 0) < 1.5).length;
 
   const p5 = totalReviews > 0 ? (count5 / totalReviews) * 100 : 0;
   const p4 = totalReviews > 0 ? (count4 / totalReviews) * 100 : 0;
@@ -483,7 +483,7 @@ export const TeacherPublicProfileScreen: React.FC<TeacherPublicProfileScreenProp
           <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full bg-white shadow-md flex items-center gap-1 border border-black/5 whitespace-nowrap">
             <Star size={14} className="text-[#F5A623] fill-[#F5A623]" />
             <span className="text-xs font-bold text-[#0D4A5F]">
-              {ratingVal > 0 ? ratingVal.toFixed(1) : '5.0'}
+              {ratingVal > 0 ? ratingVal.toFixed(1) : '0.0'}
             </span>
           </div>
         </div>
@@ -797,11 +797,11 @@ export const TeacherPublicProfileScreen: React.FC<TeacherPublicProfileScreenProp
 
                 <div className="col-span-2 flex flex-col items-center justify-center border-r border-black/5 pr-4">
                   <span className="text-3xl font-extrabold text-[#0D4A5F]">
-                    {ratingVal > 0 ? ratingVal.toFixed(1) : (totalReviews > 0 ? '5.0' : '0.0')}
+                    {ratingVal > 0 ? ratingVal.toFixed(1) : '0.0'}
                   </span>
                   <div className="flex items-center gap-0.5 mt-1">
                     {[1, 2, 3, 4, 5].map((s) => {
-                      const effRating = ratingVal > 0 ? ratingVal : (totalReviews > 0 ? 5 : 0);
+                      const effRating = ratingVal > 0 ? ratingVal : 0;
                       return (
                         <Star
                           key={s}
@@ -826,7 +826,7 @@ export const TeacherPublicProfileScreen: React.FC<TeacherPublicProfileScreenProp
               reviewsList.map((r: any, idx: number) => {
                 const sName = r.student_name || r.studentName || (isAr ? 'طالب' : 'Student');
                 const sDate = r.date || r.created_at || '';
-                const rScore = Number(r.rating || 5);
+                const rScore = Number(r.rating || 0);
                 return (
                   <div
                     key={r.id || idx}

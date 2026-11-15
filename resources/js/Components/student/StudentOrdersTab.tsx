@@ -259,8 +259,8 @@ export const StudentOrdersTab: React.FC = () => {
     const teacherName = teacher.name || (teacher.first_name ? `${teacher.first_name} ${teacher.last_name || ''}`.trim() : (isAr ? 'المعلم' : 'Teacher'));
     const teacherPhoto = teacher.profile_image || teacher.profile_photo || teacher.avatar || '';
     const teacherSubject = teacher.specialization || (order.subject ? (isAr ? (order.subject.name_ar || order.subject.name) : (order.subject.name_en || order.subject.name)) : '');
-    const ratingRaw = teacher.rating || 5.0;
-    const ratingStr = typeof ratingRaw === 'number' ? ratingRaw.toFixed(1) : String(ratingRaw);
+    const ratingRaw = Number(teacher.rating || 0);
+    const ratingStr = ratingRaw > 0 ? ratingRaw.toFixed(1) : '0.0';
 
     if (status === 'pending') {
       return (

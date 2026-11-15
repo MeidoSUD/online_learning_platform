@@ -456,7 +456,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate, onTe
                     </h3>
                     <div className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-900">
                       <Star size={12} className="text-amber-500 fill-amber-500" />
-                      <span>{Number(current.rating || 5).toFixed(1)}</span>
+                      <span>{Number(current.rating || 0) > 0 ? Number(current.rating).toFixed(1) : '0.0'}</span>
                       {current.reviews_count ? (
                         <span className="text-[10px] text-amber-700 font-normal">({current.reviews_count})</span>
                       ) : null}
@@ -800,8 +800,8 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate, onTe
               const numPrice = Number(rawPrice) || 0;
               const rateDisplay = numPrice > 0 ? (numPrice % 1 === 0 ? numPrice.toString() : numPrice.toFixed(1)) : '99';
 
-              const ratingVal = Number(profile?.rating ?? teacher?.rating) || 4.8;
-              const ratingDisplay = ratingVal.toFixed(1);
+              const ratingVal = Number(profile?.rating ?? teacher?.rating ?? 0);
+              const ratingDisplay = ratingVal > 0 ? ratingVal.toFixed(1) : '0.0';
               const isBoosted = Boolean(
                 teacher?.has_active_subscription ||
                 teacher?.is_boosted ||

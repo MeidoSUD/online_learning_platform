@@ -177,7 +177,7 @@ export const StudentOrderApplicationsModal: React.FC<StudentOrderApplicationsMod
                 const isAccepted = status === 'accepted';
                 const isPending = status === 'pending';
                 const proposedPrice = app.proposed_price || app.price || app.offer_price || 0;
-                const rating = profile.rating || teacher.rating || 5.0;
+                const rating = Number(profile.rating ?? teacher.rating ?? 0);
 
                 return (
                   <div
@@ -198,7 +198,7 @@ export const StudentOrderApplicationsModal: React.FC<StudentOrderApplicationsMod
                             <h4 className="font-bold text-sm text-[#0D4A5F]">{name}</h4>
                             <div className="flex items-center gap-0.5 text-xs text-amber-500 font-bold">
                               <Star size={12} className="fill-current" />
-                              <span>{Number(rating).toFixed(1)}</span>
+                              <span>{rating > 0 ? Number(rating).toFixed(1) : '0.0'}</span>
                             </div>
                           </div>
                           <div className="flex items-center gap-1.5 mt-1 text-xs text-[#64748B]">

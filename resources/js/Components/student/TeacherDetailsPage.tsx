@@ -257,8 +257,10 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({
 
   const ratingCounts: Record<number, number> = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
   reviews.forEach((r) => {
-    const star = Math.max(1, Math.min(5, Math.round(Number(r.rating || 5))));
-    ratingCounts[star] = (ratingCounts[star] || 0) + 1;
+    const star = Math.round(Number(r.rating || 0));
+    if (star >= 1 && star <= 5) {
+      ratingCounts[star] = (ratingCounts[star] || 0) + 1;
+    }
   });
 
   const sampleReviews = [
@@ -725,13 +727,13 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({
                   <div className="flex items-center gap-1 text-[#C5A059]">
                     <Sparkles size={16} />
                     <span className="text-2xl font-bold text-[#1B3A6B]">
-                      {ratingVal > 0 ? ratingVal.toFixed(1) : (reviewsCount > 0 ? '4.8' : '0.0')}
+                      {ratingVal > 0 ? ratingVal.toFixed(1) : '0.0'}
                     </span>
                     <Sparkles size={16} className="-scale-x-100" />
                   </div>
                   <div className="flex items-center gap-0.5 mt-1">
                     {[1, 2, 3, 4, 5].map((s) => {
-                      const effRating = ratingVal > 0 ? ratingVal : 4.8;
+                      const effRating = ratingVal > 0 ? ratingVal : 0;
                       return (
                         <Star
                           key={s}
@@ -742,7 +744,7 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({
                     })}
                   </div>
                   <span className="text-xs text-[#1B3A6B]/70 mt-1">
-                    {reviewsCount > 0 ? `(${reviewsCount}) تقييمات` : '(5) تقييمات'}
+                    ({reviewsCount}) {language === 'ar' ? 'تقييمات' : 'reviews'}
                   </span>
                 </div>
               </div>
@@ -763,7 +765,7 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({
                         <Star
                           key={s}
                           size={12}
-                          className={s <= (r.rating || 5) ? 'text-[#F5A623] fill-[#F5A623]' : 'text-gray-300'}
+                          className={s <= (r.rating || 0) ? 'text-[#F5A623] fill-[#F5A623]' : 'text-gray-300'}
                         />
                       ))}
                     </div>
@@ -772,28 +774,11 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({
                 </div>
               ))
             ) : (
-              sampleReviews.map((s, idx) => (
-                <div
-                  key={idx}
-                  className="bg-white rounded-2xl p-4 border border-black/5 shadow-sm space-y-2"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[#1B3A6B]">
-                      {s.name} • {s.date}
-                    </span>
-                    <div className="flex items-center gap-0.5">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <Star
-                          key={star}
-                          size={12}
-                          className={star <= s.rating ? 'text-[#F5A623] fill-[#F5A623]' : 'text-gray-300'}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                  <p className="text-xs text-[#1B3A6B]/80 leading-relaxed">{s.comment}</p>
-                </div>
-              ))
+              <div className="bg-white rounded-2xl p-8 border border-[#E8ECEF] shadow-sm text-center">
+                <p className="text-sm font-medium text-slate-500">
+                  {language === 'ar' ? 'لا توجد آراء بعد' : 'No reviews yet'}
+                </p>
+              </div>
             )}
           </div>
         )}

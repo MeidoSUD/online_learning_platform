@@ -36,7 +36,7 @@ export const TeacherMoreTab: React.FC<TeacherMoreTabProps> = ({ user, onNavigate
   const [showPublicModal, setShowPublicModal] = useState(false);
 
   const profile = user.profile;
-  const rating = Number(profile?.rating || 4.9);
+  const rating = Number(profile?.rating || 0);
   const lessonsCount = Number(profile?.total_lessons || profile?.current_lessons || 0);
 
   useEffect(() => {
@@ -121,7 +121,7 @@ export const TeacherMoreTab: React.FC<TeacherMoreTabProps> = ({ user, onNavigate
           <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center mb-2">
             <Star size={20} fill="currentColor" />
           </div>
-          <span className="text-xl font-extrabold text-[#0D4A5F]">{rating.toFixed(1)}</span>
+          <span className="text-xl font-extrabold text-[#0D4A5F]">{rating > 0 ? rating.toFixed(1) : '0.0'}</span>
           <span className="text-xs text-slate-400 mt-0.5">{isAr ? 'التقييم' : 'Rating'}</span>
         </div>
       </div>

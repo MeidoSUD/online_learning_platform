@@ -406,6 +406,11 @@ export const teacherService = {
   setDefaultWithdrawalCard: (id: number) => fetchWithAuth(`/user/cards/${id}/default`, { method: 'POST', body: JSON.stringify({}) }),
   getWithdrawalMethods: () => fetchWithAuth('/teacher/withdrawal-methods').then(res => res?.data ?? res).catch(() => ({ isBankAccountActive: true, isCardActive: true })),
   getTeacherDetails: (teacherId: number) => fetchWithAuth(`/teachers/${teacherId}`).then(res => res?.data ?? res),
+  getTeachers: (filters: any = {}) => {
+    const query = new URLSearchParams(filters).toString();
+    const endpoint = query ? `/teachers?${query}` : '/teachers';
+    return fetchWithAuth(endpoint).then(extractArray);
+  },
   // Consultations assigned to me
   getConsultations: () => fetchWithAuth('/teacher/consultations').then(res => res.data || []),
   getConsultationDetails: (id: number) => fetchWithAuth(`/teacher/consultations/${id}`).then(res => res.data || res),
@@ -504,16 +509,24 @@ export const studentService = {
   }),
   getTeachers: (filters: any = {}) => {
     const query = new URLSearchParams(filters).toString();
-    return fetchWithAuth(`/student/teachers?${query}`).then(extractArray);
+    const endpoint = query ? `/teachers?${query}` : '/teachers';
+    const fallbackEndpoint = query ? `/student/teachers?${query}` : '/student/teachers';
+    return fetchWithAuth(endpoint)
+      .catch(() => fetchWithAuth(fallbackEndpoint))
+      .then(extractArray);
   },
   getTeachersPaginated: (filters: any = {}, page: number = 1) => {
     const params: any = { ...filters, page };
     Object.keys(params).forEach(k => (params[k] === '' || params[k] === undefined || params[k] === null) && delete params[k]);
     const query = new URLSearchParams(params).toString();
-    return fetchWithAuth(`/student/teachers?${query}`).then(res => ({
-      teachers: Array.isArray(res.data) ? res.data : [],
-      pagination: res.pagination || { current_page: 1, last_page: 1, per_page: 10, total: 0 },
-    }));
+    const endpoint = query ? `/teachers?${query}` : '/teachers';
+    const fallbackEndpoint = query ? `/student/teachers?${query}` : '/student/teachers';
+    return fetchWithAuth(endpoint)
+      .catch(() => fetchWithAuth(fallbackEndpoint))
+      .then(res => ({
+        teachers: Array.isArray(res.data) ? res.data : [],
+        pagination: res.pagination || { current_page: 1, last_page: 1, per_page: 10, total: 0 },
+      }));
   },
   getTeacherById: (id: number) =>
     fetchWithAuth(`/teachers/${id}`)

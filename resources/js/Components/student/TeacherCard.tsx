@@ -162,6 +162,21 @@ export const TeacherCard: React.FC<TeacherCardProps> = ({
             </button>
           </div>
         )}
+
+        {browseOnly && (
+          <div className="flex flex-col items-end justify-center self-stretch shrink-0">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAction();
+              }}
+              className="h-9 px-4 rounded-lg bg-primary hover:opacity-90 text-white text-xs font-bold transition-opacity"
+            >
+              {language === 'ar' ? 'عرض الملف' : 'View Profile'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

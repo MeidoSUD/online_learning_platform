@@ -383,7 +383,7 @@ export const SessionDetailsModal: React.FC<SessionDetailsModalProps> = ({
                                             <Star
                                                 key={i}
                                                 size={16}
-                                                className={i <= (review.rating || 5) ? 'text-amber-400 fill-amber-400' : 'text-slate-200'}
+                                                className={i <= (review.rating || 0) ? 'text-amber-400 fill-amber-400' : 'text-slate-200'}
                                             />
                                         ))}
                                         <span className="text-xs font-bold text-[#171717] mr-1">

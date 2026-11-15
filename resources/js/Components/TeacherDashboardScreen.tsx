@@ -23,6 +23,8 @@ import { TeacherWithdrawalCardsTab } from './teacher/TeacherWithdrawalCardsTab';
 import { TeacherMoreTab } from './teacher/TeacherMoreTab';
 import { TeacherMarketingTab } from './teacher/TeacherMarketingTab';
 import { TeacherPublicProfileScreen } from './teacher/TeacherPublicProfileScreen';
+import { PrivateLessonsTab } from './student/PrivateLessonsTab';
+import { TeacherPublicProfileModal } from './teacher/TeacherPublicProfileModal';
 import { ArrowRight, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { useLanguage } from '../Contexts/LanguageContext';
 import { AdsBanner } from './dashboard/AdsBanner';
@@ -44,9 +46,26 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
     return 'overview';
   });
   const [freshUser, setFreshUser] = useState<UserData | null>(null);
+  const [selectedTeacherId, setSelectedTeacherId] = useState<number | null>(null);
   const { language } = useLanguage();
 
   const user = data.user.data as UserData;
+
+  const updateUrl = (tab: string) => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (tab === 'overview') {
+      url.searchParams.delete('tab');
+    } else {
+      url.searchParams.set('tab', tab);
+    }
+    window.history.pushState({}, '', `${url.pathname}${url.search}`);
+  };
+
+  const handleNavigate = (tab: string) => {
+    setActiveTab(tab);
+    updateUrl(tab);
+  };
 
   useEffect(() => {
     const handlePopState = () => {
@@ -83,26 +102,41 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
   const renderContent = () => {
     switch (activeTab) {
       case 'overview':
-        return <OverviewTab user={currentUser} onNavigate={setActiveTab} />;
+        return <OverviewTab user={currentUser} onNavigate={handleNavigate} />;
+      case 'all-teachers':
+      case 'كل-الاساتذة':
+      case 'كل-الاساتذه':
+      case 'كل الاساتذه':
+      case 'featured-teachers':
+      case 'browse-teachers':
+        return (
+          <PrivateLessonsTab
+            browseOnly={true}
+            onBack={() => handleNavigate('overview')}
+            onTeacherSelect={(teacher) => {
+              if (teacher?.id) setSelectedTeacherId(teacher.id);
+            }}
+          />
+        );
       case 'orders':
         return <TeacherOrdersTab user={currentUser} />;
       case 'packages':
-        return <TeacherPackagesTab user={currentUser} onNavigate={setActiveTab} />;
+        return <TeacherPackagesTab user={currentUser} onNavigate={handleNavigate} />;
       case 'marketing':
-        return <TeacherMarketingTab user={currentUser} onNavigate={setActiveTab} />;
+        return <TeacherMarketingTab user={currentUser} onNavigate={handleNavigate} />;
       case 'withdrawal-options':
-        return <TeacherWithdrawalOptionsTab onNavigate={setActiveTab} />;
+        return <TeacherWithdrawalOptionsTab onNavigate={handleNavigate} />;
       case 'withdrawal-cards':
-        return <TeacherWithdrawalCardsTab onNavigate={setActiveTab} />;
+        return <TeacherWithdrawalCardsTab onNavigate={handleNavigate} />;
       case 'more':
-        return <TeacherMoreTab user={currentUser} onNavigate={setActiveTab} onLogout={onLogout} />;
+        return <TeacherMoreTab user={currentUser} onNavigate={handleNavigate} onLogout={onLogout} />;
       case 'public-profile':
-        return <TeacherPublicProfileScreen user={currentUser} onBack={() => setActiveTab('more')} />;
+        return <TeacherPublicProfileScreen user={currentUser} onBack={() => handleNavigate('more')} />;
       case 'schedule':
         return <ScheduleTab user={currentUser} />;
       case 'private-lessons':
       case 'subjects':
-        return <SubjectsTab user={currentUser} onNavigate={setActiveTab} />;
+        return <SubjectsTab user={currentUser} onNavigate={handleNavigate} />;
       case 'courses':
         return <TeacherCoursesTab user={currentUser} />;
       case 'my-lessons':
@@ -115,13 +149,13 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
       case 'abilities':
         return <TeacherAbilitiesTab user={currentUser} />;
       case 'wallet':
-        return <WalletTab user={currentUser} onNavigate={setActiveTab} />;
+        return <WalletTab user={currentUser} onNavigate={handleNavigate} />;
       case 'bank-accounts':
-        return <BankAccountsPage user={currentUser} onNavigate={setActiveTab} />;
+        return <BankAccountsPage user={currentUser} onNavigate={handleNavigate} />;
       case 'profile':
-        return <ProfileTab onNavigate={setActiveTab} />;
+        return <ProfileTab onNavigate={handleNavigate} />;
       case 'services':
-        return <TeacherServicesTab onNavigate={setActiveTab} />;
+        return <TeacherServicesTab onNavigate={handleNavigate} />;
       case 'support':
         return <SupportTab />;
       case 'disputes':
@@ -129,9 +163,9 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
       case 'ai':
         return <AiAssistantTab />;
       case 'settings':
-        return <ProfileTab onNavigate={setActiveTab} />;
+        return <ProfileTab onNavigate={handleNavigate} />;
       default:
-        return <OverviewTab user={currentUser} onNavigate={setActiveTab} />;
+        return <OverviewTab user={currentUser} onNavigate={handleNavigate} />;
     }
   };
 
@@ -141,7 +175,7 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
         userData={data}
         onLogout={onLogout}
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={handleNavigate}
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -212,6 +246,14 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
 
         {renderContent()}
       </main>
+
+      {selectedTeacherId && (
+        <TeacherPublicProfileModal
+          teacherId={selectedTeacherId}
+          isOpen={true}
+          onClose={() => setSelectedTeacherId(null)}
+        />
+      )}
     </div>
   );
 };
