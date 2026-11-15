@@ -51,6 +51,11 @@ src="https://www.facebook.com/tr?id=1397255531928997&ev=PageView&noscript=1"
 
     <title>{{ config('app.name', 'Ewan') }}</title>
 
+    {{-- Favicon --}}
+    <link rel="shortcut icon" href="{{ asset('images/ico/favicon.ico') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('images/ico/favicon-32x32.png') }}">
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+
     {{-- Inertia head (title/meta injected by pages) --}}
     @inertiaHead
 
