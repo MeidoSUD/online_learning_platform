@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useLanguage } from '../Contexts/LanguageContext';
-import { Bell, LogOut, User, Globe, Menu, AlertCircle, CreditCard, FileText, Award, Layers, Video, X, Check, School, CreditCard as PaymentIcon, BellRing, Clock, Loader2, Trash2, Headphones, Package, SlidersHorizontal, Rocket } from 'lucide-react';
+import { Bell, LogOut, User, Globe, Menu, AlertCircle, CreditCard, FileText, Award, Layers, Video, X, Check, School, CreditCard as PaymentIcon, BellRing, Clock, Loader2, Trash2, Headphones, Package, SlidersHorizontal, Rocket, Sparkles, Star } from 'lucide-react';
 import { AuthResponse, notificationService, AppNotification } from '../Services/api';
 import { Logo } from './Logo';
 
@@ -59,6 +59,12 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
 
   const user = userData.user.data;
   const userRole = userData.user.role;
+  const isBoosted = Boolean(
+    user?.is_boosted ||
+    user?.has_active_subscription ||
+    user?.profile?.is_boosted ||
+    user?.profile?.has_active_subscription
+  );
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
@@ -293,12 +299,12 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
                                 <p className="text-xs text-[var(--text-muted)] mt-0.5 line-clamp-2">{n.message}</p>
                                 <div className="flex items-center justify-between mt-1.5">
                                   <span className="text-[10px] text-[var(--text-muted)]">{getRelativeTime(n.created_at, language)}</span>
-                                  <button
+                                  {/* <button
                                     onClick={(e) => handleDelete(n.id, e)}
                                     className="text-[var(--text-muted)] hover:text-red-400 transition-colors"
                                   >
                                     <Trash2 size={12} />
-                                  </button>
+                                  </button> */}
                                 </div>
                               </div>
                             </div>
@@ -317,11 +323,24 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
                 className="flex items-center gap-3 p-1 rounded-full hover:bg-[var(--light-bg)] transition-colors focus:outline-none"
               >
-                <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[var(--green-light)] to-[var(--green)] flex items-center justify-center text-white font-bold shadow-[var(--shadow-md)]">
+                <div className={`h-9 w-9 rounded-full ${userRole === 'teacher' && isBoosted ? 'ring-2 ring-amber-400 ring-offset-2 ring-offset-[#1b254b] shadow-lg shadow-amber-400/40' : ''} bg-gradient-to-br from-[var(--green-light)] to-[var(--green)] flex items-center justify-center text-white font-bold shadow-[var(--shadow-md)] relative`}>
                    {(user.first_name?.charAt(0) || 'U').toUpperCase()}
+                   {userRole === 'teacher' && isBoosted && (
+                     <span className="absolute -bottom-1 -right-1 bg-amber-500 text-white rounded-full p-0.5 shadow">
+                       <Star size={9} className="fill-white" />
+                     </span>
+                   )}
                 </div>
                 <div className="hidden lg:block text-start">
-                  <p className="text-sm font-medium text-white">{user.first_name}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-medium text-white">{user.first_name}</p>
+                    {userRole === 'teacher' && isBoosted && (
+                      <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black bg-gradient-to-r from-amber-400 to-amber-500 text-slate-900 flex items-center gap-0.5 shadow-sm">
+                        <Sparkles size={9} className="fill-slate-900" />
+                        {language === 'ar' ? 'معلم مميز' : 'Featured'}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-white/60 truncate max-w-[100px]">{userRole?.toUpperCase()}</p>
                 </div>
               </button>
@@ -366,8 +385,24 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
 
                   {userRole === 'teacher' && (
                     <>
-                      <button onClick={() => { setActiveTab('marketing'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm font-semibold text-amber-600 hover:bg-amber-50">
-                        <Rocket size={16} /> {language === 'ar' ? 'ترويج الحساب (معلم مميز)' : 'Boost Profile'}
+                      <button onClick={() => { setActiveTab('marketing'); setShowProfileMenu(false); }} className="flex w-full items-center justify-between px-4 py-2 text-sm font-semibold text-amber-600 hover:bg-amber-50">
+                        <div className="flex items-center gap-2">
+                          <Rocket size={16} />
+                          <span>
+                            {isBoosted
+                              ? (language === 'ar' ? 'إدارة الترويج (معلم مميز)' : 'Manage Boost (Featured)')
+                              : (language === 'ar' ? 'ترويج الحساب (معلم مميز)' : 'Boost Profile')}
+                          </span>
+                        </div>
+                        {isBoosted ? (
+                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-700">
+                            {language === 'ar' ? 'مشترك' : 'Active'}
+                          </span>
+                        ) : (
+                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">
+                            {language === 'ar' ? 'اشترك' : 'Boost'}
+                          </span>
+                        )}
                       </button>
                       <button onClick={() => { setActiveTab('packages'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">
                         <Package size={16} /> {language === 'ar' ? 'الباقات التعليمية' : 'Packages'}

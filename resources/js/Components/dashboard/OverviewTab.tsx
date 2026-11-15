@@ -66,6 +66,12 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
   const isVerified = Boolean(user.verified || user.profile?.verified);
   const hourPrice = Number(user.profile?.individual_hour_price || 0);
   const hasPrice = hourPrice > 0;
+  const isTeacherBoosted = Boolean(
+    user?.is_boosted ||
+    user?.has_active_subscription ||
+    user?.profile?.is_boosted ||
+    user?.profile?.has_active_subscription
+  );
 
   const profile = user.profile;
   const mainKey = String(profile?.main_service_key || '').toLowerCase();
@@ -373,7 +379,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
 
       {/* Teacher Profile Boost Banner */}
       <div className={`p-4 sm:p-5 rounded-2xl shadow-sm border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all ${
-        (user.is_boosted || user.profile?.is_boosted)
+        isTeacherBoosted
           ? 'bg-gradient-to-r from-amber-50 to-amber-100/60 border-amber-300'
           : 'bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-white border-amber-200'
       }`}>
@@ -384,7 +390,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
           <div>
             <div className="flex items-center gap-2">
               <span className="font-bold text-sm text-slate-800">
-                {(user.is_boosted || user.profile?.is_boosted)
+                {isTeacherBoosted
                   ? (isAr ? 'حسابك مروّج كمعلم مميز 🌟' : 'Featured Boost Active 🌟')
                   : (isAr ? 'روّج لحسابك كمعلم مميز' : 'Boost Your Profile as Featured Teacher')}
               </span>
@@ -393,7 +399,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
               </span>
             </div>
             <p className="text-xs text-slate-600 mt-0.5">
-              {(user.is_boosted || user.profile?.is_boosted)
+              {isTeacherBoosted
                 ? (isAr ? 'بنرك الشخصي معروض في بنرات الصفحة الرئيسية وتطبيق الجوال.' : 'Your profile banner is actively featured on home screen banners.')
                 : (isAr ? 'اظهر في صدارة الصفحة الرئيسية وتطبيق الجوال لزيادة الحجوزات والطلاب.' : 'Appear on top of the home screen to maximize your student bookings.')}
             </p>
@@ -405,7 +411,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
           onClick={() => onNavigate && onNavigate('marketing')}
           className="whitespace-nowrap px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-sm transition"
         >
-          {(user.is_boosted || user.profile?.is_boosted)
+          {isTeacherBoosted
             ? (isAr ? 'إدارة الترويج' : 'Manage Boost')
             : (isAr ? 'ترقية الحساب الآن' : 'Boost Profile Now')}
         </button>

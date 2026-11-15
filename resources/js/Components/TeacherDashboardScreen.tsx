@@ -172,7 +172,13 @@ export const TeacherDashboardScreen: React.FC<TeacherDashboardScreenProps> = ({ 
   return (
     <div className="min-h-screen bg-[var(--light-bg)] font-sans pb-10">
       <Navbar
-        userData={data}
+        userData={{
+          ...data,
+          user: {
+            ...data.user,
+            data: currentUser,
+          },
+        }}
         onLogout={onLogout}
         activeTab={activeTab}
         setActiveTab={handleNavigate}

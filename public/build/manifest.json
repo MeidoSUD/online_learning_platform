@@ -286,7 +286,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-Dbkd8w9D.css",
+    "file": "assets/app-DHj5kvpF.css",
     "name": "app",
     "names": [
       "app.css"
@@ -331,7 +331,7 @@
     ]
   },
   "resources/js/Pages/Dashboard.jsx": {
-    "file": "assets/Dashboard-CEnGOD_z.js",
+    "file": "assets/Dashboard-DcBUNBur.js",
     "name": "Dashboard",
     "src": "resources/js/Pages/Dashboard.jsx",
     "isDynamicEntry": true,
@@ -540,7 +540,7 @@
     ]
   },
   "resources/js/app.jsx": {
-    "file": "assets/app-jUCZxp99.js",
+    "file": "assets/app-BCe3DeEA.js",
     "name": "app",
     "src": "resources/js/app.jsx",
     "isEntry": true,
@@ -565,7 +565,7 @@
       "resources/js/Pages/WithdrawalMethods.jsx"
     ],
     "css": [
-      "assets/app-Dbkd8w9D.css"
+      "assets/app-DHj5kvpF.css"
     ]
   }
 }
