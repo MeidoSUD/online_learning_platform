@@ -1095,6 +1095,37 @@ export const featuredTeacherService = {
     fetch(`${API_BASE_URL}/featured-teachers/${subscriptionId}/click`, { method: 'POST' }).catch(() => {}),
 };
 
+export const takafulService = {
+  getMyStatus: (): Promise<{ status: boolean; data: any }> =>
+    fetchWithAuth('/student/takaful-requests/me'),
+  submitRequest: (formData: FormData): Promise<{ status: boolean; message: string; data: any }> =>
+    fetchWithAuth('/student/takaful-requests', {
+      method: 'POST',
+      body: formData,
+    }),
+  adminGetAll: (params?: { status?: string; search?: string; page?: number; per_page?: number }): Promise<any> => {
+    const cleanParams: Record<string, string> = {};
+    if (params) {
+      Object.entries(params).forEach(([key, val]) => {
+        if (val !== undefined && val !== null && val !== '' && val !== 'undefined') {
+          cleanParams[key] = String(val);
+        }
+      });
+    }
+    const query = new URLSearchParams(cleanParams).toString();
+    return fetchWithAuth(`/admin/takaful-requests${query ? `?${query}` : ''}`);
+  },
+  adminUpdateStatus: (id: number, data: { status: string; rejection_reason?: string }): Promise<any> =>
+    fetchWithAuth(`/admin/takaful-requests/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  adminDelete: (id: number): Promise<any> =>
+    fetchWithAuth(`/admin/takaful-requests/${id}`, {
+      method: 'DELETE',
+    }),
+};
+
 export const getStorageUrl = (path: string | null | undefined) => {
   if (!path || typeof path !== 'string') return '';
   const trimmed = path.trim();

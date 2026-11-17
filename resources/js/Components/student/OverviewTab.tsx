@@ -17,7 +17,8 @@ import {
   ArrowRight,
   ArrowLeft,
   Bot,
-  Check
+  Check,
+  HeartHandshake
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { UserData, studentService, featuredTeacherService, Booking, Course, getStorageUrl } from '../../Services/api';
@@ -364,7 +365,50 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate, onTe
             >
               {language === 'ar' ? 'باقاتي واشتراكاتي' : 'My Packages'}
             </button>
+            <button
+              onClick={() => onNavigate('takaful')}
+              className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-all shadow-md flex items-center gap-2"
+            >
+              <HeartHandshake size={16} />
+              <span>{language === 'ar' ? 'النظام التكافلي' : 'Takaful System'}</span>
+            </button>
           </div>
+        </div>
+      </div>
+
+      <div
+        onClick={() => onNavigate('takaful')}
+        className="cursor-pointer relative overflow-hidden rounded-[var(--radius-lg)] bg-gradient-to-r from-emerald-700 via-teal-700 to-emerald-800 p-6 sm:p-7 text-white shadow-md hover:shadow-lg transition-all group"
+      >
+        <div className="absolute top-0 end-0 -mt-8 -me-8 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-white/15 flex items-center justify-center shrink-0 shadow-inner group-hover:scale-105 transition-transform">
+              <HeartHandshake className="w-8 h-8 text-emerald-200" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-xl font-bold">
+                  {language === 'ar' ? 'النظام التكافلي' : 'Takaful System'}
+                </h3>
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/40 text-emerald-100 border border-emerald-400/30">
+                  {language === 'ar' ? 'مبادرة دعم الطلاب' : 'Student Support'}
+                </span>
+              </div>
+              <p className="text-sm text-emerald-100/90 mt-1 max-w-xl">
+                {language === 'ar'
+                  ? 'رعاية خاصة للطلاب فاقدي الوالد. انقر هنا للتقديم برفع شهادة الوفاة ومتابعة حالة الدعم التكافلي.'
+                  : 'Special care for students who lost their father. Click here to apply by uploading the certificate.'}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="self-start sm:self-auto inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white text-emerald-800 text-sm font-bold shadow hover:bg-emerald-50 transition-all shrink-0"
+          >
+            <span>{language === 'ar' ? 'الدخول للنظام التكافلي' : 'Enter Takaful'}</span>
+            <ArrowIcon className="w-4 h-4" />
+          </button>
         </div>
       </div>
 

@@ -23,6 +23,7 @@ import { StudentOrdersTab } from './student/StudentOrdersTab';
 import { StudentSubscriptionsTab } from './student/StudentSubscriptionsTab';
 import { StudentMoreTab } from './student/StudentMoreTab';
 import { ServicePreferencesTab } from './student/ServicePreferencesTab';
+import { TakafulTab } from './student/TakafulTab';
 import { useLanguage } from '../Contexts/LanguageContext';
 import { AdsBanner } from './dashboard/AdsBanner';
 
@@ -254,6 +255,8 @@ export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ 
         return <SupportTab />;
       case 'settings':
         return <ProfileTab onNavigate={handleTabChange} />;
+      case 'takaful':
+        return <TakafulTab onBack={() => handleNavigate('overview')} />;
       default:
         return <OverviewTab user={data.user.data} onNavigate={handleNavigate} />;
     }

@@ -14,7 +14,7 @@ use App\Http\Controllers\API\ProfileCompleteController;
 use App\Http\Controllers\API\TeacherApplicationController;
 use App\Http\Controllers\API\TeacherController;
 use App\Http\Controllers\API\PaymentMethodController;
-use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\API\NotificationController;
 use App\Http\Controllers\API\SessionsController;
 use App\Http\Controllers\API\AiAssistantController;
 use App\Http\Controllers\API\LanguageStudyController;
@@ -33,6 +33,7 @@ use App\Http\Controllers\API\Admin\BookingAdminController;
 use App\Http\Controllers\API\Admin\PaymentAdminController;
 use App\Http\Controllers\API\Admin\ClassesAdminController;
 use App\Http\Controllers\API\Admin\SubjectAdminController;
+use App\Http\Controllers\API\TakafulRequestController;
 use App\Http\Controllers\API\Admin\EducationLevelAdminController;
 use App\Http\Controllers\API\Admin\CourseAdminController;
 use App\Http\Controllers\API\Admin\SupportTicketController;
@@ -392,6 +393,10 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin,support'])->grou
     Route::put('/marketing-announcements/{id}', [MarketingAnnouncementAdminController::class, 'update']);
     Route::put('/marketing-announcements/{id}/toggle', [MarketingAnnouncementAdminController::class, 'toggleActive']);
     Route::delete('/marketing-announcements/{id}', [MarketingAnnouncementAdminController::class, 'destroy']);
+
+    Route::get('/takaful-requests', [TakafulRequestController::class, 'adminIndex']);
+    Route::patch('/takaful-requests/{id}/status', [TakafulRequestController::class, 'updateStatus']);
+    Route::delete('/takaful-requests/{id}', [TakafulRequestController::class, 'destroy']);
 });
 
 Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(function () {
