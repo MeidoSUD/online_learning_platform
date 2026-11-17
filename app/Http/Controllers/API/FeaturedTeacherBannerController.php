@@ -26,14 +26,19 @@ class FeaturedTeacherBannerController extends Controller
             'teacher.teacherLanguages.language',
             'plan',
         ])
-        ->whereHas('teacher', function ($q) {
-            $q->where('is_active', 1)
-              ->where('role_id', 3);
-        })
-        ->active()
-        ->inRandomOrder() // randomize so all featured teachers get fair exposure
-        ->take($limit)
-        ->get();
+            ->whereHas('teacher', function ($q) {
+                $q->where('is_active', 1)
+                    ->where('role_id', 3);
+            })
+            ->active()
+            ->whereIn('id', function ($query) {
+                $query->selectRaw('MAX(id)')
+                    ->from('teacher_marketing_subscriptions')
+                    ->groupBy('teacher_id');
+            })
+            ->inRandomOrder() // randomize so all featured teachers get fair exposure
+            ->take($limit)
+            ->get();
 
         // Increment views count in background/bulk
         if ($subscriptions->isNotEmpty()) {
