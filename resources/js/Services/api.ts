@@ -382,6 +382,7 @@ export const teacherService = {
   deletePaymentMethod: (id: number) => fetchWithAuth(`/teacher/payment-methods/${id}`, { method: 'DELETE' }),
   setDefaultPaymentMethod: (id: number) => fetchWithAuth(`/teacher/payment-methods/set-default/${id}`, { method: 'PUT' }),
   togglePackageOnOff: (value: boolean) => fetchWithAuth('/teacher/packages/on-off', { method: 'PUT', body: JSON.stringify({ package_on_off: value ? '1' : '0' }) }),
+  toggleTakafulOnOff: (value: boolean) => fetchWithAuth('/teacher/takaful/on-off', { method: 'PUT', body: JSON.stringify({ takaful_on_off: value ? '1' : '0' }) }),
   getActiveStatus: () => fetchWithAuth('/teacher/active-status').then(res => res?.data ?? res),
   updateActiveStatus: (isActive: boolean) => fetchWithAuth('/teacher/active-status', { method: 'PUT', body: JSON.stringify({ is_active: isActive }) }),
   getTeacherOrders: (params?: { status?: string; created_at?: string }) => {

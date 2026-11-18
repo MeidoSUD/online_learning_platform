@@ -18,6 +18,7 @@ import {
   CreditCard,
   Sparkles,
   Video,
+  HeartHandshake,
 } from 'lucide-react';
 import { studentService, getStorageUrl } from '../../Services/api';
 import { BookingFlowModal } from './BookingFlowModal';
@@ -124,6 +125,12 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({
   const flag = getNationalityFlag(nationality);
   const isVerified = teacherData?.verified ?? profile?.verified ?? true;
   const isFounder = teacherData?.is_founder ?? profile?.founder ?? teacherData?.founder ?? false;
+  const isTakafulOn = Boolean(
+    teacherData?.takaful_on_off ??
+    profile?.takaful_on_off ??
+    teacher?.takaful_on_off ??
+    false
+  );
 
   const ratingVal = Number(profile?.rating ?? teacherData?.rating ?? 0);
   const studentsCount = Number(
@@ -489,12 +496,22 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({
           {isVerified ? 'معلم معتمد' : 'معلم'}
         </p>
 
-        {isFounder && (
-          <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFF8E1] border border-[#D4A017]/40 text-[#D4A017] text-xs font-semibold">
-            <Award size={14} />
-            <span>عضو مؤسس</span>
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+          {isFounder && (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFF8E1] border border-[#D4A017]/40 text-[#D4A017] text-xs font-semibold">
+              <Award size={14} />
+              <span>عضو مؤسس</span>
+            </div>
+          )}
+          <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${
+            isTakafulOn
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+              : 'bg-slate-50 border-slate-200 text-slate-500'
+          }`}>
+            <HeartHandshake size={14} className={isTakafulOn ? 'text-emerald-600' : 'text-slate-400'} />
+            <span>{isTakafulOn ? 'التكافل: مفعل' : 'التكافل: معطل'}</span>
           </div>
-        )}
+        </div>
 
         {code && (
           <button

@@ -19,6 +19,7 @@ import {
   Loader2,
   Video,
   User,
+  HeartHandshake,
 } from 'lucide-react';
 import { UserData, studentService, getStorageUrl } from '../../Services/api';
 
@@ -140,6 +141,14 @@ export const TeacherPublicProfileScreen: React.FC<TeacherPublicProfileScreenProp
     teacherData?.isFounder ??
     profile?.founder ??
     profile?.is_founder ??
+    false
+  );
+
+  const isTakafulOn = Boolean(
+    teacherData?.takaful_on_off ??
+    profile?.takaful_on_off ??
+    user?.takaful_on_off ??
+    user?.profile?.takaful_on_off ??
     false
   );
 
@@ -498,12 +507,26 @@ export const TeacherPublicProfileScreen: React.FC<TeacherPublicProfileScreenProp
             : (isAr ? 'معلم' : 'Teacher')}
         </p>
 
-        {isFounder && (
-          <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFF8E1] border border-[#D4A017]/40 text-[#D4A017] text-xs font-semibold">
-            <Award size={14} />
-            <span>{isAr ? 'معلم مؤسس' : 'Founding Teacher'}</span>
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+          {isFounder && (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFF8E1] border border-[#D4A017]/40 text-[#D4A017] text-xs font-semibold">
+              <Award size={14} />
+              <span>{isAr ? 'معلم مؤسس' : 'Founding Teacher'}</span>
+            </div>
+          )}
+          <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${
+            isTakafulOn
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+              : 'bg-slate-50 border-slate-200 text-slate-500'
+          }`}>
+            <HeartHandshake size={14} className={isTakafulOn ? 'text-emerald-600' : 'text-slate-400'} />
+            <span>
+              {isTakafulOn
+                ? (isAr ? 'التكافل: مفعل' : 'Takaful: Enabled')
+                : (isAr ? 'التكافل: معطل' : 'Takaful: Disabled')}
+            </span>
           </div>
-        )}
+        </div>
       </div>
 
       <div className="max-w-xl mx-auto px-4 mt-5">

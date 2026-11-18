@@ -695,6 +695,7 @@ class TeacherProfileService
             'total_lessons' => (int) $totalLessons,
             'completed_lessons' => (int) $completedLessons,
             'lessons_count' => (int) $totalLessons,
+            'takaful_on_off' => $teacher->teacherInfo ? (bool) $teacher->teacherInfo->takaful_on_off : false,
             'profile' => [
                 'name' => $fullName,
                 'first_name' => (string) ($teacher->first_name ?? ''),
@@ -714,6 +715,7 @@ class TeacherProfileService
                 'founder' => $teacher->teacherInfo ? (bool) $teacher->teacherInfo->founder : false,
                 'offer_packages' => $teacher->teacherInfo ? (bool) $teacher->teacherInfo->offer_packages : false,
                 'package_on_off' => $teacher->teacherInfo ? (bool) $teacher->teacherInfo->package_on_off : false,
+                'takaful_on_off' => $teacher->teacherInfo ? (bool) $teacher->teacherInfo->takaful_on_off : false,
                 'packages_approved' => $teacher->teacherInfo ? (bool) $teacher->teacherInfo->packages_approved : false,
                 'total_students' => (int) $totalStudents,
                 'students_count' => (int) $totalStudents,
@@ -743,6 +745,7 @@ class TeacherProfileService
                 'courses_count' => (int) count($courses),
                 'teach_individual' => (bool) optional($teacher->teacherInfo)->teach_individual,
                 'package_on_off' => (bool) optional($teacher->teacherInfo)->package_on_off,
+                'takaful_on_off' => (bool) optional($teacher->teacherInfo)->takaful_on_off,
                 'individual_hour_price' => (float) ((optional($teacher->teacherInfo)->individual_hour_price ?? 0) * $priceMultiplier),
                 'teach_group' => (bool) optional($teacher->teacherInfo)->teach_group,
                 'group_hour_price' => (float) ((optional($teacher->teacherInfo)->group_hour_price ?? 0) * $priceMultiplier),

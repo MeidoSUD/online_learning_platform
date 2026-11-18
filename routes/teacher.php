@@ -124,6 +124,7 @@ Route::prefix('teacher')->middleware(['auth:sanctum', 'role:teacher'])->group(fu
 
     // switch on/off package availability
     Route::match(['PUT', 'POST'], '/packages/on-off', [TeacherPackageController::class, 'switchPackageOnOff']);
+    Route::match(['PUT', 'POST'], '/takaful/on-off', [TeacherController::class, 'switchTakafulOnOff']);
 
     // Consultations
     Route::get('/consultations', [ConsultationController::class, 'teacherIndex']); // consultations assigned to me

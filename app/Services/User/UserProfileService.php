@@ -484,7 +484,7 @@ class UserProfileService
      */
     private function updateIndividualTeacherProfile(Request $request, User $user): void
     {
-        if ($request->hasAny(['teach_individual', 'teach_group', 'individual_hour_price', 'package_on_off', 'group_hour_price', 'max_group_size', 'min_group_size'])) {
+        if ($request->hasAny(['teach_individual', 'teach_group', 'individual_hour_price', 'package_on_off', 'takaful_on_off', 'group_hour_price', 'max_group_size', 'min_group_size'])) {
             $this->teacherManagementService->updateTeacherInfo($request, $user);
         }
 

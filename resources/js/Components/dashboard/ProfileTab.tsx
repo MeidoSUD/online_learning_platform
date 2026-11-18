@@ -25,7 +25,8 @@ import {
   Check,
   Square,
   RotateCcw,
-  SwitchCamera
+  SwitchCamera,
+  HeartHandshake
 } from 'lucide-react';
 import {
   authService,
@@ -128,6 +129,8 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
   const [bio, setBio] = useState('');
   const [price, setPrice] = useState('');
   const [teacherServicesList, setTeacherServicesList] = useState<any[]>([]);
+  const [isTakafulOn, setIsTakafulOn] = useState(false);
+  const [togglingTakaful, setTogglingTakaful] = useState(false);
 
   const okMsg = (ar: string, en: string) => (isAr ? ar : en);
 
@@ -158,6 +161,12 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
     }
 
     const p: any = u.profile || {};
+    const takafulVal = Boolean(
+      (u as any)?.takaful_on_off ??
+      p?.takaful_on_off ??
+      false
+    );
+    setIsTakafulOn(takafulVal);
     const bioVal = p.user_bio ?? p.bio ?? (u as any).bio ?? '';
     setBio(bioVal || '');
     const priceVal = p.individual_hour_price ?? (u as any).individual_hour_price ?? '';
@@ -726,6 +735,34 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
     }
   };
 
+  const handleToggleTakaful = async () => {
+    if (togglingTakaful) return;
+    const nextState = !isTakafulOn;
+    setTogglingTakaful(true);
+    try {
+      await teacherService.toggleTakafulOnOff(nextState);
+      setIsTakafulOn(nextState);
+      setUser((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          takaful_on_off: nextState ? 1 : 0,
+          profile: prev.profile ? { ...prev.profile, takaful_on_off: nextState ? 1 : 0 } : prev.profile,
+        };
+      });
+      showToast(
+        nextState
+          ? okMsg('تم تفعيل التكافل التعليمي بنجاح', 'Educational Takaful enabled successfully')
+          : okMsg('تم إلغاء تفعيل التكافل التعليمي بنجاح', 'Educational Takaful disabled successfully'),
+        'success'
+      );
+    } catch (e: any) {
+      showToast(e?.message || okMsg('فشل تحديث حالة التكافل', 'Failed to update takaful status'), 'error');
+    } finally {
+      setTogglingTakaful(false);
+    }
+  };
+
   const handleDeleteAccount = async () => {
     if (!confirm(okMsg('هل أنت متأكد؟ سيتم حذف حسابك نهائياً.', 'Are you sure? This will permanently delete your account.'))) return;
     try {
@@ -787,6 +824,18 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
           <span>{okMsg('تغيير الصورة الشخصية', 'Change profile photo')}</span>
         </button>
         <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handlePhotoChange} />
+        {isTeacher && (
+          <div className={`mt-3 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold border transition-colors shadow-sm ${
+            isTakafulOn
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+              : 'bg-slate-50 border-slate-200 text-slate-500'
+          }`}>
+            <HeartHandshake size={15} className={isTakafulOn ? 'text-emerald-600' : 'text-slate-400'} />
+            <span>
+              {isTakafulOn ? okMsg('التكافل: مفعل', 'Takaful: Enabled') : okMsg('التكافل: معطل', 'Takaful: Disabled')}
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="h-2" />
@@ -1055,6 +1104,47 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ onNavigate }) => {
               <p className="text-sm text-[#0D4A5F]/50">{okMsg('لا توجد بيانات مرفقة', 'No attachments')}</p>
             )}
           </SectionCard>
+
+          <div className="w-full bg-white rounded-[18px] shadow-[0_3px_10px_rgba(0,0,0,0.03)] border border-slate-100">
+            <div className="flex items-center justify-between p-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                  isTakafulOn ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'
+                }`}>
+                  <HeartHandshake size={20} />
+                </div>
+                <div>
+                  <span className="font-bold text-[15px] text-[#0D4A5F] block">
+                    {okMsg('التكافل التعليمي', 'Educational Takaful')}
+                  </span>
+                  <p className="text-xs text-slate-500 font-medium mt-0.5">
+                    {okMsg('إعطاء حصص مجانية للأيتام', 'Providing free lessons for orphans')}
+                  </p>
+                  <span className="text-[11px] text-[#0D4A5F]/70 block mt-0.5">
+                    {isTakafulOn
+                      ? okMsg('مفعل - استقبال طلبات حصص التكافل', 'Enabled - Accepting takaful requests')
+                      : okMsg('معطل - عدم استقبال طلبات حصص التكافل', 'Disabled - Not accepting takaful requests')}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={isTakafulOn}
+                onClick={handleToggleTakaful}
+                disabled={togglingTakaful}
+                className={`relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  isTakafulOn ? 'bg-[#5B9F48]' : 'bg-slate-300'
+                } ${togglingTakaful ? 'opacity-60 cursor-not-allowed' : ''}`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    isTakafulOn ? (isAr ? '-translate-x-5' : 'translate-x-5') : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
 
           <div className="h-2" />
 

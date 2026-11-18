@@ -14,6 +14,7 @@ class TeacherInfo extends Model
         'bio',
         'founder',
         'package_on_off',
+        'takaful_on_off',
         'teach_individual',
         'individual_hour_price',
         'teach_group',
@@ -27,6 +28,7 @@ class TeacherInfo extends Model
         'group_hour_price' => 'float',
         'individual_hour_price' => 'float',
         'package_on_off' => 'boolean',
+        'takaful_on_off' => 'boolean',
         'founder' => 'boolean',
     ];
 

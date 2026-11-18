@@ -171,4 +171,48 @@ TeacherProfileHelper::checkAndUpdateProfileCompleted( $teacherId);
 
         return response()->json(['message' => 'Class deleted']);
     }
+
+    public function switchTakafulOnOff(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return $this->authError('Unauthenticated. Provide a valid token.');
+        }
+
+        $request->validate([
+            'takaful_on_off' => ['required', 'in:0,1,true,false,True,False,TRUE,FALSE'],
+        ]);
+
+        try {
+            $teacherInfo = \App\Models\TeacherInfo::where('teacher_id', $user->id)->first();
+            $value = $request->input('takaful_on_off');
+            $bool = filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            if ($bool === null) {
+                $bool = intval($value) === 1;
+            }
+
+            if (!$teacherInfo) {
+                $teacherInfo = \App\Models\TeacherInfo::create([
+                    'teacher_id' => $user->id,
+                    'takaful_on_off' => $bool ? 1 : 0,
+                ]);
+            } else {
+                $teacherInfo->takaful_on_off = $bool ? 1 : 0;
+                $teacherInfo->save();
+            }
+
+            return $this->success([
+                'user_id' => $teacherInfo->teacher_id,
+                'takaful_on_off' => (int) $teacherInfo->takaful_on_off,
+            ], 'Takaful availability switched successfully');
+        } catch (\Exception $e) {
+            Log::error('Failed to switch takaful availability', [
+                'user_id' => $user->id ?? null,
+                'request' => $request->all(),
+                'exception' => $e->getMessage(),
+            ]);
+
+            return $this->serverError($e, 'Failed to switch takaful availability');
+        }
+    }
 }

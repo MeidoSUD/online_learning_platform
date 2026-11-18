@@ -122,6 +122,7 @@ class UserController extends Controller
             'teach_individual' => 'required|boolean',
             'individual_hour_price' => 'nullable|numeric|min:0',
             'package_on_off' => 'nullable|boolean',
+            'takaful_on_off' => 'nullable|boolean',
             'teach_group' => 'required|boolean',
             'group_hour_price' => 'nullable|numeric|min:0',
             'max_group_size' => 'nullable|integer|min:0|max:100',
@@ -138,11 +139,12 @@ class UserController extends Controller
 
     public function updateTeacherInfo(Request $request)
     {
-        if ($request->hasAny(['teach_individual', 'teach_group', 'individual_hour_price', 'group_hour_price', 'max_group_size', 'min_group_size'])) {
+        if ($request->hasAny(['teach_individual', 'teach_group', 'individual_hour_price', 'group_hour_price', 'max_group_size', 'min_group_size', 'package_on_off', 'takaful_on_off'])) {
             $request->validate([
                 'bio' => 'nullable|string|max:2000',
                 'teach_individual' => 'required|boolean',
                 'package_on_off' => 'nullable|boolean',
+                'takaful_on_off' => 'nullable|boolean',
                 'individual_hour_price' => 'nullable|numeric|min:0',
                 'teach_group' => 'required|boolean',
                 'group_hour_price' => 'nullable|numeric|min:0',

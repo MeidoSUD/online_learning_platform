@@ -149,12 +149,16 @@ export interface TeacherProfileNested {
   languages: any[];
   available_times: any[];
   current_balance?: number;
+  takaful_on_off?: boolean | number;
+  package_on_off?: boolean | number;
   certificate_attachment?: any;
   earnings?: any;
   currentLessons?: number;
 
   // Preferences inside profile
   teach_individual?: boolean | number;
+  package_on_off?: boolean | number;
+  takaful_on_off?: boolean | number;
   individual_hour_price?: number;
   teach_group?: boolean | number;
   group_hour_price?: number;
@@ -178,6 +182,8 @@ export interface UserData {
   rating?: number;
   verified?: boolean | number | string;
   current_balance?: number;
+  takaful_on_off?: boolean | number;
+  package_on_off?: boolean | number;
 
   profile?: TeacherProfileNested | null;
   teacher_type?: 'individual' | 'institute' | null;

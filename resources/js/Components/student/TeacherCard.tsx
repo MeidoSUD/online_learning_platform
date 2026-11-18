@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
-import { Star, Heart, BookOpen, User, Loader2, Sparkles } from 'lucide-react';
+import { Star, Heart, BookOpen, User, Loader2, Sparkles, HeartHandshake } from 'lucide-react';
 import { getStorageUrl, studentService } from '../../Services/api';
 
 interface TeacherCardProps {
@@ -26,6 +26,12 @@ export const TeacherCard: React.FC<TeacherCardProps> = ({
   const [favLoading, setFavLoading] = useState(false);
 
   const profile = teacher?.profile || {};
+  const isTakafulOn = Boolean(
+    teacher?.takaful_on_off ??
+    profile?.takaful_on_off ??
+    teacher?.teacher_info?.takaful_on_off ??
+    false
+  );
   const isBoosted = Boolean(
     teacher?.has_active_subscription ||
     teacher?.is_boosted ||
@@ -117,9 +123,19 @@ export const TeacherCard: React.FC<TeacherCardProps> = ({
           <BookOpen size={14} className="shrink-0 text-[#738989]" />
           <span className="truncate">{serviceName}</span>
         </div>
-        <div className="flex items-center gap-1 mt-2">
-          <Star size={16} className="text-amber-400 fill-amber-400 shrink-0" />
-          <span className="text-xs font-bold text-[#171717]">{ratingStr}</span>
+        <div className="flex items-center gap-2 mt-2">
+          <div className="flex items-center gap-1">
+            <Star size={16} className="text-amber-400 fill-amber-400 shrink-0" />
+            <span className="text-xs font-bold text-[#171717]">{ratingStr}</span>
+          </div>
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+            isTakafulOn
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+              : 'bg-slate-50 text-slate-500 border-slate-200'
+          }`}>
+            <HeartHandshake size={11} className={isTakafulOn ? 'text-emerald-600' : 'text-slate-400'} />
+            <span>{isTakafulOn ? (language === 'ar' ? 'التكافل: مفعل' : 'Takaful: Enabled') : (language === 'ar' ? 'التكافل: معطل' : 'Takaful: Disabled')}</span>
+          </span>
         </div>
       </div>
 
