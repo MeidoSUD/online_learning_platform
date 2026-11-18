@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Models\SessionsPackages;
+use App\Models\Subscription;
 use App\Models\TakafulRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -120,6 +122,30 @@ class TakafulRequestController extends Controller
             $takafulRequest->rejection_reason = $request->rejection_reason;
         } else if ($request->status === 'accepted') {
             $takafulRequest->rejection_reason = null;
+
+            $package = SessionsPackages::find(SessionsPackages::TAKAFUL_PACKAGE_ID)
+                ?? SessionsPackages::where('name_en', 'Takaful')->orWhere('name_ar', 'تكافل')->first();
+
+            if ($package) {
+                $existingSubscription = Subscription::where('student_id', $takafulRequest->user_id)
+                    ->where('package_id', $package->id)
+                    ->where('status', Subscription::STATUS_ACTIVE)
+                    ->first();
+
+                if (!$existingSubscription) {
+                    Subscription::create([
+                        'student_id' => $takafulRequest->user_id,
+                        'package_id' => $package->id,
+                        'sessions_remaining' => $package->sessions_count,
+                        'sessions_used' => 0,
+                        'status' => Subscription::STATUS_ACTIVE,
+                        'start_date' => now(),
+                        'total_paid' => 0,
+                        'currency' => 'SAR',
+                        'payment_id' => null,
+                    ]);
+                }
+            }
         }
 
         $takafulRequest->save();

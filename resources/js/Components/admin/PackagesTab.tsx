@@ -7,7 +7,7 @@ import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 
 export const PackagesTab: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { showToast } = useToast();
 
   const [packages, setPackages] = useState<SessionsPackage[]>([]);
@@ -152,13 +152,20 @@ export const PackagesTab: React.FC = () => {
           {packages.map(pkg => (
             <div key={pkg.id} className="bg-white rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] p-6 flex flex-col justify-between hover:shadow-[var(--shadow-md)] transition-shadow">
               <div className="space-y-4">
-                <div className="flex justify-between items-start">
+                <div className="flex justify-between items-start gap-2">
                   <h3 className="font-bold text-lg text-[var(--text-main)]">{pkg.name_ar || pkg.name_en}</h3>
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                    pkg.is_active ? 'bg-primary-pale text-primary' : 'bg-[var(--light-bg)] text-[var(--text-muted)]'
-                  }`}>
-                    {pkg.is_active ? t.statusActive : t.statusInactive}
-                  </span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                      pkg.type === 'free' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-blue-50 text-blue-600 border border-blue-200'
+                    }`}>
+                      {pkg.type === 'free' ? (language === 'ar' ? 'مجاني' : 'Free') : (language === 'ar' ? 'مدفوع' : 'Paid')}
+                    </span>
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                      pkg.is_active ? 'bg-primary-pale text-primary' : 'bg-[var(--light-bg)] text-[var(--text-muted)]'
+                    }`}>
+                      {pkg.is_active ? t.statusActive : t.statusInactive}
+                    </span>
+                  </div>
                 </div>
                 <p className="text-sm text-[var(--text-muted)] line-clamp-3 min-h-[60px]">{pkg.description_ar || pkg.description_en || t.na}</p>
 

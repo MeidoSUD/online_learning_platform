@@ -27,6 +27,7 @@ class PackageAdminController extends Controller
                 'description_en' => $p->description_en,
                 'sessions_count' => $p->sessions_count,
                 'price' => $p->price,
+                'type' => $p->type,
                 'price_per_session' => $p->price_per_session,
                 'is_active' => $p->is_active,
                 'created_at' => $p->created_at,
@@ -47,6 +48,7 @@ class PackageAdminController extends Controller
             'description_en' => 'nullable|string',
             'sessions_count' => 'required|integer|min:1|max:100',
             'price' => 'required|numeric|min:0',
+            'type' => 'nullable|in:paid,free',
         ]);
 
         if ($validator->fails()) {
@@ -60,6 +62,7 @@ class PackageAdminController extends Controller
             'description_en' => $request->description_en,
             'sessions_count' => $request->sessions_count,
             'price' => $request->price,
+            'type' => $request->type ?? 'paid',
             'is_active' => $request->is_active ?? true,
         ]);
 
@@ -84,6 +87,7 @@ class PackageAdminController extends Controller
                 'description_en' => $package->description_en,
                 'sessions_count' => $package->sessions_count,
                 'price' => $package->price,
+                'type' => $package->type,
                 'price_per_session' => $package->price_per_session,
                 'is_active' => $package->is_active,
                 'created_at' => $package->created_at,
@@ -104,6 +108,7 @@ class PackageAdminController extends Controller
             'description_en' => 'nullable|string',
             'sessions_count' => 'sometimes|integer|min:1|max:100',
             'price' => 'sometimes|numeric|min:0',
+            'type' => 'sometimes|in:paid,free',
             'is_active' => 'sometimes|boolean',
         ]);
 
@@ -113,7 +118,7 @@ class PackageAdminController extends Controller
 
         $package->update($request->only([
             'name_ar', 'name_en', 'description_ar', 'description_en',
-            'sessions_count', 'price', 'is_active',
+            'sessions_count', 'price', 'type', 'is_active',
         ]));
 
         return response()->json([

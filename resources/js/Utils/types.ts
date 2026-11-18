@@ -833,6 +833,7 @@ export interface SessionsPackage {
   description_en: string | null;
   sessions_count: number;
   price: number;
+  type?: 'paid' | 'free' | string;
   price_per_session: number;
   is_active: boolean;
   created_at?: string;

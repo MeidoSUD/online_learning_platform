@@ -10,6 +10,9 @@ class SessionsPackages extends Model
 {
     use HasFactory;
 
+    public const TAKAFUL_PACKAGE_ID = 4;
+
+
     protected $table = 'sessions_packages';
 
     protected $fillable = [
@@ -19,6 +22,7 @@ class SessionsPackages extends Model
         'description_en',
         'sessions_count',
         'price',
+        'type',
         'discount_percentage',
         'is_active',
     ];
