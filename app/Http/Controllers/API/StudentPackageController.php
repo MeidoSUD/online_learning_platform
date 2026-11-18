@@ -30,6 +30,7 @@ class StudentPackageController extends Controller
     public function index()
     {
         $packages = SessionsPackages::where('is_active', true)
+            ->where('id', '!=', SessionsPackages::TAKAFUL_PACKAGE_ID)
             ->orderBy('sessions_count')
             ->get()
             ->map(function ($package) {
@@ -48,6 +49,7 @@ class StudentPackageController extends Controller
 
         return response()->json([
             'status' => true,
+
             'data' => $packages,
         ]);
     }
@@ -378,11 +380,13 @@ class StudentPackageController extends Controller
 
             // Check if student has a conflicting upcoming session
             $validationService = app(\App\Services\Booking\BookingValidationService::class);
-            $conflictCheck = $validationService->checkStudentSessionConflict($studentId, [[
-                'date' => $slotDate,
-                'start_time' => $startTime,
-                'end_time' => $endTime,
-            ]]);
+            $conflictCheck = $validationService->checkStudentSessionConflict($studentId, [
+                [
+                    'date' => $slotDate,
+                    'start_time' => $startTime,
+                    'end_time' => $endTime,
+                ]
+            ]);
             if ($conflictCheck['has_conflict']) {
                 return response()->json([
                     'status' => false,
