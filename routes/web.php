@@ -31,7 +31,7 @@ use App\Http\Controllers\Admin\SupportTicketController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\ReportsController;
-use App\Http\Controllers\Api\TeacherApplicationController;
+use App\Http\Controllers\API\TeacherApplicationController;
 use App\Http\Controllers\Teacher\TeacherProfileController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Web\UserPaymentMethodWebController;
