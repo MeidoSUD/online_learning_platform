@@ -75,7 +75,7 @@ class AppConfigController extends Controller
                 'current_version' => $currentVersion,
                 'force_update' => $isCurrentVersionOutdated ? (bool) $forceUpdate : false,
                 'maintenance_mode' => (bool) $maintenanceEnabled,
-                'package_enable' => (bool) Setting::getValue('package_enable', false),
+                'package_enable' => filter_var(Setting::getValue('package_enable', false), FILTER_VALIDATE_BOOLEAN),
                 'social_login_enabled' => $socialLoginEnabled,
                 'enable_social_login' => $socialLoginEnabled,
             ];
@@ -169,7 +169,7 @@ class AppConfigController extends Controller
                 'app_version_android' => $appVersionAndroid,
                 'force_update_ios' => $forceUpdateIos,
                 'force_update_android' => $forceUpdateAndroid,
-                'package_enable' => (bool) Setting::getValue('package_enable', false),
+                'package_enable' => filter_var(Setting::getValue('package_enable', false), FILTER_VALIDATE_BOOLEAN),
                 'social_login_enabled' => $socialLoginEnabled,
                 'enable_social_login' => $socialLoginEnabled,
                 'ios_version' => [

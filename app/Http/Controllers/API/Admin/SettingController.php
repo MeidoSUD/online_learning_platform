@@ -4,34 +4,45 @@ namespace App\Http\Controllers\API\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
+use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class SettingController extends Controller
 {
-    public function index(): JsonResponse
+    use ApiResponse;
+    public function index(Request $request): JsonResponse
     {
-        $settings = Setting::all()->groupBy('group');
-        
-        $grouped = [];
-        foreach ($settings as $group => $groupSettings) {
-            $grouped[$group] = $groupSettings->map(function ($setting) {
-                return [
-                    'id' => $setting->id,
-                    'key' => $setting->key,
-                    'value' => $setting->value,
-                    'type' => $setting->type,
-                    'group' => $setting->group,
-                    'description' => $setting->description,
-                ];
-            })->values();
+        if ($request->has('group') && $request->group !== 'all') {
+            return $this->byGroup($request->group);
         }
 
-        return $this->success($grouped);
+        if ($request->boolean('grouped')) {
+            $settings = Setting::all()->groupBy('group');
+
+            $grouped = [];
+            foreach ($settings as $group => $groupSettings) {
+                $grouped[$group] = $groupSettings->map(function ($setting) {
+                    return [
+                        'id' => $setting->id,
+                        'key' => $setting->key,
+                        'value' => $setting->value,
+                        'type' => $setting->type,
+                        'group' => $setting->group,
+                        'description' => $setting->description,
+                    ];
+                })->values();
+            }
+
+            return $this->success($grouped);
+        }
+
+        $settings = Setting::orderBy('id', 'desc')->get();
+
+        return $this->success($settings);
     }
 
     public function byGroup(string $group): JsonResponse
-    
     {
         $settings = Setting::byGroup($group)->get();
 

@@ -44,7 +44,15 @@ export const AdminSettingsTab: React.FC = () => {
       const data = activeGroup === 'all' 
         ? await adminService.getSettings()
         : await adminService.getSettingsByGroup(activeGroup);
-      setSettings(Array.isArray(data) ? data : (data.data || []));
+      const resData = data?.data ?? data;
+      if (Array.isArray(resData)) {
+        setSettings(resData);
+      } else if (resData && typeof resData === 'object') {
+        const flattened = Object.values(resData).flat();
+        setSettings(Array.isArray(flattened) ? (flattened as Setting[]) : []);
+      } else {
+        setSettings([]);
+      }
     } catch (error: any) {
       console.error('Failed to fetch settings:', error);
       showToast(error.message || t.errorOccurred, 'error');
@@ -208,7 +216,7 @@ export const AdminSettingsTab: React.FC = () => {
           <div className="p-8 text-center">
             <RefreshCw className="animate-spin mx-auto text-primary" size={32} />
           </div>
-        ) : settings.length === 0 ? (
+        ) : (!Array.isArray(settings) || settings.length === 0) ? (
           <div className="p-8 text-center text-[var(--text-muted)]">
             {language === 'ar' ? 'لا توجد إعدادات' : 'No settings found'}
           </div>
@@ -238,7 +246,7 @@ export const AdminSettingsTab: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border)]">
-                {settings.map(setting => (
+                {Array.isArray(settings) && settings.map(setting => (
                   <tr key={setting.id} className="hover:bg-[var(--light-bg)]">
                     <td className="px-4 py-3">
                       <code className="text-sm bg-[var(--light-bg)] px-2 py-1 rounded">{setting.key}</code>
