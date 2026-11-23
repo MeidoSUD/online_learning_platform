@@ -30,6 +30,7 @@ class Booking extends Model
         'subscription_id',
         'subject_id',
         'language_id',
+        'ability_id',
         'order_id',
         'session_type',
         'sessions_count',
@@ -145,6 +146,11 @@ class Booking extends Model
     public function language(): BelongsTo
     {
         return $this->belongsTo(Languages::class, 'language_id');
+    }
+
+    public function ability(): BelongsTo
+    {
+        return $this->belongsTo(Abilities::class, 'ability_id');
     }
 
     public function order()

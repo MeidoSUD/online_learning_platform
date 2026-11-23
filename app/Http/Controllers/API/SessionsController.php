@@ -214,6 +214,16 @@ class SessionsController extends Controller
                         ];
                     }
                 }
+                if (!$subjectData && isset($session->booking->ability_id)) {
+                    $ab = \App\Models\Abilities::find($session->booking->ability_id);
+                    if ($ab) {
+                        $subjectData = [
+                            'id' => $ab->id,
+                            'name_en' => $ab->name_en,
+                            'name_ar' => $ab->name_ar,
+                        ];
+                    }
+                }
                 if (!$subjectData && isset($session->booking->general_service_id)) {
                     $gs = \App\Models\GeneralService::find($session->booking->general_service_id);
                     if ($gs) {

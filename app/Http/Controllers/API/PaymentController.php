@@ -750,16 +750,26 @@ class PaymentController extends Controller
                         : "Private lesson: {$subjectName}";
                 } 
                 elseif ($service && $service->key_name === 'language_learning') {
-                    // ✅ Language Learning service - use language name
                     if ($booking->language_id) {
                         $language = Languages::find($booking->language_id);
                         $languageName = $language?->name_en ?? 'Language';
                     } else {
                         $languageName = 'Language';
                     }
-                    return app()->getLocale() == 'ar' 
-                        ? "دراسة لغة: {$languageName}" 
+                    return app()->getLocale() == 'ar'
+                        ? "دراسة لغة: {$languageName}"
                         : "Language: {$languageName}";
+                }
+                elseif ($service && str_contains(strtolower((string) $service->key_name), 'abilit')) {
+                    if ($booking->ability_id) {
+                        $ability = \App\Models\Abilities::find($booking->ability_id);
+                        $abilityName = app()->getLocale() == 'ar' ? ($ability?->name_ar ?? 'القدرات') : ($ability?->name_en ?? 'Abilities');
+                    } else {
+                        $abilityName = app()->getLocale() == 'ar' ? 'القدرات والتحصيلي' : 'Abilities';
+                    }
+                    return app()->getLocale() == 'ar'
+                        ? "حجز قدرات: {$abilityName}"
+                        : "Abilities: {$abilityName}";
                 }
             }
 

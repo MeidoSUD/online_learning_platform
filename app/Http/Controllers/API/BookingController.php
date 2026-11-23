@@ -75,6 +75,8 @@ class BookingController extends Controller
             'service_id' => 'nullable|exists:services,id',
             'teacher_id' => 'nullable|integer|exists:users,id',
             'subject_id' => 'nullable|integer',
+            'ability_id' => 'nullable|integer',
+            'language_id' => 'nullable|integer',
             'availability_slot_id' => 'nullable|exists:availability_slots,id',
             'timeslot_id' => 'nullable|exists:availability_slots,id',
             'timeslot_ids' => 'nullable|array|min:1',

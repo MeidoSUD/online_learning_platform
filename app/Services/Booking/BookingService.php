@@ -12,6 +12,8 @@ use App\Models\User;
 use App\Models\TeacherInfo;
 use App\Models\UserPaymentMethod;
 use App\Models\Services;
+use App\Models\Abilities;
+use App\Models\TeacherAbility;
 use App\Helpers\PackageBookingHelper;
 use App\Traits\ActivityRecorder;
 use Carbon\Carbon;
@@ -284,6 +286,8 @@ class BookingService
                 }
             }
 
+            $validAbilityId = (!$isCourse && $request->filled('ability_id')) ? (int) $request->ability_id : null;
+
             // ── 6. Create booking record ──
             $booking = Booking::create([
                 'student_id' => $studentId,
@@ -291,8 +295,9 @@ class BookingService
                 'availability_slot_id' => $slot->id,
                 'service_id' => $service_id,
                 'course_id' => $isCourse ? $course->id : null,
-                'subject_id' => (!$isCourse) ? $validSubjectId : null,
-                'language_id' => !$isCourse && $request->filled('language_id') ? $request->language_id : null,
+                'subject_id' => (!$isCourse && !$validAbilityId && !$request->filled('language_id')) ? $validSubjectId : null,
+                'language_id' => !$isCourse && $request->filled('language_id') ? (int) $request->language_id : null,
+                'ability_id' => $validAbilityId,
                 'subscription_id' => $isPackageBooking ? (int) $request->subscription_id : null,
                 'booking_reference' => $this->generateBookingReference(),
                 'session_type' => $sessionType,
@@ -323,6 +328,7 @@ class BookingService
                 'teacher_id' => $booking->teacher_id,
                 'user_id' => $studentId,
                 'language_id' => $booking->language_id,
+                'ability_id' => $booking->ability_id,
                 'course_id' => $booking->course_id,
                 'session_type' => $booking->session_type,
                 'sessions_count' => $booking->sessions_count,

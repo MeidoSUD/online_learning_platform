@@ -463,7 +463,7 @@ class Sessions extends Model
         }
 
         try {
-            $booking = $booking->load(['subject.service', 'course', 'courseGroup']);
+            $booking = $booking->load(['subject.service', 'course', 'courseGroup', 'ability', 'language', 'service']);
 
             $sessionTitle = self::buildSessionTitle($booking);
 
@@ -708,7 +708,18 @@ class Sessions extends Model
             return $serviceName;
         }
 
-        // Fallback
+        if ($booking->ability) {
+            $serviceName = $booking->service->name_en ?? 'Abilities';
+            $abilityName = $booking->ability->name_en ?? $booking->ability->name_ar ?? 'Ability';
+            return "{$serviceName} - {$abilityName}";
+        }
+
+        if ($booking->language) {
+            $serviceName = $booking->service->name_en ?? 'Language';
+            $langName = $booking->language->name_en ?? $booking->language->name_ar ?? 'Language';
+            return "{$serviceName} - {$langName}";
+        }
+
         return 'Session55';
     }
 

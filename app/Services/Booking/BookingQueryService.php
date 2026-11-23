@@ -35,6 +35,7 @@ class BookingQueryService
             'teacher.profile',
             'service',
             'language',
+            'ability',
             'generalService'
         ])->where('student_id', $studentId);
 
@@ -81,6 +82,12 @@ class BookingQueryService
                     'name_en' => $booking->language->name_en,
                     'name_ar' => $booking->language->name_ar,
                 ];
+            } elseif ($booking->ability_id && $booking->ability) {
+                $subjectData = [
+                    'id' => $booking->ability->id,
+                    'name_en' => $booking->ability->name_en,
+                    'name_ar' => $booking->ability->name_ar,
+                ];
             } elseif ($booking->general_service_id && $booking->generalService) {
                 $subjectData = [
                     'id' => $booking->generalService->id,
@@ -104,6 +111,7 @@ class BookingQueryService
                 'booking_reference' => (string) $booking->booking_reference,
                 'service_id' => $booking->service_id,
                 'language_id' => $booking->language_id,
+                'ability_id' => $booking->ability_id,
                 'general_service_id' => $booking->general_service_id,
                 'subject_id' => $booking->subject_id,
                 'course_id' => $booking->course_id,
@@ -115,6 +123,11 @@ class BookingQueryService
                     'id' => $booking->language->id,
                     'name_en' => $booking->language->name_en,
                     'name_ar' => $booking->language->name_ar,
+                ] : null,
+                'ability' => $booking->ability ? [
+                    'id' => $booking->ability->id,
+                    'name_en' => $booking->ability->name_en,
+                    'name_ar' => $booking->ability->name_ar,
                 ] : null,
                 'general_service' => $booking->generalService,
                 'created_at' => $booking->created_at ? $booking->created_at->toISOString() : '',
@@ -171,6 +184,7 @@ class BookingQueryService
             'payment',
             'subject',
             'language',
+            'ability',
             'service',
             'generalService',
             'sessions' => function ($query) {
@@ -245,12 +259,18 @@ class BookingQueryService
             'created_at' => $booking->created_at ? $booking->created_at->toISOString() : '',
             'service_id' => $booking->service_id,
             'language_id' => $booking->language_id,
+            'ability_id' => $booking->ability_id,
             'subject' => $subjectData,
             'service' => $booking->service,
             'language' => $booking->language ? [
                 'id' => $booking->language->id,
                 'name_en' => $booking->language->name_en,
                 'name_ar' => $booking->language->name_ar,
+            ] : null,
+            'ability' => $booking->ability ? [
+                'id' => $booking->ability->id,
+                'name_en' => $booking->ability->name_en,
+                'name_ar' => $booking->ability->name_ar,
             ] : null,
             'general_service' => $booking->generalService,
 
@@ -356,6 +376,9 @@ class BookingQueryService
                 } elseif (isset($session->booking->language_id)) {
                     $lang = Languages::find($session->booking->language_id);
                     if ($lang) $subjectData = ['id' => $lang->id, 'name_en' => $lang->name_en, 'name_ar' => $lang->name_ar];
+                } elseif (isset($session->booking->ability_id)) {
+                    $ab = \App\Models\Abilities::find($session->booking->ability_id);
+                    if ($ab) $subjectData = ['id' => $ab->id, 'name_en' => $ab->name_en, 'name_ar' => $ab->name_ar];
                 } elseif (isset($session->booking->general_service_id)) {
                     $gs = GeneralService::find($session->booking->general_service_id);
                     if ($gs) $subjectData = ['id' => $gs->id, 'name_en' => $gs->title_en ?? $gs->name_en ?? '', 'name_ar' => $gs->title_ar ?? $gs->name_ar ?? ''];
