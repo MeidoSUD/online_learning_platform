@@ -116,7 +116,8 @@ export type {
   AppNotification, BooksModel, SavedCard, StudentSubscription, StudentPackage,
   CheckoutResponse, PaymentStatusResponse, StudentOrder, BookingDetails,
   Instruction, InstructionPayload,
-  MarketingAnnouncement, MarketingAnnouncementPayload
+  MarketingAnnouncement, MarketingAnnouncementPayload,
+  AppConfigSettings
 };
 
 export const AUTH_SESSION_EXPIRED = 'auth:session-expired';
@@ -1038,6 +1039,19 @@ getMarketingAudienceCount: (target_type: string, target_user_id?: number, target
 
 export const adsService = {
   getAds: (platform: 'web' | 'app' | 'both' = 'web') => fetchWithAuth(`/ads?platform=${platform}`).then(res => res.data.ads || []),
+};
+
+export const appConfigService = {
+  getPublicAppConfig: async (): Promise<any> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/app-config?platform=web&version=1.0.0`);
+      if (!response.ok) return null;
+      const json = await response.json();
+      return json?.data || json;
+    } catch {
+      return null;
+    }
+  },
 };
 
 export const settingsService = {

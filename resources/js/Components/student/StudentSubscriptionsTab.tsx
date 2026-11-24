@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
+import { useAppConfig } from '../../Contexts/AppConfigContext';
 import { 
   Package, 
   ChevronLeft, 
@@ -8,7 +9,8 @@ import {
   AlertCircle, 
   RotateCw,
   ArrowRight,
-  ArrowLeft
+  ArrowLeft,
+  Loader2
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { studentService } from '../../Services/api';
@@ -54,6 +56,7 @@ export const StudentSubscriptionsTab: React.FC<StudentSubscriptionsTabProps> = (
   onBack 
 }) => {
   const { language, direction } = useLanguage();
+  const { isPackageEnabled, loading: configLoading } = useAppConfig();
   const isAr = language === 'ar';
 
   const [subscriptions, setSubscriptions] = useState<SubscriptionItem[]>([]);
@@ -68,6 +71,10 @@ export const StudentSubscriptionsTab: React.FC<StudentSubscriptionsTabProps> = (
   const [isPackagesModalOpen, setIsPackagesModalOpen] = useState(false);
 
   const fetchSubscriptions = useCallback(async () => {
+    if (!isPackageEnabled) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -79,7 +86,7 @@ export const StudentSubscriptionsTab: React.FC<StudentSubscriptionsTabProps> = (
     } finally {
       setLoading(false);
     }
-  }, [isAr]);
+  }, [isAr, isPackageEnabled]);
 
   const fetchDetail = useCallback(async (id: number) => {
     setDetailLoading(true);
@@ -96,8 +103,14 @@ export const StudentSubscriptionsTab: React.FC<StudentSubscriptionsTabProps> = (
   }, [isAr]);
 
   useEffect(() => {
-    fetchSubscriptions();
-  }, [fetchSubscriptions]);
+    if (!configLoading) {
+      if (isPackageEnabled) {
+        fetchSubscriptions();
+      } else {
+        setLoading(false);
+      }
+    }
+  }, [configLoading, isPackageEnabled, fetchSubscriptions]);
 
   useEffect(() => {
     if (selectedSubscriptionId !== null) {
@@ -265,6 +278,37 @@ export const StudentSubscriptionsTab: React.FC<StudentSubscriptionsTabProps> = (
 
   const ChevronBackIcon = direction === 'rtl' ? ChevronRight : ChevronLeft;
   const ArrowNextIcon = direction === 'rtl' ? ArrowLeft : ArrowRight;
+
+  if (configLoading) {
+    return (
+      <div className="min-h-[80vh] bg-[#EFF6F4] -m-4 sm:-m-6 p-4 sm:p-6 flex flex-col justify-center items-center">
+        <Loader2 className="animate-spin text-[#0D4A5F]" size={36} />
+      </div>
+    );
+  }
+
+  if (!isPackageEnabled) {
+    return (
+      <div className="min-h-[80vh] bg-[#EFF6F4] -m-4 sm:-m-6 p-4 sm:p-6 flex flex-col justify-center items-center">
+        <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm max-w-md w-full text-center space-y-4">
+          <div className="w-16 h-16 rounded-2xl bg-gray-100 text-gray-400 flex items-center justify-center mx-auto">
+            <Package size={32} />
+          </div>
+          <p className="text-base font-bold text-[#0D4A5F]">
+            {isAr ? 'لا توجد باقات متاحة' : 'No packages available'}
+          </p>
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="mt-4 px-6 py-2.5 bg-[#5B9F48] text-white text-sm font-bold rounded-xl transition hover:opacity-90"
+            >
+              {isAr ? 'العودة للرئيسية' : 'Back to Overview'}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if (selectedSubscriptionId !== null) {
     const sub = detailData;

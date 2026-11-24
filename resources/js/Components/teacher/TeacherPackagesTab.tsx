@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
+import { useAppConfig } from '../../Contexts/AppConfigContext';
 import { Package, CheckCircle2, AlertCircle, Loader2, ArrowLeft, RefreshCw } from 'lucide-react';
 import { teacherService, UserData } from '../../Services/api';
 
@@ -10,6 +11,7 @@ interface TeacherPackagesTabProps {
 
 export const TeacherPackagesTab: React.FC<TeacherPackagesTabProps> = ({ user, onNavigate }) => {
   const { language } = useLanguage();
+  const { isPackageEnabled, loading: configLoading } = useAppConfig();
   const isAr = language === 'ar';
 
   const [packages, setPackages] = useState<any[]>([]);
@@ -20,7 +22,11 @@ export const TeacherPackagesTab: React.FC<TeacherPackagesTabProps> = ({ user, on
 
   const isVerified = Boolean(user?.verified || user?.profile?.verified);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
+    if (!isPackageEnabled) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const res = await teacherService.getPackages();
@@ -41,11 +47,17 @@ export const TeacherPackagesTab: React.FC<TeacherPackagesTabProps> = ({ user, on
     } finally {
       setLoading(false);
     }
-  };
+  }, [isPackageEnabled]);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (!configLoading) {
+      if (isPackageEnabled) {
+        loadData();
+      } else {
+        setLoading(false);
+      }
+    }
+  }, [configLoading, isPackageEnabled, loadData]);
 
   const handleToggleOffer = async () => {
     if (toggling) return;
@@ -83,6 +95,37 @@ export const TeacherPackagesTab: React.FC<TeacherPackagesTabProps> = ({ user, on
       setToggling(false);
     }
   };
+
+  if (configLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="animate-spin text-[#0D4A5F]" size={36} />
+      </div>
+    );
+  }
+
+  if (!isPackageEnabled) {
+    return (
+      <div className="max-w-4xl mx-auto py-12 px-4 text-center">
+        <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm max-w-md mx-auto space-y-4">
+          <div className="w-16 h-16 rounded-2xl bg-gray-100 text-gray-400 flex items-center justify-center mx-auto">
+            <Package size={32} />
+          </div>
+          <p className="text-base font-bold text-slate-800">
+            {isAr ? 'لا توجد باقات متاحة' : 'No packages available'}
+          </p>
+          {onNavigate && (
+            <button
+              onClick={() => onNavigate('overview')}
+              className="mt-4 px-6 py-2.5 bg-[#0D4A5F] text-white text-sm font-bold rounded-xl transition hover:opacity-90"
+            >
+              {isAr ? 'العودة للرئيسية' : 'Back to Overview'}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in font-sans max-w-4xl mx-auto">

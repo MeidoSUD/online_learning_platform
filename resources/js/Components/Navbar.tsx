@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useLanguage } from '../Contexts/LanguageContext';
+import { useAppConfig } from '../Contexts/AppConfigContext';
 import { Bell, LogOut, User, Globe, Menu, AlertCircle, CreditCard, FileText, Award, Layers, Video, X, Check, School, CreditCard as PaymentIcon, BellRing, Clock, Loader2, Trash2, Headphones, Package, SlidersHorizontal, Rocket, Sparkles, Star } from 'lucide-react';
 import { AuthResponse, notificationService, AppNotification } from '../Services/api';
 import { Logo } from './Logo';
@@ -47,6 +48,7 @@ function getRelativeTime(dateStr: string, language: string): string {
 
 export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, setActiveTab }) => {
   const { t, language, setLanguage, direction } = useLanguage();
+  const { isPackageEnabled } = useAppConfig();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -177,7 +179,7 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
   const studentLinks = [
     { id: 'overview', label: language === 'ar' ? 'الرئيسية' : 'Home' },
     { id: 'orders', label: language === 'ar' ? 'طلباتي' : 'My Requests' },
-    { id: 'subscriptions', label: language === 'ar' ? 'باقاتي' : 'My Packages' },
+    ...(isPackageEnabled ? [{ id: 'subscriptions', label: language === 'ar' ? 'باقاتي' : 'My Packages' }] : []),
     { id: 'schedule', label: t.mySchedule },
     { id: 'favorites', label: language === 'ar' ? 'المفضلة' : 'My Favorites' },
     { id: 'ai', label: language === 'ar' ? 'الذكاء الاصطناعي' : 'AI Assistant' },
@@ -365,9 +367,11 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
                       <button onClick={() => { setActiveTab('orders'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">
                         <FileText size={16} /> {language === 'ar' ? 'طلباتي' : 'My Requests'}
                       </button>
-                      <button onClick={() => { setActiveTab('subscriptions'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">
-                        <Package size={16} /> {language === 'ar' ? 'باقاتي واشتراكاتي' : 'My Subscriptions'}
-                      </button>
+                      {isPackageEnabled && (
+                        <button onClick={() => { setActiveTab('subscriptions'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">
+                          <Package size={16} /> {language === 'ar' ? 'باقاتي واشتراكاتي' : 'My Subscriptions'}
+                        </button>
+                      )}
                       <button onClick={() => { setActiveTab('preferences'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">
                         <SlidersHorizontal size={16} /> {language === 'ar' ? 'تفضيلات الخدمات' : 'Service Preferences'}
                       </button>
@@ -404,9 +408,11 @@ export const Navbar: React.FC<NavbarProps> = ({ userData, onLogout, activeTab, s
                           </span>
                         )}
                       </button>
-                      <button onClick={() => { setActiveTab('packages'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">
-                        <Package size={16} /> {language === 'ar' ? 'الباقات التعليمية' : 'Packages'}
-                      </button>
+                      {isPackageEnabled && (
+                        <button onClick={() => { setActiveTab('packages'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">
+                          <Package size={16} /> {language === 'ar' ? 'الباقات التعليمية' : 'Packages'}
+                        </button>
+                      )}
                       <button onClick={() => { setActiveTab('withdrawal-options'); setShowProfileMenu(false); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--text-main)] hover:bg-[var(--light-bg)]">
                         <CreditCard size={16} /> {language === 'ar' ? 'خيارات السحب' : 'Withdrawal Options'}
                       </button>

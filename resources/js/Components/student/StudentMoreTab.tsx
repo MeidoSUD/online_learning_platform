@@ -1,5 +1,6 @@
 import React from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
+import { useAppConfig } from '../../Contexts/AppConfigContext';
 import { 
   User, 
   Calendar, 
@@ -26,6 +27,7 @@ interface StudentMoreTabProps {
 
 export const StudentMoreTab: React.FC<StudentMoreTabProps> = ({ user, onNavigate, onLogout }) => {
   const { language, setLanguage, direction } = useLanguage();
+  const { isPackageEnabled } = useAppConfig();
 
   const handleLogout = () => {
     const confirmed = window.confirm(
@@ -61,7 +63,7 @@ export const StudentMoreTab: React.FC<StudentMoreTabProps> = ({ user, onNavigate
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className={`grid ${isPackageEnabled ? 'grid-cols-3' : 'grid-cols-2'} gap-3`}>
         <div
           onClick={() => onNavigate('bookings')}
           className="bg-white rounded-2xl p-4 border border-[var(--border)] shadow-sm hover:shadow-md hover:border-primary/40 transition-all text-center cursor-pointer flex flex-col items-center justify-center group"
@@ -86,17 +88,19 @@ export const StudentMoreTab: React.FC<StudentMoreTabProps> = ({ user, onNavigate
           </span>
         </div>
 
-        <div
-          onClick={() => onNavigate('subscriptions')}
-          className="bg-white rounded-2xl p-4 border border-[var(--border)] shadow-sm hover:shadow-md hover:border-primary/40 transition-all text-center cursor-pointer flex flex-col items-center justify-center group"
-        >
-          <div className="h-12 w-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-            <Package size={22} />
+        {isPackageEnabled && (
+          <div
+            onClick={() => onNavigate('subscriptions')}
+            className="bg-white rounded-2xl p-4 border border-[var(--border)] shadow-sm hover:shadow-md hover:border-primary/40 transition-all text-center cursor-pointer flex flex-col items-center justify-center group"
+          >
+            <div className="h-12 w-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+              <Package size={22} />
+            </div>
+            <span className="text-xs font-bold text-[var(--text-main)] group-hover:text-primary transition-colors">
+              {language === 'ar' ? 'اشتراكاتي' : 'Subscriptions'}
+            </span>
           </div>
-          <span className="text-xs font-bold text-[var(--text-main)] group-hover:text-primary transition-colors">
-            {language === 'ar' ? 'اشتراكاتي' : 'Subscriptions'}
-          </span>
-        </div>
+        )}
       </div>
 
       <div className="bg-white rounded-3xl border border-[var(--border)] shadow-sm divide-y divide-[var(--border)] overflow-hidden">

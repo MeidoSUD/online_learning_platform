@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
+import { useAppConfig } from '../../Contexts/AppConfigContext';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { CheckCircle, Clock, CreditCard, Calendar, BookOpen, AlertTriangle, Loader2, Plus, Minus, Package, ChevronLeft, RefreshCw } from 'lucide-react';
@@ -16,6 +17,7 @@ const BOOKING_STEPS = ['subject', 'time', 'preview', 'payment', 'success'] as co
 
 export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onClose, teacher, serviceId }) => {
   const { t, language } = useLanguage();
+  const { isPackageEnabled } = useAppConfig();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,6 +25,7 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
   const [selectedService, setSelectedService] = useState<any>(null);
   const [selectedSubject, setSelectedSubject] = useState<any>(null);
   const [selectedLanguage, setSelectedLanguage] = useState<any>(null);
+  const [selectedAbility, setSelectedAbility] = useState<any>(null);
 
   const [selectedTimeSlots, setSelectedTimeSlots] = useState<number[]>([]);
   const [slotDates, setSlotDates] = useState<Record<number, string>>({});
@@ -47,7 +50,7 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
   const teacherServices: any[] = teacherProfile?.services || teacher?.services || [];
   const subjects: any[] = teacherProfile?.teacher_subjects || teacher?.teacher_subjects || [];
   const languages: any[] = teacherProfile?.languages || teacher?.languages || [];
-  const abilities: any[] = teacherProfile?.abilities || teacher?.abilities || [];
+  const abilities: any[] = teacherProfile?.abilities || teacher?.abilities || teacherProfile?.teacher_abilities || teacher?.teacher_abilities || [];
   const availableTimes = teacherProfile?.available_times || teacher?.available_times || [];
   const individualPrice = Number(teacherProfile?.individual_hour_price ?? teacher?.individual_hour_price ?? 0);
   const groupPrice = Number(teacherProfile?.group_hour_price ?? teacher?.group_hour_price ?? 0);
@@ -85,7 +88,9 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
     if (isOpen) {
       const initialSvc = teacherServices.find((s: any) => (s.service_id || s.id) === serviceId) || teacherServices[0] || null;
       setSelectedService(initialSvc);
-      loadSubscriptions();
+      if (isPackageEnabled) {
+        loadSubscriptions();
+      }
       loadSavedCards();
     }
     return () => {
@@ -96,6 +101,7 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
       setStep(0);
       setSelectedSubject(null);
       setSelectedLanguage(null);
+      setSelectedAbility(null);
       setSelectedService(null);
       setSelectedTimeSlots([]);
       setSlotDates({});
@@ -176,11 +182,14 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
     setError(null);
     try {
       await validateSelectedTimeslots(sessionCount);
-      const effectiveServiceId = isLanguageService
-        ? 2
-        : isAbilityService
-        ? 6
-        : (selectedService?.service_id || selectedService?.id || serviceId || 3);
+      let effectiveServiceId = selectedService?.service_id || selectedService?.id || serviceId || 3;
+      if (isAbilityService) {
+        const abilitySvc = teacherServices.find((s: any) => (s.key_name || '').toLowerCase().includes('abilit'));
+        effectiveServiceId = abilitySvc?.service_id || abilitySvc?.id || (selectedService?.key_name?.toLowerCase().includes('abilit') ? (selectedService.service_id || selectedService.id) : 6);
+      } else if (isLanguageService) {
+        const langSvc = teacherServices.find((s: any) => (s.key_name || '').toLowerCase().includes('lang'));
+        effectiveServiceId = langSvc?.service_id || langSvc?.id || (selectedService?.key_name?.toLowerCase().includes('lang') ? (selectedService.service_id || selectedService.id) : 2);
+      }
 
       const payload: any = {
         teacher_id: teacher.id,
@@ -188,7 +197,9 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
         type: 'single',
       };
 
-      if (isLanguageService && selectedLanguage) {
+      if (isAbilityService && selectedAbility) {
+        payload.ability_id = selectedAbility.ability_id || selectedAbility.id;
+      } else if (isLanguageService && selectedLanguage) {
         payload.language_id = selectedLanguage.language_id || selectedLanguage.id;
       } else if (selectedSubject) {
         payload.subject_id = selectedSubject.subject_id || selectedSubject.id;
@@ -197,7 +208,7 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
       payload.timeslot_ids = selectedTimeSlots;
       payload.total_sessions = totalSessions;
 
-      if (subscription) {
+      if (subscription && isPackageEnabled) {
         payload.subscription_id = subscription.id;
       }
 
@@ -317,7 +328,10 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
 
   const canProceed = () => {
     switch (step) {
-      case 0: return isLanguageService ? !!selectedLanguage : !!selectedSubject;
+      case 0:
+        if (isLanguageService) return !!selectedLanguage;
+        if (isAbilityService) return !!selectedAbility;
+        return !!selectedSubject;
       case 1: return selectedTimeSlots.length > 0;
       case 2: return true;
       case 3: return true;
@@ -354,6 +368,7 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
                   setSelectedService(svc);
                   setSelectedSubject(null);
                   setSelectedLanguage(null);
+                  setSelectedAbility(null);
                 }}
                 className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
                   isSelected ? 'bg-white text-primary shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
@@ -371,7 +386,7 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
         {isLanguageService
           ? (language === 'ar' ? 'اختر اللغة' : 'Select Language')
           : isAbilityService
-          ? (language === 'ar' ? 'اختر الاختبار / القدرة' : 'Select Ability Test')
+          ? (language === 'ar' ? 'اختر القدرات' : 'Select Ability')
           : (language === 'ar' ? 'اختر المادة' : 'Select Subject')}
       </h3>
 
@@ -403,16 +418,20 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
       ) : isAbilityService ? (
         abilities.length === 0 ? (
           <p className="text-[var(--text-muted)] text-sm py-4 text-center">
-            {language === 'ar' ? 'لا توجد قدرات متاحة' : 'No abilities available'}
+            {language === 'ar' ? 'لا توجد قدرات متاحة لهذا المعلم' : 'No abilities available for this teacher'}
           </p>
         ) : (
           abilities.map((ability: any) => {
-            const isSelected = selectedSubject?.id === ability.id;
-            const name = language === 'ar' ? (ability.name_ar || ability.name_en) : (ability.name_en || ability.name_ar);
+            const abilityId = ability.ability_id || ability.id || ability.pivot?.ability_id || ability.pivot_id;
+            const isSelected = (selectedAbility?.ability_id || selectedAbility?.id) === abilityId;
+            const abilityObj = ability.ability || ability;
+            const name = language === 'ar'
+              ? (abilityObj.name_ar || abilityObj.name_en || abilityObj.title_ar || abilityObj.title_en || abilityObj.name || abilityObj.title)
+              : (abilityObj.name_en || abilityObj.name_ar || abilityObj.title_en || abilityObj.title_ar || abilityObj.name || abilityObj.title);
             return (
               <button
-                key={ability.id}
-                onClick={() => setSelectedSubject(ability)}
+                key={abilityId || ability.id}
+                onClick={() => setSelectedAbility({ ...ability, id: abilityId, ability_id: abilityId })}
                 className={`w-full text-start p-3.5 rounded-xl border transition-all flex items-center justify-between ${
                   isSelected
                     ? 'bg-primary/10 border-primary shadow-sm'
@@ -579,12 +598,16 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
               {isLanguageService
                 ? (language === 'ar' ? 'اللغة' : 'Language')
                 : isAbilityService
-                ? (language === 'ar' ? 'الاختبار' : 'Test')
+                ? (language === 'ar' ? 'القدرات' : 'Ability')
                 : (language === 'ar' ? 'المادة' : 'Subject')}
             </span>
             <span className="font-medium">
               {isLanguageService
                 ? (language === 'ar' ? selectedLanguage?.name_ar : selectedLanguage?.name_en)
+                : isAbilityService
+                ? (language === 'ar'
+                    ? (selectedAbility?.name_ar || selectedAbility?.name_en || selectedAbility?.title_ar || selectedAbility?.title_en || selectedAbility?.name || selectedAbility?.title || selectedAbility?.ability?.name_ar)
+                    : (selectedAbility?.name_en || selectedAbility?.name_ar || selectedAbility?.title_en || selectedAbility?.title_ar || selectedAbility?.name || selectedAbility?.title || selectedAbility?.ability?.name_en))
                 : (selectedSubject?.title || (language === 'ar' ? (selectedSubject?.name_ar || selectedSubject?.title_ar) : (selectedSubject?.name_en || selectedSubject?.title_en)))}
             </span>
           </div>
@@ -651,7 +674,7 @@ export const BookingFlowModal: React.FC<BookingFlowModalProps> = ({ isOpen, onCl
           </div>
         </div>
 
-        {subscriptions.filter((s: any) => s.is_active && s.sessions_remaining > 0).map((sub: any) => (
+        {isPackageEnabled && subscriptions.filter((s: any) => s.is_active && s.sessions_remaining > 0).map((sub: any) => (
           <button key={sub.id} onClick={() => handlePayWithPackage(sub)}
             disabled={loading}
             className="w-full p-3 rounded-lg border border-green-200 bg-primary-pale hover:bg-primary-pale transition-all flex items-center gap-3 disabled:opacity-60"

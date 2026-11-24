@@ -237,11 +237,6 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({
     ''
   ).toLowerCase();
 
-  const services = Array.isArray(profile?.services) ? profile.services : (Array.isArray(teacherData?.services) ? teacherData.services : []);
-  const isLanguageService = mainKey.includes('lang') || services.some((s: any) => (s?.key_name || '').toLowerCase().includes('lang'));
-  const isAbilityService = mainKey.includes('abilit') || services.some((s: any) => (s?.key_name || '').toLowerCase().includes('abilit'));
-  const showSubjects = !isLanguageService && !isAbilityService;
-
   const rawLanguages = profile?.languages || teacherData?.languages || [];
   const languages: string[] = Array.isArray(rawLanguages)
     ? rawLanguages.map((l: any) => {
@@ -250,13 +245,19 @@ export const TeacherDetailsPage: React.FC<TeacherDetailsPageProps> = ({
       }).filter(Boolean)
     : [];
 
-  const rawAbilities = profile?.abilities || teacherData?.abilities || [];
+  const rawAbilities = profile?.abilities || teacherData?.abilities || profile?.teacher_abilities || teacherData?.teacher_abilities || [];
   const abilities: string[] = Array.isArray(rawAbilities)
     ? rawAbilities.map((a: any) => {
         if (typeof a === 'string') return a.trim();
-        return (language === 'ar' ? (a.name_ar || a.name_en) : (a.name_en || a.name_ar) || '').trim();
+        const obj = a?.ability || a;
+        return (language === 'ar' ? (obj?.name_ar || obj?.name_en || obj?.title_ar || obj?.title_en || obj?.name || obj?.title) : (obj?.name_en || obj?.name_ar || obj?.title_en || obj?.title_ar || obj?.name || obj?.title) || '').trim();
       }).filter(Boolean)
     : [];
+
+  const services = Array.isArray(profile?.services) ? profile.services : (Array.isArray(teacherData?.services) ? teacherData.services : []);
+  const isLanguageService = mainKey.includes('lang') || services.some((s: any) => (s?.key_name || '').toLowerCase().includes('lang')) || (subjects.length === 0 && languages.length > 0);
+  const isAbilityService = mainKey.includes('abilit') || services.some((s: any) => (s?.key_name || '').toLowerCase().includes('abilit')) || (subjects.length === 0 && languages.length === 0 && rawAbilities.length > 0);
+  const showSubjects = !isLanguageService && !isAbilityService;
 
   const rawReviews = profile?.reviews || teacherData?.reviews || [];
   const reviews: any[] = Array.isArray(rawReviews) ? rawReviews : [];

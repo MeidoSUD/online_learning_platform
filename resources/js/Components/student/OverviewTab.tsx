@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
+import { useAppConfig } from '../../Contexts/AppConfigContext';
 import { 
   Clock, 
   Star, 
@@ -63,6 +64,7 @@ function getNationalityFlag(nationality?: string | null): string {
 
 export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate, onTeacherSelect }) => {
   const { t, direction, language } = useLanguage();
+  const { isPackageEnabled } = useAppConfig();
   const [loading, setLoading] = useState(true);
 
   const [lastBooking, setLastBooking] = useState<Booking | null>(null);
@@ -136,7 +138,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate, onTe
           studentService.getBookings().catch(() => []),
           studentService.getTeachers().catch(() => []),
           studentService.getCourses().catch(() => []),
-          studentService.getPublicPackages().catch(() => []),
+          (isPackageEnabled ? studentService.getPublicPackages().catch(() => []) : Promise.resolve([])),
           studentService.getServices().catch(() => []),
           featuredTeacherService.getBanners(10).catch(() => ({ count: 0, banners: [] })),
         ]);
@@ -359,12 +361,14 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate, onTe
             >
               {language === 'ar' ? 'طلباتي الخاصة' : 'My Orders'}
             </button>
-            <button
-              onClick={() => onNavigate('subscriptions')}
-              className="px-4 py-2.5 rounded-xl bg-[var(--accent)] hover:opacity-95 text-navy font-bold text-sm transition-all shadow-md"
-            >
-              {language === 'ar' ? 'باقاتي واشتراكاتي' : 'My Packages'}
-            </button>
+            {isPackageEnabled && (
+              <button
+                onClick={() => onNavigate('subscriptions')}
+                className="px-4 py-2.5 rounded-xl bg-[var(--accent)] hover:opacity-95 text-navy font-bold text-sm transition-all shadow-md"
+              >
+                {language === 'ar' ? 'باقاتي واشتراكاتي' : 'My Packages'}
+              </button>
+            )}
             <button
               onClick={() => onNavigate('takaful')}
               className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-all shadow-md flex items-center gap-2"
@@ -743,7 +747,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate, onTe
         )}
       </div>
 
-      {packages.length > 0 && (
+      {isPackageEnabled && packages.length > 0 && (
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <div>

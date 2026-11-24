@@ -147,6 +147,8 @@ export interface TeacherProfileNested {
   teacher_subjects: TeacherSubjectDetail[]; // Strongly typed
   courses: any[];
   languages: any[];
+  abilities?: any[];
+  teacher_abilities?: any[];
   available_times: any[];
   current_balance?: number;
   takaful_on_off?: boolean | number;
@@ -255,6 +257,9 @@ export interface TeacherProfile extends UserData {
   individual_hour_price: number;
   teacher_subjects: TeacherSubjectDetail[];
   available_times: AvailableTime[];
+  abilities?: any[];
+  teacher_abilities?: any[];
+  languages?: any[];
 }
 
 export interface Booking {
@@ -374,9 +379,29 @@ export interface Dispute {
 export interface BookingPayload {
   teacher_id: number;
   service_id: number;
-  subject_id: number;
-  timeslot_id: number;
-  type: 'single';
+  subject_id?: number;
+  ability_id?: number;
+  language_id?: number;
+  timeslot_id?: number;
+  timeslot_ids?: number[];
+  total_sessions?: number;
+  subscription_id?: number;
+  type: 'single' | 'package';
+}
+
+export interface AppConfigSettings {
+  platform?: string;
+  package_enable?: boolean | number | string;
+  social_login_enabled?: boolean;
+  enable_social_login?: boolean;
+  maintenance_mode?: boolean;
+  maintenance_message?: string;
+  required_version?: string;
+  current_version?: string;
+  force_update?: boolean;
+  update_available?: boolean;
+  status?: string;
+  [key: string]: any;
 }
 
 export interface PaymentPayload {

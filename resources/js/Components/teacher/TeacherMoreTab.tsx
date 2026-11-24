@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
+import { useAppConfig } from '../../Contexts/AppConfigContext';
 import { 
   User, 
   Wallet, 
@@ -30,6 +31,7 @@ interface TeacherMoreTabProps {
 
 export const TeacherMoreTab: React.FC<TeacherMoreTabProps> = ({ user, onNavigate, onLogout }) => {
   const { t, language, setLanguage } = useLanguage();
+  const { isPackageEnabled } = useAppConfig();
   const isAr = language === 'ar';
 
   const [balance, setBalance] = useState<number>(0);
@@ -155,19 +157,21 @@ export const TeacherMoreTab: React.FC<TeacherMoreTabProps> = ({ user, onNavigate
           {isAr ? <ChevronLeft size={20} className="text-[#0D4A5F]/70" /> : <ChevronRight size={20} className="text-[#0D4A5F]/70" />}
         </button>
 
-        <button
-          type="button"
-          onClick={() => onNavigate && onNavigate('packages')}
-          className="w-full p-4 sm:px-6 sm:py-4 flex items-center justify-between hover:bg-slate-50 transition text-start"
-        >
-          <div className="flex items-center gap-3.5">
-            <Package size={22} className="text-[#0D4A5F]" />
-            <span className="text-[15px] font-medium text-[#0D4A5F]">
-              {isAr ? 'الباقات التعليمية' : 'Educational Packages'}
-            </span>
-          </div>
-          {isAr ? <ChevronLeft size={20} className="text-[#0D4A5F]/70" /> : <ChevronRight size={20} className="text-[#0D4A5F]/70" />}
-        </button>
+        {isPackageEnabled && (
+          <button
+            type="button"
+            onClick={() => onNavigate && onNavigate('packages')}
+            className="w-full p-4 sm:px-6 sm:py-4 flex items-center justify-between hover:bg-slate-50 transition text-start"
+          >
+            <div className="flex items-center gap-3.5">
+              <Package size={22} className="text-[#0D4A5F]" />
+              <span className="text-[15px] font-medium text-[#0D4A5F]">
+                {isAr ? 'الباقات التعليمية' : 'Educational Packages'}
+              </span>
+            </div>
+            {isAr ? <ChevronLeft size={20} className="text-[#0D4A5F]/70" /> : <ChevronRight size={20} className="text-[#0D4A5F]/70" />}
+          </button>
+        )}
 
         <button
           type="button"

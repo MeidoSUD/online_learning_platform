@@ -33,7 +33,15 @@ interface StudentDashboardScreenProps {
 }
 
 export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ data, onLogout }) => {
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab');
+      if (tabParam === 'packages') return 'subscriptions';
+      if (tabParam) return tabParam;
+    }
+    return 'overview';
+  });
   const [selectedTeacher, setSelectedTeacher] = useState<any | null>(null);
   const [selectedServiceId, setSelectedServiceId] = useState<number | undefined>(() => {
     if (typeof window !== 'undefined') {
@@ -114,6 +122,8 @@ export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ 
         setActiveTab('teacher-details');
         loadTeacherDetails(tId);
       }
+    } else if (tabParam === 'packages') {
+      setActiveTab('subscriptions');
     } else if (tabParam) {
       setActiveTab(tabParam);
     }
@@ -135,7 +145,7 @@ export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ 
         setSelectedServiceId(undefined);
       }
 
-      setActiveTab(currentTab);
+      setActiveTab(currentTab === 'packages' ? 'subscriptions' : currentTab);
 
       if (currentTab === 'teacher-details' && currentTeacherId) {
         const tId = parseInt(currentTeacherId, 10);
@@ -231,6 +241,7 @@ export const StudentDashboardScreen: React.FC<StudentDashboardScreenProps> = ({ 
         return <AiAssistantTab />;
       case 'orders':
         return <StudentOrdersTab />;
+      case 'packages':
       case 'subscriptions':
         return <StudentSubscriptionsTab onNavigateToBooking={() => handleNavigate('private-lessons')} onBack={() => handleNavigate('overview')} />;
       case 'preferences':

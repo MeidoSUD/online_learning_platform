@@ -7,6 +7,7 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { ErrorBoundary } from './Components/ErrorBoundary';
 import { ToastProvider } from './Contexts/ToastContext';
 import { LanguageProvider } from './Contexts/LanguageContext';
+import { AppConfigProvider } from './Contexts/AppConfigContext';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Ewan';
 
@@ -88,7 +89,9 @@ const initInertia = () => {
                         <ErrorBoundary>
                             <ToastProvider>
                                 <LanguageProvider>
-                                    <App {...props} />
+                                    <AppConfigProvider>
+                                        <App {...props} />
+                                    </AppConfigProvider>
                                 </LanguageProvider>
                             </ToastProvider>
                         </ErrorBoundary>

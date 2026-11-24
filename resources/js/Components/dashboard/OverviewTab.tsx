@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
+import { useAppConfig } from '../../Contexts/AppConfigContext';
 import { 
   DollarSign, 
   BookOpen, 
@@ -40,6 +41,7 @@ interface OverviewTabProps {
 
 export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) => {
   const { t, language } = useLanguage();
+  const { isPackageEnabled } = useAppConfig();
   const isAr = language === 'ar';
   
   const [loading, setLoading] = useState(true);
@@ -121,7 +123,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
           teacherService.getWallet().catch(() => null),
           teacherService.getSubjects().catch(() => []),
           teacherService.getAvailability().catch(() => []),
-          teacherService.getPackages().catch(() => null),
+          (isPackageEnabled ? teacherService.getPackages().catch(() => null) : Promise.resolve(null)),
           notificationService.getAll().catch(() => []),
           studentService.getServices().catch(() => []),
           teacherService.getTeachers().catch(() => [])
@@ -733,27 +735,29 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ user, onNavigate }) =>
             </div>
           </div>
 
-          <div
-            onClick={() => onNavigate && onNavigate('packages')}
-            className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition cursor-pointer relative group flex flex-col justify-between min-h-[120px]"
-          >
-            <div className="flex justify-between items-start">
-              <div className="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center">
-                <Package size={24} />
+          {isPackageEnabled && (
+            <div
+              onClick={() => onNavigate && onNavigate('packages')}
+              className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition cursor-pointer relative group flex flex-col justify-between min-h-[120px]"
+            >
+              <div className="flex justify-between items-start">
+                <div className="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center">
+                  <Package size={24} />
+                </div>
+                <span
+                  className={`w-4 h-4 rounded-full border-2 border-white shadow-sm ${
+                    isPackageOn ? 'bg-[#5B9F48]' : 'bg-[#BDBDBD]'
+                  }`}
+                />
               </div>
-              <span
-                className={`w-4 h-4 rounded-full border-2 border-white shadow-sm ${
-                  isPackageOn ? 'bg-[#5B9F48]' : 'bg-[#BDBDBD]'
-                }`}
-              />
+              <div className="flex justify-between items-center mt-3">
+                <span className="text-sm font-bold text-slate-800 group-hover:text-[#0D4A5F] transition truncate">
+                  {isAr ? 'الباقات التعليمية' : 'Educational Packages'}
+                </span>
+                {isAr ? <ChevronLeft size={18} className="text-slate-400 group-hover:text-slate-700 transition" /> : <ChevronRight size={18} className="text-slate-400 group-hover:text-slate-700 transition" />}
+              </div>
             </div>
-            <div className="flex justify-between items-center mt-3">
-              <span className="text-sm font-bold text-slate-800 group-hover:text-[#0D4A5F] transition truncate">
-                {isAr ? 'الباقات التعليمية' : 'Educational Packages'}
-              </span>
-              {isAr ? <ChevronLeft size={18} className="text-slate-400 group-hover:text-slate-700 transition" /> : <ChevronRight size={18} className="text-slate-400 group-hover:text-slate-700 transition" />}
-            </div>
-          </div>
+          )}
 
           <div
             onClick={() => onNavigate && onNavigate('schedule')}
