@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../../Contexts/LanguageContext';
-import { Calendar, Clock, Timer, BookOpen, ChevronLeft, ChevronRight, X, Filter, ListOrdered, Users, CheckCircle2 } from 'lucide-react';
+import { Calendar, Clock, Timer, BookOpen, ChevronLeft, ChevronRight, X, Filter, ListOrdered, Users, CheckCircle2, Loader2 } from 'lucide-react';
 import { teacherService, Session } from '../../Services/api';
 import { SessionDetailsModal } from '../dashboard/SessionDetailsModal';
 import { SessionRoomModal } from '../dashboard/SessionRoomModal';
@@ -160,6 +160,7 @@ export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = () => {
     const [selectedSession, setSelectedSession] = useState<Session | null>(null);
     const [selectedSessionOrder, setSelectedSessionOrder] = useState<{ number: number; total: number } | null>(null);
     const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+    const [isStartingSession, setIsStartingSession] = useState(false);
     const dateInputRef = useRef<HTMLInputElement>(null);
 
     const loadSessions = async () => {
@@ -221,6 +222,8 @@ export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = () => {
     })();
 
     const handleStartSession = async (sessionId: number) => {
+        setIsStartingSession(true);
+        setDetailsModalOpen(false);
         try {
             const response = await teacherService.startSession(sessionId);
             if (response.success && response.data?.agora) {
@@ -229,12 +232,13 @@ export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = () => {
                     session_id: sessionId,
                     role: 'host'
                 });
-                setDetailsModalOpen(false);
             } else {
                 alert(response.message || (isAr ? 'فشل بدء الجلسة' : 'Failed to start session'));
             }
         } catch (e: any) {
             alert(e.message || (isAr ? 'فشل بدء الجلسة' : 'Failed to start session'));
+        } finally {
+            setIsStartingSession(false);
         }
     };
 
@@ -534,13 +538,30 @@ export const TeacherLessonsTab: React.FC<TeacherLessonsTabProps> = () => {
                 onClose={() => setDetailsModalOpen(false)}
                 onStartSession={(id) => {
                     handleStartSession(id);
-                    setDetailsModalOpen(false);
                 }}
                 onEndSession={(id) => {
                     handleEndSession(id);
                 }}
                 isTeacher={true}
             />
+
+            {isStartingSession && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-sm w-full mx-auto flex flex-col items-center text-center shadow-2xl border border-slate-100">
+                        <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4">
+                            <Loader2 size={32} className="animate-spin text-emerald-600" />
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-800 mb-2">
+                            {isAr ? 'جاري بدء الجلسة...' : 'Starting Session...'}
+                        </h3>
+                        <p className="text-xs text-slate-500 leading-relaxed">
+                            {isAr
+                                ? 'يرجى الانتظار، يتم الآن تجهيز الغرفة الافتراضية والاتصال بالخادم'
+                                : 'Please wait, setting up the virtual room and connecting to server'}
+                        </p>
+                    </div>
+                </div>
+            )}
 
             <SessionRoomModal
                 isOpen={!!agoraData}

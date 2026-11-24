@@ -521,19 +521,6 @@ export const SessionRoomModal: React.FC<SessionRoomModalProps> = ({ isOpen, onCl
                             </div>
                         </div>
 
-                        {remoteList.length === 0 && joined && (
-                            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-black/40 backdrop-blur-[2px] pointer-events-none">
-                                <div className="bg-black/70 backdrop-blur-md border border-white/10 rounded-2xl px-6 py-4 flex flex-col items-center gap-3 shadow-2xl">
-                                    <Loader2 size={32} className="animate-spin text-emerald-400" />
-                                    <span className="text-white font-bold text-sm">
-                                        {isAr ? 'بانتظار انضمام الطرف الآخر...' : 'Waiting for the other participant to join...'}
-                                    </span>
-                                    <span className="text-white/50 text-xs">
-                                        {isAr ? 'سيظهر البث تلقائياً فور دخوله' : 'Stream will appear automatically once joined'}
-                                    </span>
-                                </div>
-                            </div>
-                        )}
 
                         {isSingleRemote && (
                             <div
