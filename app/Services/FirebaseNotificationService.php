@@ -5,6 +5,8 @@ namespace App\Services;
 use Kreait\Firebase\Factory;
 use Kreait\Firebase\Messaging\CloudMessage;
 use Kreait\Firebase\Messaging\Notification as FirebaseNotification;
+use Kreait\Firebase\Messaging\AndroidConfig;
+use Kreait\Firebase\Messaging\ApnsConfig;
 use Illuminate\Support\Facades\Log;
 use App\Models\User;
 
@@ -13,19 +15,77 @@ class FirebaseNotificationService
     protected $messaging;
 
     public function __construct()
-{
-    try {
-        $factory = (new Factory)
-            ->withServiceAccount(
-                config('firebase.projects.app.credentials')
-            );
+    {
+        try {
+            $factory = (new Factory)
+                ->withServiceAccount(
+                    config('firebase.projects.app.credentials')
+                );
 
-        $this->messaging = $factory->createMessaging();
-    } catch (\Exception $e) {
-        Log::error('Firebase initialization failed: ' . $e->getMessage());
-        throw $e;
+            $this->messaging = $factory->createMessaging();
+        } catch (\Exception $e) {
+            Log::error('Firebase initialization failed: ' . $e->getMessage());
+            throw $e;
+        }
     }
-}
+
+    /**
+     * Build standard CloudMessage with Notification, Data, Android channel, and APNS config.
+     */
+    protected function buildMessage(string $targetType, string $targetValue, string $title, string $body, array $data = []): CloudMessage
+    {
+        $notification = FirebaseNotification::create($title, $body);
+
+        // Ensure all values in data payload are strings for FCM HTTP v1
+        $sanitizedData = [];
+        foreach ($data as $key => $value) {
+            if (is_array($value) || is_object($value)) {
+                $sanitizedData[(string) $key] = json_encode($value, JSON_UNESCAPED_UNICODE);
+            } elseif (is_bool($value)) {
+                $sanitizedData[(string) $key] = $value ? '1' : '0';
+            } elseif ($value === null) {
+                $sanitizedData[(string) $key] = '';
+            } else {
+                $sanitizedData[(string) $key] = (string) $value;
+            }
+        }
+
+        $channelId = $data['channel_id'] ?? 'high_importance_channel';
+
+        $androidConfig = AndroidConfig::fromArray([
+            'priority' => 'high',
+            'notification' => [
+                'channel_id' => $channelId,
+                'sound' => 'default',
+                'default_sound' => true,
+                'default_vibrate_timings' => true,
+                'notification_priority' => 'PRIORITY_HIGH',
+            ],
+        ]);
+
+        $apnsConfig = ApnsConfig::fromArray([
+            'headers' => [
+                'apns-priority' => '10',
+            ],
+            'payload' => [
+                'aps' => [
+                    'alert' => [
+                        'title' => $title,
+                        'body' => $body,
+                    ],
+                    'sound' => 'default',
+                    'badge' => 1,
+                    'content-available' => 1,
+                ],
+            ],
+        ]);
+
+        return CloudMessage::withTarget($targetType, $targetValue)
+            ->withNotification($notification)
+            ->withData($sanitizedData)
+            ->withAndroidConfig($androidConfig)
+            ->withApnsConfig($apnsConfig);
+    }
 
     /**
      * Send notification to a single user
@@ -38,7 +98,6 @@ class FirebaseNotificationService
      */
     public function sendToUser(User $user, string $title, string $body, array $data = []): bool
     {
-        // Get user's FCM token (you need to store this in users table)
         $fcmToken = $user->fcm_token;
 
         if (empty($fcmToken)) {
@@ -87,23 +146,22 @@ class FirebaseNotificationService
     public function sendToToken(string $token, string $title, string $body, array $data = []): bool
     {
         try {
-            $notification = FirebaseNotification::create($title, $body);
-
-            $message = CloudMessage::withTarget('token', $token)
-                ->withNotification($notification)
-                ->withData($data);
+            $message = $this->buildMessage('token', $token, $title, $body, $data);
 
             $this->messaging->send($message);
 
             Log::info('Firebase notification sent', [
-                'token' => substr($token, 0, 10) . '...',
+                'token' => substr($token, 0, 15) . '...',
                 'title' => $title
             ]);
 
             return true;
-        } catch (\Exception $e) {
+        } catch (\Kreait\Firebase\Exception\Messaging\NotFound $e) {
+            Log::warning('FCM token not found or expired', ['token' => substr($token, 0, 15) . '...']);
+            return false;
+        } catch (\Throwable $e) {
             Log::error('Failed to send Firebase notification', [
-                'token' => substr($token, 0, 10) . '...',
+                'token' => substr($token, 0, 15) . '...',
                 'error' => $e->getMessage()
             ]);
             return false;
@@ -121,24 +179,22 @@ class FirebaseNotificationService
      */
     public function sendToTokens(array $tokens, string $title, string $body, array $data = []): array
     {
-        $notification = FirebaseNotification::create($title, $body);
-
         $results = [
             'success' => 0,
             'failure' => 0
         ];
 
-        foreach ($tokens as $token) {
+        foreach (array_unique(array_filter($tokens)) as $token) {
             try {
-                $message = CloudMessage::withTarget('token', $token)
-                    ->withNotification($notification)
-                    ->withData($data);
-
+                $message = $this->buildMessage('token', $token, $title, $body, $data);
                 $this->messaging->send($message);
                 $results['success']++;
-            } catch (\Exception $e) {
+            } catch (\Kreait\Firebase\Exception\Messaging\NotFound $e) {
+                Log::warning('FCM token not found or expired in batch', ['token' => substr($token, 0, 15) . '...']);
+                $results['failure']++;
+            } catch (\Throwable $e) {
                 Log::error('Failed to send Firebase notification in batch', [
-                    'token' => substr($token, 0, 10) . '...',
+                    'token' => substr($token, 0, 15) . '...',
                     'error' => $e->getMessage()
                 ]);
                 $results['failure']++;
@@ -162,11 +218,7 @@ class FirebaseNotificationService
     public function sendToTopic(string $topic, string $title, string $body, array $data = []): bool
     {
         try {
-            $notification = FirebaseNotification::create($title, $body);
-
-            $message = CloudMessage::withTarget('topic', $topic)
-                ->withNotification($notification)
-                ->withData($data);
+            $message = $this->buildMessage('topic', $topic, $title, $body, $data);
 
             $this->messaging->send($message);
 
@@ -176,7 +228,7 @@ class FirebaseNotificationService
             ]);
 
             return true;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Failed to send Firebase topic notification', [
                 'topic' => $topic,
                 'error' => $e->getMessage()

@@ -78,26 +78,39 @@ class FCMTokenController extends Controller
     public function sendToToken(Request $request): JsonResponse
     {
         $request->validate([
-            'user_id' => 'required|integer',
+            'user_id' => 'required_without:token|nullable|integer',
+            'token' => 'required_without:user_id|nullable|string',
             'title' => 'required|string',
             'body' => 'required|string',
-            'data' => 'array',
+            'data' => 'nullable|array',
         ]);
 
         try {
-            $user = User::find($request->user_id);
-            if (!$user) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'User not found',
-                ], 404);
+            $user = null;
+            $token = $request->input('token');
+
+            if ($request->filled('user_id')) {
+                $user = User::find($request->user_id);
+                if (!$user) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'User not found',
+                    ], 404);
+                }
+
+                $token = $user->fcm_token;
+                if (!$token) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'User does not have a valid FCM token',
+                    ], 400);
+                }
             }
 
-            $token = $user->fcm_token;
             if (!$token) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'User does not have a valid FCM token',
+                    'message' => 'Valid FCM token is required',
                 ], 400);
             }
 
@@ -108,7 +121,7 @@ class FCMTokenController extends Controller
                 $request->input('data', [])
             );
 
-            if ($sent) {
+            if ($sent && $user) {
                 Notification::create([
                     'user_id' => $user->id,
                     'type' => $request->input('data', [])['type'] ?? 'general',
@@ -135,14 +148,51 @@ class FCMTokenController extends Controller
             ], 500);
         }
     }
+
     public function save(Request $request)
     {
-        $request->validate(['token' => 'required|string']);
+        $token = $request->input('token') ?? $request->input('fcm_token') ?? $request->input('device_token');
+
+        if (empty($token) || !is_string($token)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'The token field is required (accepted keys: token, fcm_token, device_token).',
+            ], 422);
+        }
 
         $user = $request->user();
-        $user->update(['fcm_token' => $request->token]);
+        if (!$user) {
+            return response()->json([
+                'message' => 'Unauthenticated.',
+            ], 401);
+        }
 
-        return response()->json(['message' => app()->getLocale() === 'ar' ? 'تم حفظ الرمز بنجاح' : 'Token saved successfully']);
+        // 1. Update token on users table
+        $user->update(['fcm_token' => $token]);
+
+        // 2. Also sync to device_tokens table for multi-device push notification delivery
+        try {
+            if (class_exists(\App\Models\DeviceToken::class)) {
+                \App\Models\DeviceToken::updateOrCreate(
+                    [
+                        'user_id' => $user->id,
+                        'device_token' => $token,
+                    ],
+                    [
+                        'device_type' => $request->input('device_type', 'android'),
+                        'is_active' => true,
+                    ]
+                );
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Failed to sync device_tokens in FCMTokenController::save: ' . $e->getMessage());
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => app()->getLocale() === 'ar' ? 'تم حفظ الرمز بنجاح' : 'Token saved successfully',
+            'token' => substr($token, 0, 15) . '...',
+        ]);
     }
 
 }

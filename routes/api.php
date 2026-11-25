@@ -375,9 +375,11 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin,support'])->grou
     Route::get('/bookings/export', [BookingAdminController::class, 'export']);
     Route::get('/bookings/{id}', [BookingAdminController::class, 'show']);
     Route::get('/sessions', [SessionsAdminController::class, 'index']);
+    Route::post('/sessions', [SessionsAdminController::class, 'store']);
     Route::get('/sessions/export', [SessionsAdminController::class, 'export']);
     Route::get('/sessions/{id}', [SessionsAdminController::class, 'show']);
     Route::put('/sessions/{id}/reschedule', [SessionsAdminController::class, 'reschedule']);
+    Route::get('/teachers/{id}/offerings', [SessionsAdminController::class, 'teacherOfferings']);
     // Marketing notifications (shared between admin and support roles)
     Route::get('/marketing/notifications', [MarketingNotificationController::class, 'index']);
     Route::post('/marketing/notifications/send', [MarketingNotificationController::class, 'send']);

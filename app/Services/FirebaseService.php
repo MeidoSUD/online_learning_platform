@@ -5,6 +5,8 @@ namespace App\Services;
 use Kreait\Firebase\Factory;
 use Kreait\Firebase\Messaging\CloudMessage;
 use Kreait\Firebase\Messaging\Notification;
+use Kreait\Firebase\Messaging\AndroidConfig;
+use Kreait\Firebase\Messaging\ApnsConfig;
 use Illuminate\Support\Facades\Log;
 
 class FirebaseService
@@ -35,20 +37,64 @@ class FirebaseService
         try {
             $notification = Notification::create($title, $body);
 
+            // Ensure all values in data payload are strings for FCM HTTP v1
+            $sanitizedData = [];
+            foreach ($data as $key => $value) {
+                if (is_array($value) || is_object($value)) {
+                    $sanitizedData[(string) $key] = json_encode($value, JSON_UNESCAPED_UNICODE);
+                } elseif (is_bool($value)) {
+                    $sanitizedData[(string) $key] = $value ? '1' : '0';
+                } elseif ($value === null) {
+                    $sanitizedData[(string) $key] = '';
+                } else {
+                    $sanitizedData[(string) $key] = (string) $value;
+                }
+            }
+
+            $androidConfig = AndroidConfig::fromArray([
+                'priority' => 'high',
+                'notification' => [
+                    'channel_id' => $data['channel_id'] ?? 'high_importance_channel',
+                    'sound' => 'default',
+                    'default_sound' => true,
+                    'default_vibrate_timings' => true,
+                    'notification_priority' => 'PRIORITY_HIGH',
+                ],
+            ]);
+
+            $apnsConfig = ApnsConfig::fromArray([
+                'headers' => [
+                    'apns-priority' => '10',
+                ],
+                'payload' => [
+                    'aps' => [
+                        'alert' => [
+                            'title' => $title,
+                            'body' => $body,
+                        ],
+                        'sound' => 'default',
+                        'badge' => 1,
+                        'content-available' => 1,
+                    ],
+                ],
+            ]);
+
             $message = CloudMessage::withTarget('token', $token)
                 ->withNotification($notification)
-                ->withData($data);
+                ->withData($sanitizedData)
+                ->withAndroidConfig($androidConfig)
+                ->withApnsConfig($apnsConfig);
 
             $this->messaging->send($message);
 
             Log::info('Push notification sent successfully.', [
-                'token' => substr($token, 0, 20) . '...', // Don't log full token
+                'token' => substr($token, 0, 15) . '...',
                 'title' => $title,
             ]);
 
             return true;
         } catch (\Kreait\Firebase\Exception\Messaging\NotFound $e) {
-            Log::warning('FCM token not found or expired', ['token' => substr($token, 0, 20)]);
+            Log::warning('FCM token not found or expired', ['token' => substr($token, 0, 15) . '...']);
             return false;
         } catch (\Throwable $e) {
             Log::error('Failed to send FCM push notification', [
@@ -59,3 +105,4 @@ class FirebaseService
         }
     }
 }
+

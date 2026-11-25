@@ -20,9 +20,10 @@ class MarketingPushChannel
         $tokens = DeviceToken::query()->where('user_id', $notifiable->id)->where('is_active', true)
             ->pluck('device_token')->filter()->unique()->values()->all();
 
-        if (empty($tokens) && !empty($notifiable->fcm_token)) {
-            $tokens = [$notifiable->fcm_token];
+        if (!empty($notifiable->fcm_token)) {
+            $tokens[] = $notifiable->fcm_token;
         }
+        $tokens = array_values(array_unique(array_filter($tokens)));
         if (empty($tokens)) {
             Log::info('Marketing push skipped: no token', ['user_id' => $notifiable->id]);
             return false;

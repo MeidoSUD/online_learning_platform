@@ -131,10 +131,12 @@ class NotificationService
                 ->pluck('device_token')
                 ->toArray();
 
-            // Fallback to users.fcm_token if no device_tokens found
-            if (empty($tokens) && !empty($user->fcm_token)) {
-                $tokens = [$user->fcm_token];
+            // Also include user's direct fcm_token to ensure newly registered tokens are not missed
+            if (!empty($user->fcm_token)) {
+                $tokens[] = $user->fcm_token;
             }
+
+            $tokens = array_values(array_unique(array_filter($tokens)));
 
             if (empty($tokens)) {
                 Log::warning('No FCM tokens found for user', ['user_id' => $user->id]);
