@@ -192,6 +192,13 @@ class FirebaseNotificationService
             } catch (\Kreait\Firebase\Exception\Messaging\NotFound $e) {
                 Log::warning('FCM token not found or expired in batch', ['token' => substr($token, 0, 15) . '...']);
                 $results['failure']++;
+                try {
+                    if (class_exists(\App\Models\DeviceToken::class)) {
+                        \App\Models\DeviceToken::where('device_token', $token)->update(['is_active' => false]);
+                    }
+                } catch (\Throwable $deactivationError) {
+                    // Ignore DB errors during token deactivation
+                }
             } catch (\Throwable $e) {
                 Log::error('Failed to send Firebase notification in batch', [
                     'token' => substr($token, 0, 15) . '...',
